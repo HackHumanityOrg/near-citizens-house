@@ -14,17 +14,19 @@ export const SELF_CONFIG = {
   logoBase64: "https://i.postimg.cc/mrmVf9hm/self.png",
   disclosures: {
     minimumAge: 18,
-    ofac: false, // Set to true only when using real passports in production
+    ofac: false,
   },
   backendConfig: {
     minimumAge: 18,
-    ofac: false, // Set to true only when using real passports in production
+    excludedCountries: [],
+    ofac: false,
   },
 }
 
 export const NEAR_CONFIG = {
-  networkId: "testnet",
-  contractName: "self-verification.testnet",
+  networkId: (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet",
+  contractName: process.env.NEAR_CONTRACT_ID || "",
+  rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || "https://rpc.testnet.near.org",
 }
 
 export const CONSTANTS = {
