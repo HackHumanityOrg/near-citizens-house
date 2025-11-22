@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - blake-hash
+  - near-sandbox
+  - near-workspaces
+  - secp256k1
+  - sharp
+  - unrs-resolver
