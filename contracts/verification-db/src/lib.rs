@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupSet, UnorderedMap};
 use near_sdk::serde::{Deserialize, Serialize};
@@ -48,12 +50,9 @@ pub struct VerifiedAccount {
     pub verified_at: u64,
     /// Self.xyz ZK proof data for async verification
     pub self_proof: SelfProofData,
-    /// NEAR signature (Base64-encoded) for userContextData reconstruction
-    pub near_signature: String,
-    /// NEAR public key (ed25519:...) for userContextData reconstruction
-    pub near_public_key: String,
-    /// NEAR nonce (Base64-encoded 32 bytes) for userContextData reconstruction
-    pub near_nonce: String,
+    /// Original userContextData hex string for Self.xyz re-verification
+    /// This is the exact hex-encoded JSON that was used during initial verification
+    pub user_context_data: String,
 }
 
 /// NEAR signature data for verification (NEP-413 format)
@@ -124,6 +123,7 @@ impl Contract {
         attestation_id: String,
         signature_data: NearSignatureData,
         self_proof: SelfProofData,
+        user_context_data: String,
     ) {
         // Access control: only backend wallet can write
         assert_eq!(
@@ -158,15 +158,6 @@ impl Contract {
             "NEAR account already verified"
         );
 
-        // Convert signature components for storage
-        use near_sdk::base64::{engine::general_purpose::STANDARD, Engine};
-        // Signature: convert Vec<u8> to Base64 string
-        let near_signature = STANDARD.encode(&signature_data.signature);
-        // Public key: convert to Base64 (includes key type byte)
-        let near_public_key = STANDARD.encode(signature_data.public_key.as_bytes());
-        // Nonce: convert Vec<u8> to Base64 string
-        let near_nonce = STANDARD.encode(&signature_data.nonce);
-
         // Create verification record
         let account = VerifiedAccount {
             nullifier: nullifier.clone(),
@@ -175,9 +166,7 @@ impl Contract {
             attestation_id: attestation_id.clone(),
             verified_at: env::block_timestamp(),
             self_proof,
-            near_signature,
-            near_public_key,
-            near_nonce,
+            user_context_data,
         };
 
         // Store verification
@@ -379,6 +368,7 @@ mod tests {
             "1".to_string(),
             sig_data,
             test_self_proof(),
+            "test_user_context_data".to_string(),
         );
     }
 
@@ -410,6 +400,7 @@ mod tests {
             "1".to_string(),
             sig_data,
             test_self_proof(),
+            "test_user_context_data".to_string(),
         );
     }
 
@@ -440,6 +431,7 @@ mod tests {
             "1".to_string(),
             sig_data,
             test_self_proof(),
+            "test_user_context_data".to_string(),
         );
     }
 
@@ -470,6 +462,7 @@ mod tests {
             "1".to_string(),
             sig_data,
             test_self_proof(),
+            "test_user_context_data".to_string(),
         );
     }
 

@@ -208,6 +208,8 @@ export async function POST(request: NextRequest) {
         signatureData: nearSignature,
         // Pass Self.xyz proof data for async verification
         selfProofData,
+        // Store original userContextData for re-verification
+        userContextData,
       } satisfies VerificationDataWithSignature)
     } catch (error) {
       console.error("[SECURITY] Failed to store verification:", error)

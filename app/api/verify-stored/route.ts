@@ -17,15 +17,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ verified: false, reason: "Account not found" }, { status: 404 })
     }
 
-    // Reconstruct userContextData from stored components
-    // The original format is a JSON object hex-encoded
-    const nearSigData = {
-      accountId: account.nearAccountId,
-      signature: account.nearSignature,
-      publicKey: account.nearPublicKey,
-      nonce: account.nearNonce,
-    }
-    const userContextData = Buffer.from(JSON.stringify(nearSigData)).toString("hex")
+    // Use the stored userContextData directly (no reconstruction needed)
+    const userContextData = account.userContextData
 
     // Convert proof strings to BigInt for Self.xyz verifier
     const proof = {

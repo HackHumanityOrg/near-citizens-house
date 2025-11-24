@@ -11,10 +11,7 @@ export interface VerifiedAccount {
   attestationId: string
   verifiedAt: number
   selfProof: SelfProofData // Self.xyz ZK proof for async verification
-  // NEAR signature components for userContextData reconstruction
-  nearSignature: string // Base64-encoded signature
-  nearPublicKey: string // Base64-encoded public key (includes key type byte)
-  nearNonce: string // Base64-encoded 32-byte nonce
+  userContextData: string // Original hex-encoded userContextData for Self.xyz re-verification
 }
 
 export interface VerificationData {
@@ -28,6 +25,7 @@ export interface VerificationData {
 export interface VerificationDataWithSignature extends VerificationData {
   signatureData: NearSignatureData
   selfProofData: SelfProofData
+  userContextData: string // Original hex-encoded userContextData
 }
 
 export interface IVerificationDatabase {

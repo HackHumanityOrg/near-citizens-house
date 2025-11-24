@@ -27,10 +27,7 @@ interface ContractVerifiedAccount {
   attestation_id: string
   verified_at: number // Nanoseconds
   self_proof: ContractSelfProofData
-  // NEAR signature components for userContextData reconstruction
-  near_signature: string // Base64-encoded
-  near_public_key: string // Base64-encoded public key
-  near_nonce: string // Base64-encoded nonce
+  user_context_data: string // Original hex-encoded userContextData
 }
 
 // NEAR signature data format for contract verification (matches Rust struct)
@@ -120,7 +117,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 
     try {
       // Extract NEAR signature data and Self proof from verification data
-      const { signatureData, selfProofData, ...verificationData } = data
+      const { signatureData, selfProofData, userContextData, ...verificationData } = data
 
       // Convert signature data to contract format
       const nearSigData: NearContractSignatureData = {
@@ -154,6 +151,7 @@ export class NearContractDatabase implements IVerificationDatabase {
               attestation_id: verificationData.attestationId,
               signature_data: nearSigData,
               self_proof: selfProof,
+              user_context_data: userContextData,
             },
             BigInt("30000000000000"), // 30 TGas
             BigInt("0"), // 0 NEAR deposit
@@ -207,9 +205,7 @@ export class NearContractDatabase implements IVerificationDatabase {
           proof: result.self_proof.proof,
           publicSignals: result.self_proof.public_signals,
         },
-        nearSignature: result.near_signature,
-        nearPublicKey: result.near_public_key,
-        nearNonce: result.near_nonce,
+        userContextData: result.user_context_data,
       }
     } catch (error) {
       console.error("[NearContractDB] Error getting verified account:", error)
@@ -248,9 +244,7 @@ export class NearContractDatabase implements IVerificationDatabase {
             proof: item.self_proof.proof,
             publicSignals: item.self_proof.public_signals,
           },
-          nearSignature: item.near_signature,
-          nearPublicKey: item.near_public_key,
-          nearNonce: item.near_nonce,
+          userContextData: item.user_context_data,
         }))
 
         allAccounts.push(...accounts)
@@ -289,9 +283,7 @@ export class NearContractDatabase implements IVerificationDatabase {
           proof: item.self_proof.proof,
           publicSignals: item.self_proof.public_signals,
         },
-        nearSignature: item.near_signature,
-        nearPublicKey: item.near_public_key,
-        nearNonce: item.near_nonce,
+        userContextData: item.user_context_data,
       }))
 
       return { accounts: verifiedAccounts, total: total ?? 0 }
