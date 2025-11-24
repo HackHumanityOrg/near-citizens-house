@@ -27,6 +27,19 @@ export interface NearSignatureData {
   recipient: string // NEP-413 recipient
 }
 
+// Groth16 ZK proof structure (a, b, c points)
+export interface ZkProof {
+  a: [string, string]
+  b: [[string, string], [string, string]]
+  c: [string, string]
+}
+
+// Self.xyz proof data for async verification
+export interface SelfProofData {
+  proof: ZkProof
+  publicSignals: string[]
+}
+
 export interface VerificationStep {
   id: string
   title: string

@@ -11,6 +11,30 @@ pub enum StorageKey {
     Accounts,
 }
 
+/// Groth16 ZK proof structure (a, b, c points) for async verification
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
+#[abi(json)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct ZkProof {
+    pub a: [String; 2],
+    pub b: [[String; 2]; 2],
+    pub c: [String; 2],
+}
+
+/// Self.xyz proof data for asynchronous verification
+/// Contains all data needed to re-verify the proof against Self.xyz's IdentityVerificationHub
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
+#[abi(json)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct SelfProofData {
+    /// Groth16 ZK proof (a, b, c points)
+    pub proof: ZkProof,
+    /// Public signals from the circuit (contains nullifier, merkle root, scope, etc.)
+    pub public_signals: Vec<String>,
+}
+
 /// Verified account record stored on-chain
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
 #[abi(json)]
@@ -22,6 +46,14 @@ pub struct VerifiedAccount {
     pub user_id: String,
     pub attestation_id: String,
     pub verified_at: u64,
+    /// Self.xyz ZK proof data for async verification
+    pub self_proof: SelfProofData,
+    /// NEAR signature (Base64-encoded) for userContextData reconstruction
+    pub near_signature: String,
+    /// NEAR public key (ed25519:...) for userContextData reconstruction
+    pub near_public_key: String,
+    /// NEAR nonce (Base64-encoded 32 bytes) for userContextData reconstruction
+    pub near_nonce: String,
 }
 
 /// NEAR signature data for verification (NEP-413 format)
@@ -91,6 +123,7 @@ impl Contract {
         user_id: String,
         attestation_id: String,
         signature_data: NearSignatureData,
+        self_proof: SelfProofData,
     ) {
         // Access control: only backend wallet can write
         assert_eq!(
@@ -125,6 +158,15 @@ impl Contract {
             "NEAR account already verified"
         );
 
+        // Convert signature components for storage
+        use near_sdk::base64::{engine::general_purpose::STANDARD, Engine};
+        // Signature: convert Vec<u8> to Base64 string
+        let near_signature = STANDARD.encode(&signature_data.signature);
+        // Public key: convert to Base64 (includes key type byte)
+        let near_public_key = STANDARD.encode(signature_data.public_key.as_bytes());
+        // Nonce: convert Vec<u8> to Base64 string
+        let near_nonce = STANDARD.encode(&signature_data.nonce);
+
         // Create verification record
         let account = VerifiedAccount {
             nullifier: nullifier.clone(),
@@ -132,6 +174,10 @@ impl Contract {
             user_id,
             attestation_id: attestation_id.clone(),
             verified_at: env::block_timestamp(),
+            self_proof,
+            near_signature,
+            near_public_key,
+            near_nonce,
         };
 
         // Store verification
@@ -282,6 +328,21 @@ mod tests {
         builder
     }
 
+    /// Create test Self proof data
+    fn test_self_proof() -> SelfProofData {
+        SelfProofData {
+            proof: ZkProof {
+                a: ["1".to_string(), "2".to_string()],
+                b: [
+                    ["3".to_string(), "4".to_string()],
+                    ["5".to_string(), "6".to_string()],
+                ],
+                c: ["7".to_string(), "8".to_string()],
+            },
+            public_signals: vec!["0".to_string(); 21],
+        }
+    }
+
     #[test]
     fn test_initialization() {
         let context = get_context(accounts(0));
@@ -317,6 +378,7 @@ mod tests {
             "user1".to_string(),
             "1".to_string(),
             sig_data,
+            test_self_proof(),
         );
     }
 
@@ -347,6 +409,7 @@ mod tests {
             "user1".to_string(),
             "1".to_string(),
             sig_data,
+            test_self_proof(),
         );
     }
 
@@ -376,6 +439,7 @@ mod tests {
             "user1".to_string(),
             "1".to_string(),
             sig_data,
+            test_self_proof(),
         );
     }
 
@@ -405,6 +469,7 @@ mod tests {
             "user1".to_string(),
             "1".to_string(),
             sig_data,
+            test_self_proof(),
         );
     }
 

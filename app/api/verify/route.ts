@@ -186,13 +186,28 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Convert proof to string format for on-chain storage
+      const selfProofData = {
+        proof: {
+          a: [String(proof.a[0]), String(proof.a[1])] as [string, string],
+          b: [
+            [String(proof.b[0][0]), String(proof.b[0][1])],
+            [String(proof.b[1][0]), String(proof.b[1][1])],
+          ] as [[string, string], [string, string]],
+          c: [String(proof.c[0]), String(proof.c[1])] as [string, string],
+        },
+        publicSignals: publicSignals.map(String),
+      }
+
       await db.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
         userId: selfVerificationResult.userData?.userIdentifier || "unknown",
         attestationId: attestationId.toString(),
-        // Pass signature data for on-chain verification (if using contract backend)
+        // Pass signature data for on-chain verification
         signatureData: nearSignature,
+        // Pass Self.xyz proof data for async verification
+        selfProofData,
       } satisfies VerificationDataWithSignature)
     } catch (error) {
       console.error("[SECURITY] Failed to store verification:", error)

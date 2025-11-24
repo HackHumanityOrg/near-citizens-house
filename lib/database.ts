@@ -2,7 +2,7 @@
 // Uses NEAR smart contract for permanent, decentralized storage
 
 import { NearContractDatabase } from "./near-contract-db"
-import type { NearSignatureData } from "./types"
+import type { NearSignatureData, SelfProofData } from "./types"
 
 export interface VerifiedAccount {
   nullifier: string // Unique passport identifier (prevents duplicate registrations)
@@ -10,6 +10,11 @@ export interface VerifiedAccount {
   userId: string
   attestationId: string
   verifiedAt: number
+  selfProof: SelfProofData // Self.xyz ZK proof for async verification
+  // NEAR signature components for userContextData reconstruction
+  nearSignature: string // Base64-encoded signature
+  nearPublicKey: string // Base64-encoded public key (includes key type byte)
+  nearNonce: string // Base64-encoded 32-byte nonce
 }
 
 export interface VerificationData {
@@ -19,9 +24,10 @@ export interface VerificationData {
   attestationId: string
 }
 
-// Verification data with NEAR signature for on-chain verification
+// Verification data with NEAR signature and Self proof for on-chain verification
 export interface VerificationDataWithSignature extends VerificationData {
   signatureData: NearSignatureData
+  selfProofData: SelfProofData
 }
 
 export interface IVerificationDatabase {

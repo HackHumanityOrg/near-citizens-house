@@ -6,6 +6,19 @@ import { KeyPairSigner } from "@near-js/signers"
 import { actionCreators } from "@near-js/transactions"
 import type { IVerificationDatabase, VerificationDataWithSignature, VerifiedAccount } from "./database"
 
+// Contract ZK proof structure (matches Rust ZkProof)
+interface ContractZkProof {
+  a: [string, string]
+  b: [[string, string], [string, string]]
+  c: [string, string]
+}
+
+// Contract Self proof data (matches Rust SelfProofData)
+interface ContractSelfProofData {
+  proof: ContractZkProof
+  public_signals: string[]
+}
+
 // Contract return type for verified account data (matches Rust struct)
 interface ContractVerifiedAccount {
   nullifier: string
@@ -13,6 +26,11 @@ interface ContractVerifiedAccount {
   user_id: string
   attestation_id: string
   verified_at: number // Nanoseconds
+  self_proof: ContractSelfProofData
+  // NEAR signature components for userContextData reconstruction
+  near_signature: string // Base64-encoded
+  near_public_key: string // Base64-encoded public key
+  near_nonce: string // Base64-encoded nonce
 }
 
 // NEAR signature data format for contract verification (matches Rust struct)
@@ -101,8 +119,8 @@ export class NearContractDatabase implements IVerificationDatabase {
     await this.ensureInitialized()
 
     try {
-      // Extract NEAR signature data from verification data
-      const { signatureData, ...verificationData } = data
+      // Extract NEAR signature data and Self proof from verification data
+      const { signatureData, selfProofData, ...verificationData } = data
 
       // Convert signature data to contract format
       const nearSigData: NearContractSignatureData = {
@@ -112,6 +130,12 @@ export class NearContractDatabase implements IVerificationDatabase {
         challenge: signatureData.challenge,
         nonce: signatureData.nonce, // Already an array
         recipient: signatureData.recipient,
+      }
+
+      // Convert Self proof data to contract format
+      const selfProof: ContractSelfProofData = {
+        proof: selfProofData.proof,
+        public_signals: selfProofData.publicSignals,
       }
 
       console.log("[NearContractDB] Calling store_verification on contract...")
@@ -129,6 +153,7 @@ export class NearContractDatabase implements IVerificationDatabase {
               user_id: verificationData.userId,
               attestation_id: verificationData.attestationId,
               signature_data: nearSigData,
+              self_proof: selfProof,
             },
             BigInt("30000000000000"), // 30 TGas
             BigInt("0"), // 0 NEAR deposit
@@ -178,6 +203,13 @@ export class NearContractDatabase implements IVerificationDatabase {
         userId: result.user_id,
         attestationId: result.attestation_id,
         verifiedAt: Math.floor(result.verified_at / 1_000_000), // Convert nanoseconds to milliseconds
+        selfProof: {
+          proof: result.self_proof.proof,
+          publicSignals: result.self_proof.public_signals,
+        },
+        nearSignature: result.near_signature,
+        nearPublicKey: result.near_public_key,
+        nearNonce: result.near_nonce,
       }
     } catch (error) {
       console.error("[NearContractDB] Error getting verified account:", error)
@@ -212,6 +244,13 @@ export class NearContractDatabase implements IVerificationDatabase {
           userId: item.user_id,
           attestationId: item.attestation_id,
           verifiedAt: Math.floor(item.verified_at / 1_000_000), // Convert nanoseconds to milliseconds
+          selfProof: {
+            proof: item.self_proof.proof,
+            publicSignals: item.self_proof.public_signals,
+          },
+          nearSignature: item.near_signature,
+          nearPublicKey: item.near_public_key,
+          nearNonce: item.near_nonce,
         }))
 
         allAccounts.push(...accounts)
@@ -246,6 +285,13 @@ export class NearContractDatabase implements IVerificationDatabase {
         userId: item.user_id,
         attestationId: item.attestation_id,
         verifiedAt: Math.floor(item.verified_at / 1_000_000), // Convert nanoseconds to milliseconds
+        selfProof: {
+          proof: item.self_proof.proof,
+          publicSignals: item.self_proof.public_signals,
+        },
+        nearSignature: item.near_signature,
+        nearPublicKey: item.near_public_key,
+        nearNonce: item.near_nonce,
       }))
 
       return { accounts: verifiedAccounts, total: total ?? 0 }
