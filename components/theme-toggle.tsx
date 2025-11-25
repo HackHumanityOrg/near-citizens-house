@@ -8,13 +8,13 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("dark")
 
   useEffect(() => {
-    const currentTheme = document.documentElement.getAttribute("data-theme") as "light" | "dark"
-    setTheme(currentTheme || "dark")
+    const isDark = document.documentElement.classList.contains("dark")
+    setTheme(isDark ? "dark" : "light")
   }, [])
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark"
-    document.documentElement.setAttribute("data-theme", newTheme)
+    document.documentElement.classList.toggle("dark", newTheme === "dark")
     setTheme(newTheme)
   }
 

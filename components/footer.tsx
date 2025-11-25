@@ -6,25 +6,25 @@ export function Footer() {
           href="https://hackhumanity.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[11px] font-medium text-muted-foreground/70 hover:text-muted-foreground transition-all tracking-wide uppercase"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           Created by HackHumanity
         </a>
-        <span className="text-muted-foreground/50 mx-1">·</span>
+        <span className="text-muted-foreground mx-1">·</span>
         <a
           href="https://self.xyz"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[11px] font-medium text-muted-foreground/70 hover:text-muted-foreground transition-all tracking-wide uppercase"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           Powered by Self.xyz
         </a>
-        <span className="text-muted-foreground/50 mx-1">·</span>
+        <span className="text-muted-foreground mx-1">·</span>
         <a
           href="https://github.com/HackHumanityOrg/near-self-verify"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-muted-foreground/70 hover:text-muted-foreground transition-all hover:scale-110"
+          className="text-muted-foreground hover:text-foreground transition-colors"
           aria-label="GitHub"
         >
           <svg

@@ -128,7 +128,7 @@ export default function VerificationsPage() {
         </div>
 
         <div className="max-w-7xl mx-auto space-y-12">
-          <Card noBorder corners="dots" extendingLines="full" className="bg-transparent px-8">
+          <Card className="border-0 bg-transparent shadow-none">
             <CardContent className="space-y-3 py-4">
               <div className="flex items-center">
                 <Link href="/">
@@ -147,9 +147,9 @@ export default function VerificationsPage() {
             </CardContent>
           </Card>
 
-          <Card noBorder corners="dots" extendingLines="full" className="bg-transparent px-8">
+          <Card className="border-0 bg-transparent shadow-none">
             <CardContent className="py-8">
-              <Card corners="crosshairs" pattern="grid" patternFade="top" patternOpacity={0.08}>
+              <Card>
                 <CardHeader>
                   <CardTitle>Verification Records</CardTitle>
                   <CardDescription>

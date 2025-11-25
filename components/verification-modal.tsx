@@ -202,31 +202,31 @@ export function VerificationModal({
   }, [terminalLines])
 
   const renderTerminalLine = (line: string, index: number) => {
-    let className = "text-gray-300" // default for data
+    let className = "text-muted-foreground"
 
     if (line.includes("✓")) {
-      className = "text-green-400"
+      className = "text-foreground"
     } else if (line.includes("✗") || line.toLowerCase().includes("error")) {
-      className = "text-red-400"
+      className = "text-destructive"
     } else if (line.includes("VERIFICATION COMPLETE")) {
-      className = "text-green-400 font-bold"
+      className = "text-foreground font-bold"
     } else if (line.includes("VERIFICATION FAILED")) {
-      className = "text-red-400 font-bold"
+      className = "text-destructive font-bold"
     } else if (line.startsWith(">")) {
-      className = "text-blue-400"
+      className = "text-foreground"
     } else if (line.includes("════") || line.includes("═══")) {
-      className = "text-gray-500"
+      className = "text-muted-foreground/50"
     } else if (line.includes("SELF.XYZ") || line.includes("NEAR WALLET")) {
-      className = "text-white font-bold"
+      className = "text-foreground font-bold"
     } else if (line.startsWith("[") && line.includes("]")) {
-      className = "text-gray-400"
+      className = "text-muted-foreground"
     }
 
     return (
       <div key={index} className={`leading-relaxed whitespace-pre ${className}`}>
         {line}
         {index === terminalLines.length - 1 && !isComplete && (
-          <span className="inline-block w-2 h-4 bg-green-400 ml-1 animate-pulse" />
+          <span className="inline-block w-2 h-4 bg-foreground ml-1 animate-pulse" />
         )}
       </div>
     )
@@ -246,11 +246,11 @@ export function VerificationModal({
         <div className="relative min-w-0">
           <div
             ref={terminalRef}
-            className="bg-black rounded-lg p-4 font-mono text-sm text-green-400 h-80 border border-green-900/50 overflow-x-auto overflow-y-auto"
+            className="bg-muted rounded-lg p-4 font-mono text-sm text-foreground h-80 border border-border overflow-x-auto overflow-y-auto"
           >
             <pre className="m-0">
               {terminalLines.map((line, i) => renderTerminalLine(line, i))}
-              {terminalLines.length === 0 && <span className="inline-block w-2 h-4 bg-green-400 animate-pulse" />}
+              {terminalLines.length === 0 && <span className="inline-block w-2 h-4 bg-foreground animate-pulse" />}
             </pre>
           </div>
 
@@ -259,7 +259,7 @@ export function VerificationModal({
             <Button
               variant="ghost"
               size="sm"
-              className="absolute top-2 right-6 h-8 w-8 p-0 bg-black/50 hover:bg-black/80 text-gray-400 hover:text-gray-200"
+              className="absolute top-2 right-6 h-8 w-8 p-0"
               onClick={copyTerminalContent}
               title="Copy terminal output"
             >

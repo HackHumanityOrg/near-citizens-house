@@ -38,7 +38,7 @@ export function DiscourseVerification({ onSuccess, onError, onDisconnectWallet }
   // Show connected profile
   if (isConnected && profile) {
     return (
-      <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -76,7 +76,7 @@ export function DiscourseVerification({ onSuccess, onError, onDisconnectWallet }
   // Show loading state
   if (isLoading) {
     return (
-      <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -93,7 +93,7 @@ export function DiscourseVerification({ onSuccess, onError, onDisconnectWallet }
 
   // Show connect button
   return (
-    <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+    <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />

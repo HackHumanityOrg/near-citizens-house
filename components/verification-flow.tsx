@@ -177,13 +177,24 @@ export function VerificationFlow() {
 
   return (
     <div className="space-y-6" role="region" aria-label="Identity verification process">
-      <nav aria-label="Verification progress" className="flex items-center gap-4 px-4">
-        <ol className="flex items-center gap-4 w-full">
+      <nav aria-label="Verification progress" className="px-4">
+        <ol className="flex w-full">
           {steps.map((step, index) => (
-            <React.Fragment key={step.id}>
-              <li className="flex flex-col items-center gap-2 min-w-[100px]">
+            <li key={step.id} className="flex-1 flex flex-col items-center">
+              <div className="flex items-center w-full gap-2">
+                {/* Left line or spacer */}
+                {index === 0 ? (
+                  <div className="flex-1" aria-hidden="true" />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className={`flex-1 h-0.5 transition-colors ${
+                      step.status === "complete" || step.status === "active" ? "bg-primary" : "bg-muted"
+                    }`}
+                  />
+                )}
                 <div
-                  className={`flex items-center justify-center h-10 w-10 rounded-full border-2 transition-colors ${
+                  className={`flex items-center justify-center h-10 w-10 rounded-full border-2 transition-colors shrink-0 ${
                     step.status === "complete"
                       ? "bg-primary border-primary text-primary-foreground"
                       : step.status === "active"
@@ -201,31 +212,33 @@ export function VerificationFlow() {
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-center">
-                  <div className={step.status === "active" ? "text-foreground font-medium" : "text-muted-foreground"}>
-                    {step.title}
-                  </div>
+                {/* Right line or spacer */}
+                {index === steps.length - 1 ? (
+                  <div className="flex-1" aria-hidden="true" />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className={`flex-1 h-0.5 transition-colors ${
+                      steps[index + 1].status === "complete" || steps[index + 1].status === "active"
+                        ? "bg-primary"
+                        : "bg-muted"
+                    }`}
+                  />
+                )}
+              </div>
+              <div className="text-xs text-center mt-2">
+                <div className={step.status === "active" ? "text-foreground font-medium" : "text-muted-foreground"}>
+                  {step.title}
                 </div>
-              </li>
-
-              {index < steps.length - 1 && (
-                <li
-                  aria-hidden="true"
-                  className={`flex-1 h-0.5 mx-2 transition-colors ${
-                    steps[index + 1].status === "complete" || steps[index + 1].status === "active"
-                      ? "bg-primary"
-                      : "bg-muted"
-                  }`}
-                />
-              )}
-            </React.Fragment>
+              </div>
+            </li>
           ))}
         </ol>
       </nav>
 
       <main aria-live="polite" aria-atomic="true">
         {currentStep === 1 && (
-          <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+          <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -260,7 +273,7 @@ export function VerificationFlow() {
         )}
 
         {currentStep === 2 && (
-          <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+          <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <FileKey className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -327,14 +340,7 @@ export function VerificationFlow() {
         {currentStep === 3 && nearSignature && (
           <>
             {verificationError ? (
-              <Card
-                corners="crosshairs"
-                pattern="diagonal"
-                patternFade="top-left"
-                patternOpacity={0.15}
-                role="alert"
-                aria-labelledby="error-title"
-              >
+              <Card role="alert" aria-labelledby="error-title">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
@@ -377,14 +383,7 @@ export function VerificationFlow() {
               />
             ) : !discourseEnabled ? (
               // No Discourse - show success immediately
-              <Card
-                corners="crosshairs"
-                pattern="diagonal"
-                patternFade="top-left"
-                patternOpacity={0.15}
-                role="status"
-                aria-labelledby="success-title"
-              >
+              <Card role="status" aria-labelledby="success-title">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -423,7 +422,7 @@ export function VerificationFlow() {
         {currentStep === 4 && selfVerificationComplete && discourseEnabled && (
           <>
             {discourseError && !discourseConnected ? (
-              <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15} role="alert">
+              <Card role="alert">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
@@ -452,14 +451,7 @@ export function VerificationFlow() {
               />
             ) : (
               // Full verification complete - show final success
-              <Card
-                corners="crosshairs"
-                pattern="diagonal"
-                patternFade="top-left"
-                patternOpacity={0.15}
-                role="status"
-                aria-labelledby="success-title"
-              >
+              <Card role="status" aria-labelledby="success-title">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary" aria-hidden="true" />

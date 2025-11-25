@@ -103,7 +103,7 @@ export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVeri
   }
 
   return (
-    <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+    <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
           <QrCode className="h-5 w-5 text-primary" />
@@ -113,8 +113,8 @@ export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVeri
       </CardHeader>
       <CardContent className="space-y-4">
         {verificationStatus === "success" && (
-          <Alert className="bg-primary/10 border-primary/20">
-            <CheckCircle2 className="h-4 w-4 text-primary" />
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>
               Verification successful! Your identity has been verified and linked to your NEAR wallet.
             </AlertDescription>

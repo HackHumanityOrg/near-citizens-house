@@ -16,12 +16,12 @@ export default function HomePage() {
       <DiscourseProvider>
         <div className="min-h-screen overflow-clip bg-gradient-to-b from-background to-background/80">
           <div className="container mx-auto px-4 py-12">
-            <div className="max-w-7xl mx-auto space-y-12">
+            <div className="max-w-7xl mx-auto space-y-4">
               <div className="fixed top-4 right-4 z-50">
                 <ThemeToggle />
               </div>
 
-              <Card noBorder corners="dots" extendingLines="full" className="bg-transparent px-8">
+              <Card className="border-0 bg-transparent shadow-none">
                 <CardContent className="text-center space-y-3 py-4">
                   <div className="flex items-center justify-center gap-3">
                     <Shield className="h-10 w-10 text-primary" aria-hidden="true" />
@@ -43,8 +43,8 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card noBorder corners="dots" extendingLines="full" className="bg-transparent px-8">
-                <CardContent className="py-8 flex justify-center">
+              <Card className="border-0 bg-transparent shadow-none">
+                <CardContent className="pt-0 flex justify-center">
                   <div className="max-w-2xl w-full">
                     <ErrorBoundary>
                       <VerificationFlow />
