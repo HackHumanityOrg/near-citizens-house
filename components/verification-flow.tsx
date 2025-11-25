@@ -225,7 +225,7 @@ export function VerificationFlow() {
 
       <main aria-live="polite" aria-atomic="true">
         {currentStep === 1 && (
-          <Card corners="dots" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+          <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -332,7 +332,6 @@ export function VerificationFlow() {
                 pattern="diagonal"
                 patternFade="top-left"
                 patternOpacity={0.15}
-                className="border-destructive/20"
                 role="alert"
                 aria-labelledby="error-title"
               >
@@ -372,11 +371,10 @@ export function VerificationFlow() {
             ) : !discourseEnabled ? (
               // No Discourse - show success immediately
               <Card
-                corners="dots-accent"
+                corners="crosshairs"
                 pattern="diagonal"
                 patternFade="top-left"
-                patternOpacity={0.18}
-                className="border-primary/20 bg-primary/5"
+                patternOpacity={0.15}
                 role="status"
                 aria-labelledby="success-title"
               >
@@ -418,14 +416,7 @@ export function VerificationFlow() {
         {currentStep === 4 && selfVerificationComplete && discourseEnabled && (
           <>
             {discourseError && !discourseConnected ? (
-              <Card
-                corners="crosshairs"
-                pattern="diagonal"
-                patternFade="top-left"
-                patternOpacity={0.15}
-                className="border-destructive/20"
-                role="alert"
-              >
+              <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15} role="alert">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
@@ -439,19 +430,26 @@ export function VerificationFlow() {
                     <AlertDescription>{discourseError}</AlertDescription>
                   </Alert>
 
-                  <DiscourseVerification onSuccess={handleDiscourseSuccess} onError={handleDiscourseError} />
+                  <DiscourseVerification
+                    onSuccess={handleDiscourseSuccess}
+                    onError={handleDiscourseError}
+                    onDisconnectWallet={handleStartOver}
+                  />
                 </CardContent>
               </Card>
             ) : !discourseConnected ? (
-              <DiscourseVerification onSuccess={handleDiscourseSuccess} onError={handleDiscourseError} />
+              <DiscourseVerification
+                onSuccess={handleDiscourseSuccess}
+                onError={handleDiscourseError}
+                onDisconnectWallet={handleStartOver}
+              />
             ) : (
               // Full verification complete - show final success
               <Card
-                corners="dots-accent"
+                corners="crosshairs"
                 pattern="diagonal"
                 patternFade="top-left"
-                patternOpacity={0.18}
-                className="border-primary/20 bg-primary/5"
+                patternOpacity={0.15}
                 role="status"
                 aria-labelledby="success-title"
               >

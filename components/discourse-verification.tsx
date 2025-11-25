@@ -11,9 +11,10 @@ import { Loader2, MessageSquare, AlertCircle, CheckCircle2 } from "lucide-react"
 interface DiscourseVerificationProps {
   onSuccess: () => void
   onError: (error: string) => void
+  onDisconnectWallet?: () => void
 }
 
-export function DiscourseVerification({ onSuccess, onError }: DiscourseVerificationProps) {
+export function DiscourseVerification({ onSuccess, onError, onDisconnectWallet }: DiscourseVerificationProps) {
   const { isConnected, isLoading, profile, connect, disconnect, error } = useDiscourse()
 
   // Notify parent when connection succeeds
@@ -37,13 +38,7 @@ export function DiscourseVerification({ onSuccess, onError }: DiscourseVerificat
   // Show connected profile
   if (isConnected && profile) {
     return (
-      <Card
-        corners="dots-accent"
-        pattern="diagonal"
-        patternFade="top-left"
-        patternOpacity={0.18}
-        className="border-primary/20 bg-primary/5"
-      >
+      <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -81,7 +76,7 @@ export function DiscourseVerification({ onSuccess, onError }: DiscourseVerificat
   // Show loading state
   if (isLoading) {
     return (
-      <Card corners="crosshairs-accent" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
+      <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -98,13 +93,7 @@ export function DiscourseVerification({ onSuccess, onError }: DiscourseVerificat
 
   // Show connect button
   return (
-    <Card
-      corners="crosshairs-accent"
-      pattern="diagonal"
-      patternFade="top-left"
-      patternOpacity={0.15}
-      className="border-primary/20"
-    >
+    <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
       <CardHeader>
         <div className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -128,6 +117,12 @@ export function DiscourseVerification({ onSuccess, onError }: DiscourseVerificat
         <p className="text-xs text-muted-foreground text-center">
           You will be redirected to Discourse to authorize this application
         </p>
+
+        {onDisconnectWallet && (
+          <Button variant="ghost" size="sm" onClick={onDisconnectWallet} className="w-full">
+            Disconnect Wallet
+          </Button>
+        )}
       </CardContent>
     </Card>
   )

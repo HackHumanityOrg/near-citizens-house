@@ -103,13 +103,7 @@ export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVeri
   }
 
   return (
-    <Card
-      corners="crosshairs-accent"
-      pattern="diagonal"
-      patternFade="top-left"
-      patternOpacity={0.15}
-      className="border-primary/20"
-    >
+    <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
       <CardHeader>
         <div className="flex items-center gap-2">
           <QrCode className="h-5 w-5 text-primary" />
