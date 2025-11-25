@@ -132,9 +132,18 @@ export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVeri
           <SelfQRcodeWrapper selfApp={selfApp} onSuccess={handleSuccess} onError={handleError} />
         </div>
 
-        <div className="text-sm text-muted-foreground text-center space-y-1">
-          <p>Download the Self app on your mobile device</p>
-          <p className="text-xs">Your NEAR wallet signature is securely embedded in this verification</p>
+        <div className="text-sm text-muted-foreground text-center space-y-2">
+          <p className="font-medium">How to verify:</p>
+          <ol className="text-left list-decimal list-inside space-y-1 text-xs">
+            <li>
+              Download the <span className="font-semibold">Self</span> app on your mobile device
+            </li>
+            <li>Open the app and complete your ID verification</li>
+            <li>Return here and scan this QR code with the Self app</li>
+          </ol>
+          <p className="text-xs mt-2 text-muted-foreground/80">
+            Your NEAR wallet signature is securely embedded in this verification
+          </p>
         </div>
       </CardContent>
     </Card>

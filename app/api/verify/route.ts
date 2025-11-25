@@ -6,8 +6,9 @@ import type { VerificationDataWithSignature } from "@/lib/database"
 import { db } from "@/lib/database"
 import { getVerifier } from "@/lib/self-verifier"
 
-// Maximum age for signature timestamps (5 minutes)
-const MAX_SIGNATURE_AGE_MS = 5 * 60 * 1000
+// Maximum age for signature timestamps (10 minutes)
+// Extended to allow time for Self app ID verification process
+const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
 
 function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
   if (!userDefinedDataRaw) return null

@@ -348,6 +348,13 @@ export function VerificationFlow() {
                     <AlertDescription>{verificationError}</AlertDescription>
                   </Alert>
 
+                  {verificationError?.toLowerCase().includes("expired") && (
+                    <p className="text-sm text-muted-foreground">
+                      If your ID verification took a while, you may need to re-sign the message and scan the QR code
+                      again.
+                    </p>
+                  )}
+
                   <div className="flex flex-col gap-2" role="group" aria-label="Recovery options">
                     <Button onClick={handleRetryVerification} size="lg" className="w-full">
                       <RotateCcw className="h-5 w-5 mr-2" aria-hidden="true" />
