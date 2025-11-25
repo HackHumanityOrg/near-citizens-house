@@ -461,7 +461,7 @@ export function VerificationFlow() {
                     <CardTitle id="success-title">Verification Complete!</CardTitle>
                   </div>
                   <CardDescription>
-                    Your identity and Discourse account have been linked to your NEAR wallet
+                    Your identity has been verified and you are signed in to Discourse
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -502,7 +502,7 @@ export function VerificationFlow() {
                   </dl>
 
                   <p className="text-sm text-muted-foreground">
-                    Your verified identity and Discourse account are now securely linked to your NEAR wallet.
+                    Your identity is verified on-chain and you have authenticated with Discourse.
                   </p>
                 </CardContent>
               </Card>
