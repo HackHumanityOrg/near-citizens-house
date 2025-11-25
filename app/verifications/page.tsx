@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, ExternalLink, ChevronLeft, ChevronRight, List, ShieldCheck, CheckCircle, XCircle } from "lucide-react"
+import { Loader2, ExternalLink, ChevronLeft, ChevronRight, List, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 import type { VerifiedAccount } from "@/lib/database"
+import { VerificationModal } from "@/components/verification-modal"
 
 interface VerificationsResponse {
   accounts: VerifiedAccount[]
@@ -20,9 +21,28 @@ export default function VerificationsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
-  const [verifyingId, setVerifyingId] = useState<string | null>(null)
-  const [verifyResults, setVerifyResults] = useState<Record<string, "success" | "error">>({})
+  const [verifyResults, setVerifyResults] = useState<Record<string, "pending" | "success" | "error">>({})
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const pageSize = 10 // Match API default
+
+  const verifyAccount = useCallback(async (nearAccountId: string) => {
+    setVerifyResults((prev) => ({ ...prev, [nearAccountId]: "pending" }))
+    try {
+      const response = await fetch("/api/verify-stored", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nearAccountId }),
+      })
+      const result = await response.json()
+      setVerifyResults((prev) => ({
+        ...prev,
+        [nearAccountId]: result.verified ? "success" : "error",
+      }))
+    } catch {
+      setVerifyResults((prev) => ({ ...prev, [nearAccountId]: "error" }))
+    }
+  }, [])
 
   const fetchVerifications = async (page: number) => {
     setIsLoading(true)
@@ -45,6 +65,17 @@ export default function VerificationsPage() {
   useEffect(() => {
     fetchVerifications(currentPage)
   }, [currentPage])
+
+  // Auto-verify all accounts when data loads
+  useEffect(() => {
+    if (data?.accounts) {
+      data.accounts.forEach((account) => {
+        if (!verifyResults[account.nearAccountId]) {
+          verifyAccount(account.nearAccountId)
+        }
+      })
+    }
+  }, [data, verifyAccount, verifyResults])
 
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0
   const hasNextPage = currentPage < totalPages - 1
@@ -74,23 +105,17 @@ export default function VerificationsPage() {
     return types[attestationId] || `Type ${attestationId}`
   }
 
-  const handleVerify = async (nearAccountId: string) => {
-    setVerifyingId(nearAccountId)
-    try {
-      const response = await fetch("/api/verify-stored", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nearAccountId }),
-      })
-      const result = await response.json()
+  const handleVerify = (nearAccountId: string) => {
+    setSelectedAccount(nearAccountId)
+    setModalOpen(true)
+  }
+
+  const handleVerificationComplete = (result: { verified: boolean }) => {
+    if (selectedAccount) {
       setVerifyResults((prev) => ({
         ...prev,
-        [nearAccountId]: result.verified ? "success" : "error",
+        [selectedAccount]: result.verified ? "success" : "error",
       }))
-    } catch {
-      setVerifyResults((prev) => ({ ...prev, [nearAccountId]: "error" }))
-    } finally {
-      setVerifyingId(null)
     }
   }
 
@@ -141,7 +166,7 @@ export default function VerificationsPage() {
                           <TableHead>User ID</TableHead>
                           <TableHead>Nullifier</TableHead>
                           <TableHead>Verified At</TableHead>
-                          <TableHead>Re-verify</TableHead>
+                          <TableHead>Verify</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -173,18 +198,18 @@ export default function VerificationsPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleVerify(account.nearAccountId)}
-                                disabled={verifyingId === account.nearAccountId}
-                                title="Re-verify proof against Self.xyz"
+                                title="View verification details"
                               >
-                                {verifyingId === account.nearAccountId ? (
+                                {verifyResults[account.nearAccountId] === "pending" ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : verifyResults[account.nearAccountId] === "success" ? (
                                   <CheckCircle className="h-4 w-4 text-green-500" />
                                 ) : verifyResults[account.nearAccountId] === "error" ? (
                                   <XCircle className="h-4 w-4 text-red-500" />
                                 ) : (
-                                  <ShieldCheck className="h-4 w-4" />
+                                  <Loader2 className="h-4 w-4 animate-spin" />
                                 )}
+                                <span className="ml-1">Details</span>
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -226,6 +251,16 @@ export default function VerificationsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Verification Modal */}
+      {selectedAccount && (
+        <VerificationModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          nearAccountId={selectedAccount}
+          onVerificationComplete={handleVerificationComplete}
+        />
+      )}
     </div>
   )
 }
