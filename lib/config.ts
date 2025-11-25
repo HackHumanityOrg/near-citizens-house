@@ -31,7 +31,7 @@ export const SELF_CONFIG = {
 export const NEAR_CONFIG = {
   networkId: (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet",
   contractName: process.env.NEAR_CONTRACT_ID || "",
-  rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || "https://rpc.testnet.near.org",
+  rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || "https://near-testnet.drpc.org",
 }
 
 export const CONSTANTS = {

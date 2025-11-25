@@ -8,6 +8,7 @@ import { Loader2, ExternalLink, ChevronLeft, ChevronRight, List, CheckCircle, XC
 import Link from "next/link"
 import type { VerifiedAccount } from "@/lib/database"
 import { VerificationModal } from "@/components/verification-modal"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface VerificationsResponse {
   accounts: VerifiedAccount[]
@@ -120,133 +121,151 @@ export default function VerificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/80 overflow-x-hidden">
       <div className="container mx-auto px-4 py-12">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div>
-            <Link href="/" className="text-sm text-primary hover:underline">
-              ← Back to Verification
-            </Link>
-          </div>
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
 
-          <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <List className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">Verified Accounts</h1>
-            </div>
-            <p className="text-muted-foreground">All NEAR accounts verified through Self.xyz passport proofs</p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Verification Records</CardTitle>
-              <CardDescription>
-                {data ? `Showing ${data.accounts.length} of ${data.total} verified accounts` : "Loading..."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="max-w-7xl mx-auto space-y-12">
+          <Card noBorder corners="dots" extendingLines="full" className="bg-transparent px-8">
+            <CardContent className="space-y-3 py-4">
+              <div className="flex items-center">
+                <Link href="/">
+                  <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
+                    ← Back to Verification
+                  </Button>
+                </Link>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="flex items-center justify-center gap-2">
+                  <List className="h-8 w-8 text-primary" />
+                  <h1 className="text-3xl font-bold">Verified Accounts</h1>
                 </div>
-              ) : error ? (
-                <div className="text-center py-12 text-destructive">{error}</div>
-              ) : !data || data.accounts.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  No verified accounts yet. Be the first to verify!
-                </div>
-              ) : (
-                <>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>NEAR Account</TableHead>
-                          <TableHead>Attestation Type</TableHead>
-                          <TableHead>User ID</TableHead>
-                          <TableHead>Nullifier</TableHead>
-                          <TableHead>Verified At</TableHead>
-                          <TableHead>Verify</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.accounts.map((account) => (
-                          <TableRow key={account.nearAccountId}>
-                            <TableCell className="font-mono text-sm">
-                              <a
-                                href={`https://explorer.${process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"}.near.org/accounts/${account.nearAccountId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-primary inline-flex items-center gap-1"
-                              >
-                                {account.nearAccountId}
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </TableCell>
-                            <TableCell className="font-medium">{getAttestationType(account.attestationId)}</TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground" title={account.userId}>
-                              {truncate(account.userId, 20)}
-                            </TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground" title={account.nullifier}>
-                              {truncate(account.nullifier, 16)}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {formatDate(account.verifiedAt)}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleVerify(account.nearAccountId)}
-                                title="View verification details"
-                              >
-                                {verifyResults[account.nearAccountId] === "pending" ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : verifyResults[account.nearAccountId] === "success" ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                ) : verifyResults[account.nearAccountId] === "error" ? (
-                                  <XCircle className="h-4 w-4 text-red-500" />
-                                ) : (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                )}
-                                <span className="ml-1">Details</span>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                <p className="text-muted-foreground">All NEAR accounts verified through Self.xyz passport proofs</p>
+              </div>
+            </CardContent>
+          </Card>
 
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-muted-foreground">
-                        Page {currentPage + 1} of {totalPages}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage((p) => p - 1)}
-                          disabled={!hasPrevPage}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage((p) => p + 1)}
-                          disabled={!hasNextPage}
-                        >
-                          Next
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+          <Card noBorder corners="dots" extendingLines="full" className="bg-transparent px-8">
+            <CardContent className="py-8">
+              <Card corners="crosshairs" pattern="grid" patternFade="top" patternOpacity={0.08}>
+                <CardHeader>
+                  <CardTitle>Verification Records</CardTitle>
+                  <CardDescription>
+                    {data ? `Showing ${data.accounts.length} of ${data.total} verified accounts` : "Loading..."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
+                  ) : error ? (
+                    <div className="text-center py-12 text-destructive">{error}</div>
+                  ) : !data || data.accounts.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      No verified accounts yet. Be the first to verify!
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rounded-md border bg-card">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>NEAR Account</TableHead>
+                              <TableHead>Attestation Type</TableHead>
+                              <TableHead>User ID</TableHead>
+                              <TableHead>Nullifier</TableHead>
+                              <TableHead>Verified At</TableHead>
+                              <TableHead>Verify</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {data.accounts.map((account) => (
+                              <TableRow key={account.nearAccountId}>
+                                <TableCell className="font-mono text-sm">
+                                  <a
+                                    href={`https://explorer.${process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"}.near.org/accounts/${account.nearAccountId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:text-primary inline-flex items-center gap-1"
+                                  >
+                                    {account.nearAccountId}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {getAttestationType(account.attestationId)}
+                                </TableCell>
+                                <TableCell className="font-mono text-xs text-muted-foreground" title={account.userId}>
+                                  {truncate(account.userId, 20)}
+                                </TableCell>
+                                <TableCell
+                                  className="font-mono text-xs text-muted-foreground"
+                                  title={account.nullifier}
+                                >
+                                  {truncate(account.nullifier, 16)}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {formatDate(account.verifiedAt)}
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleVerify(account.nearAccountId)}
+                                    title="View verification details"
+                                  >
+                                    {verifyResults[account.nearAccountId] === "pending" ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : verifyResults[account.nearAccountId] === "success" ? (
+                                      <CheckCircle className="h-4 w-4 text-green-500" />
+                                    ) : verifyResults[account.nearAccountId] === "error" ? (
+                                      <XCircle className="h-4 w-4 text-red-500" />
+                                    ) : (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    )}
+                                    <span className="ml-1">Details</span>
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-4">
+                          <div className="text-sm text-muted-foreground">
+                            Page {currentPage + 1} of {totalPages}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage((p) => p - 1)}
+                              disabled={!hasPrevPage}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                              Previous
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage((p) => p + 1)}
+                              disabled={!hasNextPage}
+                            >
+                              Next
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
+                </CardContent>
+              </Card>
             </CardContent>
           </Card>
         </div>

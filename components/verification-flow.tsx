@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useNearWallet } from "@/lib/near-wallet-provider"
 import { SelfVerification } from "./self-verification"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,52 @@ export function VerificationFlow() {
   const [signError, setSignError] = useState<string | null>(null)
   const [verificationError, setVerificationError] = useState<string | null>(null)
   const [verificationComplete, setVerificationComplete] = useState(false)
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false)
+
+  // Check if wallet is already verified when connected
+  useEffect(() => {
+    async function checkExistingVerification() {
+      if (!accountId || !isConnected) return
+
+      setIsCheckingVerification(true)
+      try {
+        const response = await fetch("/api/verify-stored", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nearAccountId: accountId }),
+        })
+        const result = await response.json()
+
+        if (result.verified) {
+          // Already verified - skip to final step
+          setNearSignature({
+            accountId,
+            signature: "",
+            publicKey: "",
+            challenge: "",
+            nonce: [],
+            timestamp: Date.now(),
+            recipient: accountId,
+          })
+          setVerificationComplete(true)
+          setCurrentStep(3)
+        } else if (currentStep === 1) {
+          // Not verified - move to step 2
+          setCurrentStep(2)
+        }
+      } catch (error) {
+        console.error("Error checking verification status:", error)
+        // On error, just proceed to step 2
+        if (currentStep === 1) {
+          setCurrentStep(2)
+        }
+      } finally {
+        setIsCheckingVerification(false)
+      }
+    }
+
+    checkExistingVerification()
+  }, [accountId, isConnected])
 
   const steps: VerificationStep[] = [
     {
@@ -42,7 +88,7 @@ export function VerificationFlow() {
 
   const handleConnect = async () => {
     await connect()
-    setCurrentStep(2)
+    // Step transition is handled by useEffect when accountId changes
   }
 
   const handleSignMessage = async () => {
@@ -138,7 +184,7 @@ export function VerificationFlow() {
 
       <main className="min-h-[400px]" aria-live="polite" aria-atomic="true">
         {currentStep === 1 && (
-          <Card>
+          <Card corners="dots" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -149,11 +195,17 @@ export function VerificationFlow() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={handleConnect} size="lg" className="w-full" disabled={isLoading} aria-busy={isLoading}>
-                {isLoading ? (
+              <Button
+                onClick={handleConnect}
+                size="lg"
+                className="w-full"
+                disabled={isLoading || isCheckingVerification}
+                aria-busy={isLoading || isCheckingVerification}
+              >
+                {isLoading || isCheckingVerification ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin mr-2" aria-hidden="true" />
-                    <span>Loading...</span>
+                    <span>{isCheckingVerification ? "Checking verification..." : "Loading..."}</span>
                   </>
                 ) : (
                   <>
@@ -167,7 +219,7 @@ export function VerificationFlow() {
         )}
 
         {currentStep === 2 && (
-          <Card>
+          <Card corners="crosshairs" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <FileKey className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -234,7 +286,15 @@ export function VerificationFlow() {
         {currentStep === 3 && nearSignature && (
           <>
             {verificationError ? (
-              <Card className="border-destructive/20" role="alert" aria-labelledby="error-title">
+              <Card
+                corners="crosshairs"
+                pattern="diagonal"
+                patternFade="top-left"
+                patternOpacity={0.15}
+                className="border-destructive/20"
+                role="alert"
+                aria-labelledby="error-title"
+              >
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
@@ -269,7 +329,15 @@ export function VerificationFlow() {
                 onError={handleVerificationError}
               />
             ) : (
-              <Card className="border-primary/20 bg-primary/5" role="status" aria-labelledby="success-title">
+              <Card
+                corners="dots-accent"
+                pattern="diagonal"
+                patternFade="top-left"
+                patternOpacity={0.18}
+                className="border-primary/20 bg-primary/5"
+                role="status"
+                aria-labelledby="success-title"
+              >
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary" aria-hidden="true" />

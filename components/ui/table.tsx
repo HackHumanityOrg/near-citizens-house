@@ -1,5 +1,4 @@
 import * as React from "react"
-
 import { cn } from "@/lib/utils"
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
@@ -12,7 +11,23 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />,
+  ({ className, children, ...props }, ref) => {
+    const patternId = React.useId()
+    return (
+      <thead ref={ref} className={cn("relative [&_tr]:border-b-2 [&_tr]:border-primary", className)} {...props}>
+        {/* Diagonal pattern overlay for entire header */}
+        <svg aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 size-full opacity-15">
+          <defs>
+            <pattern id={patternId} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="4" stroke="currentColor" strokeWidth="1.5" className="stroke-primary" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" strokeWidth="0" fill={`url(#${patternId})`} />
+        </svg>
+        {children}
+      </thead>
+    )
+  },
 )
 TableHeader.displayName = "TableHeader"
 
@@ -25,7 +40,11 @@ TableBody.displayName = "TableBody"
 
 const TableFooter = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => (
-    <tfoot ref={ref} className={cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)} {...props} />
+    <tfoot
+      ref={ref}
+      className={cn("border-t-2 border-primary bg-muted/50 font-medium [&>tr]:last:border-b-0", className)}
+      {...props}
+    />
   ),
 )
 TableFooter.displayName = "TableFooter"
@@ -34,7 +53,10 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
   ({ className, ...props }, ref) => (
     <tr
       ref={ref}
-      className={cn("border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", className)}
+      className={cn(
+        "border-b border-muted transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        className,
+      )}
       {...props}
     />
   ),
@@ -46,7 +68,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
     <th
       ref={ref}
       className={cn(
-        "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+        "h-12 px-4 text-left align-middle font-semibold text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
