@@ -12,7 +12,7 @@ import Link from "next/link"
 export default function HomePage() {
   return (
     <NearWalletProvider>
-      <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-background to-background/80">
+      <div className="min-h-screen overflow-clip bg-gradient-to-b from-background to-background/80">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-7xl mx-auto space-y-12">
             <div className="fixed top-4 right-4 z-50">

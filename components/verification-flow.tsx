@@ -182,7 +182,7 @@ export function VerificationFlow() {
         </ol>
       </nav>
 
-      <main className="min-h-[400px]" aria-live="polite" aria-atomic="true">
+      <main aria-live="polite" aria-atomic="true">
         {currentStep === 1 && (
           <Card corners="dots" pattern="diagonal" patternFade="top-left" patternOpacity={0.15}>
             <CardHeader>
