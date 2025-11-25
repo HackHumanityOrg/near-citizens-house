@@ -1,41 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { NearContractDatabase } from "@/lib/near-contract-db"
+import type { NearContractDatabase } from "@/lib/near-contract-db"
+
+const DEFAULT_PAGE_SIZE = 10
+const MAX_PAGE_SIZE = 25
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get("page") || "0", 10)
-    const pageSize = parseInt(searchParams.get("pageSize") || "20", 10)
+    const requestedPageSize = parseInt(searchParams.get("pageSize") || String(DEFAULT_PAGE_SIZE), 10)
 
-    // Validate parameters
-    if (page < 0 || pageSize < 1 || pageSize > 100) {
-      return NextResponse.json({ error: "Invalid pagination parameters" }, { status: 400 })
+    const pageSize = Math.min(Math.max(requestedPageSize, 1), MAX_PAGE_SIZE)
+
+    if (page < 0 || !Number.isFinite(page)) {
+      return NextResponse.json({ error: "Invalid page parameter" }, { status: 400 })
     }
 
-    // Calculate offset
     const fromIndex = page * pageSize
 
-    // Get paginated accounts from contract
-    if (db instanceof NearContractDatabase) {
-      const result = await db.getVerifiedAccounts(fromIndex, pageSize)
-
-      return NextResponse.json({
-        accounts: result.accounts,
-        total: result.total,
-        page,
-        pageSize,
-      })
-    }
-
-    // Fallback for other database types
-    const allAccounts = await db.getAllVerifiedAccounts()
-    const total = allAccounts.length
-    const accounts = allAccounts.slice(fromIndex, fromIndex + pageSize)
+    const result = await (db as NearContractDatabase).getVerifiedAccounts(fromIndex, pageSize)
 
     return NextResponse.json({
-      accounts,
-      total,
+      accounts: result.accounts,
+      total: result.total,
       page,
       pageSize,
     })

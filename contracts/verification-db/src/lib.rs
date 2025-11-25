@@ -24,7 +24,7 @@ pub struct ZkProof {
     pub c: [String; 2],
 }
 
-/// Self.xyz proof data for asynchronous verification
+/// Self.xyz proof data
 /// Contains all data needed to re-verify the proof against Self.xyz's IdentityVerificationHub
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
 #[abi(json)]
@@ -48,10 +48,7 @@ pub struct VerifiedAccount {
     pub user_id: String,
     pub attestation_id: String,
     pub verified_at: u64,
-    /// Self.xyz ZK proof data for async verification
     pub self_proof: SelfProofData,
-    /// Original userContextData hex string for Self.xyz re-verification
-    /// This is the exact hex-encoded JSON that was used during initial verification
     pub user_context_data: String,
 }
 
@@ -89,6 +86,35 @@ pub struct VerificationStoredEvent {
     pub attestation_id: String,
 }
 
+/// Event emitted when contract is paused
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct ContractPausedEvent {
+    pub by: String,
+}
+
+/// Event emitted when contract is unpaused
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct ContractUnpausedEvent {
+    pub by: String,
+}
+
+/// Event emitted when backend wallet is updated
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct BackendWalletUpdatedEvent {
+    pub old_wallet: String,
+    pub new_wallet: String,
+}
+
+/// Helper to emit JSON events in NEAR standard format
+fn emit_event<T: Serialize>(event_name: &str, data: &T) {
+    if let Ok(json) = near_sdk::serde_json::to_string(data) {
+        env::log_str(&format!("EVENT_JSON:{{\"standard\":\"near-self-verify\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}", event_name, json));
+    }
+}
+
 /// Main contract structure
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
@@ -99,6 +125,8 @@ pub struct Contract {
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records
     pub accounts: UnorderedMap<AccountId, VerifiedAccount>,
+    /// Whether the contract is paused (emergency stop)
+    pub paused: bool,
 }
 
 #[near]
@@ -110,7 +138,68 @@ impl Contract {
             backend_wallet,
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
             accounts: UnorderedMap::new(StorageKey::Accounts),
+            paused: false,
         }
+    }
+
+    /// Update the backend wallet address (only callable by current backend wallet)
+    /// Use this for key rotation or if the backend wallet is compromised
+    pub fn update_backend_wallet(&mut self, new_backend_wallet: AccountId) {
+        assert_eq!(
+            env::predecessor_account_id(),
+            self.backend_wallet,
+            "Only current backend wallet can update backend wallet"
+        );
+        let old_wallet = self.backend_wallet.clone();
+        self.backend_wallet = new_backend_wallet.clone();
+
+        emit_event(
+            "backend_wallet_updated",
+            &BackendWalletUpdatedEvent {
+                old_wallet: old_wallet.to_string(),
+                new_wallet: new_backend_wallet.to_string(),
+            },
+        );
+    }
+
+    /// Pause the contract (emergency stop - only callable by backend wallet)
+    /// When paused, no new verifications can be stored
+    pub fn pause(&mut self) {
+        let caller = env::predecessor_account_id();
+        assert_eq!(
+            caller, self.backend_wallet,
+            "Only backend wallet can pause contract"
+        );
+        self.paused = true;
+
+        emit_event(
+            "contract_paused",
+            &ContractPausedEvent {
+                by: caller.to_string(),
+            },
+        );
+    }
+
+    /// Unpause the contract (only callable by backend wallet)
+    pub fn unpause(&mut self) {
+        let caller = env::predecessor_account_id();
+        assert_eq!(
+            caller, self.backend_wallet,
+            "Only backend wallet can unpause contract"
+        );
+        self.paused = false;
+
+        emit_event(
+            "contract_unpaused",
+            &ContractUnpausedEvent {
+                by: caller.to_string(),
+            },
+        );
+    }
+
+    /// Check if the contract is paused (public read)
+    pub fn is_paused(&self) -> bool {
+        self.paused
     }
 
     /// Store a verified account with NEAR signature verification
@@ -125,6 +214,9 @@ impl Contract {
         self_proof: SelfProofData,
         user_context_data: String,
     ) {
+        // Check if contract is paused
+        assert!(!self.paused, "Contract is paused - no new verifications allowed");
+
         // Access control: only backend wallet can write
         assert_eq!(
             env::predecessor_account_id(),
@@ -174,13 +266,14 @@ impl Contract {
         self.accounts.insert(&near_account_id, &account);
 
         // Emit event
-        if let Ok(json) = near_sdk::serde_json::to_string(&VerificationStoredEvent {
-            near_account_id: near_account_id.to_string(),
-            nullifier,
-            attestation_id,
-        }) {
-            env::log_str(&format!("EVENT_JSON:{}", json));
-        }
+        emit_event(
+            "verification_stored",
+            &VerificationStoredEvent {
+                near_account_id: near_account_id.to_string(),
+                nullifier,
+                attestation_id,
+            },
+        );
     }
 
     /// Verify NEAR signature (NEP-413 format)
@@ -350,7 +443,6 @@ mod tests {
 
         let mut contract = Contract::new(accounts(1));
 
-        // Try to write from unauthorized account
         let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
         let sig_data = NearSignatureData {
             account_id: accounts(2),
@@ -382,7 +474,6 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        // Create invalid signature data (all zeros will fail verification)
         let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
         let sig_data = NearSignatureData {
             account_id: user.clone(),
@@ -420,7 +511,7 @@ mod tests {
             signature: vec![0; 64],
             public_key: public_key_str.parse().unwrap(),
             challenge: "test".to_string(),
-            nonce: vec![0; 16], // Wrong length
+            nonce: vec![0; 16],
             recipient: user.clone(),
         };
 
@@ -448,7 +539,7 @@ mod tests {
         let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
         let sig_data = NearSignatureData {
             account_id: user.clone(),
-            signature: vec![0; 32], // Wrong length
+            signature: vec![0; 32],
             public_key: public_key_str.parse().unwrap(),
             challenge: "test".to_string(),
             nonce: vec![0; 32],
@@ -513,6 +604,6 @@ mod tests {
 
         // Test that limit is capped at 100
         let accounts_list = contract.get_verified_accounts(0, 200);
-        assert_eq!(accounts_list.len(), 0); // Empty, but limit should be capped
+        assert_eq!(accounts_list.len(), 0);
     }
 }

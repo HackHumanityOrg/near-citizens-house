@@ -10,17 +10,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ verified: false, reason: "Missing nearAccountId" }, { status: 400 })
     }
 
-    // Fetch verification from contract
     const account = await db.getVerifiedAccount(nearAccountId)
 
     if (!account) {
       return NextResponse.json({ verified: false, reason: "Account not found" }, { status: 404 })
     }
 
-    // Use the stored userContextData directly (no reconstruction needed)
     const userContextData = account.userContextData
 
-    // Convert proof strings to BigInt for Self.xyz verifier
     const proof = {
       a: account.selfProof.proof.a.map(BigInt) as [bigint, bigint],
       b: account.selfProof.proof.b.map((row) => row.map(BigInt)) as [[bigint, bigint], [bigint, bigint]],
@@ -29,7 +26,6 @@ export async function POST(request: NextRequest) {
 
     const publicSignals = account.selfProof.publicSignals.map(BigInt)
 
-    // Re-verify with Self.xyz
     const verifier = getVerifier()
     const attestationId = Number(account.attestationId) as 1 | 2 | 3
 

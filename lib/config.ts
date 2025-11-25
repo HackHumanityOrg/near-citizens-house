@@ -1,3 +1,12 @@
+// Single source of truth for Self.xyz disclosure configuration
+// Frontend and backend configs MUST match for verification to succeed
+// Note: excludedCountries uses ISO 3166-1 alpha-3 codes (e.g., "USA", "IRN")
+const DISCLOSURE_CONFIG = {
+  minimumAge: 18,
+  excludedCountries: [] as const, // Empty array - add country codes like "USA", "IRN" if needed
+  ofac: false,
+}
+
 export const SELF_CONFIG = {
   appName: "NEAR Self Verify",
   scope: "near-self-verify",
@@ -11,16 +20,12 @@ export const SELF_CONFIG = {
     throw new Error("NEXT_PUBLIC_SELF_ENDPOINT must be set for server-side rendering")
   },
   endpointType: "https" as const,
-  logoBase64: "https://i.postimg.cc/mrmVf9hm/self.png",
+  logoBase64: "/self-logo.png",
   disclosures: {
-    minimumAge: 18,
-    ofac: false,
+    minimumAge: DISCLOSURE_CONFIG.minimumAge,
+    ofac: DISCLOSURE_CONFIG.ofac,
   },
-  backendConfig: {
-    minimumAge: 18,
-    excludedCountries: [],
-    ofac: false,
-  },
+  backendConfig: DISCLOSURE_CONFIG,
 }
 
 export const NEAR_CONFIG = {

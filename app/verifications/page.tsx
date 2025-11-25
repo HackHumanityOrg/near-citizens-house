@@ -22,7 +22,7 @@ export default function VerificationsPage() {
   const [currentPage, setCurrentPage] = useState(0)
   const [verifyingId, setVerifyingId] = useState<string | null>(null)
   const [verifyResults, setVerifyResults] = useState<Record<string, "success" | "error">>({})
-  const pageSize = 20
+  const pageSize = 10 // Match API default
 
   const fetchVerifications = async (page: number) => {
     setIsLoading(true)

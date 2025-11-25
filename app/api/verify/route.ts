@@ -1,26 +1,64 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { verifyNearSignature } from "@/lib/near-signature-verification"
 import { SELF_CONFIG, CONSTANTS, ERROR_MESSAGES } from "@/lib/config"
 import type { SelfVerificationResult } from "@/lib/types"
+import { verifyRequestSchema } from "@/lib/types"
 import type { VerificationDataWithSignature } from "@/lib/database"
 import { db } from "@/lib/database"
 import { getVerifier } from "@/lib/self-verifier"
 
+// Maximum age for signature timestamps (5 minutes)
+const MAX_SIGNATURE_AGE_MS = 5 * 60 * 1000
+
+function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
+  if (!userDefinedDataRaw) return null
+
+  let jsonString = ""
+
+  if (typeof userDefinedDataRaw === "string") {
+    if (userDefinedDataRaw.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(userDefinedDataRaw)) {
+      jsonString = Buffer.from(userDefinedDataRaw, "hex").toString("utf8")
+    } else {
+      jsonString = userDefinedDataRaw
+    }
+  } else if (Array.isArray(userDefinedDataRaw)) {
+    jsonString = new TextDecoder().decode(new Uint8Array(userDefinedDataRaw))
+  } else if (typeof userDefinedDataRaw === "object" && userDefinedDataRaw !== null) {
+    const values = Object.values(userDefinedDataRaw)
+    if (values.every((v) => typeof v === "number")) {
+      jsonString = new TextDecoder().decode(new Uint8Array(values as number[]))
+    }
+  }
+
+  if (!jsonString) return null
+
+  jsonString = jsonString.replace(/\0/g, "")
+
+  const firstBrace = jsonString.indexOf("{")
+  const lastBrace = jsonString.lastIndexOf("}")
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return jsonString.substring(firstBrace, lastBrace + 1)
+  }
+
+  return jsonString
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { attestationId, proof, publicSignals, userContextData } = body
 
-    if (!proof || !publicSignals || !attestationId || !userContextData) {
+    const parseResult = verifyRequestSchema.safeParse(body)
+    if (!parseResult.success) {
       return NextResponse.json(
         {
           status: "error",
           result: false,
-          reason: ERROR_MESSAGES.MISSING_FIELDS,
+          reason: `${ERROR_MESSAGES.MISSING_FIELDS}: ${parseResult.error.issues.map((i) => i.path.join(".")).join(", ")}`,
         } as SelfVerificationResult,
         { status: 400 },
       )
     }
+
+    const { attestationId, proof, publicSignals, userContextData } = parseResult.data
 
     let selfVerificationResult
 
@@ -36,23 +74,13 @@ export async function POST(request: NextRequest) {
           result: false,
           reason: `Self verification failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         } as SelfVerificationResult,
-        { status: 200 },
+        { status: 400 },
       )
     }
 
     const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
 
     const ofacEnabled = SELF_CONFIG.backendConfig.ofac === true
-
-    console.log("[OFAC DEBUG] Verification details:", {
-      isValid,
-      isMinimumAgeValid,
-      isOfacValid,
-      ofacEnabled,
-      ofacType: typeof isOfacValid,
-    })
-
-    // Only check OFAC if it's enabled in config
     const ofacCheckFailed = ofacEnabled && isOfacValid === false
 
     if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
@@ -66,7 +94,7 @@ export async function POST(request: NextRequest) {
           result: false,
           reason,
         } as SelfVerificationResult,
-        { status: 200 },
+        { status: 400 },
       )
     }
 
@@ -98,92 +126,79 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let nearSignature = null
+    let nearSignature: {
+      accountId: string
+      signature: string
+      publicKey: string
+      challenge: string
+      timestamp: number
+      nonce: number[]
+      recipient: string
+    }
+
     try {
       const userDefinedDataRaw = selfVerificationResult.userData?.userDefinedData
-      let jsonString = ""
+      const jsonString = parseUserDefinedData(userDefinedDataRaw)
 
-      if (typeof userDefinedDataRaw === "string") {
-        // Try to detect if it's hex encoded
-        if (/^[0-9a-fA-F]+$/.test(userDefinedDataRaw)) {
-          try {
-            jsonString = Buffer.from(userDefinedDataRaw, "hex").toString("utf8")
-          } catch {
-            // If hex decoding fails, assume it's a raw string
-            jsonString = userDefinedDataRaw
-          }
-        } else {
-          jsonString = userDefinedDataRaw
-        }
-      } else if (Array.isArray(userDefinedDataRaw)) {
-        jsonString = new TextDecoder().decode(new Uint8Array(userDefinedDataRaw))
-      } else if (typeof userDefinedDataRaw === "object" && userDefinedDataRaw !== null) {
-        const values = Object.values(userDefinedDataRaw)
-        jsonString = new TextDecoder().decode(new Uint8Array(values as number[]))
-      }
-
-      // Clean up string
-      jsonString = jsonString.replace(/\0/g, "")
-
-      // Extract JSON object
-      const firstBrace = jsonString.indexOf("{")
-      const lastBrace = jsonString.lastIndexOf("}")
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        jsonString = jsonString.substring(firstBrace, lastBrace + 1)
+      if (!jsonString) {
+        throw new Error("Could not extract JSON from userDefinedData")
       }
 
       const data = JSON.parse(jsonString)
 
-      if (data.accountId && data.signature && data.publicKey && data.nonce) {
-        let nonce = data.nonce
-        if (typeof nonce === "string") {
-          nonce = Array.from(Buffer.from(nonce, "base64"))
-        } else if (!Array.isArray(nonce)) {
-          console.error("Invalid nonce format")
-          nonce = undefined
-        }
+      if (!data.accountId || !data.signature || !data.publicKey || !data.nonce) {
+        throw new Error(
+          `Missing required NEP-413 fields: ${["accountId", "signature", "publicKey", "nonce"].filter((f) => !data[f]).join(", ")}`,
+        )
+      }
 
-        nearSignature = {
-          accountId: data.accountId,
-          signature: data.signature,
-          publicKey: data.publicKey,
-          challenge: CONSTANTS.SIGNING_MESSAGE,
-          timestamp: Date.now(),
-          nonce: nonce,
-          recipient: data.accountId,
-        }
-      } else {
-        console.error("Missing required NEP-413 fields")
+      let nonce = data.nonce
+      if (typeof nonce === "string") {
+        nonce = Array.from(Buffer.from(nonce, "base64"))
+      }
+      if (!Array.isArray(nonce) || nonce.length !== 32) {
+        throw new Error(`Invalid nonce: expected 32-byte array, got ${typeof nonce}`)
+      }
+
+      // Validate signature timestamp freshness
+      const signatureTimestamp = typeof data.timestamp === "number" ? data.timestamp : 0
+      const now = Date.now()
+      const signatureAge = now - signatureTimestamp
+
+      if (signatureTimestamp === 0) {
+        throw new Error("Signature timestamp is required for security")
+      } else if (signatureAge > MAX_SIGNATURE_AGE_MS) {
+        throw new Error(
+          `Signature expired: signed ${Math.round(signatureAge / 1000)}s ago (max ${MAX_SIGNATURE_AGE_MS / 1000}s)`,
+        )
+      } else if (signatureAge < 0) {
+        // Future timestamp - possible clock skew or manipulation
+        throw new Error("Invalid signature timestamp: future date detected")
+      }
+
+      nearSignature = {
+        accountId: data.accountId,
+        signature: data.signature,
+        publicKey: data.publicKey,
+        challenge: CONSTANTS.SIGNING_MESSAGE,
+        timestamp: signatureTimestamp || now,
+        nonce: nonce,
+        recipient: data.accountId,
       }
     } catch (e) {
       console.error("Failed to parse NEAR signature:", e)
-    }
-
-    if (!nearSignature) {
-      console.error("Failed to extract NEAR signature from valid proof")
       return NextResponse.json(
         {
           status: "error",
           result: false,
-          reason: ERROR_MESSAGES.NEAR_SIGNATURE_MISSING,
+          reason: `${ERROR_MESSAGES.NEAR_SIGNATURE_MISSING}: ${e instanceof Error ? e.message : "Parse error"}`,
         } as SelfVerificationResult,
-        { status: 200 },
+        { status: 400 },
       )
     }
 
-    const isNearSignatureValid = await verifyNearSignature(nearSignature, nearSignature.challenge)
-
-    if (!isNearSignatureValid) {
-      console.error("NEAR signature verification failed")
-      return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason: ERROR_MESSAGES.NEAR_SIGNATURE_INVALID,
-        } as SelfVerificationResult,
-        { status: 200 },
-      )
-    }
+    // Note: NEAR signature verification is performed by the smart contract (single source of truth)
+    // The contract implements full NEP-413 verification with ed25519_verify
 
     try {
       // Convert proof to string format for on-chain storage
@@ -204,11 +219,8 @@ export async function POST(request: NextRequest) {
         nearAccountId: nearSignature.accountId,
         userId: selfVerificationResult.userData?.userIdentifier || "unknown",
         attestationId: attestationId.toString(),
-        // Pass signature data for on-chain verification
         signatureData: nearSignature,
-        // Pass Self.xyz proof data for async verification
         selfProofData,
-        // Store original userContextData for re-verification
         userContextData,
       } satisfies VerificationDataWithSignature)
     } catch (error) {

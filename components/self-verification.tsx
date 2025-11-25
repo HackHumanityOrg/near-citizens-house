@@ -9,19 +9,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, QrCode, CheckCircle2, AlertCircle } from "lucide-react"
 
-// Dynamically import the QR code wrapper to avoid SSR issues
-interface SelfQRcodeWrapperProps {
-  selfApp: unknown
+type SelfApp = ReturnType<SelfAppBuilder["build"]>
+
+interface SelfQRcodeProps {
+  selfApp: SelfApp
   onSuccess: () => void
   onError: () => void
 }
 
-const SelfQRcodeWrapper = dynamic<SelfQRcodeWrapperProps>(
+const SelfQRcodeWrapper = dynamic<SelfQRcodeProps>(
   () =>
     import("@selfxyz/qrcode").then((mod) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const Component = mod.SelfQRcode as any
-      return function SelfQRcodeWrapper(props: SelfQRcodeWrapperProps) {
+      return function SelfQRcodeWrapper(props: SelfQRcodeProps) {
         return <Component {...props} />
       }
     }),
@@ -42,7 +43,7 @@ interface SelfVerificationProps {
 }
 
 export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVerificationProps) {
-  const [selfApp, setSelfApp] = useState<unknown>(null)
+  const [selfApp, setSelfApp] = useState<SelfApp | null>(null)
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",
   )
@@ -55,13 +56,11 @@ export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVeri
       publicKey: nearSignature.publicKey,
       signature: nearSignature.signature,
       nonce: nonceBase64,
+      timestamp: nearSignature.timestamp,
     })
 
     const endpoint = SELF_CONFIG.endpoint
 
-    // Generate a cryptographically secure session ID
-    // This prevents the "Connected Wallet: 0000..." display which is confusing for NEAR users
-    // crypto.randomUUID() is available in all modern browsers and Node.js 14.17+
     if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
       throw new Error(
         "crypto.randomUUID() is not available. Please use a modern browser (Chrome 92+, Firefox 95+, Safari 15.4+) or Node.js 14.17+",
@@ -75,9 +74,9 @@ export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVeri
       scope: SELF_CONFIG.scope,
       endpoint: endpoint,
       logoBase64: SELF_CONFIG.logoBase64,
-      userId: sessionId, // Use generated UUID
+      userId: sessionId,
       endpointType: SELF_CONFIG.endpointType,
-      userIdType: "uuid", // Switch to UUID type
+      userIdType: "uuid",
       userDefinedData: userDefinedData,
       disclosures: SELF_CONFIG.disclosures,
     }).build()

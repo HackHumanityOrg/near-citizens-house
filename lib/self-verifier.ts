@@ -29,12 +29,19 @@ let selfBackendVerifier: SelfBackendVerifier | null = null
 
 export function getVerifier() {
   if (!selfBackendVerifier) {
+    // Use mock passport mode for testing/staging environments
+    // Set SELF_USE_MOCK_PASSPORT=true to enable
+    const useMockPassport = process.env.SELF_USE_MOCK_PASSPORT === "true"
+
+    // Cast to VerificationConfig to handle readonly vs mutable array type
+    const backendConfig = SELF_CONFIG.backendConfig as unknown as VerificationConfig
+
     selfBackendVerifier = new SelfBackendVerifier(
       SELF_CONFIG.scope,
       SELF_CONFIG.endpoint,
-      false,
+      useMockPassport,
       AllowedAttestationIds,
-      new InMemoryConfigStore(SELF_CONFIG.backendConfig),
+      new InMemoryConfigStore(backendConfig),
       "uuid",
     )
   }

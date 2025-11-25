@@ -1,5 +1,14 @@
-// NEAR smart contract database implementation
+/**
+ * NEAR smart contract database implementation
+ *
+ * Note on type assertions: The @near-js packages have inconsistent type definitions
+ * across versions. We use targeted `as unknown as X` casts in a few places where
+ * the runtime types are correct but TypeScript definitions don't match.
+ * See: https://github.com/near/near-api-js/issues/1179
+ */
 import { Account } from "@near-js/accounts"
+import type { Provider } from "@near-js/providers"
+import type { Signer } from "@near-js/signers"
 import { KeyPair } from "@near-js/crypto"
 import { JsonRpcProvider } from "@near-js/providers"
 import { KeyPairSigner } from "@near-js/signers"
@@ -60,14 +69,20 @@ export class NearContractDatabase implements IVerificationDatabase {
 
   private async init() {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const keyPair = KeyPair.fromString(this.backendPrivateKey as any)
+      // KeyPair.fromString expects a string but the type definition is overly strict
+      // Runtime accepts ed25519:... format strings which we use
+      const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
       const signer = new KeyPairSigner(keyPair)
 
       this.provider = new JsonRpcProvider({ url: this.rpcUrl })
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.account = new Account(this.backendAccountId, this.provider as any, signer as any)
+      // Account constructor types don't match the actual implementation
+      // The provider and signer interfaces are compatible at runtime
+      this.account = new Account(
+        this.backendAccountId,
+        this.provider as unknown as Provider,
+        signer as unknown as Signer,
+      )
 
       console.log(`[NearContractDB] Initialized with account: ${this.backendAccountId}`)
       console.log(`[NearContractDB] Contract ID: ${this.contractId}`)
