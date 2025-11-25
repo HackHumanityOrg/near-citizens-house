@@ -63,3 +63,18 @@ export interface VerificationStep {
   description: string
   status: "pending" | "active" | "complete" | "error"
 }
+
+// Discourse authentication types
+export interface DiscourseProfile {
+  username: string
+  email: string | null
+  avatar_url: string
+  trust_level: number
+  name: string | null
+}
+
+export interface DiscourseAuthState {
+  privateKeyPem: string
+  nonce: string
+  clientId: string
+}

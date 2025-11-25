@@ -50,3 +50,14 @@ export const ERROR_MESSAGES = {
   NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
   NEAR_SIGNATURE_MISSING: "Invalid or missing NEAR signature data in proof",
 }
+
+// Discourse configuration
+export const DISCOURSE_CONFIG = {
+  url: process.env.NEXT_PUBLIC_DISCOURSE_URL || "",
+  appName: "NEAR Self Verify",
+  scopes: "read,session_info",
+  storageKeys: {
+    authState: "discourse_auth_state",
+    profile: "discourse_profile",
+  },
+}
