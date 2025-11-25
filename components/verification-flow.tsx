@@ -15,7 +15,7 @@ import { CONSTANTS, ERROR_MESSAGES, DISCOURSE_CONFIG } from "@/lib/config"
 
 export function VerificationFlow() {
   const { accountId, isConnected, connect, disconnect, signMessage, isLoading } = useNearWallet()
-  const { isConnected: discourseConnected, profile: discourseProfile } = useDiscourse()
+  const { isConnected: discourseConnected, profile: discourseProfile, disconnect: disconnectDiscourse } = useDiscourse()
   const [currentStep, setCurrentStep] = useState(1)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
   const [isSigningMessage, setIsSigningMessage] = useState(false)
@@ -460,9 +460,7 @@ export function VerificationFlow() {
                     <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
                     <CardTitle id="success-title">Verification Complete!</CardTitle>
                   </div>
-                  <CardDescription>
-                    Your identity has been verified and you are signed in to Discourse
-                  </CardDescription>
+                  <CardDescription>Your identity has been verified and you are signed in to Discourse</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <dl className="p-4 bg-background rounded-lg space-y-3">
@@ -504,6 +502,15 @@ export function VerificationFlow() {
                   <p className="text-sm text-muted-foreground">
                     Your identity is verified on-chain and you have authenticated with Discourse.
                   </p>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" onClick={disconnectDiscourse} className="flex-1">
+                      Sign out of Discourse
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleStartOver} className="flex-1">
+                      Disconnect Wallet
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}

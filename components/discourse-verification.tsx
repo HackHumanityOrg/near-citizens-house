@@ -14,7 +14,7 @@ interface DiscourseVerificationProps {
 }
 
 export function DiscourseVerification({ onSuccess, onError }: DiscourseVerificationProps) {
-  const { isConnected, isLoading, profile, connect, error } = useDiscourse()
+  const { isConnected, isLoading, profile, connect, disconnect, error } = useDiscourse()
 
   // Notify parent when connection succeeds
   useEffect(() => {
@@ -70,6 +70,9 @@ export function DiscourseVerification({ onSuccess, onError }: DiscourseVerificat
               <div className="text-sm font-medium">{profile.trust_level}</div>
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={disconnect} className="w-full">
+            Sign out of Discourse
+          </Button>
         </CardContent>
       </Card>
     )
