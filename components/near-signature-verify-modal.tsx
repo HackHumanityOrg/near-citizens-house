@@ -51,15 +51,18 @@ export function NearSignatureVerifyModal({ open, onOpenChange, data }: NearSigna
             <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
               <li>Open the Cyphr.me Ed25519 tool (button below)</li>
               <li>
-                Select <strong>Verify</strong> mode
-              </li>
-              <li>
                 Set Algorithm to <strong>Ed25519</strong> (not Ed25519ph)
               </li>
               <li>
                 Set Message encoding to <strong>Hex</strong>
               </li>
-              <li>Copy and paste the values below into the corresponding fields</li>
+              <li>
+                Set Key encoding to <strong>Hex</strong>
+              </li>
+              <li>Paste values below into Message, Public Key, and Signature fields</li>
+              <li>
+                Click <strong>✅ Verify</strong>
+              </li>
             </ol>
           </div>
 
