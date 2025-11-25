@@ -3,7 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { ShieldCheck, Copy, Check } from "lucide-react"
+import { ShieldCheck, Copy, Check, ExternalLink } from "lucide-react"
+import { NearSignatureVerifyModal } from "./near-signature-verify-modal"
+import { ZkProofVerifyModal } from "./zk-proof-verify-modal"
 
 interface VerificationStep {
   name: string
@@ -31,6 +33,11 @@ interface ProofData {
     recipient: string
   }
   userContextData: string
+  nearSignatureVerification?: {
+    nep413Hash: string
+    publicKeyHex: string
+    signatureHex: string
+  }
 }
 
 interface VerificationResponse {
@@ -49,8 +56,6 @@ interface VerificationModalProps {
   onVerificationComplete?: (result: VerificationResponse) => void
 }
 
-const STEP_DELAY = 400
-
 export function VerificationModal({
   open,
   onOpenChange,
@@ -60,6 +65,9 @@ export function VerificationModal({
   const [isComplete, setIsComplete] = useState(false)
   const [terminalLines, setTerminalLines] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
+  const [verificationResult, setVerificationResult] = useState<VerificationResponse | null>(null)
+  const [showSignatureModal, setShowSignatureModal] = useState(false)
+  const [showZkProofModal, setShowZkProofModal] = useState(false)
   const terminalRef = useRef<HTMLDivElement>(null)
   const hasStartedRef = useRef(false)
 
@@ -91,6 +99,9 @@ export function VerificationModal({
     setIsComplete(false)
     setTerminalLines([])
     setCopied(false)
+    setVerificationResult(null)
+    setShowSignatureModal(false)
+    setShowZkProofModal(false)
 
     const runVerification = async () => {
       addTerminalLine(`> Verifying ${nearAccountId}`)
@@ -105,13 +116,11 @@ export function VerificationModal({
 
         const result: VerificationResponse = await response.json()
 
-        // Animate through each step
+        // Display each step
         for (let i = 0; i < result.steps.length; i++) {
           const step = result.steps[i]
 
           addTerminalLine(`[${i + 1}/${result.steps.length}] ${step.name}...`)
-
-          await new Promise((r) => setTimeout(r, STEP_DELAY))
 
           if (step.status === "success") {
             addTerminalLine(`    ✓ ${step.message || "OK"}`)
@@ -121,7 +130,6 @@ export function VerificationModal({
           }
 
           addTerminalLine("")
-          await new Promise((r) => setTimeout(r, 200))
         }
 
         // Show proof data if verification succeeded
@@ -183,11 +191,13 @@ export function VerificationModal({
         }
 
         setIsComplete(true)
+        setVerificationResult(result)
         onVerificationComplete?.(result)
       } catch (error) {
         addTerminalLine("")
         addTerminalLine(`Error: ${error instanceof Error ? error.message : "Connection failed"}`)
         setIsComplete(true)
+        setVerificationResult(null)
       }
     }
 
@@ -267,7 +277,56 @@ export function VerificationModal({
             </Button>
           )}
         </div>
+
+        {/* Verification Buttons */}
+        {isComplete && verificationResult?.verified && verificationResult.proofData && (
+          <div className="space-y-2 mt-2">
+            <p className="text-xs text-muted-foreground">Verify independently with third-party tools</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowSignatureModal(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                NEAR Signature
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowZkProofModal(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                ZK Proof
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
+
+      {/* Sub-modals for verification guides */}
+      <NearSignatureVerifyModal
+        open={showSignatureModal}
+        onOpenChange={setShowSignatureModal}
+        data={
+          verificationResult?.proofData?.nearSignatureVerification && verificationResult?.proofData?.signature
+            ? {
+                ...verificationResult.proofData.nearSignatureVerification,
+                challenge: verificationResult.proofData.signature.challenge,
+                recipient: verificationResult.proofData.signature.recipient,
+              }
+            : null
+        }
+      />
+
+      <ZkProofVerifyModal
+        open={showZkProofModal}
+        onOpenChange={setShowZkProofModal}
+        data={
+          verificationResult?.proofData
+            ? {
+                proof: verificationResult.proofData.zkProof,
+                publicSignals: verificationResult.proofData.publicSignals,
+                nullifier: verificationResult.proofData.nullifier,
+                attestationId: verificationResult.proofData.attestationId,
+                userId: verificationResult.proofData.userId,
+                verifiedAt: verificationResult.proofData.verifiedAt,
+              }
+            : null
+        }
+      />
     </Dialog>
   )
 }

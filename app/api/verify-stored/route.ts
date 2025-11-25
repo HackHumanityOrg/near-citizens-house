@@ -4,6 +4,7 @@ import { getVerifier } from "@/lib/self-verifier"
 import { PublicKey } from "@near-js/crypto"
 import { serialize } from "borsh"
 import { createHash } from "crypto"
+import { computeNep413Hash, extractEd25519PublicKeyHex } from "@/lib/nep413"
 
 // NEP-413 payload schema for Borsh serialization
 const Nep413PayloadSchema = {
@@ -41,6 +42,12 @@ interface ProofData {
     recipient: string
   }
   userContextData: string // raw hex-encoded data
+  // Pre-computed data for third-party verification
+  nearSignatureVerification: {
+    nep413Hash: string // SHA-256 hash of NEP-413 formatted message (hex)
+    publicKeyHex: string // Raw Ed25519 public key (hex)
+    signatureHex: string // Signature in hex
+  }
 }
 
 interface VerificationResponse {
@@ -245,6 +252,10 @@ export async function POST(request: NextRequest) {
     steps[3].message = `NEP-413 signature verified for ${sigData.accountId}`
 
     // Build proof data for display - include ALL raw data for 3rd party verification
+    const challenge = "Identify myself"
+    const nep413Hash = computeNep413Hash(challenge, sigData.nonce, sigData.accountId)
+    const publicKeyHex = extractEd25519PublicKeyHex(sigData.publicKey)
+
     const proofData: ProofData = {
       nullifier: account.nullifier,
       userId: account.userId,
@@ -257,10 +268,15 @@ export async function POST(request: NextRequest) {
         publicKey: sigData.publicKey,
         signature: sigData.signature,
         nonce: Buffer.from(sigData.nonce).toString("base64"),
-        challenge: "Identify myself",
+        challenge,
         recipient: sigData.accountId,
       },
       userContextData: account.userContextData,
+      nearSignatureVerification: {
+        nep413Hash,
+        publicKeyHex,
+        signatureHex: Buffer.from(sigData.signature, "base64").toString("hex"),
+      },
     }
 
     return NextResponse.json({
