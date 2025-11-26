@@ -27,7 +27,7 @@ export default function HomePage() {
                   <div className="flex items-center justify-center">
                     <Badge className="gap-1.5 px-3 py-1 text-sm bg-[#00EC97]/15 text-[#00C08B] dark:bg-[#00EC97]/20 dark:text-[#00EC97] border-0 hover:bg-[#00EC97]/20">
                       <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-                      NEAR Account
+                      Identity Verification
                     </Badge>
                   </div>
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
