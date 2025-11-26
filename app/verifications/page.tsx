@@ -152,8 +152,19 @@ export default function VerificationsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Verification Records</CardTitle>
-                  <CardDescription>
-                    {data ? `Showing ${data.accounts.length} of ${data.total} verified accounts` : "Loading..."}
+                  <CardDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span>
+                      {data ? `Showing ${data.accounts.length} of ${data.total} verified accounts` : "Loading..."}
+                    </span>
+                    <a
+                      href={`https://${process.env.NEXT_PUBLIC_NEAR_NETWORK === "mainnet" ? "" : "testnet."}nearblocks.io/address/${process.env.NEXT_PUBLIC_NEAR_CONTRACT_ID || "v1.widefile4023.testnet"}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs hover:text-foreground transition-colors"
+                    >
+                      View contract on NearBlocks
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
