@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { ShieldCheck, Copy, Check, ExternalLink } from "lucide-react"
+import { ShieldCheck, ExternalLink } from "lucide-react"
 import { NearSignatureVerifyModal } from "./near-signature-verify-modal"
 import { ZkProofVerifyModal } from "./zk-proof-verify-modal"
 
@@ -64,7 +64,6 @@ export function VerificationModal({
 }: VerificationModalProps) {
   const [isComplete, setIsComplete] = useState(false)
   const [terminalLines, setTerminalLines] = useState<string[]>([])
-  const [copied, setCopied] = useState(false)
   const [verificationResult, setVerificationResult] = useState<VerificationResponse | null>(null)
   const [showSignatureModal, setShowSignatureModal] = useState(false)
   const [showZkProofModal, setShowZkProofModal] = useState(false)
@@ -74,13 +73,6 @@ export function VerificationModal({
   const addTerminalLine = useCallback((line: string) => {
     setTerminalLines((prev) => [...prev, line])
   }, [])
-
-  const copyTerminalContent = useCallback(() => {
-    const content = terminalLines.join("\n")
-    navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [terminalLines])
 
   // Reset state when modal closes
   useEffect(() => {
@@ -98,7 +90,6 @@ export function VerificationModal({
     // Reset state
     setIsComplete(false)
     setTerminalLines([])
-    setCopied(false)
     setVerificationResult(null)
     setShowSignatureModal(false)
     setShowZkProofModal(false)
@@ -253,29 +244,14 @@ export function VerificationModal({
         </DialogHeader>
 
         {/* Terminal Output */}
-        <div className="relative min-w-0">
-          <div
-            ref={terminalRef}
-            className="bg-muted rounded-lg p-4 font-mono text-sm text-foreground h-80 border border-border overflow-x-auto overflow-y-auto"
-          >
-            <pre className="m-0">
-              {terminalLines.map((line, i) => renderTerminalLine(line, i))}
-              {terminalLines.length === 0 && <span className="inline-block w-2 h-4 bg-foreground animate-pulse" />}
-            </pre>
-          </div>
-
-          {/* Copy Button */}
-          {isComplete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-2 right-6 h-8 w-8 p-0"
-              onClick={copyTerminalContent}
-              title="Copy terminal output"
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          )}
+        <div
+          ref={terminalRef}
+          className="bg-muted rounded-lg p-4 font-mono text-sm text-foreground h-80 border border-border overflow-x-auto overflow-y-auto"
+        >
+          <pre className="m-0">
+            {terminalLines.map((line, i) => renderTerminalLine(line, i))}
+            {terminalLines.length === 0 && <span className="inline-block w-2 h-4 bg-foreground animate-pulse" />}
+          </pre>
         </div>
 
         {/* Verification Buttons */}

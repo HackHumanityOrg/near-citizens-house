@@ -4,8 +4,9 @@ import { NearWalletProvider } from "@/lib/near-wallet-provider"
 import { DiscourseProvider } from "@/lib/discourse-provider"
 import { VerificationFlow } from "@/components/verification-flow"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { Shield, Search } from "lucide-react"
+import { ShieldCheck, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
@@ -23,13 +24,16 @@ export default function HomePage() {
 
               <Card className="border-0 bg-transparent shadow-none">
                 <CardContent className="text-center space-y-3 py-4">
-                  <div className="flex items-center justify-center gap-3">
-                    <Shield className="h-10 w-10 text-primary" aria-hidden="true" />
+                  <div className="flex items-center justify-center">
+                    <Badge className="gap-1.5 px-3 py-1 text-sm bg-[#00EC97]/15 text-[#00C08B] dark:bg-[#00EC97]/20 dark:text-[#00EC97] border-0 hover:bg-[#00EC97]/20">
+                      <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                      NEAR Account
+                    </Badge>
                   </div>
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
                     Become a Verified
                     <br />
-                    NEAR Account
+                    <span className="text-[#00C08B] dark:text-[#00EC97]">NEAR Account</span>
                   </h1>
                   <p className="text-muted-foreground max-w-2xl mx-auto text-pretty">
                     Complete the verification process to participate in NEAR governance with enhanced trust and

@@ -74,15 +74,15 @@ export function ZkProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyMo
 
           {/* Download Buttons */}
           <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" size="sm" onClick={() => downloadJson(proofJson, "proof.json")}>
+            <Button size="sm" onClick={() => downloadJson(proofJson, "proof.json")}>
               <Download className="h-4 w-4 mr-2" />
               proof.json
             </Button>
-            <Button variant="outline" size="sm" onClick={() => downloadJson(publicJson, "public.json")}>
+            <Button size="sm" onClick={() => downloadJson(publicJson, "public.json")}>
               <Download className="h-4 w-4 mr-2" />
               public.json
             </Button>
-            <Button variant="outline" size="sm" asChild>
+            <Button size="sm" asChild>
               <a href="/vkey.json" download="vkey.json">
                 <Download className="h-4 w-4 mr-2" />
                 vkey.json
