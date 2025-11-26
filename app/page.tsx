@@ -26,11 +26,14 @@ export default function HomePage() {
                   <div className="flex items-center justify-center gap-3">
                     <Shield className="h-10 w-10 text-primary" aria-hidden="true" />
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-balance">
-                    Self x NEAR Verification
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                    Become a Verified
+                    <br />
+                    NEAR Account
                   </h1>
-                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
-                    Link your real-world identity to your NEAR blockchain account using zero-knowledge passport proofs
+                  <p className="text-muted-foreground max-w-2xl mx-auto text-pretty">
+                    Complete the verification process to participate in NEAR governance with enhanced trust and
+                    credibility.
                   </p>
                   <div className="pt-2">
                     <Link href="/verifications">
