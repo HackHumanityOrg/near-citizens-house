@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, RotateCcw, MessageSquare } from "lucide-react"
+import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, MessageSquare } from "lucide-react"
 import type { NearSignatureData, VerificationStep } from "@/lib/types"
 import { CONSTANTS, ERROR_MESSAGES, DISCOURSE_CONFIG } from "@/lib/config"
 
@@ -145,10 +145,6 @@ export function VerificationFlow() {
 
   const handleVerificationError = (error: string) => {
     setVerificationError(error)
-  }
-
-  const handleRetryVerification = () => {
-    setVerificationError(null)
   }
 
   const handleBackToSign = () => {
@@ -294,7 +290,12 @@ export function VerificationFlow() {
                   <span id="wallet-label" className="text-sm font-medium">
                     Connected Wallet
                   </span>
-                  <Button variant="ghost" size="sm" className="h-auto p-0 text-muted-foreground" onClick={disconnect}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-muted-foreground"
+                    onClick={handleStartOver}
+                  >
                     Disconnect
                   </Button>
                 </div>
@@ -354,20 +355,14 @@ export function VerificationFlow() {
                     <AlertDescription>{verificationError}</AlertDescription>
                   </Alert>
 
-                  {verificationError?.toLowerCase().includes("expired") && (
-                    <p className="text-sm text-muted-foreground">
-                      If your ID verification took a while, you may need to re-sign the message and scan the QR code
-                      again.
-                    </p>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    The QR code is tied to your signature. Please sign a new message and scan the fresh QR code.
+                  </p>
 
                   <div className="flex flex-col gap-2" role="group" aria-label="Recovery options">
-                    <Button onClick={handleRetryVerification} size="lg" className="w-full">
-                      <RotateCcw className="h-5 w-5 mr-2" aria-hidden="true" />
-                      Try Again
-                    </Button>
-                    <Button onClick={handleBackToSign} variant="outline" size="lg" className="w-full">
-                      Re-sign Message
+                    <Button onClick={handleBackToSign} size="lg" className="w-full">
+                      <FileKey className="h-5 w-5 mr-2" aria-hidden="true" />
+                      Sign Again
                     </Button>
                     <Button onClick={handleStartOver} variant="ghost" size="sm" className="w-full">
                       Start Over with Different Wallet

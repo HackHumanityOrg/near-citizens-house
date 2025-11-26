@@ -249,45 +249,119 @@ cargo clippy --all-targets -- -D warnings
 
 ### Contract Deployment
 
+#### Fresh Deployment (New Contract)
+
 **1. Create Contract Account:**
 
+The contract account needs at least **3 NEAR** for storage and gas costs.
+
 ```bash
-near account create-account fund-myself CONTRACT_ID.testnet '3 NEAR' \
+# Create a sub-account for the contract (e.g., v1.YOUR_ACCOUNT.testnet)
+near account create-account fund-myself v1.YOUR_ACCOUNT.testnet '3 NEAR' \
   autogenerate-new-keypair save-to-keychain \
   sign-as YOUR_ACCOUNT.testnet \
   network-config testnet sign-with-keychain send
 ```
 
-**2. Deploy Contract:**
+**2. Build the Contract:**
 
 ```bash
-near contract deploy CONTRACT_ID.testnet \
+# From project root
+npm run build:contract
+
+# Or directly
+cd contracts/verification-db && cargo near build non-reproducible-wasm
+```
+
+**3. Deploy Contract:**
+
+```bash
+near contract deploy v1.YOUR_ACCOUNT.testnet \
   use-file contracts/verification-db/target/near/verification_db.wasm \
   without-init-call \
   network-config testnet sign-with-keychain send
 ```
 
-**3. Initialize Contract:**
+**4. Initialize Contract:**
 
 ```bash
-near contract call-function as-transaction CONTRACT_ID.testnet new \
+near contract call-function as-transaction v1.YOUR_ACCOUNT.testnet new \
   json-args '{"backend_wallet":"YOUR_BACKEND.testnet"}' \
   prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' \
-  sign-as CONTRACT_ID.testnet \
+  sign-as v1.YOUR_ACCOUNT.testnet \
   network-config testnet sign-with-keychain send
 ```
 
-**4. Verify Deployment:**
+**5. Verify Deployment:**
 
 ```bash
 # Check backend wallet
-near contract call-function as-read-only CONTRACT_ID.testnet \
+near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
   get_backend_wallet json-args {} network-config testnet now
 
-# Check count
-near contract call-function as-read-only CONTRACT_ID.testnet \
+# Check count (should be 0 for fresh deployment)
+near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
   get_verified_count json-args {} network-config testnet now
 ```
+
+#### Upgrading Contract (Preserve State)
+
+To upgrade an existing contract while **preserving all stored verification data**:
+
+**1. Build the new contract:**
+
+```bash
+npm run build:contract
+```
+
+**2. Deploy over existing contract (no init):**
+
+```bash
+near contract deploy v1.YOUR_ACCOUNT.testnet \
+  use-file contracts/verification-db/target/near/verification_db.wasm \
+  without-init-call \
+  network-config testnet sign-with-keychain send
+```
+
+**3. Verify the upgrade preserved state:**
+
+```bash
+# Check count - should show existing verifications
+near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
+  get_verified_count json-args {} network-config testnet now
+```
+
+> **Note:** When upgrading in place:
+>
+> - Do NOT call `new` again (this would fail or reset state)
+> - State is preserved as long as data structures are compatible
+> - If you change the contract's data schema, you may need state migration
+
+#### Deleting a Contract
+
+NEAR contracts with stored state cannot be easily deleted. If you see:
+
+```
+Error: Delete account <CONTRACT_ID> whose state is large is temporarily banned.
+```
+
+**Options:**
+
+1. **Deploy new version** - Create a new sub-account (e.g., `v2.YOUR_ACCOUNT.testnet`)
+2. **Add clear function** - Implement a migration/clear function in the contract
+3. **Upgrade in place** - Deploy new code over existing contract (preserves state)
+
+#### Funding Requirements
+
+| Action          | Approximate Cost |
+| --------------- | ---------------- |
+| Create account  | ~0.1 NEAR        |
+| Deploy contract | ~1-2 NEAR        |
+| Initialize      | ~0.01 NEAR       |
+| Store 1 record  | ~0.01 NEAR       |
+| **Recommended** | **3+ NEAR**      |
+
+> **Tip:** Keep at least 1 NEAR in reserve for transaction gas fees
 
 ### Contract Methods
 
@@ -513,20 +587,47 @@ Vercel will automatically deploy on push. Monitor build logs for issues.
 
 See [Smart Contract](#contract-deployment) section above for detailed steps.
 
-**Quick Reference:**
+**Quick Reference - Fresh Deployment:**
 
 ```bash
-# Build
+# 1. Create contract account (needs ~3 NEAR)
+near account create-account fund-myself v1.YOUR_ACCOUNT.testnet '3 NEAR' \
+  autogenerate-new-keypair save-to-keychain \
+  sign-as YOUR_ACCOUNT.testnet \
+  network-config testnet sign-with-keychain send
+
+# 2. Build
 npm run build:contract
 
-# Deploy
-npm run deploy:testnet
+# 3. Deploy
+near contract deploy v1.YOUR_ACCOUNT.testnet \
+  use-file contracts/verification-db/target/near/verification_db.wasm \
+  without-init-call \
+  network-config testnet sign-with-keychain send
 
-# Initialize
-near contract call-function as-transaction $NEAR_CONTRACT_ID new \
+# 4. Initialize
+near contract call-function as-transaction v1.YOUR_ACCOUNT.testnet new \
   json-args '{"backend_wallet":"YOUR_BACKEND.testnet"}' \
   prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' \
-  sign-as $NEAR_CONTRACT_ID network-config testnet sign-with-keychain send
+  sign-as v1.YOUR_ACCOUNT.testnet \
+  network-config testnet sign-with-keychain send
+```
+
+**Quick Reference - Upgrade (Preserve State):**
+
+```bash
+# 1. Build new contract
+npm run build:contract
+
+# 2. Deploy over existing (do NOT init again)
+near contract deploy v1.YOUR_ACCOUNT.testnet \
+  use-file contracts/verification-db/target/near/verification_db.wasm \
+  without-init-call \
+  network-config testnet sign-with-keychain send
+
+# 3. Verify state preserved
+near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
+  get_verified_count json-args {} network-config testnet now
 ```
 
 ### Production Checklist

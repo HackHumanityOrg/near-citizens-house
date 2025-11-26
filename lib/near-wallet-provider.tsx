@@ -1,18 +1,13 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { setupWalletSelector, type WalletSelector } from "@near-wallet-selector/core"
-import { setupModal, type WalletSelectorModal } from "@near-wallet-selector/modal-ui"
-import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet"
-import { setupMeteorWallet } from "@near-wallet-selector/meteor-wallet"
-import "@near-wallet-selector/modal-ui/styles.css"
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
+import { NearConnector } from "@hot-labs/near-connect"
+import type { NearWalletBase, SignedMessage } from "@hot-labs/near-connect"
 import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS, ERROR_MESSAGES } from "./config"
 import type { NearSignatureData } from "./types"
 
 interface NearWalletContextType {
-  selector: WalletSelector | null
-  modal: WalletSelectorModal | null
   accountId: string | null
   isConnected: boolean
   connect: () => Promise<void>
@@ -21,126 +16,113 @@ interface NearWalletContextType {
   isLoading: boolean
 }
 
-interface WalletWithSignMessage {
-  signMessage(params: { message: string; recipient: string; nonce: Buffer }): Promise<{
-    signature: string
-    publicKey: string
-    accountId: string
-    state?: string
-  }>
-}
-
 const NearWalletContext = createContext<NearWalletContextType | null>(null)
 
 export function NearWalletProvider({ children }: { children: ReactNode }) {
-  const [selector, setSelector] = useState<WalletSelector | null>(null)
-  const [modal, setModal] = useState<WalletSelectorModal | null>(null)
+  const [nearConnector, setNearConnector] = useState<NearConnector | null>(null)
   const [accountId, setAccountId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function initializeWalletSelector() {
+    async function initializeWalletConnector() {
       try {
-        const _selector = await setupWalletSelector({
+        const connector = new NearConnector({
           network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
-          modules: [setupMyNearWallet(), setupMeteorWallet()],
+          autoConnect: true,
+          logger: process.env.NODE_ENV === "development" ? console : undefined,
         })
 
-        const _modal = setupModal(_selector, {
-          contractId: NEAR_CONFIG.contractName || "self-verification.testnet",
+        // Connection/disconnection events
+        connector.on("wallet:signIn", (payload) => {
+          const nextAccountId = payload?.accounts?.[0]?.accountId
+          setAccountId(nextAccountId || null)
+        })
+        connector.on("wallet:signOut", () => {
+          setAccountId(null)
         })
 
-        setSelector(_selector)
-        setModal(_modal)
-
-        const state = _selector.store.getState()
-        if (state.accounts.length > 0) {
-          setAccountId(state.accounts[0].accountId)
+        // Try existing session
+        try {
+          const connected = await connector.getConnectedWallet()
+          const nextAccountId = connected?.accounts?.[0]?.accountId
+          setAccountId(nextAccountId || null)
+        } catch {
+          // No previous session
         }
 
+        setNearConnector(connector)
         setIsLoading(false)
       } catch (error) {
-        console.error("Failed to initialize NEAR wallet selector:", error)
+        console.error("Failed to initialize NEAR wallet connector:", error)
         setIsLoading(false)
       }
     }
 
-    initializeWalletSelector()
+    initializeWalletConnector()
   }, [])
 
-  useEffect(() => {
-    if (!selector) return
-
-    const subscription = selector.store.observable.subscribe((state) => {
-      if (state.accounts.length > 0) {
-        setAccountId(state.accounts[0].accountId)
-      } else {
-        setAccountId(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [selector])
-
-  const connect = async () => {
-    if (!modal) {
-      console.error("Modal not initialized")
+  const connect = useCallback(async () => {
+    if (!nearConnector) {
+      console.error("Connector not initialized")
       return
     }
-    modal.show()
-  }
+    // Show wallet selector and connect with the chosen one
+    const id = await nearConnector.selectWallet()
+    if (id) {
+      await nearConnector.connect(id)
+    }
+  }, [nearConnector])
 
-  const disconnect = async () => {
-    if (!selector) return
-
-    const wallet = await selector.wallet()
-    await wallet.signOut()
+  const disconnect = useCallback(async () => {
+    if (!nearConnector) return
+    await nearConnector.disconnect()
     setAccountId(null)
-  }
+  }, [nearConnector])
 
-  const signMessage = async (_message: string): Promise<NearSignatureData> => {
-    if (!selector || !accountId) {
-      throw new Error(ERROR_MESSAGES.WALLET_NOT_CONNECTED)
-    }
-
-    const wallet = await selector.wallet()
-
-    if (!("signMessage" in wallet)) {
-      throw new Error(ERROR_MESSAGES.SIGNING_NOT_SUPPORTED)
-    }
-
-    const messageToSign = CONSTANTS.SIGNING_MESSAGE
-
-    try {
-      const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
-
-      const signedMessage = await (wallet as unknown as WalletWithSignMessage).signMessage({
-        message: messageToSign,
-        recipient: accountId,
-        nonce,
-      })
-
-      return {
-        accountId,
-        signature: signedMessage.signature,
-        publicKey: signedMessage.publicKey,
-        challenge: messageToSign, // Keep for interface compatibility
-        timestamp: Date.now(), // Keep for interface compatibility
-        nonce: Array.from(nonce), // Required for NEP-413 verification
-        recipient: accountId, // Required for NEP-413 verification
+  const signMessage = useCallback(
+    async (_message: string): Promise<NearSignatureData> => {
+      if (!nearConnector || !accountId) {
+        throw new Error(ERROR_MESSAGES.WALLET_NOT_CONNECTED)
       }
-    } catch (error) {
-      console.error("Failed to sign message:", error)
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-      throw new Error(`Failed to sign message: ${errorMessage}`)
-    }
-  }
+
+      const wallet = await nearConnector.wallet()
+
+      if (!wallet || !("signMessage" in wallet)) {
+        throw new Error(ERROR_MESSAGES.SIGNING_NOT_SUPPORTED)
+      }
+
+      const messageToSign = CONSTANTS.SIGNING_MESSAGE
+
+      try {
+        const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
+
+        const signedMessage = (await (wallet as NearWalletBase).signMessage({
+          message: messageToSign,
+          recipient: accountId,
+          nonce,
+        })) as SignedMessage
+
+        return {
+          accountId,
+          signature: signedMessage.signature,
+          publicKey: signedMessage.publicKey,
+          challenge: messageToSign, // Keep for interface compatibility
+          timestamp: Date.now(), // Keep for interface compatibility
+          nonce: Array.from(nonce), // Required for NEP-413 verification
+          recipient: accountId, // Required for NEP-413 verification
+        }
+      } catch (error) {
+        console.error("Failed to sign message:", error)
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+        throw new Error(`Failed to sign message: ${errorMessage}`)
+      }
+    },
+    [nearConnector, accountId],
+  )
 
   return (
     <NearWalletContext.Provider
       value={{
-        selector,
-        modal,
         accountId,
         isConnected: !!accountId,
         connect,
