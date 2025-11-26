@@ -557,13 +557,187 @@ mod tests {
         );
     }
 
+    // NOTE: test_duplicate_nullifier cannot be properly tested in unit tests because
+    // we cannot create valid signatures without the NEAR runtime's ed25519_verify.
+    // This must be tested in integration tests with workspaces-rs.
+    // See contracts/verification-db/tests/workspaces.rs for the integration test.
+
+    // ==================== PAUSE/UNPAUSE TESTS ====================
+
     #[test]
-    fn test_duplicate_nullifier() {
+    fn test_pause_unpause() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
 
-        let _contract = Contract::new(backend);
+        let mut contract = Contract::new(backend);
+
+        // Initially not paused
+        assert!(!contract.is_paused());
+
+        // Pause
+        contract.pause();
+        assert!(contract.is_paused());
+
+        // Unpause
+        contract.unpause();
+        assert!(!contract.is_paused());
+    }
+
+    #[test]
+    #[should_panic(expected = "Only backend wallet can pause contract")]
+    fn test_unauthorized_pause() {
+        let backend = accounts(1);
+        let unauthorized = accounts(0);
+        let context = get_context(unauthorized);
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+        contract.pause();
+    }
+
+    #[test]
+    #[should_panic(expected = "Only backend wallet can unpause contract")]
+    fn test_unauthorized_unpause() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend.clone());
+        contract.pause();
+
+        // Change context to unauthorized user
+        let unauthorized_context = get_context(accounts(0));
+        testing_env!(unauthorized_context.build());
+
+        contract.unpause();
+    }
+
+    #[test]
+    #[should_panic(expected = "Contract is paused - no new verifications allowed")]
+    fn test_store_verification_when_paused() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+        contract.pause();
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Should panic because contract is paused (before signature verification)
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    // ==================== BACKEND WALLET UPDATE TESTS ====================
+
+    #[test]
+    fn test_update_backend_wallet() {
+        let backend = accounts(1);
+        let new_backend = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend.clone());
+        assert_eq!(contract.get_backend_wallet(), backend);
+
+        contract.update_backend_wallet(new_backend.clone());
+        assert_eq!(contract.get_backend_wallet(), new_backend);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only current backend wallet can update backend wallet")]
+    fn test_unauthorized_update_backend_wallet() {
+        let backend = accounts(1);
+        let unauthorized = accounts(0);
+        let context = get_context(unauthorized);
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+        contract.update_backend_wallet(accounts(3));
+    }
+
+    // ==================== INPUT VALIDATION TESTS ====================
+
+    #[test]
+    #[should_panic(expected = "Signature account ID must match near_account_id")]
+    fn test_account_id_mismatch() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let different_user = accounts(3);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: different_user, // Mismatch: signature is for accounts(3)
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user, // But we're trying to verify accounts(2)
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Signature recipient must match near_account_id")]
+    fn test_recipient_mismatch() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let different_recipient = accounts(3);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: different_recipient, // Mismatch: recipient is accounts(3)
+        };
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user, // But we're trying to verify accounts(2)
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
     }
 
     #[test]
