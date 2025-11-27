@@ -2,18 +2,22 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Footer } from "@/components/footer"
+import { ThemeProvider } from "@/components/shared/theme-provider"
+import { Footer } from "@/components/shared/footer"
 import "./globals.css"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "optional",
+  preload: true,
 })
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "optional",
+  preload: true,
 })
 
 export const metadata: Metadata = {

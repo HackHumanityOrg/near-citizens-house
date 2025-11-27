@@ -24,7 +24,7 @@ interface ZkProofVerifyModalProps {
   data: ZkProofData | null
 }
 
-export function ZkProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModalProps) {
+export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModalProps) {
   const downloadJson = useCallback((content: object, filename: string) => {
     const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)

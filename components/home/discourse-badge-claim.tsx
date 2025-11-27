@@ -14,7 +14,7 @@ interface DiscourseVerificationProps {
   onDisconnectWallet?: () => void
 }
 
-export function DiscourseVerification({ onSuccess, onError, onDisconnectWallet }: DiscourseVerificationProps) {
+export function DiscourseBadgeClaim({ onSuccess, onError, onDisconnectWallet }: DiscourseVerificationProps) {
   const { isConnected, isLoading, profile, connect, disconnect, error } = useDiscourse()
 
   // Notify parent when connection succeeds

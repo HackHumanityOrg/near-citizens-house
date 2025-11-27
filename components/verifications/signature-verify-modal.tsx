@@ -19,7 +19,7 @@ interface NearSignatureVerifyModalProps {
   data: NearSignatureData | null
 }
 
-export function NearSignatureVerifyModal({ open, onOpenChange, data }: NearSignatureVerifyModalProps) {
+export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignatureVerifyModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
   const copyToClipboard = useCallback((text: string, field: string) => {

@@ -4,7 +4,7 @@ import { useNearWallet } from "@/lib/near-wallet-provider"
 import { Button } from "@/components/ui/button"
 import { Wallet, LogOut } from "lucide-react"
 
-export function NearWalletButton() {
+export function WalletConnectButton() {
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
 
   if (isLoading) {

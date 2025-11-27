@@ -42,7 +42,7 @@ interface SelfVerificationProps {
   onError: (error: string) => void
 }
 
-export function SelfVerification({ nearSignature, onSuccess, onError }: SelfVerificationProps) {
+export function PassportQrScanner({ nearSignature, onSuccess, onError }: SelfVerificationProps) {
   const [selfApp, setSelfApp] = useState<SelfApp | null>(null)
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",

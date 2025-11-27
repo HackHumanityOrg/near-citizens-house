@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { useNearWallet } from "@/lib/near-wallet-provider"
 import { useDiscourse } from "@/lib/discourse-provider"
-import { SelfVerification } from "./self-verification"
-import { DiscourseVerification } from "./discourse-verification"
+import { PassportQrScanner } from "./passport-qr-scanner"
+import { DiscourseBadgeClaim } from "./discourse-badge-claim"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -13,7 +13,7 @@ import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, MessageSqu
 import type { NearSignatureData, VerificationStep } from "@/lib/types"
 import { CONSTANTS, ERROR_MESSAGES, DISCOURSE_CONFIG } from "@/lib/config"
 
-export function VerificationFlow() {
+export function IdentityVerificationFlow() {
   const { accountId, isConnected, connect, disconnect, signMessage, isLoading } = useNearWallet()
   const { isConnected: discourseConnected, profile: discourseProfile, disconnect: disconnectDiscourse } = useDiscourse()
   const [currentStep, setCurrentStep] = useState(1)
@@ -371,7 +371,7 @@ export function VerificationFlow() {
                 </CardContent>
               </Card>
             ) : !selfVerificationComplete ? (
-              <SelfVerification
+              <PassportQrScanner
                 nearSignature={nearSignature}
                 onSuccess={handleVerificationSuccess}
                 onError={handleVerificationError}
@@ -431,7 +431,7 @@ export function VerificationFlow() {
                     <AlertDescription>{discourseError}</AlertDescription>
                   </Alert>
 
-                  <DiscourseVerification
+                  <DiscourseBadgeClaim
                     onSuccess={handleDiscourseSuccess}
                     onError={handleDiscourseError}
                     onDisconnectWallet={handleStartOver}
@@ -439,7 +439,7 @@ export function VerificationFlow() {
                 </CardContent>
               </Card>
             ) : !discourseConnected ? (
-              <DiscourseVerification
+              <DiscourseBadgeClaim
                 onSuccess={handleDiscourseSuccess}
                 onError={handleDiscourseError}
                 onDisconnectWallet={handleStartOver}
