@@ -1,7 +1,6 @@
 import { getVerifiedAccountsWithStatus } from "./actions"
 import { VerifiedAccountsTable } from "@/components/verifications/verified-accounts-table"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
-import VerificationsLoading from "./loading"
 
 const PAGE_SIZE = 10
 

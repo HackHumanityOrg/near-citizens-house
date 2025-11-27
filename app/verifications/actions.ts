@@ -1,5 +1,6 @@
 "use server"
 
+import { unstable_cache } from "next/cache"
 import { db } from "@/lib/database"
 import type { NearContractDatabase } from "@/lib/near-contract-db"
 import { verifyStoredProofWithDetails } from "@/lib/zk-verify"
@@ -40,17 +41,14 @@ export interface GetVerifiedAccountsResult {
 }
 
 /**
- * Server action to get verified accounts with verification status.
- * All verification (ZK proof via Celo + NEAR signature) happens server-side.
+ * Core data fetching logic - separated for caching.
+ * Fetches accounts from NEAR contract and verifies each one.
  */
-export async function getVerifiedAccountsWithStatus(
-  page: number,
-  pageSize: number,
-): Promise<GetVerifiedAccountsResult> {
+async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise<GetVerifiedAccountsResult> {
   const nearDb = db as NearContractDatabase
 
   // Get paginated accounts from NEAR contract
-  const { accounts, total } = await nearDb.getVerifiedAccounts(page * pageSize, pageSize)
+  const { accounts, total } = await nearDb.getVerifiedAccounts(fromIndex, limit)
 
   // Verify each account in parallel
   const verifiedAccounts = await Promise.all(
@@ -129,4 +127,25 @@ export async function getVerifiedAccountsWithStatus(
   )
 
   return { accounts: verifiedAccounts, total }
+}
+
+/**
+ * Cached version of fetchAndVerifyAccounts.
+ * Cache is tagged with 'verifications' for on-demand revalidation.
+ */
+const getCachedVerifiedAccounts = unstable_cache(fetchAndVerifyAccounts, ["verified-accounts"], {
+  tags: ["verifications"],
+  revalidate: 300, // Also revalidate every 5 minutes as fallback
+})
+
+/**
+ * Server action to get verified accounts with verification status.
+ * Uses unstable_cache for caching with on-demand revalidation via tags.
+ * All verification (ZK proof via Celo + NEAR signature) happens server-side.
+ */
+export async function getVerifiedAccountsWithStatus(
+  page: number,
+  pageSize: number,
+): Promise<GetVerifiedAccountsResult> {
+  return getCachedVerifiedAccounts(page * pageSize, pageSize)
 }

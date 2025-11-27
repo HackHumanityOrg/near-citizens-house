@@ -24,16 +24,17 @@ function truncate(str: string, maxLength: number = 16): string {
 
 function formatDate(timestamp: number): string {
   // Timestamp is already in milliseconds (converted from NEAR nanoseconds in near-contract-db.ts)
-  // Use UTC to avoid hydration mismatch between server and client timezones
-  return new Date(timestamp).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  })
+  // Manual formatting to avoid hydration mismatch between Node.js and browser toLocaleString
+  const date = new Date(timestamp)
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const month = months[date.getUTCMonth()]
+  const day = date.getUTCDate()
+  const year = date.getUTCFullYear()
+  const hours = date.getUTCHours()
+  const minutes = date.getUTCMinutes().toString().padStart(2, "0")
+  const ampm = hours >= 12 ? "PM" : "AM"
+  const hour12 = hours % 12 || 12
+  return `${month} ${day}, ${year}, ${hour12}:${minutes} ${ampm} UTC`
 }
 
 function getAttestationType(id: string): string {

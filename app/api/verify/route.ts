@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { revalidatePath } from "next/cache"
+import { revalidateTag } from "next/cache"
 import { SELF_CONFIG, CONSTANTS, ERROR_MESSAGES } from "@/lib/config"
 import type { SelfVerificationResult } from "@/lib/types"
 import { verifyRequestSchema } from "@/lib/types"
@@ -226,8 +226,9 @@ export async function POST(request: NextRequest) {
         userContextData,
       } satisfies VerificationDataWithSignature)
 
-      // Revalidate the verifications page cache so new verification appears
-      revalidatePath("/verifications")
+      // Revalidate the verifications cache so new verification appears
+      // Using "max" profile for stale-while-revalidate semantics
+      revalidateTag("verifications", "max")
     } catch (error) {
       console.error("[SECURITY] Failed to store verification:", error)
       return NextResponse.json(

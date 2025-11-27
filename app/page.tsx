@@ -29,8 +29,7 @@ export default function HomePage() {
                 <span className="text-[#00C08B] dark:text-[#00EC97]">NEAR Account</span>
               </h1>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Complete the verification process to participate in NEAR governance with enhanced trust and
-                credibility.
+                Complete the verification process to participate in NEAR governance with enhanced trust and credibility.
               </p>
               <div className="pt-2">
                 <Link href="/verifications">
