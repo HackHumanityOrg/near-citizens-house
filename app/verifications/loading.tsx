@@ -42,8 +42,10 @@ export default function VerificationsLoading() {
                 <CardHeader>
                   <CardTitle>Verification Records</CardTitle>
                   <CardDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-36" />
+                    {/* text-sm = 14px height, matches "Showing X of Y verified accounts" */}
+                    <Skeleton className="h-[14px] w-[220px]" />
+                    {/* text-xs = 12px height, matches "View contract on NearBlocks" */}
+                    <Skeleton className="h-[12px] w-[160px]" />
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -51,34 +53,43 @@ export default function VerificationsLoading() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>NEAR Account</TableHead>
-                          <TableHead>Attestation Type</TableHead>
-                          <TableHead>User ID</TableHead>
-                          <TableHead>Nullifier</TableHead>
-                          <TableHead>Verified At</TableHead>
-                          <TableHead>Verify</TableHead>
+                          <TableHead className="min-w-[180px]">NEAR Account</TableHead>
+                          <TableHead className="min-w-[120px]">Attestation Type</TableHead>
+                          <TableHead className="min-w-[140px]">User ID</TableHead>
+                          <TableHead className="min-w-[120px]">Nullifier</TableHead>
+                          <TableHead className="min-w-[180px]">Verified At</TableHead>
+                          <TableHead className="min-w-[100px]">Verify</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {Array.from({ length: 5 }).map((_, i) => (
                           <TableRow key={i}>
-                            <TableCell>
-                              <Skeleton className="h-4 w-32" />
+                            {/* NEAR Account: font-mono text-sm = 14px */}
+                            <TableCell className="font-mono text-sm">
+                              <Skeleton className="h-[14px] w-[140px]" />
                             </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-20" />
+                            {/* Attestation Type: font-medium (default 14px) */}
+                            <TableCell className="font-medium">
+                              <Skeleton className="h-[14px] w-[70px]" />
                             </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-24" />
+                            {/* User ID: font-mono text-xs = 12px */}
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              <Skeleton className="h-[12px] w-[100px]" />
                             </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-20" />
+                            {/* Nullifier: font-mono text-xs = 12px */}
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              <Skeleton className="h-[12px] w-[80px]" />
                             </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-36" />
+                            {/* Verified At: text-sm = 14px */}
+                            <TableCell className="text-sm text-muted-foreground">
+                              <Skeleton className="h-[14px] w-[160px]" />
                             </TableCell>
+                            {/* Verify: Button size="sm" with icon + text */}
                             <TableCell>
-                              <Skeleton className="h-8 w-20 rounded-md" />
+                              <Button variant="outline" size="sm" disabled className="opacity-50">
+                                <Skeleton className="h-4 w-4 rounded-full" />
+                                <span className="ml-1">Details</span>
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}

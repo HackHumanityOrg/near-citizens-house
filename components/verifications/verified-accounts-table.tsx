@@ -104,12 +104,12 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>NEAR Account</TableHead>
-                              <TableHead>Attestation Type</TableHead>
-                              <TableHead>User ID</TableHead>
-                              <TableHead>Nullifier</TableHead>
-                              <TableHead>Verified At</TableHead>
-                              <TableHead>Verify</TableHead>
+                              <TableHead className="min-w-[180px]">NEAR Account</TableHead>
+                              <TableHead className="min-w-[120px]">Attestation Type</TableHead>
+                              <TableHead className="min-w-[140px]">User ID</TableHead>
+                              <TableHead className="min-w-[120px]">Nullifier</TableHead>
+                              <TableHead className="min-w-[180px]">Verified At</TableHead>
+                              <TableHead className="min-w-[100px]">Verify</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
