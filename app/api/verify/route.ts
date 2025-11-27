@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { SELF_CONFIG, CONSTANTS, ERROR_MESSAGES } from "@/lib/config"
 import type { SelfVerificationResult } from "@/lib/types"
 import { verifyRequestSchema } from "@/lib/types"
@@ -224,6 +225,9 @@ export async function POST(request: NextRequest) {
         selfProofData,
         userContextData,
       } satisfies VerificationDataWithSignature)
+
+      // Revalidate the verifications page cache so new verification appears
+      revalidatePath("/verifications")
     } catch (error) {
       console.error("[SECURITY] Failed to store verification:", error)
       return NextResponse.json(
