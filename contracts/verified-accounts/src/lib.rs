@@ -1,3 +1,44 @@
+//! # Verified Accounts Contract
+//!
+//! A NEAR smart contract that links real-world passport identity to NEAR wallets
+//! using Self.xyz zero-knowledge proofs and on-chain signature verification.
+//!
+//! # Security Model
+//!
+//! This contract operates with a trusted backend model:
+//!
+//! ## Trust Assumptions
+//! - The `backend_wallet` is trusted to only submit valid Self.xyz ZK proofs
+//! - The backend verifies that the provided public key is an access key for the account
+//! - The contract cannot verify ZK proofs on-chain (prohibitively expensive)
+//!
+//! ## On-Chain Verification
+//! The contract independently verifies:
+//! - NEP-413 Ed25519 signatures (prevents signature forgery)
+//! - Signature uniqueness (prevents replay attacks)
+//! - Nullifier uniqueness (prevents passport reuse)
+//! - Account uniqueness (prevents re-verification)
+//!
+//! ## Proof Storage & Re-Verification
+//! Self.xyz ZK proofs are stored on-chain in their entirety, enabling:
+//! - Independent re-verification using snarkjs.groth16.verify() with the public vkey
+//! - No timestamp expiration - proofs remain mathematically valid forever
+//! - The on-chain record serves as authoritative proof of verification at `verified_at`
+//! - Auditing and dispute resolution
+//! - Transparency of all verification claims
+//!
+//! Note: The Self.xyz SDK has a ~24 hour timestamp window that rejects old proofs.
+//! The backend uses snarkjs directly to bypass this check for stored proof re-verification.
+//!
+//! ## Defense in Depth
+//! Multiple layers of protection ensure security even if one layer is bypassed:
+//! 1. Backend access control (only trusted wallet can write)
+//! 2. Signature verification (proves user consent)
+//! 3. Signature tracking (prevents replay of valid signatures)
+//! 4. Nullifier tracking (prevents same passport used twice)
+//! 5. Account tracking (prevents re-verification)
+//! 6. On-chain proof storage (enables future re-verification)
+
 #![allow(clippy::too_many_arguments)]
 
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
@@ -5,12 +46,24 @@ use near_sdk::collections::{LookupSet, UnorderedMap};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
 
+/// Maximum length for string inputs (prevents storage abuse)
+const MAX_NULLIFIER_LEN: usize = 256;
+const MAX_USER_ID_LEN: usize = 256;
+const MAX_ATTESTATION_ID_LEN: usize = 256;
+const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
+
+/// Maximum accounts per batch query (prevents gas exhaustion)
+const MAX_BATCH_SIZE: usize = 100;
+
 /// Storage key prefixes for collections
+/// Using enum ensures unique prefixes per Sigma Prime recommendations
 #[derive(BorshStorageKey, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum StorageKey {
     Nullifiers,
     Accounts,
+    /// Tracks used signatures to prevent replay attacks on NEP-413 off-chain signatures
+    UsedSignatures,
 }
 
 /// Groth16 ZK proof structure (a, b, c points) for async verification
@@ -111,7 +164,7 @@ pub struct BackendWalletUpdatedEvent {
 /// Helper to emit JSON events in NEAR standard format
 fn emit_event<T: Serialize>(event_name: &str, data: &T) {
     if let Ok(json) = near_sdk::serde_json::to_string(data) {
-        env::log_str(&format!("EVENT_JSON:{{\"standard\":\"near-self-verify\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}", event_name, json));
+        env::log_str(&format!("EVENT_JSON:{{\"standard\":\"near-verified-accounts\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}", event_name, json));
     }
 }
 
@@ -127,6 +180,8 @@ pub struct Contract {
     pub accounts: UnorderedMap<AccountId, VerifiedAccount>,
     /// Whether the contract is paused (emergency stop)
     pub paused: bool,
+    /// Set of used signatures (prevents replay attacks on NEP-413 off-chain signatures)
+    pub used_signatures: LookupSet<[u8; 64]>,
 }
 
 #[near]
@@ -139,6 +194,7 @@ impl Contract {
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
             accounts: UnorderedMap::new(StorageKey::Accounts),
             paused: false,
+            used_signatures: LookupSet::new(StorageKey::UsedSignatures),
         }
     }
 
@@ -217,6 +273,25 @@ impl Contract {
         // Check if contract is paused
         assert!(!self.paused, "Contract is paused - no new verifications allowed");
 
+        // Input length validation - prevents storage abuse
+        // Check cheapest validations first (fail fast, save gas)
+        assert!(
+            nullifier.len() <= MAX_NULLIFIER_LEN,
+            "Nullifier exceeds maximum length of 256"
+        );
+        assert!(
+            user_id.len() <= MAX_USER_ID_LEN,
+            "User ID exceeds maximum length of 256"
+        );
+        assert!(
+            attestation_id.len() <= MAX_ATTESTATION_ID_LEN,
+            "Attestation ID exceeds maximum length of 256"
+        );
+        assert!(
+            user_context_data.len() <= MAX_USER_CONTEXT_DATA_LEN,
+            "User context data exceeds maximum length of 4096"
+        );
+
         // Access control: only backend wallet can write
         assert_eq!(
             env::predecessor_account_id(),
@@ -237,6 +312,16 @@ impl Contract {
 
         // Verify the NEAR signature
         self.verify_near_signature(&signature_data);
+
+        // Prevent signature replay attacks
+        // NEP-413 off-chain signatures don't increment on-chain nonces,
+        // so we track used signatures to prevent replay
+        let mut sig_array = [0u8; 64];
+        sig_array.copy_from_slice(&signature_data.signature);
+        assert!(
+            !self.used_signatures.contains(&sig_array),
+            "Signature already used - potential replay attack"
+        );
 
         // Prevent duplicate nullifiers (same passport can't be used twice)
         assert!(
@@ -261,7 +346,8 @@ impl Contract {
             user_context_data,
         };
 
-        // Store verification
+        // Store verification and tracking data
+        self.used_signatures.insert(&sig_array);
         self.nullifiers.insert(&nullifier);
         self.accounts.insert(&near_account_id, &account);
 
@@ -359,11 +445,6 @@ impl Contract {
         self.accounts.get(&near_account_id)
     }
 
-    /// Check if a nullifier has been used (public read)
-    pub fn is_nullifier_used(&self, nullifier: String) -> bool {
-        self.nullifiers.contains(&nullifier)
-    }
-
     /// Check if an account is verified (public read)
     pub fn is_account_verified(&self, near_account_id: AccountId) -> bool {
         self.accounts.get(&near_account_id).is_some()
@@ -395,10 +476,84 @@ impl Contract {
             })
             .collect()
     }
+
+    // ==================== Composability Interface Methods ====================
+    // These methods match the verified-accounts-interface crate for cross-contract calls
+
+    /// Get lightweight verification status without proof data (public read)
+    /// More gas-efficient for simple status checks
+    pub fn get_verification_status(
+        &self,
+        near_account_id: AccountId,
+    ) -> Option<verified_accounts_interface::VerificationStatus> {
+        self.accounts.get(&near_account_id).map(|v| {
+            verified_accounts_interface::VerificationStatus {
+                near_account_id: v.near_account_id,
+                attestation_id: v.attestation_id,
+                verified_at: v.verified_at,
+            }
+        })
+    }
+
+    /// Get verification info without proof data (public read)
+    /// Matches the interface crate's VerifiedAccountInfo type
+    pub fn get_verified_account_info(
+        &self,
+        near_account_id: AccountId,
+    ) -> Option<verified_accounts_interface::VerifiedAccountInfo> {
+        self.accounts.get(&near_account_id).map(|v| {
+            verified_accounts_interface::VerifiedAccountInfo {
+                nullifier: v.nullifier,
+                near_account_id: v.near_account_id,
+                user_id: v.user_id,
+                attestation_id: v.attestation_id,
+                verified_at: v.verified_at,
+            }
+        })
+    }
+
+    /// Batch check if multiple accounts are verified (public read)
+    /// Returns Vec<bool> in same order as input - efficient for DAO voting
+    /// Maximum 100 accounts per call to prevent gas exhaustion
+    pub fn are_accounts_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool> {
+        assert!(
+            account_ids.len() <= MAX_BATCH_SIZE,
+            "Batch size exceeds maximum of 100 accounts"
+        );
+        account_ids
+            .iter()
+            .map(|id| self.accounts.get(id).is_some())
+            .collect()
+    }
+
+    /// Batch get verification statuses (public read)
+    /// Returns Vec<Option<VerificationStatus>> in same order as input
+    /// Maximum 100 accounts per call to prevent gas exhaustion
+    pub fn get_verification_statuses(
+        &self,
+        account_ids: Vec<AccountId>,
+    ) -> Vec<Option<verified_accounts_interface::VerificationStatus>> {
+        assert!(
+            account_ids.len() <= MAX_BATCH_SIZE,
+            "Batch size exceeds maximum of 100 accounts"
+        );
+        account_ids
+            .iter()
+            .map(|id| self.get_verification_status(id.clone()))
+            .collect()
+    }
+
+    /// Get interface version for compatibility checking (public read)
+    pub fn interface_version(&self) -> String {
+        "1.0.0".to_string()
+    }
+
+    // Note: NEP-330 contract_source_metadata() is auto-generated by the NEAR SDK
+    // It uses CARGO_PKG_VERSION and CARGO_PKG_REPOSITORY from Cargo.toml
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
@@ -556,11 +711,6 @@ mod tests {
             "test_user_context_data".to_string(),
         );
     }
-
-    // NOTE: test_duplicate_nullifier cannot be properly tested in unit tests because
-    // we cannot create valid signatures without the NEAR runtime's ed25519_verify.
-    // This must be tested in integration tests with workspaces-rs.
-    // See contracts/verification-db/tests/workspaces.rs for the integration test.
 
     // ==================== PAUSE/UNPAUSE TESTS ====================
 
@@ -754,9 +904,6 @@ mod tests {
         // Test count
         assert_eq!(contract.get_verified_count(), 0);
 
-        // Test nullifier check
-        assert!(!contract.is_nullifier_used("test".to_string()));
-
         // Test account verification check
         assert!(!contract.is_account_verified(accounts(2)));
 
@@ -779,5 +926,232 @@ mod tests {
         // Test that limit is capped at 100
         let accounts_list = contract.get_verified_accounts(0, 200);
         assert_eq!(accounts_list.len(), 0);
+    }
+
+    // ==================== COMPOSABILITY INTERFACE TESTS ====================
+
+    #[test]
+    fn test_interface_version() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+        assert_eq!(contract.interface_version(), "1.0.0");
+    }
+
+    // Note: NEP-330 contract_source_metadata() is auto-generated by SDK
+    // and tested via integration tests
+
+    #[test]
+    fn test_get_verification_status_empty() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+
+        // Should return None for non-existent account
+        let status = contract.get_verification_status(accounts(2));
+        assert!(status.is_none());
+    }
+
+    #[test]
+    fn test_get_verified_account_info_empty() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+
+        // Should return None for non-existent account
+        let info = contract.get_verified_account_info(accounts(2));
+        assert!(info.is_none());
+    }
+
+    #[test]
+    fn test_are_accounts_verified_empty() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+
+        // Batch check with empty contract
+        let results = contract.are_accounts_verified(vec![accounts(2), accounts(3), accounts(4)]);
+        assert_eq!(results.len(), 3);
+        assert!(!results[0]);
+        assert!(!results[1]);
+        assert!(!results[2]);
+    }
+
+    #[test]
+    fn test_get_verification_statuses_empty() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+
+        // Batch status check with empty contract
+        let results =
+            contract.get_verification_statuses(vec![accounts(2), accounts(3), accounts(4)]);
+        assert_eq!(results.len(), 3);
+        assert!(results[0].is_none());
+        assert!(results[1].is_none());
+        assert!(results[2].is_none());
+    }
+
+    #[test]
+    fn test_are_accounts_verified_empty_input() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+
+        // Empty input should return empty result
+        let results = contract.are_accounts_verified(vec![]);
+        assert!(results.is_empty());
+    }
+
+    // ==================== INPUT VALIDATION TESTS (NEW) ====================
+
+    #[test]
+    #[should_panic(expected = "Batch size exceeds maximum of 100 accounts")]
+    fn test_batch_size_exceeded_are_accounts_verified() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+
+        // Create 101 accounts to exceed the limit
+        let too_many_accounts: Vec<near_sdk::AccountId> = (0..101)
+            .map(|i| format!("account{}.near", i).parse().unwrap())
+            .collect();
+
+        // Should panic due to batch size limit
+        contract.are_accounts_verified(too_many_accounts);
+    }
+
+    #[test]
+    #[should_panic(expected = "Batch size exceeds maximum of 100 accounts")]
+    fn test_batch_size_exceeded_get_verification_statuses() {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let contract = Contract::new(backend);
+
+        // Create 101 accounts to exceed the limit
+        let too_many_accounts: Vec<near_sdk::AccountId> = (0..101)
+            .map(|i| format!("account{}.near", i).parse().unwrap())
+            .collect();
+
+        // Should panic due to batch size limit
+        contract.get_verification_statuses(too_many_accounts);
+    }
+
+    #[test]
+    #[should_panic(expected = "Nullifier exceeds maximum length of 256")]
+    fn test_nullifier_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create a nullifier that exceeds the 256 character limit
+        let too_long_nullifier = "x".repeat(257);
+
+        contract.store_verification(
+            too_long_nullifier,
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "User ID exceeds maximum length of 256")]
+    fn test_user_id_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create a user_id that exceeds the 256 character limit
+        let too_long_user_id = "x".repeat(257);
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            too_long_user_id,
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "User context data exceeds maximum length of 4096")]
+    fn test_user_context_data_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create user_context_data that exceeds the 4096 character limit
+        let too_long_context = "x".repeat(4097);
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            too_long_context,
+        );
     }
 }

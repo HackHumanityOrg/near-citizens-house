@@ -1,7 +1,9 @@
 [package]
-name = "verification-db"
-version = "0.1.0"
+name = "verified-accounts"
+version = "1.0.0"
 edition = "2021"
+description = "NEAR smart contract for storing verified account data with composable interface"
+repository = "https://github.com/HackHumanityOrg/alpha-venear-unlock"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -9,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { version = "5.17", features = ["legacy"] }
 borsh = "1.6"
+verified-accounts-interface = { path = "../verified-accounts-interface" }
 
 [dev-dependencies]
 near-sdk = { version = "5.17", features = ["legacy", "unit-testing"] }

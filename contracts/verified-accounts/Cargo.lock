@@ -3446,8 +3446,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
-name = "verification-db"
-version = "0.1.0"
+name = "verified-accounts"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "borsh",
@@ -3457,6 +3457,14 @@ dependencies = [
  "serde_json",
  "sha2",
  "tokio",
+ "verified-accounts-interface",
+]
+
+[[package]]
+name = "verified-accounts-interface"
+version = "1.0.0"
+dependencies = [
+ "near-sdk",
 ]
 
 [[package]]

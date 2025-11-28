@@ -1,10 +1,6 @@
-//! Integration tests for verification-db contract using near-workspaces
-//!
-//! These tests run against a local NEAR sandbox, allowing us to test:
-//! - Real Ed25519 signature verification
-//! - Cross-contract interactions
-//! - Gas consumption
-//! - Full verification flows
+//! Integration tests for verified-accounts contract using near-workspaces
+
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing)]
 
 use borsh::BorshSerialize;
 use near_workspaces::{Account, AccountId, Contract, Worker};
@@ -13,7 +9,7 @@ use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
 /// Path to the compiled WASM file
-const WASM_PATH: &str = "./target/near/verification_db.wasm";
+const WASM_PATH: &str = "./target/near/verified_accounts.wasm";
 
 /// Initialize test environment with contract deployed
 async fn init() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>, Contract, Account)> {
@@ -154,20 +150,6 @@ async fn test_contract_initialization() -> anyhow::Result<()> {
     let is_paused: bool = contract.view("is_paused").await?.json()?;
     assert!(!is_paused);
 
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_is_nullifier_used_returns_false_for_unused() -> anyhow::Result<()> {
-    let (_worker, contract, _backend) = init().await?;
-
-    let is_used: bool = contract
-        .view("is_nullifier_used")
-        .args_json(json!({"nullifier": "test_nullifier"}))
-        .await?
-        .json()?;
-
-    assert!(!is_used);
     Ok(())
 }
 
@@ -566,14 +548,6 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
         .json()?;
     assert!(is_verified);
 
-    // Verify nullifier is now used
-    let is_nullifier_used: bool = contract
-        .view("is_nullifier_used")
-        .args_json(json!({"nullifier": "valid_test_nullifier"}))
-        .await?
-        .json()?;
-    assert!(is_nullifier_used);
-
     // Verify count increased
     let count: u64 = contract.view("get_verified_count").await?.json()?;
     assert_eq!(count, 1);
@@ -902,6 +876,115 @@ async fn test_pagination_from_index_beyond_data() -> anyhow::Result<()> {
         .json()?;
 
     assert_eq!(accounts.len(), 0);
+
+    Ok(())
+}
+
+// ==================== SIGNATURE REPLAY ATTACK PREVENTION TESTS ====================
+
+#[tokio::test]
+async fn test_signature_replay_rejected() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init().await?;
+    let user = worker.dev_create_account().await?;
+
+    // Generate a valid NEP-413 signature
+    let nonce: [u8; 32] = [42u8; 32];
+    let challenge = "Identify myself";
+    let recipient = user.id().to_string();
+
+    let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
+
+    // First verification should succeed
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "replay_test_nullifier_1",
+            "near_account_id": user.id(),
+            "user_id": "user1",
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature.clone(),
+                "public_key": public_key.clone(),
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient.clone()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context1"
+        }))
+        .gas(near_workspaces::types::Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "First verification failed: {:?}",
+        result.failures()
+    );
+
+    // Now try to replay the EXACT SAME signature with a DIFFERENT nullifier
+    // In a scenario where the account check might be bypassed, the signature tracking
+    // provides a second layer of defense. In practice, the account check ("NEAR account
+    // already verified") will catch this first, but signature tracking adds defense-in-depth.
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "replay_test_nullifier_2", // Different nullifier - trying to bypass nullifier check
+            "near_account_id": user.id(),           // Same account
+            "user_id": "user1",
+            "attestation_id": "2",
+            "signature_data": {
+                "account_id": user.id(),            // Same account
+                "signature": signature.clone(),     // SAME signature!
+                "public_key": public_key.clone(),   // Same public key
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context2"
+        }))
+        .gas(near_workspaces::types::Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    // This should fail - the signature tracking or account check will catch it
+    assert!(result.is_failure());
+    let failure_msg = format!("{:?}", result.failures());
+    // Multiple layers of defense - any of these would block the replay:
+    // - "Signature already used" (signature tracking - our new defense)
+    // - "NEAR account already verified" (existing account check)
+    assert!(
+        failure_msg.contains("Signature already used")
+            || failure_msg.contains("NEAR account already verified"),
+        "Expected replay to be rejected by defense-in-depth, got: {}",
+        failure_msg
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_batch_size_limit_enforced() -> anyhow::Result<()> {
+    let (_worker, contract, _backend) = init().await?;
+
+    // Create more than 100 account IDs
+    let too_many_accounts: Vec<String> = (0..101)
+        .map(|i| format!("account{}.testnet", i))
+        .collect();
+
+    // Call are_accounts_verified with too many accounts - should fail
+    let result = contract
+        .view("are_accounts_verified")
+        .args_json(json!({"account_ids": too_many_accounts}))
+        .await;
+
+    // View call should fail due to assertion
+    assert!(
+        result.is_err(),
+        "Expected batch size limit to be enforced"
+    );
 
     Ok(())
 }
