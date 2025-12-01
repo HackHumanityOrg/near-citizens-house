@@ -41,14 +41,34 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
   const verifiedAccounts = await Promise.all(
     accounts.map(async (account): Promise<VerifiedAccountWithStatus> => {
       try {
-        // 1. Verify ZK proof via Celo on-chain verifier
-        const zkResult = await verifyStoredProofWithDetails(
-          {
-            proof: account.selfProof.proof,
-            publicSignals: account.selfProof.publicSignals,
-          },
-          Number(account.attestationId),
-        )
+        // Re-verification attempt with graceful error handling
+        let zkResult
+        try {
+          // 1. Verify ZK proof via Celo on-chain verifier
+          zkResult = await verifyStoredProofWithDetails(
+            {
+              proof: account.selfProof.proof,
+              publicSignals: account.selfProof.publicSignals,
+            },
+            Number(account.attestationId),
+          )
+
+          // Log successful verification with RPC endpoint used
+          if (zkResult.isValid && zkResult.rpcUrl) {
+            console.log(`[Verification] ZK proof verified for ${account.nearAccountId} via ${zkResult.rpcUrl}`)
+          }
+        } catch (error) {
+          // Graceful degradation: RPC failed but account is verified by contract
+          console.warn(
+            `[Verification] ZK re-verification failed for ${account.nearAccountId}, but account is contract-verified:`,
+            error instanceof Error ? error.message : error,
+          )
+          zkResult = {
+            isValid: false, // Mark as not re-verified (but don't fail)
+            publicSignalsCount: account.selfProof.publicSignals.length,
+            error: error instanceof Error ? error.message : "RPC verification unavailable",
+          }
+        }
 
         // 2. Verify NEAR signature
         const sigData = parseUserContextData(account.userContextData)
@@ -92,6 +112,11 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
           proofData,
         }
       } catch (error) {
+        // Final catch-all: Always display account even if verification completely fails
+        console.error(
+          `[Verification] Unexpected error verifying ${account.nearAccountId}:`,
+          error instanceof Error ? error.message : error,
+        )
         return {
           account: {
             nearAccountId: account.nearAccountId,
@@ -105,7 +130,7 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
           verification: {
             zkValid: false,
             signatureValid: false,
-            error: error instanceof Error ? error.message : "Verification failed",
+            error: error instanceof Error ? error.message : "Re-verification unavailable (contract-verified)",
           },
           proofData: null,
         }
@@ -119,10 +144,11 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
 /**
  * Cached version of fetchAndVerifyAccounts.
  * Cache is tagged with 'verifications' for on-demand revalidation.
+ * Cache duration increased to reduce unnecessary RPC calls while still providing fresh data.
  */
 const getCachedVerifiedAccounts = unstable_cache(fetchAndVerifyAccounts, ["verified-accounts"], {
   tags: ["verifications"],
-  revalidate: 300, // Also revalidate every 5 minutes as fallback
+  revalidate: 900, // Revalidate every 15 minutes (reduced RPC load while keeping data fresh)
 })
 
 /**
