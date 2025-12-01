@@ -130,19 +130,59 @@ cargo near --version
 
 ---
 
+## Monorepo Structure
+
+This is a **pnpm workspace monorepo** with the following structure:
+
+```
+├── apps/
+│   ├── verified-accounts/      # Identity verification app (port 3000)
+│   │   ├── app/
+│   │   ├── components/
+│   │   ├── lib/
+│   │   ├── public/
+│   │   └── package.json
+│   └── citizens-house/         # DAO governance app (port 3001)
+│       ├── app/
+│       ├── components/
+│       ├── lib/
+│       └── package.json
+├── packages/
+│   ├── ui/                     # Shared UI components
+│   │   ├── src/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   └── index.ts
+│   │   └── package.json
+│   └── shared/                 # Shared utilities and integrations
+│       ├── src/
+│       │   ├── database.ts
+│       │   ├── types.ts
+│       │   ├── utils.ts
+│       │   └── config.ts
+│       └── package.json
+├── contracts/
+│   ├── verified-accounts/      # NEAR smart contract (Rust)
+│   └── verified-accounts-interface/
+├── pnpm-workspace.yaml
+├── package.json
+└── .env
+```
+
+**Environment variables** are shared at the root `.env` file and inherited by all apps and packages.
+
+---
+
 ## Local Development Setup
 
 ### 1. Clone and Install
 
 ```bash
 # Clone repository
-git clone https://github.com/HackHumanityOrg/near-self-verify.git
-cd near-self-verify
+git clone https://github.com/HackHumanityOrg/near-citizens-house.git
+cd near-citizens-house
 
-# Install dependencies
-npm install
-
-# Or with pnpm
+# Install dependencies (uses pnpm workspace)
 pnpm install
 ```
 
@@ -158,25 +198,48 @@ Edit `.env` with your configuration (see [Environment Variables](#environment-va
 
 ### 3. Run Development Server
 
+**Option A: All apps at once**
+
 ```bash
-npm run dev
+pnpm dev:all
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the app.
+This starts both verified-accounts (port 3000) and citizens-house (port 3001) simultaneously.
+
+**Option B: Individual apps**
+
+```bash
+# Identity verification app only
+pnpm dev:verification
+
+# DAO governance app only
+pnpm dev:governance
+```
+
+Open [http://localhost:3000](http://localhost:3000) for verified-accounts or [http://localhost:3001](http://localhost:3001) for citizens-house.
 
 ### 4. Development Commands
 
 ```bash
-# Frontend
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run lint         # Run ESLint
-npm run format       # Format with Prettier
+# All apps (runs in root)
+pnpm dev:all              # Start all apps simultaneously
+pnpm build:all            # Build all apps for production
+pnpm lint:all             # Lint all apps
+pnpm format:all           # Format all apps with Prettier
+
+# Verified Accounts app (identity verification)
+pnpm dev:verification     # Start verified-accounts dev server (port 3000)
+pnpm build:verification   # Build verified-accounts for production
+pnpm lint:verification    # Lint verified-accounts
+
+# Citizens House app (DAO governance)
+pnpm dev:governance       # Start citizens-house dev server (port 3001)
+pnpm build:governance     # Build citizens-house for production
 
 # Smart Contract
-npm run build:contract      # Build Rust contract
-npm run lint:contract       # Lint with Clippy
-npm run deploy:testnet      # Deploy to testnet
+pnpm build:contract       # Build Rust contract with cargo-near
+pnpm lint:contract        # Lint contract with Clippy
+pnpm test:contract        # Run contract tests
 ```
 
 ---
@@ -442,7 +505,7 @@ Verifies Self.xyz proof and NEAR signature, stores verification on-chain.
 - `403` - Nullifier already used (duplicate passport)
 - `500` - Verification or storage failed
 
-### GET /api/verifications
+### GET /api/verified-accounts
 
 Returns paginated list of all verified accounts.
 
@@ -468,7 +531,7 @@ Returns paginated list of all verified accounts.
 
 ### Abstraction Pattern
 
-The app uses a database abstraction layer (`lib/database.ts`) that exports:
+The shared database abstraction layer (`packages/shared/src/database.ts`) exports:
 
 ```typescript
 interface IVerificationDatabase {
@@ -480,15 +543,21 @@ interface IVerificationDatabase {
 }
 ```
 
-**Current Implementation:** `NearContractDatabase` (lib/near-contract-db.ts)
+**Current Implementation:** `NearContractDatabase` (`packages/shared/src/near-contract-db.ts`)
 
 - Connects to NEAR smart contract using @near-js packages
 - Backend writes with private key authentication
 - Public reads via RPC calls
 - Supports pagination
 
+**Usage:** Both apps import from the shared package:
+
+```typescript
+import { db, IVerificationDatabase } from "@near-citizens-house/shared"
+```
+
 **To Switch Implementations:**
-Simply change the `createContractDatabase()` function to return a different implementation (e.g., PostgreSQL, MongoDB).
+Simply change the implementation in `packages/shared/src/database.ts` to return a different database backend (e.g., PostgreSQL, MongoDB). All apps will automatically use the new implementation.
 
 ### Data Models
 
@@ -560,27 +629,33 @@ Currently no automated frontend tests. Manual testing checklist:
 
 ### Frontend Deployment (Vercel)
 
+#### Verified Accounts App
+
 **1. Push to GitHub:**
 
 ```bash
 git push origin main
 ```
 
-**2. Connect to Vercel:**
+**2. Create Vercel project for verified-accounts:**
 
-- Import GitHub repository in Vercel dashboard
-- Or use CLI: `vercel --prod`
+- Create new project in Vercel dashboard
+- Select GitHub repository
+- Set **Root Directory** to `apps/verified-accounts`
+- Or use CLI: `vercel --prod --cwd apps/verified-accounts`
 
 **3. Configure Environment Variables:**
 
-In Vercel dashboard, add all environment variables from `.env`:
+In Vercel dashboard, add all environment variables:
 
 - `NEAR_CONTRACT_ID`
 - `NEAR_ACCOUNT_ID`
-- `NEAR_PRIVATE_KEY` (⚠️ Use Vercel secrets)
+- `NEAR_PRIVATE_KEY` (⚠️ Use Vercel secrets - server-side only)
 - `NEXT_PUBLIC_NEAR_NETWORK`
 - `NEXT_PUBLIC_NEAR_RPC_URL`
 - `NEXT_PUBLIC_SELF_ENDPOINT` (your Vercel URL)
+- `CELO_RPC_URL`
+- `SELF_USE_MOCK_PASSPORT`
 
 **4. Deploy:**
 
@@ -589,9 +664,29 @@ Vercel will automatically deploy on push. Monitor build logs for issues.
 **Build Configuration:**
 
 - **Framework:** Next.js
-- **Build Command:** `npm run build`
+- **Root Directory:** `apps/verified-accounts`
+- **Build Command:** `pnpm build:verification`
 - **Output Directory:** `.next`
+- **Install Command:** `pnpm install --frozen-lockfile`
 - **Node Version:** 18.x or higher
+
+#### Citizens House App
+
+**1. Create separate Vercel project for citizens-house:**
+
+- Create new project in Vercel dashboard
+- Select same GitHub repository
+- Set **Root Directory** to `apps/citizens-house`
+
+**2. Configure Environment Variables:** (same as above)
+
+**3. Build Configuration:**
+
+- **Framework:** Next.js
+- **Root Directory:** `apps/citizens-house`
+- **Build Command:** `pnpm build:governance`
+- **Output Directory:** `.next`
+- **Install Command:** `pnpm install --frozen-lockfile`
 
 ### Smart Contract Deployment
 
@@ -669,30 +764,57 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 ## File Structure
 
 ```
-├── app/
-│   ├── api/
-│   │   ├── verify/route.ts              # Main verification endpoint
-│   │   └── verifications/route.ts       # Public list endpoint
-│   ├── verifications/page.tsx           # Verifications list page
-│   ├── layout.tsx                       # Root layout with footer
-│   ├── page.tsx                         # Homepage with verification flow
-│   └── globals.css                      # Global styles
+near-citizens-house/
+├── apps/
+│   ├── verified-accounts/               # Identity verification app (port 3000)
+│   │   ├── app/
+│   │   │   ├── api/
+│   │   │   │   ├── verify/route.ts      # Main verification endpoint
+│   │   │   │   └── verified-accounts/   # List endpoints
+│   │   │   ├── verified-accounts/page.tsx
+│   │   │   ├── layout.tsx               # Root layout
+│   │   │   ├── page.tsx                 # Homepage with verification flow
+│   │   │   └── globals.css
+│   │   ├── components/
+│   │   │   ├── verification-flow.tsx
+│   │   │   ├── self-verification.tsx
+│   │   │   ├── near-wallet-button.tsx
+│   │   │   └── shared/
+│   │   ├── lib/
+│   │   │   ├── config.ts
+│   │   │   └── types.ts
+│   │   ├── public/
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   └── citizens-house/                  # DAO governance app (port 3001)
+│       ├── app/
+│       ├── components/
+│       ├── lib/
+│       ├── public/
+│       ├── package.json
+│       └── tsconfig.json
 │
-├── components/
-│   ├── verification-flow.tsx            # Multi-step verification UI
-│   ├── self-verification.tsx            # Self.xyz QR code component
-│   ├── near-wallet-button.tsx           # Wallet connect/disconnect
-│   ├── footer.tsx                       # App footer
-│   └── ui/                              # shadcn/ui components
-│
-├── lib/
-│   ├── database.ts                      # Database abstraction layer
-│   ├── near-contract-db.ts              # NEAR contract implementation
-│   ├── near-wallet-provider.tsx         # NEAR wallet React context (HOT Connector)
-│   ├── near-signature-verification.ts   # NEP-413 signature validation
-│   ├── self-verifier.ts                 # Self.xyz verifier configuration
-│   ├── config.ts                        # App constants and configuration
-│   └── types.ts                         # TypeScript type definitions
+├── packages/
+│   ├── ui/                              # Shared UI components
+│   │   ├── src/
+│   │   │   ├── components/              # Reusable UI components
+│   │   │   ├── hooks/                   # Custom React hooks
+│   │   │   ├── index.ts
+│   │   │   └── globals.css
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   └── shared/                          # Shared utilities and integrations
+│       ├── src/
+│       │   ├── database.ts              # Database abstraction layer
+│       │   ├── near-contract-db.ts      # NEAR contract client
+│       │   ├── near-signature-verification.ts
+│       │   ├── self-verifier.ts
+│       │   ├── config.ts                # App configuration
+│       │   └── types.ts                 # Shared TypeScript types
+│       ├── package.json
+│       └── tsconfig.json
 │
 ├── contracts/
 │   ├── verified-accounts/               # NEAR smart contract (Rust)
@@ -701,17 +823,24 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 │   │   └── target/near/                 # Compiled WASM output
 │   └── verified-accounts-interface/     # Interface crate for cross-contract calls
 │
-├── public/                              # Static assets
+├── pnpm-workspace.yaml                  # pnpm workspace config
+├── package.json                         # Root package.json with scripts
 ├── .env                                 # Environment variables (gitignored)
 ├── .env.example                         # Example environment file
-├── package.json                         # Node dependencies and scripts
-├── tsconfig.json                        # TypeScript configuration
-├── tailwind.config.ts                   # Tailwind configuration
 ├── CLAUDE.md                            # AI assistant guidance
+├── DEVELOPER.md                         # Developer documentation (you are here)
 ├── LICENSE                              # MIT License
-├── README.md                            # User-facing documentation (this file)
-└── DEVELOPER.md                         # Developer documentation (you are here)
+└── README.md                            # User-facing documentation
 ```
+
+**Key Points:**
+
+- **Shared packages** (`packages/`) are installed as dependencies in both apps
+- **Environment variables** are at the root and inherited by all apps/packages
+- **Contracts** remain at the root level (unchanged from previous structure)
+- Each app has its own `package.json`, `tsconfig.json`, and Next.js configuration
+- UI components are published to `packages/ui` for reuse across apps
+- Shared utilities and database logic are in `packages/shared`
 
 ---
 
@@ -768,12 +897,16 @@ import { NearConnector } from "@hot-labs/near-connect"
 
 const connector = new NearConnector({
   network: "testnet",
-  autoConnect: true
+  autoConnect: true,
 })
 
 // Event handlers
-connector.on("wallet:signIn", (payload) => { /* ... */ })
-connector.on("wallet:signOut", () => { /* ... */ })
+connector.on("wallet:signIn", (payload) => {
+  /* ... */
+})
+connector.on("wallet:signOut", () => {
+  /* ... */
+})
 
 // Sign NEP-413 messages
 const wallet = await connector.wallet()

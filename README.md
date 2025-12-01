@@ -1,5 +1,33 @@
 # NEAR Citizens House
 
+A pnpm workspace monorepo for NEAR governance and identity verification.
+
+## Project Structure
+
+- **apps/verified-accounts** - Identity verification app (port 3000)
+- **apps/citizens-house** - DAO governance app (port 3001)
+- **packages/ui** - Shared UI components (shadcn/ui)
+- **packages/shared** - NEAR/Self.xyz integrations
+- **contracts/** - NEAR smart contracts (Rust)
+
+## Quick Start
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run verification app (port 3000)
+pnpm dev:verification
+
+# Run governance app (port 3001)
+pnpm dev:governance
+
+# Run both apps
+pnpm dev:all
+```
+
+## About Identity Verification
+
 Link your real-world passport identity to your NEAR blockchain wallet using zero-knowledge proofs. Prove who you are without revealing personal information.
 
 ## What This App Does
@@ -72,7 +100,7 @@ The verification uses advanced cryptography called zero-knowledge proofs. Think 
 
 Anyone can view the list of verified NEAR accounts without accessing any private data. Each entry shows only the wallet address and verification timestamp - no personal information is ever revealed.
 
-**Public Verification List:** [/verifications](https://your-app.vercel.app/verifications)
+**Public Verification List:** [/verified-accounts](https://your-app.vercel.app/verified-accounts)
 
 ## Use Cases
 

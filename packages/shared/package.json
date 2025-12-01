@@ -1,0 +1,60 @@
+{
+  "name": "@near-citizens/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./types": "./src/types.ts",
+    "./verification-contract": "./src/verification-contract.ts",
+    "./near-wallet-provider": "./src/near-wallet-provider.tsx",
+    "./discourse-provider": "./src/discourse-provider.tsx",
+    "./verification": "./src/verification.ts",
+    "./self-verifier": "./src/self-verifier.ts",
+    "./zk-verify": "./src/zk-verify.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "dependencies": {
+    "@hot-labs/near-connect": "^0.6.11",
+    "@near-js/accounts": "^2.5.1",
+    "@near-js/crypto": "^2.5.1",
+    "@near-js/keystores": "^2.5.1",
+    "@near-js/keystores-browser": "^2.5.1",
+    "@near-js/keystores-node": "^2.5.1",
+    "@near-js/providers": "^2.5.1",
+    "@near-js/signers": "^2.5.1",
+    "@near-js/tokens": "^2.5.1",
+    "@near-js/transactions": "^2.5.1",
+    "@near-js/types": "^2.5.1",
+    "@near-js/utils": "^2.5.1",
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1",
+    "@selfxyz/core": "^1.1.0-beta.7",
+    "borsh": "^2.0.0",
+    "bs58": "^6.0.0",
+    "buffer": "^6.0.3",
+    "ethers": "^6.15.0",
+    "near-api-js": "^6.5.1",
+    "node-forge": "^1.3.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/node-forge": "^1.3.11",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5",
+    "vitest": "^2.1.0"
+  }
+}

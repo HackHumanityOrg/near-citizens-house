@@ -6,7 +6,20 @@ import tseslint from "typescript-eslint"
 
 const eslintConfig = [
   {
-    ignores: [".next/", "node_modules/", "public/", ".vscode/", "next-env.d.ts"],
+    ignores: [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/out/**",
+      "**/public/**",
+      "**/.vscode/**",
+      "**/next-env.d.ts",
+      "**/target/**",
+      "**/.turbo/**",
+      "**/.cache/**",
+      "**/coverage/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -24,6 +37,7 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
       "react/no-unescaped-entities": "off",
+      "@next/next/no-html-link-for-pages": "off", // Disable for packages without pages directory
     },
   },
 ]
