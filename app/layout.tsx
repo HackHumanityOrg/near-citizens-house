@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Self x NEAR Verification",
+  title: "NEAR Citizens House",
   description: "Verify your identity with Self.xyz passport proof and link to your NEAR wallet",
   generator: "v0.app",
   icons: {

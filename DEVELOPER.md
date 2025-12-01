@@ -1,4 +1,4 @@
-# Developer Guide - Self.xyz x NEAR Verification
+# Developer Guide - NEAR Citizens House
 
 Technical documentation for developers who want to set up, deploy, customize, or contribute to this identity verification application.
 
@@ -24,11 +24,11 @@ Technical documentation for developers who want to set up, deploy, customize, or
 
 **Frontend:**
 
-- **Next.js 16** - React framework with App Router and Turbopack
+- **Next.js 16** - React framework with App Router and webpack
 - **TypeScript** - Type-safe development
 - **TailwindCSS** - Utility-first styling
 - **shadcn/ui** - Component library
-- **@near-wallet-selector** - NEAR wallet integration (Meteor, MyNearWallet)
+- **@hot-labs/near-connect** - NEAR wallet integration (HOT Connector)
 - **@selfxyz/qrcode** - Self.xyz QR code generation
 
 **Backend:**
@@ -214,7 +214,7 @@ npm run deploy:testnet      # Deploy to testnet
 
 ### Overview
 
-The NEAR smart contract (`contracts/verification-db/`) provides decentralized storage for verification records with these security features:
+The NEAR smart contract (`contracts/verified-accounts/`) provides decentralized storage for verification records with these security features:
 
 - **Access Control** - Only backend wallet can write
 - **NEP-413 Verification** - Validates NEAR wallet signatures on-chain
@@ -224,12 +224,14 @@ The NEAR smart contract (`contracts/verification-db/`) provides decentralized st
 
 ### Contract Development
 
-**Location:** `contracts/verification-db/`
+**Location:** `contracts/verified-accounts/`
+
+**Interface Crate:** `contracts/verified-accounts-interface/` provides types and `#[ext_contract]` trait for cross-contract calls.
 
 **Build Contract:**
 
 ```bash
-cd contracts/verification-db
+cd contracts/verified-accounts
 cargo near build non-reproducible-wasm
 
 # Or from root:
@@ -239,7 +241,7 @@ npm run build:contract
 **Run Tests:**
 
 ```bash
-cd contracts/verification-db
+cd contracts/verified-accounts
 cargo test
 
 # Lint with Clippy:
@@ -270,14 +272,14 @@ near account create-account fund-myself v1.YOUR_ACCOUNT.testnet '3 NEAR' \
 npm run build:contract
 
 # Or directly
-cd contracts/verification-db && cargo near build non-reproducible-wasm
+cd contracts/verified-accounts && cargo near build non-reproducible-wasm
 ```
 
 **3. Deploy Contract:**
 
 ```bash
 near contract deploy v1.YOUR_ACCOUNT.testnet \
-  use-file contracts/verification-db/target/near/verification_db.wasm \
+  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
   without-init-call \
   network-config testnet sign-with-keychain send
 ```
@@ -318,7 +320,7 @@ npm run build:contract
 
 ```bash
 near contract deploy v1.YOUR_ACCOUNT.testnet \
-  use-file contracts/verification-db/target/near/verification_db.wasm \
+  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
   without-init-call \
   network-config testnet sign-with-keychain send
 ```
@@ -385,6 +387,14 @@ store_verification(
 - `get_verified_account(near_account_id)` - Single account details
 - `is_nullifier_used(nullifier)` - Check if passport already used
 - `is_account_verified(account_id)` - Check if account verified
+
+**Composability Methods** (For Cross-Contract Calls):
+
+- `get_verification_status(account_id)` - Lightweight status without proof data (gas-efficient)
+- `are_accounts_verified(Vec<account_id>)` - Batch boolean check (max 100, for DAO voting)
+- `get_verification_statuses(Vec<account_id>)` - Batch status check (max 100)
+- `interface_version()` - Returns "1.0.0" for compatibility checking
+- `contract_source_metadata()` - NEP-330 metadata
 
 ---
 
@@ -515,7 +525,7 @@ Simply change the `createContractDatabase()` function to return a different impl
 ### Contract Tests
 
 ```bash
-cd contracts/verification-db
+cd contracts/verified-accounts
 cargo test
 ```
 
@@ -601,7 +611,7 @@ npm run build:contract
 
 # 3. Deploy
 near contract deploy v1.YOUR_ACCOUNT.testnet \
-  use-file contracts/verification-db/target/near/verification_db.wasm \
+  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
   without-init-call \
   network-config testnet sign-with-keychain send
 
@@ -621,7 +631,7 @@ npm run build:contract
 
 # 2. Deploy over existing (do NOT init again)
 near contract deploy v1.YOUR_ACCOUNT.testnet \
-  use-file contracts/verification-db/target/near/verification_db.wasm \
+  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
   without-init-call \
   network-config testnet sign-with-keychain send
 
@@ -678,17 +688,18 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 ├── lib/
 │   ├── database.ts                      # Database abstraction layer
 │   ├── near-contract-db.ts              # NEAR contract implementation
-│   ├── near-wallet-provider.tsx         # NEAR wallet React context
+│   ├── near-wallet-provider.tsx         # NEAR wallet React context (HOT Connector)
 │   ├── near-signature-verification.ts   # NEP-413 signature validation
 │   ├── self-verifier.ts                 # Self.xyz verifier configuration
 │   ├── config.ts                        # App constants and configuration
 │   └── types.ts                         # TypeScript type definitions
 │
 ├── contracts/
-│   └── verification-db/                 # NEAR smart contract (Rust)
-│       ├── src/lib.rs                   # Contract implementation
-│       ├── Cargo.toml                   # Rust dependencies
-│       └── target/near/                 # Compiled WASM output
+│   ├── verified-accounts/               # NEAR smart contract (Rust)
+│   │   ├── src/lib.rs                   # Contract implementation
+│   │   ├── Cargo.toml                   # Rust dependencies
+│   │   └── target/near/                 # Compiled WASM output
+│   └── verified-accounts-interface/     # Interface crate for cross-contract calls
 │
 ├── public/                              # Static assets
 ├── .env                                 # Environment variables (gitignored)
@@ -740,18 +751,34 @@ new SelfBackendVerifier(
 
 ### NEAR Wallet Integration
 
-Uses `@near-wallet-selector` with support for:
-
-- Meteor Wallet (recommended - supports `signMessage`)
-- MyNearWallet
-- Any wallet implementing NEP-413 `signMessage` API
+Uses `@hot-labs/near-connect` (HOT Connector) for wallet connections.
 
 **Wallet Context:** `lib/near-wallet-provider.tsx`
 
 - Provides React hooks: `useNearWallet()`
-- Handles wallet connection/disconnection
+- Handles wallet connection/disconnection via `NearConnector`
 - Implements NEP-413 message signing
 - Manages wallet state across app
+- Supports auto-connect and session persistence
+
+**Example Usage:**
+
+```typescript
+import { NearConnector } from "@hot-labs/near-connect"
+
+const connector = new NearConnector({
+  network: "testnet",
+  autoConnect: true
+})
+
+// Event handlers
+connector.on("wallet:signIn", (payload) => { /* ... */ })
+connector.on("wallet:signOut", () => { /* ... */ })
+
+// Sign NEP-413 messages
+const wallet = await connector.wallet()
+await wallet.signMessage({ message, recipient, nonce })
+```
 
 ---
 
@@ -771,13 +798,13 @@ Uses `@near-wallet-selector` with support for:
 
 **"Wallet does not support message signing"**
 
-**Cause:** Wallet doesn't implement NEP-413 `signMessage` API
+**Cause:** Connected wallet doesn't implement NEP-413 `signMessage` API
 
 **Solution:**
 
-- Use Meteor Wallet (full NEP-413 support)
-- Or use MyNearWallet (also supports signMessage)
-- Avoid wallets that don't implement NEP-413
+- Ensure wallet supports NEP-413 message signing
+- Try reconnecting with a different wallet
+- Check HOT Connector wallet compatibility list
 
 **"Self verification failed"**
 
@@ -908,7 +935,7 @@ This project includes `CLAUDE.md` with guidance for Claude Code (AI assistant). 
 - **Documentation:** https://docs.near.org
 - **Smart Contracts:** https://docs.near.org/smart-contracts
 - **NEP-413 Spec:** https://github.com/near/NEPs/blob/master/neps/nep-0413.md
-- **Wallet Selector:** https://github.com/near/wallet-selector
+- **HOT Connector:** https://github.com/here-wallet/near-connect
 
 ### Development Tools
 

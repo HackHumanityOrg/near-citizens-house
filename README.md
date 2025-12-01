@@ -1,4 +1,4 @@
-# Self.xyz x NEAR - Identity Verified Wallets
+# NEAR Citizens House
 
 Link your real-world passport identity to your NEAR blockchain wallet using zero-knowledge proofs. Prove who you are without revealing personal information.
 
@@ -115,7 +115,7 @@ Interested in integrating this verification system or contributing to the projec
 
 ## Support
 
-Questions or issues? Open an issue on [GitHub](https://github.com/HackHumanityOrg/near-self-verify/issues) or reach out to the team.
+Questions or issues? Open an issue on [GitHub](https://github.com/HackHumanityOrg/near-citizens-house/issues) or reach out to the team.
 
 ---
 

@@ -21,7 +21,7 @@ export function Footer() {
         </a>
         <span className="text-muted-foreground mx-1">·</span>
         <a
-          href="https://github.com/HackHumanityOrg/near-self-verify"
+          href="https://github.com/HackHumanityOrg/near-citizens-house"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors"

@@ -8,8 +8,8 @@ const DISCLOSURE_CONFIG = {
 }
 
 export const SELF_CONFIG = {
-  appName: "NEAR Self Verify",
-  scope: "near-self-verify",
+  appName: "NEAR Citizens House",
+  scope: "near-citizens-house",
   get endpoint() {
     if (process.env.NEXT_PUBLIC_SELF_ENDPOINT) {
       return process.env.NEXT_PUBLIC_SELF_ENDPOINT
@@ -54,7 +54,7 @@ export const ERROR_MESSAGES = {
 // Discourse configuration
 export const DISCOURSE_CONFIG = {
   url: process.env.NEXT_PUBLIC_DISCOURSE_URL || "",
-  appName: "NEAR Self Verify",
+  appName: "NEAR Citizens House",
   scopes: "read,session_info",
   storageKeys: {
     authState: "discourse_auth_state",
