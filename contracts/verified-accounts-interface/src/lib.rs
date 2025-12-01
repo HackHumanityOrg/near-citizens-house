@@ -129,7 +129,7 @@ pub trait VerifiedAccounts {
     /// Returns `Vec<bool>` in the same order as the input `account_ids`.
     /// More gas-efficient than multiple individual calls.
     ///
-    /// Note: Large batches may exceed gas limits. Recommended max: 50 accounts.
+    /// Note: Large batches may exceed gas limits. Recommended max: 100 accounts.
     fn are_accounts_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool>;
 
     /// Get statuses for multiple accounts.
@@ -137,7 +137,7 @@ pub trait VerifiedAccounts {
     /// Returns `Vec<Option<VerificationStatus>>` in the same order as input.
     /// Each element is `None` if that account is not verified.
     ///
-    /// Note: Large batches may exceed gas limits. Recommended max: 50 accounts.
+    /// Note: Large batches may exceed gas limits. Recommended max: 100 accounts.
     fn get_verification_statuses(
         &self,
         account_ids: Vec<AccountId>,

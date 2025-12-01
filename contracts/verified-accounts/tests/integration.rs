@@ -1,6 +1,6 @@
 //! Integration tests for verified-accounts contract using near-workspaces
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use borsh::BorshSerialize;
 use near_workspaces::{Account, AccountId, Contract, Worker};
@@ -752,10 +752,10 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
         .json()?;
 
     // Verify the returned data
-    assert_eq!(account_data["user_id"], "test_user_id");
-    assert_eq!(account_data["attestation_id"], "test_attestation");
-    assert_eq!(account_data["user_context_data"], "custom_context_data");
-    assert!(account_data["verified_at"].is_number());
+    assert_eq!(account_data.get("user_id"), Some(&serde_json::json!("test_user_id")));
+    assert_eq!(account_data.get("attestation_id"), Some(&serde_json::json!("test_attestation")));
+    assert_eq!(account_data.get("user_context_data"), Some(&serde_json::json!("custom_context_data")));
+    assert!(account_data.get("verified_at").is_some_and(|v| v.is_number()));
 
     Ok(())
 }

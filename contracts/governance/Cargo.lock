@@ -887,6 +887,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "governance"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "near-crypto 0.34.0",
+ "near-sdk",
+ "near-workspaces",
+ "serde_json",
+ "tokio",
+ "verified-accounts-interface",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3456,21 +3470,6 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
-
-[[package]]
-name = "verified-accounts"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "borsh",
- "near-crypto 0.34.0",
- "near-sdk",
- "near-workspaces",
- "serde_json",
- "sha2",
- "tokio",
- "verified-accounts-interface",
-]
 
 [[package]]
 name = "verified-accounts-interface"

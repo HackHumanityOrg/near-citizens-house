@@ -1,0 +1,19 @@
+# Cargo configuration for near-citizens-house project
+#
+# This configuration ensures reliable integration test execution with near-workspaces
+# by preventing parallel sandbox instances from conflicting on RPC ports.
+#
+# References:
+# - https://docs.rs/near-workspaces/latest/near_workspaces/
+# - https://doc.rust-lang.org/cargo/reference/config.html
+
+[env]
+# Increase RPC timeout from default 10s to 60s to handle slow sandbox startup
+# This is especially important when multiple sandbox instances are starting
+NEAR_RPC_TIMEOUT_SECS = "60"
+
+[test]
+# Run integration tests with minimal parallelism to avoid RPC port conflicts
+# Each near-workspaces sandbox instance needs its own ports
+# Using 1 thread ensures no conflicts, but can be increased to 2 if needed
+test-threads = 1

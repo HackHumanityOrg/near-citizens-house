@@ -257,3 +257,119 @@ export interface IVerificationDatabase {
   getVerifiedAccount(nearAccountId: string): Promise<VerifiedAccount | null>
   getAllVerifiedAccounts(): Promise<VerifiedAccount[]>
 }
+
+// ============================================================================
+// Governance Schemas
+// ============================================================================
+
+// Vote choice enum
+export const voteSchema = z.enum(["Yes", "No"])
+export type Vote = z.infer<typeof voteSchema>
+
+// Proposal status enum
+export const proposalStatusSchema = z.enum(["Active", "Passed", "Failed", "QuorumNotMet", "Cancelled"])
+export type ProposalStatus = z.infer<typeof proposalStatusSchema>
+
+// Vote counts
+export const voteCountsSchema = z.object({
+  yesVotes: z.number(),
+  noVotes: z.number(),
+  totalVotes: z.number(),
+})
+export type VoteCounts = z.infer<typeof voteCountsSchema>
+
+// Proposal domain type
+export const proposalSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  description: z.string(),
+  proposer: z.string(),
+  discourseUrl: z.string().nullable(),
+  createdAt: z.number(), // milliseconds
+  votingEndsAt: z.number(), // milliseconds
+  status: proposalStatusSchema,
+})
+export type Proposal = z.infer<typeof proposalSchema>
+
+// Proposal with vote statistics
+export const proposalWithStatsSchema = z.object({
+  proposal: proposalSchema,
+  voteCounts: voteCountsSchema,
+  quorumRequired: z.number(),
+  totalCitizens: z.number(),
+  userVote: voteSchema.nullable().optional(),
+})
+export type ProposalWithStats = z.infer<typeof proposalWithStatsSchema>
+
+// Contract format for VoteCounts (with transform to camelCase)
+export const contractVoteCountsSchema = z
+  .object({
+    yes_votes: z.number(),
+    no_votes: z.number(),
+    total_votes: z.number(),
+  })
+  .transform((data) => ({
+    yesVotes: data.yes_votes,
+    noVotes: data.no_votes,
+    totalVotes: data.total_votes,
+  }))
+
+// Contract format for Proposal (with transform to camelCase and time conversion)
+export const contractProposalSchema = z
+  .object({
+    id: z.number(),
+    title: z.string(),
+    description: z.string(),
+    proposer: z.string(),
+    discourse_url: z.string().nullable(),
+    created_at: z.number(), // nanoseconds
+    voting_ends_at: z.number(), // nanoseconds
+    status: z.string(),
+  })
+  .transform((data) => ({
+    id: data.id,
+    title: data.title,
+    description: data.description,
+    proposer: data.proposer,
+    discourseUrl: data.discourse_url,
+    createdAt: Math.floor(data.created_at / 1_000_000), // nanoseconds → milliseconds
+    votingEndsAt: Math.floor(data.voting_ends_at / 1_000_000), // nanoseconds → milliseconds
+    status: data.status as ProposalStatus,
+  }))
+
+export type ContractProposal = z.input<typeof contractProposalSchema>
+export type TransformedProposal = z.output<typeof contractProposalSchema>
+
+// API request schemas
+export const createProposalRequestSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(10000),
+  discourseUrl: z.string().url().max(500).optional(),
+})
+export type CreateProposalRequest = z.infer<typeof createProposalRequestSchema>
+
+export const voteRequestSchema = z.object({
+  proposalId: z.number(),
+  vote: voteSchema,
+})
+export type VoteRequest = z.infer<typeof voteRequestSchema>
+
+// ============================================================================
+// Governance Database Interface
+// ============================================================================
+
+export interface IGovernanceDatabase {
+  // Read methods
+  getProposal(proposalId: number): Promise<Proposal | null>
+  getProposals(from: number, limit: number, status?: ProposalStatus): Promise<Proposal[]>
+  getVote(proposalId: number, accountId: string): Promise<Vote | null>
+  hasVoted(proposalId: number, accountId: string): Promise<boolean>
+  getVoteCounts(proposalId: number): Promise<VoteCounts>
+  getProposalCount(): Promise<number>
+
+  // Write methods
+  createProposal(title: string, description: string, discourseUrl?: string): Promise<number>
+  vote(proposalId: number, vote: Vote): Promise<void>
+  finalizeProposal(proposalId: number): Promise<void>
+  cancelProposal(proposalId: number): Promise<void>
+}

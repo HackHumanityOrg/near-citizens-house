@@ -7,6 +7,9 @@ export * from "./types"
 // Verification Contract
 export * from "./verification-contract"
 
+// Governance Contract
+export * from "./governance-contract"
+
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"
 
