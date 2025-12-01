@@ -85,10 +85,21 @@ export function parseUserContextData(userContextDataRaw: string): ParsedSignatur
 
     jsonString = jsonString.replace(/\0/g, "")
 
-    const firstBrace = jsonString.indexOf("{")
-    const lastBrace = jsonString.lastIndexOf("}")
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      jsonString = jsonString.substring(firstBrace, lastBrace + 1)
+    // Look for the start of the JSON object by finding {"accountId"
+    // (not just {, as binary data may contain { bytes)
+    const jsonStart = jsonString.indexOf('{"accountId"')
+    if (jsonStart === -1) {
+      // Fallback: try to find any valid JSON object start
+      const firstBrace = jsonString.indexOf("{")
+      const lastBrace = jsonString.lastIndexOf("}")
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonString = jsonString.substring(firstBrace, lastBrace + 1)
+      }
+    } else {
+      const lastBrace = jsonString.lastIndexOf("}")
+      if (lastBrace > jsonStart) {
+        jsonString = jsonString.substring(jsonStart, lastBrace + 1)
+      }
     }
 
     const data = JSON.parse(jsonString)
