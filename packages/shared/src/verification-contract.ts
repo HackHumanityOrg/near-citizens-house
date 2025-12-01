@@ -92,19 +92,6 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  async isNullifierUsed(nullifier: string): Promise<boolean> {
-    await this.ensureInitialized()
-
-    try {
-      const result = await this.provider!.callFunction<boolean>(this.contractId, "is_nullifier_used", { nullifier })
-
-      return result ?? false
-    } catch (error) {
-      console.error("[NearContractDB] Error checking nullifier:", error)
-      throw error
-    }
-  }
-
   async isAccountVerified(nearAccountId: string): Promise<boolean> {
     await this.ensureInitialized()
 

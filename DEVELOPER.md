@@ -535,13 +535,14 @@ The shared database abstraction layer (`packages/shared/src/database.ts`) export
 
 ```typescript
 interface IVerificationDatabase {
-  isNullifierUsed(nullifier: string): Promise<boolean>
   isAccountVerified(nearAccountId: string): Promise<boolean>
   storeVerification(data: VerificationDataWithSignature): Promise<void>
   getVerifiedAccount(nearAccountId: string): Promise<VerifiedAccount | null>
   getAllVerifiedAccounts(): Promise<VerifiedAccount[]>
 }
 ```
+
+**Note:** Nullifier uniqueness is validated by the contract during `store_verification()`. No separate pre-check method exists to avoid unnecessary RPC overhead.
 
 **Current Implementation:** `NearContractDatabase` (`packages/shared/src/near-contract-db.ts`)
 

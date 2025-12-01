@@ -113,20 +113,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isNullifierUsed = await db.isNullifierUsed(nullifier.toString())
-
-    if (isNullifierUsed) {
-      console.warn("[SECURITY] Duplicate passport registration attempted")
-      return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason: ERROR_MESSAGES.DUPLICATE_PASSPORT,
-        } as SelfVerificationResult,
-        { status: 403 },
-      )
-    }
-
     let nearSignature: NearSignatureData
 
     try {
@@ -221,6 +207,10 @@ export async function POST(request: NextRequest) {
       // Using "max" profile for stale-while-revalidate semantics
       revalidateTag("verifications", "max")
     } catch (error) {
+      // Detect duplicate nullifier attempts from contract error
+      if (error instanceof Error && error.message.includes("Nullifier already used")) {
+        console.warn("[SECURITY] Duplicate passport registration attempted")
+      }
       console.error("[SECURITY] Failed to store verification:", error)
       return NextResponse.json(
         {

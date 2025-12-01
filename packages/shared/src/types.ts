@@ -252,7 +252,6 @@ export type TransformedVerifiedAccount = z.output<typeof contractVerifiedAccount
 // ============================================================================
 
 export interface IVerificationDatabase {
-  isNullifierUsed(nullifier: string): Promise<boolean>
   isAccountVerified(nearAccountId: string): Promise<boolean>
   storeVerification(data: VerificationDataWithSignature): Promise<void>
   getVerifiedAccount(nearAccountId: string): Promise<VerifiedAccount | null>
