@@ -48,29 +48,34 @@ use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{ext_contract, AccountId, NearSchema};
 
-/// Lightweight verification status (no proof data).
-///
-/// Use this when you only need basic verification info without the full ZK proof.
-/// This reduces gas costs for cross-contract calls.
+// ==================== Data Types ====================
+
+/// Groth16 ZK proof structure (a, b, c points)
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
-pub struct VerificationStatus {
-    /// The NEAR account that was verified
-    pub near_account_id: AccountId,
-    /// The attestation ID from the identity provider
-    pub attestation_id: String,
-    /// Unix timestamp (nanoseconds) when verification was recorded
-    pub verified_at: u64,
+pub struct ZkProof {
+    pub a: [String; 2],
+    pub b: [[String; 2]; 2],
+    pub c: [String; 2],
 }
 
-/// Full verification record for interface consumers.
+/// Self.xyz proof data (ZK proof + public signals)
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct SelfProofData {
+    /// Groth16 ZK proof (a, b, c points)
+    pub proof: ZkProof,
+    /// Public signals from the circuit (contains nullifier, merkle root, scope, etc.)
+    pub public_signals: Vec<String>,
+}
+
+/// Standard verification info (no proof data).
 ///
-/// Note: The full `VerifiedAccount` in the main contract also contains
-/// `self_proof` and `user_context_data` fields. This interface version
-/// omits those to keep the interface lightweight. If you need the full
-/// proof data for re-verification, call `get_verified_account()` on
-/// the main contract directly.
+/// This is the most commonly used return type for cross-contract calls.
+/// It includes all essential verification data without the large ZK proof,
+/// keeping gas costs low.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
@@ -86,6 +91,32 @@ pub struct VerifiedAccountInfo {
     /// Unix timestamp (nanoseconds) when verification was recorded
     pub verified_at: u64,
 }
+
+/// Full verification record including ZK proof.
+///
+/// Only use this when you need the actual proof data for re-verification.
+/// Most cross-contract calls should use `get_account()` instead to save gas.
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct VerifiedAccount {
+    /// Unique nullifier from the ZK proof (prevents duplicate passport use)
+    pub nullifier: String,
+    /// The NEAR account that was verified
+    pub near_account_id: AccountId,
+    /// User identifier from the identity provider
+    pub user_id: String,
+    /// Attestation ID from the identity provider
+    pub attestation_id: String,
+    /// Unix timestamp (nanoseconds) when verification was recorded
+    pub verified_at: u64,
+    /// Self.xyz ZK proof data (for re-verification)
+    pub self_proof: SelfProofData,
+    /// Additional context data from verification flow
+    pub user_context_data: String,
+}
+
+// ==================== Interface Trait ====================
 
 /// Interface for cross-contract calls to the verified-accounts contract.
 ///
@@ -106,10 +137,10 @@ pub struct VerifiedAccountInfo {
 /// | Method | Recommended Gas |
 /// |--------|-----------------|
 /// | `is_account_verified` | 5 TGas |
-/// | `get_verification_status` | 5 TGas |
-/// | `get_verified_account` | 10 TGas |
+/// | `get_account` | 8 TGas |
+/// | `get_account_with_proof` | 15 TGas |
 /// | `are_accounts_verified(10)` | 8 TGas |
-/// | `get_verification_statuses(10)` | 10 TGas |
+/// | `get_accounts(10)` | 12 TGas |
 /// | Callback overhead | 5 TGas |
 #[ext_contract(ext_verified_accounts)]
 pub trait VerifiedAccounts {
@@ -117,21 +148,26 @@ pub trait VerifiedAccounts {
 
     /// Check if an account is verified (simple boolean).
     ///
-    /// This is the most gas-efficient method for simple gate checks.
+    /// **Use this for:** Gate checks, access control, DAO voting eligibility.
+    /// This is the most gas-efficient method.
     fn is_account_verified(&self, near_account_id: AccountId) -> bool;
 
-    /// Get lightweight verification status (no proof data).
+    /// Get account verification info (without ZK proof).
+    ///
+    /// **Use this for:** Most cross-contract calls that need verification details.
+    /// Returns all essential data (nullifier, user_id, attestation_id, timestamp)
+    /// without the large ZK proof, keeping gas costs low.
     ///
     /// Returns `None` if the account is not verified.
-    /// Use this when you need the attestation_id or verification timestamp.
-    fn get_verification_status(&self, near_account_id: AccountId) -> Option<VerificationStatus>;
+    fn get_account(&self, near_account_id: AccountId) -> Option<VerifiedAccountInfo>;
 
-    /// Get full verification record.
+    /// Get full account data including ZK proof.
+    ///
+    /// **Use this for:** Re-verification, audit trails, proof validation.
+    /// This is the most expensive method due to large proof data (~500 bytes).
     ///
     /// Returns `None` if the account is not verified.
-    /// Note: This returns `VerifiedAccountInfo` which omits the ZK proof data
-    /// to keep the interface lightweight.
-    fn get_verified_account_info(&self, near_account_id: AccountId) -> Option<VerifiedAccountInfo>;
+    fn get_account_with_proof(&self, near_account_id: AccountId) -> Option<VerifiedAccount>;
 
     // ==================== Batch Queries (for DAO voting, etc.) ====================
 
@@ -140,19 +176,20 @@ pub trait VerifiedAccounts {
     /// Returns `Vec<bool>` in the same order as the input `account_ids`.
     /// More gas-efficient than multiple individual calls.
     ///
+    /// **Use this for:** Batch eligibility checks in DAO voting.
+    ///
     /// Note: Large batches may exceed gas limits. Recommended max: 100 accounts.
     fn are_accounts_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool>;
 
-    /// Get statuses for multiple accounts.
+    /// Get verification info for multiple accounts (without ZK proofs).
     ///
-    /// Returns `Vec<Option<VerificationStatus>>` in the same order as input.
+    /// Returns `Vec<Option<VerifiedAccountInfo>>` in the same order as input.
     /// Each element is `None` if that account is not verified.
     ///
+    /// **Use this for:** Batch queries that need verification details.
+    ///
     /// Note: Large batches may exceed gas limits. Recommended max: 100 accounts.
-    fn get_verification_statuses(
-        &self,
-        account_ids: Vec<AccountId>,
-    ) -> Vec<Option<VerificationStatus>>;
+    fn get_accounts(&self, account_ids: Vec<AccountId>) -> Vec<Option<VerifiedAccountInfo>>;
 
     // ==================== Metadata ====================
 
@@ -175,25 +212,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_verification_status_serialization() {
-        let status = VerificationStatus {
-            near_account_id: "test.near".parse().unwrap(),
-            attestation_id: "attestation123".to_string(),
-            verified_at: 1234567890,
-        };
-
-        // Test JSON serialization
-        let json = near_sdk::serde_json::to_string(&status).unwrap();
-        assert!(json.contains("test.near"));
-        assert!(json.contains("attestation123"));
-
-        // Test Borsh serialization
-        let borsh = near_sdk::borsh::to_vec(&status).unwrap();
-        let decoded: VerificationStatus = near_sdk::borsh::from_slice(&borsh).unwrap();
-        assert_eq!(decoded.near_account_id, status.near_account_id);
-    }
-
-    #[test]
     fn test_verified_account_info_serialization() {
         let info = VerifiedAccountInfo {
             nullifier: "nullifier123".to_string(),
@@ -213,5 +231,35 @@ mod tests {
         let decoded: VerifiedAccountInfo = near_sdk::borsh::from_slice(&borsh).unwrap();
         assert_eq!(decoded.near_account_id, info.near_account_id);
         assert_eq!(decoded.nullifier, info.nullifier);
+    }
+
+    #[test]
+    fn test_verified_account_serialization() {
+        let account = VerifiedAccount {
+            nullifier: "nullifier123".to_string(),
+            near_account_id: "test.near".parse().unwrap(),
+            user_id: "user123".to_string(),
+            attestation_id: "attestation123".to_string(),
+            verified_at: 1234567890,
+            self_proof: SelfProofData {
+                proof: ZkProof {
+                    a: ["1".to_string(), "2".to_string()],
+                    b: [
+                        ["3".to_string(), "4".to_string()],
+                        ["5".to_string(), "6".to_string()],
+                    ],
+                    c: ["7".to_string(), "8".to_string()],
+                },
+                public_signals: vec!["signal1".to_string(), "signal2".to_string()],
+            },
+            user_context_data: "context".to_string(),
+        };
+
+        // Test Borsh serialization
+        let borsh = near_sdk::borsh::to_vec(&account).unwrap();
+        let decoded: VerifiedAccount = near_sdk::borsh::from_slice(&borsh).unwrap();
+        assert_eq!(decoded.near_account_id, account.near_account_id);
+        assert_eq!(decoded.nullifier, account.nullifier);
+        assert_eq!(decoded.self_proof.public_signals.len(), 2);
     }
 }

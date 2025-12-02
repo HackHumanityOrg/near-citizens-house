@@ -9,65 +9,46 @@
 //!
 //! ## Trust Assumptions
 //! - The `backend_wallet` is trusted to only submit valid Self.xyz ZK proofs
-//! - The backend verifies that the provided public key is an access key for the account
 //! - The contract cannot verify ZK proofs on-chain (prohibitively expensive)
 //!
 //! ## On-Chain Verification
 //! The contract independently verifies:
-//! - NEP-413 Ed25519 signatures (prevents signature forgery)
-//! - Signature uniqueness (prevents replay attacks)
-//! - Nullifier uniqueness (prevents passport reuse)
-//! - Account uniqueness (prevents re-verification)
+//! - NEP-413 Ed25519 signatures
+//! - Signature uniqueness
+//! - Nullifier uniqueness
+//! - Account uniqueness
 //!
 //! ## Proof Storage & Re-Verification
-//! Self.xyz ZK proofs are stored on-chain in their entirety, enabling:
-//! - Independent re-verification using snarkjs.groth16.verify() with the public vkey
-//! - No timestamp expiration - proofs remain mathematically valid forever
-//! - The on-chain record serves as authoritative proof of verification at `verified_at`
-//! - Auditing and dispute resolution
-//! - Transparency of all verification claims
+//! Self.xyz ZK proofs are stored on-chain in their entirety
 //!
-//! Note: The Self.xyz SDK has a ~24 hour timestamp window that rejects old proofs.
-//! The backend uses snarkjs directly to bypass this check for stored proof re-verification.
-//!
-//! ## Defense in Depth
-//! Multiple layers of protection ensure security even if one layer is bypassed:
-//! 1. Backend access control (only trusted wallet can write)
-//! 2. Signature verification (proves user consent)
-//! 3. Signature tracking (prevents replay of valid signatures)
-//! 4. Nullifier tracking (prevents same passport used twice)
-//! 5. Account tracking (prevents re-verification)
-//! 6. On-chain proof storage (enables future re-verification)
 
 #![allow(clippy::too_many_arguments)]
 
+use near_sdk::assert_one_yocto;
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupSet, UnorderedMap};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
-use near_sdk::assert_one_yocto;
 
-/// Maximum length for string inputs (prevents storage abuse)
+/// Maximum length for string inputs
 const MAX_NULLIFIER_LEN: usize = 256;
 const MAX_USER_ID_LEN: usize = 256;
 const MAX_ATTESTATION_ID_LEN: usize = 256;
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
 
-/// Maximum accounts per batch query (prevents gas exhaustion)
+/// Maximum accounts per batch query
 const MAX_BATCH_SIZE: usize = 100;
 
 /// Storage key prefixes for collections
-/// Using enum ensures unique prefixes per Sigma Prime recommendations
 #[derive(BorshStorageKey, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum StorageKey {
     Nullifiers,
     Accounts,
-    /// Tracks used signatures to prevent replay attacks on NEP-413 off-chain signatures
     UsedSignatures,
 }
 
-/// Groth16 ZK proof structure (a, b, c points) for async verification
+/// Groth16 ZK proof structure
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
 #[abi(json)]
 #[serde(crate = "near_sdk::serde")]
@@ -85,9 +66,7 @@ pub struct ZkProof {
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct SelfProofData {
-    /// Groth16 ZK proof (a, b, c points)
     pub proof: ZkProof,
-    /// Public signals from the circuit (contains nullifier, merkle root, scope, etc.)
     pub public_signals: Vec<String>,
 }
 
@@ -106,7 +85,7 @@ pub struct VerifiedAccount {
     pub user_context_data: String,
 }
 
-/// NEAR signature data for verification (NEP-413 format)
+/// NEAR signature data
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, NearSchema)]
 #[abi(json)]
 #[serde(crate = "near_sdk::serde")]
@@ -120,8 +99,7 @@ pub struct NearSignatureData {
     pub recipient: AccountId,
 }
 
-/// NEP-413 Payload structure for signature verification
-/// This must match the wallet's signature format exactly
+/// NEP-413 Payload structure
 #[derive(BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
 struct Nep413Payload {
@@ -180,14 +158,14 @@ fn emit_event<T: Serialize>(event_name: &str, data: &T) {
 pub struct Contract {
     /// Account authorized to write to this contract
     pub backend_wallet: AccountId,
-    /// Set of used nullifiers (prevents duplicate passport registrations)
+    /// Set of used nullifiers
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records
     pub accounts: UnorderedMap<AccountId, VerifiedAccount>,
-    /// Whether the contract is paused (emergency stop)
-    pub paused: bool,
-    /// Set of used signatures (prevents replay attacks on NEP-413 off-chain signatures)
+    /// Set of used signatures
     pub used_signatures: LookupSet<[u8; 64]>,
+    /// Whether the contract is paused
+    pub paused: bool,
 }
 
 #[near]
@@ -205,8 +183,6 @@ impl Contract {
     }
 
     /// Update the backend wallet address (only callable by current backend wallet)
-    /// Use this for key rotation or if the backend wallet is compromised
-    /// Requires 1 yocto deposit to ensure only Full Access keys can call this
     #[payable]
     pub fn update_backend_wallet(&mut self, new_backend_wallet: AccountId) {
         assert_one_yocto();
@@ -227,9 +203,8 @@ impl Contract {
         );
     }
 
-    /// Pause the contract (emergency stop - only callable by backend wallet)
+    /// Pause the contract (only callable by backend wallet)
     /// When paused, no new verifications can be stored
-    /// Requires 1 yocto deposit to ensure only Full Access keys can call this
     #[payable]
     pub fn pause(&mut self) {
         assert_one_yocto();
@@ -249,7 +224,6 @@ impl Contract {
     }
 
     /// Unpause the contract (only callable by backend wallet)
-    /// Requires 1 yocto deposit to ensure only Full Access keys can call this
     #[payable]
     pub fn unpause(&mut self) {
         assert_one_yocto();
@@ -273,8 +247,7 @@ impl Contract {
         self.paused
     }
 
-    /// Store a verified account with NEAR signature verification
-    /// Only callable by backend wallet
+    /// Store a verified account with NEAR signature verification (only callable by backend wallet)
     pub fn store_verification(
         &mut self,
         nullifier: String,
@@ -286,10 +259,12 @@ impl Contract {
         user_context_data: String,
     ) {
         // Check if contract is paused
-        assert!(!self.paused, "Contract is paused - no new verifications allowed");
+        assert!(
+            !self.paused,
+            "Contract is paused - no new verifications allowed"
+        );
 
-        // Input length validation - prevents storage abuse
-        // Check cheapest validations first (fail fast, save gas)
+        // Input length validation
         assert!(
             nullifier.len() <= MAX_NULLIFIER_LEN,
             "Nullifier exceeds maximum length of 256"
@@ -307,7 +282,7 @@ impl Contract {
             "User context data exceeds maximum length of 4096"
         );
 
-        // ZK Proof validation - prevents storage DOS attacks
+        // ZK Proof validation
         // Self.xyz proofs typically have 21 public signals, cap at 30 for safety
         assert!(
             self_proof.public_signals.len() <= 30,
@@ -367,9 +342,7 @@ impl Contract {
         // Verify the NEAR signature
         self.verify_near_signature(&signature_data);
 
-        // Prevent signature replay attacks
-        // NEP-413 off-chain signatures don't increment on-chain nonces,
-        // so we track used signatures to prevent replay
+        // Prevent signature replay
         let mut sig_array = [0u8; 64];
         sig_array.copy_from_slice(&signature_data.signature);
         assert!(
@@ -377,7 +350,7 @@ impl Contract {
             "Signature already used - potential replay attack"
         );
 
-        // Prevent duplicate nullifiers (same passport can't be used twice)
+        // Prevent duplicate nullifiers
         assert!(
             !self.nullifiers.contains(&nullifier),
             "Nullifier already used - passport already registered"
@@ -411,8 +384,7 @@ impl Contract {
         // Validate storage cost coverage
         let final_storage = env::storage_usage();
         let storage_used = final_storage.saturating_sub(initial_storage);
-        let storage_cost = env::storage_byte_cost()
-            .saturating_mul(storage_used.into());
+        let storage_cost = env::storage_byte_cost().saturating_mul(storage_used.into());
 
         assert!(
             env::account_balance() >= storage_cost,
@@ -432,15 +404,9 @@ impl Contract {
     }
 
     /// Verify NEAR signature (NEP-413 format)
-    /// This implements the full NEP-413 specification for signature verification
-    /// Reference: https://github.com/near/NEPs/blob/master/neps/nep-0413.md
     fn verify_near_signature(&self, sig_data: &NearSignatureData) {
         // Validate nonce length
-        assert_eq!(
-            sig_data.nonce.len(),
-            32,
-            "Nonce must be exactly 32 bytes"
-        );
+        assert_eq!(sig_data.nonce.len(), 32, "Nonce must be exactly 32 bytes");
 
         // Validate signature length
         assert_eq!(sig_data.signature.len(), 64, "Signature must be 64 bytes");
@@ -463,7 +429,7 @@ impl Contract {
         };
 
         // Borsh serialize the payload
-        // This should never fail for a simple struct, but we handle the error for safety
+        // This should never fail
         let payload_bytes = match near_sdk::borsh::to_vec(&payload) {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -482,7 +448,6 @@ impl Contract {
         full_message.extend_from_slice(&payload_bytes);
 
         // Step 4: SHA-256 hash the concatenated message
-        // The wallet signs the hash, not the raw message
         let message_hash = env::sha256(&full_message);
 
         // Step 5: Extract and validate the public key
@@ -509,14 +474,35 @@ impl Contract {
         pk_array.copy_from_slice(public_key_bytes);
 
         // Step 7: Verify the signature against the SHA-256 hash
-        // This is the critical fix: we verify against the HASH, not raw bytes
         let is_valid = env::ed25519_verify(&sig_array, &message_hash, &pk_array);
 
-        assert!(is_valid, "Invalid NEAR signature - NEP-413 verification failed");
+        assert!(
+            is_valid,
+            "Invalid NEAR signature - NEP-413 verification failed"
+        );
     }
 
-    /// Get verification record for an account (public read)
-    pub fn get_verified_account(&self, near_account_id: AccountId) -> Option<VerifiedAccount> {
+    /// Get account verification info without proof data (public read)
+    /// Returns all essential data without the large ZK proof
+    pub fn get_account(
+        &self,
+        near_account_id: AccountId,
+    ) -> Option<verified_accounts_interface::VerifiedAccountInfo> {
+        self.accounts.get(&near_account_id).map(|v| {
+            verified_accounts_interface::VerifiedAccountInfo {
+                nullifier: v.nullifier,
+                near_account_id: v.near_account_id,
+                user_id: v.user_id,
+                attestation_id: v.attestation_id,
+                verified_at: v.verified_at,
+            }
+        })
+    }
+
+    /// Get full account data including ZK proof (public read)
+    /// Only use this when you need the actual proof data for re-verification
+    /// For most cases, use get_account() instead to save gas
+    pub fn get_account_with_proof(&self, near_account_id: AccountId) -> Option<VerifiedAccount> {
         self.accounts.get(&near_account_id)
     }
 
@@ -552,41 +538,6 @@ impl Contract {
             .collect()
     }
 
-    // ==================== Composability Interface Methods ====================
-    // These methods match the verified-accounts-interface crate for cross-contract calls
-
-    /// Get lightweight verification status without proof data (public read)
-    /// More gas-efficient for simple status checks
-    pub fn get_verification_status(
-        &self,
-        near_account_id: AccountId,
-    ) -> Option<verified_accounts_interface::VerificationStatus> {
-        self.accounts.get(&near_account_id).map(|v| {
-            verified_accounts_interface::VerificationStatus {
-                near_account_id: v.near_account_id,
-                attestation_id: v.attestation_id,
-                verified_at: v.verified_at,
-            }
-        })
-    }
-
-    /// Get verification info without proof data (public read)
-    /// Matches the interface crate's VerifiedAccountInfo type
-    pub fn get_verified_account_info(
-        &self,
-        near_account_id: AccountId,
-    ) -> Option<verified_accounts_interface::VerifiedAccountInfo> {
-        self.accounts.get(&near_account_id).map(|v| {
-            verified_accounts_interface::VerifiedAccountInfo {
-                nullifier: v.nullifier,
-                near_account_id: v.near_account_id,
-                user_id: v.user_id,
-                attestation_id: v.attestation_id,
-                verified_at: v.verified_at,
-            }
-        })
-    }
-
     /// Batch check if multiple accounts are verified (public read)
     /// Returns Vec<bool> in same order as input - efficient for DAO voting
     /// Maximum 100 accounts per call to prevent gas exhaustion
@@ -601,20 +552,20 @@ impl Contract {
             .collect()
     }
 
-    /// Batch get verification statuses (public read)
-    /// Returns Vec<Option<VerificationStatus>> in same order as input
+    /// Batch get account verification info (public read)
+    /// Returns Vec<Option<VerifiedAccountInfo>> in same order as input
     /// Maximum 100 accounts per call to prevent gas exhaustion
-    pub fn get_verification_statuses(
+    pub fn get_accounts(
         &self,
         account_ids: Vec<AccountId>,
-    ) -> Vec<Option<verified_accounts_interface::VerificationStatus>> {
+    ) -> Vec<Option<verified_accounts_interface::VerifiedAccountInfo>> {
         assert!(
             account_ids.len() <= MAX_BATCH_SIZE,
             "Batch size exceeds maximum of 100 accounts"
         );
         account_ids
             .iter()
-            .map(|id| self.get_verification_status(id.clone()))
+            .map(|id| self.get_account(id.clone()))
             .collect()
     }
 
@@ -622,9 +573,6 @@ impl Contract {
     pub fn interface_version(&self) -> String {
         "1.0.0".to_string()
     }
-
-    // Note: NEP-330 contract_source_metadata() is auto-generated by the NEAR SDK
-    // It uses CARGO_PKG_VERSION and CARGO_PKG_REPOSITORY from Cargo.toml
 }
 
 #[cfg(test)]
@@ -1007,7 +955,7 @@ mod tests {
         assert!(!contract.is_account_verified(accounts(2)));
 
         // Test get verified account
-        assert!(contract.get_verified_account(accounts(2)).is_none());
+        assert!(contract.get_account_with_proof(accounts(2)).is_none());
 
         // Test pagination with empty data
         let accounts_list = contract.get_verified_accounts(0, 10);
@@ -1043,7 +991,7 @@ mod tests {
     // and tested via integration tests
 
     #[test]
-    fn test_get_verification_status_empty() {
+    fn test_get_account_empty() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
@@ -1051,20 +999,7 @@ mod tests {
         let contract = Contract::new(backend);
 
         // Should return None for non-existent account
-        let status = contract.get_verification_status(accounts(2));
-        assert!(status.is_none());
-    }
-
-    #[test]
-    fn test_get_verified_account_info_empty() {
-        let backend = accounts(1);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-
-        let contract = Contract::new(backend);
-
-        // Should return None for non-existent account
-        let info = contract.get_verified_account_info(accounts(2));
+        let info = contract.get_account(accounts(2));
         assert!(info.is_none());
     }
 
@@ -1085,7 +1020,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_verification_statuses_empty() {
+    fn test_get_accounts_empty() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
@@ -1093,8 +1028,7 @@ mod tests {
         let contract = Contract::new(backend);
 
         // Batch status check with empty contract
-        let results =
-            contract.get_verification_statuses(vec![accounts(2), accounts(3), accounts(4)]);
+        let results = contract.get_accounts(vec![accounts(2), accounts(3), accounts(4)]);
         assert_eq!(results.len(), 3);
         assert!(results[0].is_none());
         assert!(results[1].is_none());
@@ -1136,7 +1070,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Batch size exceeds maximum of 100 accounts")]
-    fn test_batch_size_exceeded_get_verification_statuses() {
+    fn test_batch_size_exceeded_get_accounts() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
@@ -1149,7 +1083,7 @@ mod tests {
             .collect();
 
         // Should panic due to batch size limit
-        contract.get_verification_statuses(too_many_accounts);
+        contract.get_accounts(too_many_accounts);
     }
 
     #[test]

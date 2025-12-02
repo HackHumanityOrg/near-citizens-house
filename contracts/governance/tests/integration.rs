@@ -46,7 +46,7 @@ async fn setup() -> anyhow::Result<(Worker<Sandbox>, Contract, Contract, Account
         worker,
         governance_contract,
         verified_accounts_contract,
-        backend_account.id().clone(),
+        backend_account.id().to_string().parse()?,
     ))
 }
 

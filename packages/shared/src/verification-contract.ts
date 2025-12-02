@@ -179,7 +179,7 @@ export class NearContractDatabase implements IVerificationDatabase {
     try {
       const result = await this.provider!.callFunction<ContractVerifiedAccount>(
         this.contractId,
-        "get_verified_account",
+        "get_account_with_proof",
         {
           near_account_id: nearAccountId,
         },
