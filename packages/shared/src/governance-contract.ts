@@ -127,7 +127,7 @@ export class NearGovernanceContract implements IGovernanceDatabase {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<ContractVote | null>(this.contractId, "get_vote", {
+      const result = await this.provider!.callFunction<ContractVote>(this.contractId, "get_vote", {
         proposal_id: proposalId,
         account_id: accountId,
       })
@@ -214,8 +214,9 @@ export class NearGovernanceContract implements IGovernanceDatabase {
 
       // Extract proposal ID from result
       // The contract returns the proposal ID as a JSON number
-      const proposalId = result.status.ReturnValue
-        ? JSON.parse(Buffer.from(result.status.ReturnValue, "base64").toString())
+      const status = result.status as { SuccessValue?: string }
+      const proposalId = status.SuccessValue
+        ? JSON.parse(Buffer.from(status.SuccessValue, "base64").toString())
         : null
 
       if (proposalId === null) {
