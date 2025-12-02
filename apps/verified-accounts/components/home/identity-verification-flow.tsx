@@ -21,6 +21,7 @@ import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, MessageSqu
 import type { NearSignatureData } from "@near-citizens/shared/types"
 import type { VerificationStep } from "@/types/ui"
 import { CONSTANTS, ERROR_MESSAGES, DISCOURSE_CONFIG } from "@near-citizens/shared/config"
+import { isAccountVerified } from "@/app/verified-accounts/actions"
 
 export function IdentityVerificationFlow() {
   const { accountId, isConnected, connect, disconnect, signMessage, isLoading } = useNearWallet()
@@ -44,14 +45,9 @@ export function IdentityVerificationFlow() {
 
       setIsCheckingVerification(true)
       try {
-        const response = await fetch("/api/verify-stored", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nearAccountId: accountId }),
-        })
-        const result = await response.json()
+        const isVerified = await isAccountVerified(accountId)
 
-        if (result.verified) {
+        if (isVerified) {
           // Already verified - skip to Discourse step (or final if no Discourse)
           setNearSignature({
             accountId,
@@ -86,7 +82,7 @@ export function IdentityVerificationFlow() {
     }
 
     checkExistingVerification()
-  }, [accountId, isConnected, discourseEnabled, discourseConnected])
+  }, [accountId, isConnected, discourseEnabled, discourseConnected, currentStep])
 
   const baseSteps: VerificationStep[] = [
     {

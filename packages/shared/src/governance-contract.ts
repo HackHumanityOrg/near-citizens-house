@@ -215,9 +215,7 @@ export class NearGovernanceContract implements IGovernanceDatabase {
       // Extract proposal ID from result
       // The contract returns the proposal ID as a JSON number
       const status = result.status as { SuccessValue?: string }
-      const proposalId = status.SuccessValue
-        ? JSON.parse(Buffer.from(status.SuccessValue, "base64").toString())
-        : null
+      const proposalId = status.SuccessValue ? JSON.parse(Buffer.from(status.SuccessValue, "base64").toString()) : null
 
       if (proposalId === null) {
         throw new Error("Failed to get proposal ID from contract response")

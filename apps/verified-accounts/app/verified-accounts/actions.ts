@@ -162,3 +162,16 @@ export async function getVerifiedAccountsWithStatus(
 ): Promise<GetVerifiedAccountsResult> {
   return getCachedVerifiedAccounts(page * pageSize, pageSize)
 }
+
+/**
+ * Server action to check if a NEAR account is already verified.
+ * Used by the UI to skip verification steps for already-verified accounts.
+ */
+export async function isAccountVerified(nearAccountId: string): Promise<boolean> {
+  try {
+    return await db.isAccountVerified(nearAccountId)
+  } catch (error) {
+    console.error("Error checking account verification:", error)
+    return false
+  }
+}
