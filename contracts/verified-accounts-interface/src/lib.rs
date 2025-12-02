@@ -32,7 +32,9 @@
 //!     pub fn callback_verified_action(&mut self) {
 //!         let is_verified: bool = match env::promise_result(0) {
 //!             PromiseResult::Successful(data) => {
-//!                 near_sdk::serde_json::from_slice(&data).unwrap_or(false)
+//!                 // IMPORTANT: ext_contract uses Borsh serialization by default
+//!                 // Use borsh::from_slice, NOT serde_json::from_slice
+//!                 near_sdk::borsh::from_slice(&data).unwrap_or(false)
 //!             }
 //!             _ => false,
 //!         };
@@ -89,6 +91,15 @@ pub struct VerifiedAccountInfo {
 ///
 /// This trait is processed by the `#[ext_contract]` macro to generate
 /// the `ext_verified_accounts` module with cross-contract call builders.
+///
+/// ## Important: Serialization Format
+///
+/// **This interface uses Borsh serialization** (NEAR SDK default).
+/// When handling promise results in callbacks, you MUST use:
+/// ```ignore
+/// near_sdk::borsh::from_slice(&data)
+/// ```
+/// NOT `serde_json::from_slice(&data)` - that will fail silently!
 ///
 /// ## Gas Recommendations
 ///
