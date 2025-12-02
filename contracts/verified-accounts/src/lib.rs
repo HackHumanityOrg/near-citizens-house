@@ -45,7 +45,6 @@ use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupSet, UnorderedMap};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
-use near_sdk::assert_one_yocto;
 
 /// Maximum length for string inputs (prevents storage abuse)
 const MAX_NULLIFIER_LEN: usize = 256;
@@ -164,13 +163,8 @@ pub struct BackendWalletUpdatedEvent {
 
 /// Helper to emit JSON events in NEAR standard format
 fn emit_event<T: Serialize>(event_name: &str, data: &T) {
-    match near_sdk::serde_json::to_string(data) {
-        Ok(json) => {
-            env::log_str(&format!("EVENT_JSON:{{\"standard\":\"near-verified-accounts\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}", event_name, json));
-        }
-        Err(e) => {
-            env::log_str(&format!("Failed to emit event {}: {:?}", event_name, e));
-        }
+    if let Ok(json) = near_sdk::serde_json::to_string(data) {
+        env::log_str(&format!("EVENT_JSON:{{\"standard\":\"near-verified-accounts\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}", event_name, json));
     }
 }
 
@@ -206,10 +200,7 @@ impl Contract {
 
     /// Update the backend wallet address (only callable by current backend wallet)
     /// Use this for key rotation or if the backend wallet is compromised
-    /// Requires 1 yocto deposit to ensure only Full Access keys can call this
-    #[payable]
     pub fn update_backend_wallet(&mut self, new_backend_wallet: AccountId) {
-        assert_one_yocto();
         assert_eq!(
             env::predecessor_account_id(),
             self.backend_wallet,
@@ -229,10 +220,7 @@ impl Contract {
 
     /// Pause the contract (emergency stop - only callable by backend wallet)
     /// When paused, no new verifications can be stored
-    /// Requires 1 yocto deposit to ensure only Full Access keys can call this
-    #[payable]
     pub fn pause(&mut self) {
-        assert_one_yocto();
         let caller = env::predecessor_account_id();
         assert_eq!(
             caller, self.backend_wallet,
@@ -249,10 +237,7 @@ impl Contract {
     }
 
     /// Unpause the contract (only callable by backend wallet)
-    /// Requires 1 yocto deposit to ensure only Full Access keys can call this
-    #[payable]
     pub fn unpause(&mut self) {
-        assert_one_yocto();
         let caller = env::predecessor_account_id();
         assert_eq!(
             caller, self.backend_wallet,
@@ -307,45 +292,6 @@ impl Contract {
             "User context data exceeds maximum length of 4096"
         );
 
-        // ZK Proof validation - prevents storage DOS attacks
-        // Self.xyz proofs typically have 21 public signals, cap at 30 for safety
-        assert!(
-            self_proof.public_signals.len() <= 30,
-            "Public signals array exceeds maximum length of 30"
-        );
-
-        // Validate individual string lengths in proof components
-        // Field elements are ~32 bytes = 64 hex chars, 256 is very generous
-        for signal in &self_proof.public_signals {
-            assert!(
-                signal.len() <= 256,
-                "Public signal string exceeds maximum length of 256"
-            );
-        }
-
-        for component in &self_proof.proof.a {
-            assert!(
-                component.len() <= 256,
-                "Proof component 'a' string exceeds maximum length of 256"
-            );
-        }
-
-        for row in &self_proof.proof.b {
-            for component in row {
-                assert!(
-                    component.len() <= 256,
-                    "Proof component 'b' string exceeds maximum length of 256"
-                );
-            }
-        }
-
-        for component in &self_proof.proof.c {
-            assert!(
-                component.len() <= 256,
-                "Proof component 'c' string exceeds maximum length of 256"
-            );
-        }
-
         // Access control: only backend wallet can write
         assert_eq!(
             env::predecessor_account_id(),
@@ -389,9 +335,6 @@ impl Contract {
             "NEAR account already verified"
         );
 
-        // Check storage balance before modifications
-        let initial_storage = env::storage_usage();
-
         // Create verification record
         let account = VerifiedAccount {
             nullifier: nullifier.clone(),
@@ -407,18 +350,6 @@ impl Contract {
         self.used_signatures.insert(&sig_array);
         self.nullifiers.insert(&nullifier);
         self.accounts.insert(&near_account_id, &account);
-
-        // Validate storage cost coverage
-        let final_storage = env::storage_usage();
-        let storage_used = final_storage.saturating_sub(initial_storage);
-        let storage_cost = env::storage_byte_cost()
-            .saturating_mul(storage_used.into());
-
-        assert!(
-            env::account_balance() >= storage_cost,
-            "Insufficient contract balance for storage. Required: {} yoctoNEAR",
-            storage_cost
-        );
 
         // Emit event
         emit_event(
@@ -466,14 +397,8 @@ impl Contract {
         // This should never fail for a simple struct, but we handle the error for safety
         let payload_bytes = match near_sdk::borsh::to_vec(&payload) {
             Ok(bytes) => bytes,
-            Err(e) => {
-                env::panic_str(&format!(
-                    "Failed to serialize NEP-413 payload: {:?}. Message: {}, Nonce len: {}, Recipient: {}",
-                    e,
-                    sig_data.challenge,
-                    sig_data.nonce.len(),
-                    sig_data.recipient
-                ));
+            Err(_) => {
+                env::panic_str("Failed to serialize NEP-413 payload");
             }
         };
 
@@ -633,7 +558,6 @@ mod tests {
     use super::*;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::testing_env;
-    use near_sdk::NearToken;
 
     fn get_context(predecessor: AccountId) -> VMContextBuilder {
         let mut builder = VMContextBuilder::new();
@@ -796,22 +720,16 @@ mod tests {
         let context = get_context(backend.clone());
         testing_env!(context.build());
 
-        let mut contract = Contract::new(backend.clone());
+        let mut contract = Contract::new(backend);
 
         // Initially not paused
         assert!(!contract.is_paused());
 
-        // Pause (requires 1 yocto)
-        let mut context = get_context(backend.clone());
-        context.attached_deposit(NearToken::from_yoctonear(1));
-        testing_env!(context.build());
+        // Pause
         contract.pause();
         assert!(contract.is_paused());
 
-        // Unpause (requires 1 yocto)
-        let mut context = get_context(backend);
-        context.attached_deposit(NearToken::from_yoctonear(1));
-        testing_env!(context.build());
+        // Unpause
         contract.unpause();
         assert!(!contract.is_paused());
     }
@@ -821,8 +739,7 @@ mod tests {
     fn test_unauthorized_pause() {
         let backend = accounts(1);
         let unauthorized = accounts(0);
-        let mut context = get_context(unauthorized);
-        context.attached_deposit(NearToken::from_yoctonear(1));
+        let context = get_context(unauthorized);
         testing_env!(context.build());
 
         let mut contract = Contract::new(backend);
@@ -837,16 +754,10 @@ mod tests {
         testing_env!(context.build());
 
         let mut contract = Contract::new(backend.clone());
-
-        // Pause (requires 1 yocto)
-        let mut context = get_context(backend);
-        context.attached_deposit(NearToken::from_yoctonear(1));
-        testing_env!(context.build());
         contract.pause();
 
-        // Change context to unauthorized user (with 1 yocto to pass deposit check)
-        let mut unauthorized_context = get_context(accounts(0));
-        unauthorized_context.attached_deposit(NearToken::from_yoctonear(1));
+        // Change context to unauthorized user
+        let unauthorized_context = get_context(accounts(0));
         testing_env!(unauthorized_context.build());
 
         contract.unpause();
@@ -860,12 +771,7 @@ mod tests {
         let context = get_context(backend.clone());
         testing_env!(context.build());
 
-        let mut contract = Contract::new(backend.clone());
-
-        // Pause (requires 1 yocto)
-        let mut context = get_context(backend);
-        context.attached_deposit(NearToken::from_yoctonear(1));
-        testing_env!(context.build());
+        let mut contract = Contract::new(backend);
         contract.pause();
 
         let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
@@ -902,10 +808,6 @@ mod tests {
         let mut contract = Contract::new(backend.clone());
         assert_eq!(contract.get_backend_wallet(), backend);
 
-        // Update backend wallet (requires 1 yocto)
-        let mut context = get_context(backend);
-        context.attached_deposit(NearToken::from_yoctonear(1));
-        testing_env!(context.build());
         contract.update_backend_wallet(new_backend.clone());
         assert_eq!(contract.get_backend_wallet(), new_backend);
     }
@@ -915,8 +817,7 @@ mod tests {
     fn test_unauthorized_update_backend_wallet() {
         let backend = accounts(1);
         let unauthorized = accounts(0);
-        let mut context = get_context(unauthorized);
-        context.attached_deposit(NearToken::from_yoctonear(1));
+        let context = get_context(unauthorized);
         testing_env!(context.build());
 
         let mut contract = Contract::new(backend);
