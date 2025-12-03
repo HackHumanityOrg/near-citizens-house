@@ -95,10 +95,9 @@ async function tryMultipleRpcProviders<T>(
         operation(provider),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs)),
       ])
-      console.log(`[Celo RPC] Using cached endpoint: ${lastSuccessfulRpcUrl}`)
       return { result, rpcUrl: lastSuccessfulRpcUrl }
-    } catch (error) {
-      console.warn(`[Celo RPC] Cached endpoint failed: ${lastSuccessfulRpcUrl}`, error)
+    } catch {
+      // Cached endpoint failed, will try other endpoints
       lastSuccessfulRpcUrl = null // Invalidate cache
     }
   }
@@ -106,7 +105,6 @@ async function tryMultipleRpcProviders<T>(
   // Try each RPC URL in sequence
   for (const rpcUrl of CELO_RPC_URLS) {
     try {
-      console.log(`[Celo RPC] Trying endpoint: ${rpcUrl}`)
       const provider = new ethers.JsonRpcProvider(rpcUrl)
 
       // Race between operation and timeout
@@ -120,13 +118,11 @@ async function tryMultipleRpcProviders<T>(
       // Success! Cache this URL
       lastSuccessfulRpcUrl = rpcUrl
       lastSuccessfulRpcTime = Date.now()
-      console.log(`[Celo RPC] Success with endpoint: ${rpcUrl}`)
 
       return { result, rpcUrl }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
       errors.push({ url: rpcUrl, error: errorMsg })
-      console.warn(`[Celo RPC] Failed endpoint ${rpcUrl}:`, errorMsg)
       // Continue to next endpoint immediately (no delay)
     }
   }

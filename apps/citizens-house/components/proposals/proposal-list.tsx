@@ -48,8 +48,18 @@ export function ProposalList({ initialProposals = [], statusFilter }: ProposalLi
     }
   }
 
+  // Sync initialProposals prop to state when it changes
+  useEffect(() => {
+    if (initialProposals.length > 0) {
+      setProposals(initialProposals)
+      setPage(1)
+    }
+  }, [initialProposals])
+
   // Load initial data when component mounts or statusFilter changes
   useEffect(() => {
+    const abortController = new AbortController()
+
     // Reset state when filter changes
     setProposals([])
     setPage(0)
@@ -59,22 +69,31 @@ export function ProposalList({ initialProposals = [], statusFilter }: ProposalLi
       setLoading(true)
       try {
         const { proposals: newProposals } = await getProposalsWithStats(0, 10, statusFilter)
-        if (newProposals && newProposals.length > 0) {
-          setProposals(newProposals)
-          setPage(1)
-        } else {
-          setHasMore(false)
+        // Only update state if this effect hasn't been cleaned up
+        if (!abortController.signal.aborted) {
+          if (newProposals && newProposals.length > 0) {
+            setProposals(newProposals)
+            setPage(1)
+          } else {
+            setHasMore(false)
+          }
         }
       } catch (error) {
-        console.error("Error loading proposals:", error)
+        if (!abortController.signal.aborted) {
+          console.error("Error loading proposals:", error)
+        }
       } finally {
-        setLoading(false)
+        if (!abortController.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
     if (initialProposals.length === 0) {
       loadInitial()
     }
+
+    return () => abortController.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])
 

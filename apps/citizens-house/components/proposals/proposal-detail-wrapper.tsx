@@ -30,6 +30,8 @@ export function ProposalDetailWrapper({
 
   // Fetch user vote and verification status when wallet connects
   useEffect(() => {
+    const abortController = new AbortController()
+
     const fetchUserData = async () => {
       if (!accountId) {
         setUserVote(null)
@@ -43,18 +45,30 @@ export function ProposalDetailWrapper({
           getUserVote(initialProposal.id, accountId),
           checkVerificationStatus(accountId),
         ])
-        setUserVote(vote)
-        setIsVerified(verified)
+
+        // Only update state if this effect hasn't been cleaned up
+        if (!abortController.signal.aborted) {
+          setUserVote(vote)
+          setIsVerified(verified)
+        }
       } catch (error) {
-        console.error("Error fetching user data:", error)
+        if (!abortController.signal.aborted) {
+          console.error("Error fetching user data:", error)
+          setUserVote(null)
+          setIsVerified(false)
+        }
       } finally {
-        setLoading(false)
+        if (!abortController.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
     if (!walletLoading) {
       fetchUserData()
     }
+
+    return () => abortController.abort()
   }, [accountId, walletLoading, initialProposal.id])
 
   // Callback to refresh vote counts after voting

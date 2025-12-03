@@ -381,7 +381,8 @@ impl Contract {
         self.nullifiers.insert(&nullifier);
         self.accounts.insert(&near_account_id, &account);
 
-        // Validate storage cost coverage
+        // Validate storage cost coverage (after writes)
+        // Note: NEAR transactions are atomic - if this check fails, all state changes revert
         let final_storage = env::storage_usage();
         let storage_used = final_storage.saturating_sub(initial_storage);
         let storage_cost = env::storage_byte_cost().saturating_mul(storage_used.into());

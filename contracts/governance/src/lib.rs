@@ -221,6 +221,8 @@ impl GovernanceContract {
         quorum_percentage: u8,
     ) -> Promise {
         // Cross-contract call to verify citizenship
+        // Gas allocation: 5 TGas for is_account_verified (simple storage lookup)
+        // Increase if verified-accounts contract adds complexity
         ext_verified_accounts::ext(self.verified_accounts_contract.clone())
             .with_static_gas(Gas::from_tgas(5))
             .is_account_verified(env::predecessor_account_id())
@@ -249,10 +251,9 @@ impl GovernanceContract {
     ) -> u64 {
         // Check verification result
         let is_verified = match env::promise_result(0) {
-            PromiseResult::Successful(data) => {
-                near_sdk::serde_json::from_slice::<bool>(&data).unwrap_or(false)
-            }
-            _ => false,
+            PromiseResult::Successful(data) => near_sdk::serde_json::from_slice::<bool>(&data)
+                .unwrap_or_else(|_| env::panic_str("Failed to deserialize verification status")),
+            _ => env::panic_str("Verification check failed"),
         };
 
         if !is_verified {
@@ -322,6 +323,8 @@ impl GovernanceContract {
     #[payable]
     pub fn vote(&mut self, proposal_id: u64, vote: Vote) -> Promise {
         // Cross-contract call to get account verification info (for snapshot check)
+        // Gas allocation: 8 TGas for get_account (returns struct with proof data excluded)
+        // Increase if VerifiedAccountInfo grows significantly
         ext_verified_accounts::ext(self.verified_accounts_contract.clone())
             .with_static_gas(Gas::from_tgas(8))
             .get_account(env::predecessor_account_id())
@@ -340,9 +343,8 @@ impl GovernanceContract {
         // NEAR cross-contract calls use JSON serialization by default
         let verified_info: Option<verified_accounts_interface::VerifiedAccountInfo> =
             match env::promise_result(0) {
-                PromiseResult::Successful(data) => {
-                    near_sdk::serde_json::from_slice(&data).unwrap_or(None)
-                }
+                PromiseResult::Successful(data) => near_sdk::serde_json::from_slice(&data)
+                    .unwrap_or_else(|_| env::panic_str("Failed to deserialize verification info")),
                 _ => env::panic_str("Failed to get verification info"),
             };
 
@@ -357,7 +359,8 @@ impl GovernanceContract {
             .unwrap_or_else(|| env::panic_str("Proposal not found"));
 
         // Snapshot voting: voter must have been verified BEFORE proposal creation
-        if account_info.verified_at >= proposal.created_at {
+        // Using strict greater-than to allow same-block verification (edge case)
+        if account_info.verified_at > proposal.created_at {
             env::panic_str(
                 "You must be verified before the proposal was created to vote on it",
             );
@@ -412,6 +415,7 @@ impl GovernanceContract {
     /// Anyone can call this to finalize an expired proposal
     pub fn finalize_proposal(&mut self, proposal_id: u64) -> Promise {
         // Get total verified citizens count via cross-contract call
+        // Gas allocation: 5 TGas for get_verified_count (simple u64 return)
         ext_verified_accounts::ext(self.verified_accounts_contract.clone())
             .with_static_gas(Gas::from_tgas(5))
             .get_verified_count()
@@ -427,11 +431,15 @@ impl GovernanceContract {
     pub fn callback_finalize_proposal(&mut self, proposal_id: u64) {
         // Get total citizens from promise result
         let total_citizens = match env::promise_result(0) {
-            PromiseResult::Successful(data) => {
-                near_sdk::serde_json::from_slice::<u64>(&data).unwrap_or(0)
-            }
+            PromiseResult::Successful(data) => near_sdk::serde_json::from_slice::<u64>(&data)
+                .unwrap_or_else(|_| env::panic_str("Failed to deserialize citizens count")),
             _ => env::panic_str("Failed to get verified citizens count"),
         };
+
+        // Prevent quorum bypass when no citizens are registered
+        if total_citizens == 0 {
+            env::panic_str("Cannot finalize proposal: no verified citizens registered");
+        }
 
         // Get proposal
         let mut proposal = self

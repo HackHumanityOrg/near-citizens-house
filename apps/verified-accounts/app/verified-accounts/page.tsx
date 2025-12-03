@@ -10,10 +10,13 @@ interface Props {
 
 export default async function VerificationsPage({ searchParams }: Props) {
   const params = await searchParams
-  const page = Math.max(0, parseInt(params.page || "0", 10))
+  const rawPage = parseInt(params.page || "0", 10)
+  const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
 
-  const { accounts, total } = await getVerifiedAccountsWithStatus(page, PAGE_SIZE)
+  const { accounts, total } = await getVerifiedAccountsWithStatus(requestedPage, PAGE_SIZE)
   const totalPages = Math.ceil(total / PAGE_SIZE)
+  // Clamp page to valid range (in case URL has out-of-bounds page number)
+  const page = Math.min(requestedPage, Math.max(0, totalPages - 1))
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80">

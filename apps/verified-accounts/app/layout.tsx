@@ -48,6 +48,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+    // suppressHydrationWarning required for next-themes - theme stored in localStorage causes hydration mismatch
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>

@@ -68,7 +68,6 @@ export async function POST(request: NextRequest) {
       const attestationIdNum = Number(attestationId) as 1 | 2 | 3
       selfVerificationResult = await verifier.verify(attestationIdNum, proof, publicSignals, userContextData)
     } catch (error) {
-      console.error("Self verification error:", error)
       return NextResponse.json(
         {
           status: "error",
@@ -102,7 +101,6 @@ export async function POST(request: NextRequest) {
     const nullifier = selfVerificationResult.discloseOutput?.nullifier
 
     if (!nullifier) {
-      console.error("[SECURITY] Nullifier not found in proof")
       return NextResponse.json(
         {
           status: "error",
@@ -165,7 +163,6 @@ export async function POST(request: NextRequest) {
         recipient: data.accountId,
       }
     } catch (e) {
-      console.error("Failed to parse NEAR signature:", e)
       return NextResponse.json(
         {
           status: "error",
@@ -204,14 +201,9 @@ export async function POST(request: NextRequest) {
       } satisfies VerificationDataWithSignature)
 
       // Revalidate the verifications cache so new verification appears
-      // Using "max" profile for stale-while-revalidate semantics
+      // Using "max" profile for stale-while-revalidate semantics (Next.js 16)
       revalidateTag("verifications", "max")
     } catch (error) {
-      // Detect duplicate nullifier attempts from contract error
-      if (error instanceof Error && error.message.includes("Nullifier already used")) {
-        console.warn("[SECURITY] Duplicate passport registration attempted")
-      }
-      console.error("[SECURITY] Failed to store verification:", error)
       return NextResponse.json(
         {
           status: "error",
@@ -237,7 +229,6 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     )
   } catch (error) {
-    console.error("Verification API error:", error)
     return NextResponse.json(
       {
         status: "error",
