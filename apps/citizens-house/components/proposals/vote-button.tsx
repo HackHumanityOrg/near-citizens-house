@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@near-citizens/ui"
-import { type Vote } from "@near-citizens/shared"
+import { type Vote, useNearWallet } from "@near-citizens/shared"
 import { ThumbsUp, ThumbsDown, Loader2 } from "lucide-react"
+import { useGovernance } from "@/hooks/governance"
 
 interface VoteButtonProps {
   proposalId: number
@@ -13,31 +13,22 @@ interface VoteButtonProps {
 }
 
 export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSuccess }: VoteButtonProps) {
-  const [voting, setVoting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { vote, isLoading, error, clearError } = useGovernance()
+  const { isConnected, connect } = useNearWallet()
 
-  const handleVote = async (vote: Vote) => {
-    setVoting(true)
-    setError(null)
+  const handleVote = async (voteChoice: Vote) => {
+    if (!isConnected) {
+      await connect()
+      return
+    }
+
+    clearError()
 
     try {
-      const response = await fetch("/api/governance/vote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proposalId, vote }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to vote")
-      }
-
-      // Success
+      await vote(proposalId, voteChoice)
       onVoteSuccess?.()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to vote")
-    } finally {
-      setVoting(false)
+    } catch {
+      // Error is already set by the hook
     }
   }
 
@@ -67,15 +58,20 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
       <div className="flex gap-2">
         <Button
           onClick={() => handleVote("Yes")}
-          disabled={disabled || voting}
+          disabled={disabled || isLoading}
           variant="default"
           className="flex-1 bg-green-600 hover:bg-green-700"
         >
-          {voting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
           Vote Yes
         </Button>
-        <Button onClick={() => handleVote("No")} disabled={disabled || voting} variant="destructive" className="flex-1">
-          {voting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
+        <Button
+          onClick={() => handleVote("No")}
+          disabled={disabled || isLoading}
+          variant="destructive"
+          className="flex-1"
+        >
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
           Vote No
         </Button>
       </div>

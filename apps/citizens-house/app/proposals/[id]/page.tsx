@@ -1,9 +1,10 @@
-import { Suspense } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Button } from "@near-citizens/ui"
-import { ProposalDetail } from "@/components/proposals/proposal-detail"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
+import { governanceDb, verificationDb } from "@near-citizens/shared"
+import { ProposalDetailWrapper } from "@/components/proposals/proposal-detail-wrapper"
+import { GovernanceHeader } from "@/components/shared/governance-header"
 
 interface ProposalPageProps {
   params: Promise<{
@@ -11,90 +12,73 @@ interface ProposalPageProps {
   }>
 }
 
-async function getProposal(id: string, accountId?: string) {
-  const url = new URL(`/api/governance/proposals/${id}`, process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001")
-
-  if (accountId) {
-    url.searchParams.set("accountId", accountId)
-  }
-
-  const response = await fetch(url.toString(), {
-    cache: "no-store", // Always fetch fresh data for proposals
-  })
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      return null
-    }
-    throw new Error("Failed to fetch proposal")
-  }
-
-  return response.json()
-}
-
 export async function generateMetadata({ params }: ProposalPageProps) {
   const { id } = await params
-  const data = await getProposal(id)
+  const proposalId = parseInt(id)
 
-  if (!data) {
-    return {
-      title: "Proposal Not Found",
-    }
+  if (isNaN(proposalId)) {
+    return { title: "Invalid Proposal" }
+  }
+
+  const proposal = await governanceDb.getProposal(proposalId)
+
+  if (!proposal) {
+    return { title: "Proposal Not Found" }
   }
 
   return {
-    title: `${data.proposal.title} | Citizens House`,
-    description: data.proposal.description.substring(0, 160),
+    title: `${proposal.title} | Citizens House`,
+    description: proposal.description.substring(0, 160),
   }
 }
 
 export default async function ProposalPage({ params }: ProposalPageProps) {
   const { id } = await params
-  // TODO: Get actual wallet address from wallet connection
-  // For now, we'll check cookies or session
-  const accountId = undefined // Replace with actual wallet connection
+  const proposalId = parseInt(id)
 
-  const data = await getProposal(id, accountId)
-
-  if (!data) {
+  if (isNaN(proposalId)) {
     notFound()
   }
 
-  const { proposal, voteCounts, quorumRequired, totalCitizens, userVote } = data
+  // Fetch proposal data server-side
+  const proposal = await governanceDb.getProposal(proposalId)
 
-  // TODO: Check if user is verified citizen
-  // For now, assume false
-  const canVote = false
+  if (!proposal) {
+    notFound()
+  }
+
+  // Fetch vote counts and total citizens in parallel
+  const [voteCounts, { total: totalCitizens }] = await Promise.all([
+    governanceDb.getVoteCounts(proposalId),
+    verificationDb.getVerifiedAccounts(0, 1),
+  ])
+
+  // Calculate quorum (10% of verified citizens)
+  const quorumRequired = Math.ceil(totalCitizens * 0.1)
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      {/* Header */}
-      <div className="mb-8">
-        <Link href="/proposals">
-          <Button variant="ghost" size="sm" className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Proposals
-          </Button>
-        </Link>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+      <GovernanceHeader />
 
-      {/* Proposal Detail */}
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        }
-      >
-        <ProposalDetail
+      <div className="container mx-auto py-8 px-4 max-w-4xl">
+        {/* Header */}
+        <div className="mb-8">
+          <Link href="/proposals">
+            <Button variant="ghost" size="sm" className="mb-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Proposals
+            </Button>
+          </Link>
+        </div>
+
+        {/* Proposal Detail with client-side wallet hydration */}
+        <ProposalDetailWrapper
           proposal={proposal}
           voteCounts={voteCounts}
           quorumRequired={quorumRequired}
           totalCitizens={totalCitizens}
-          userVote={userVote}
-          canVote={canVote}
         />
-      </Suspense>
+      </div>
     </div>
   )
 }

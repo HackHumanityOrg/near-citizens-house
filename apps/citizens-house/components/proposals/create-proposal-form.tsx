@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -17,6 +16,7 @@ import {
   Label,
 } from "@near-citizens/ui"
 import { Loader2, AlertCircle } from "lucide-react"
+import { useGovernance } from "@/hooks/governance"
 
 interface CreateProposalFormProps {
   isVerified: boolean
@@ -24,8 +24,7 @@ interface CreateProposalFormProps {
 
 export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
   const router = useRouter()
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { createProposal, isLoading, error, clearError } = useGovernance()
 
   const {
     register,
@@ -40,28 +39,15 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
   const descriptionLength = watch("description")?.length || 0
 
   const onSubmit = async (data: CreateProposalRequest) => {
-    setSubmitting(true)
-    setError(null)
+    clearError()
 
     try {
-      const response = await fetch("/api/governance/proposals/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        const result = await response.json()
-        throw new Error(result.error || "Failed to create proposal")
-      }
-
-      const result = await response.json()
+      const proposalId = await createProposal(data.title, data.description, data.discourseUrl)
 
       // Redirect to the new proposal
-      router.push(`/proposals/${result.proposalId}`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create proposal")
-      setSubmitting(false)
+      router.push(`/proposals/${proposalId}`)
+    } catch {
+      // Error is already set by the hook
     }
   }
 
@@ -106,7 +92,7 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
             <Label htmlFor="title">
               Title <span className="text-destructive">*</span>
             </Label>
-            <Input id="title" {...register("title")} placeholder="Enter a clear, concise title" disabled={submitting} />
+            <Input id="title" {...register("title")} placeholder="Enter a clear, concise title" disabled={isLoading} />
             <div className="flex justify-between text-xs">
               <span className="text-destructive">{errors.title?.message}</span>
               <span className={titleLength > 200 ? "text-destructive" : "text-muted-foreground"}>
@@ -125,7 +111,7 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
               {...register("description")}
               placeholder="Provide a detailed description of your proposal..."
               rows={10}
-              disabled={submitting}
+              disabled={isLoading}
             />
             <div className="flex justify-between text-xs">
               <span className="text-destructive">{errors.description?.message}</span>
@@ -142,7 +128,7 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
               id="discourseUrl"
               {...register("discourseUrl")}
               placeholder="https://forum.example.com/t/..."
-              disabled={submitting}
+              disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">Link to a Discourse forum topic for discussion</p>
             {errors.discourseUrl && <p className="text-xs text-destructive">{errors.discourseUrl.message}</p>}
@@ -160,8 +146,8 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
 
           {/* Submit Button */}
           <div className="flex gap-4">
-            <Button type="submit" disabled={submitting} className="flex-1">
-              {submitting ? (
+            <Button type="submit" disabled={isLoading} className="flex-1">
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating Proposal...
@@ -170,7 +156,7 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
                 "Create Proposal"
               )}
             </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={submitting}>
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
               Cancel
             </Button>
           </div>

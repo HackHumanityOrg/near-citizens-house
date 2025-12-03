@@ -20,6 +20,7 @@ import {
   type VerificationDataWithSignature,
   type VerifiedAccount,
 } from "./types"
+import { NEAR_CONFIG } from "./config"
 
 export type { IVerificationDatabase, VerificationDataWithSignature, VerifiedAccount }
 
@@ -266,16 +267,12 @@ export class NearContractDatabase implements IVerificationDatabase {
 let dbInstance: IVerificationDatabase | null = null
 
 function createVerificationContract(): IVerificationDatabase {
-  const contractId = process.env.NEAR_CONTRACT_ID
-  const backendAccountId = process.env.NEAR_ACCOUNT_ID
-  const backendPrivateKey = process.env.NEAR_PRIVATE_KEY
-  const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
-  const rpcUrl = process.env.NEXT_PUBLIC_NEAR_RPC_URL || "https://rpc.testnet.near.org"
+  const { verificationContractId, backendAccountId, backendPrivateKey, networkId, rpcUrl } = NEAR_CONFIG
 
-  if (!contractId || !backendAccountId || !backendPrivateKey) {
+  if (!verificationContractId || !backendAccountId || !backendPrivateKey) {
     throw new Error(
       "Missing required NEAR configuration. Please set:\n" +
-        "- NEAR_CONTRACT_ID (contract account address)\n" +
+        "- NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT (contract account address)\n" +
         "- NEAR_ACCOUNT_ID (backend wallet account)\n" +
         "- NEAR_PRIVATE_KEY (backend wallet private key)\n" +
         "See DEVELOPER.md for setup instructions.",
@@ -283,14 +280,14 @@ function createVerificationContract(): IVerificationDatabase {
   }
 
   console.log("[VerificationContract] Using NEAR smart contract")
-  console.log(`[VerificationContract] Contract: ${contractId}`)
+  console.log(`[VerificationContract] Contract: ${verificationContractId}`)
   console.log(`[VerificationContract] Network: ${networkId}`)
 
-  return new NearContractDatabase(backendAccountId, backendPrivateKey, contractId, networkId, rpcUrl)
+  return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId, networkId, rpcUrl)
 }
 
 // Lazy singleton - only initialize when first accessed (not during build)
-export const db: IVerificationDatabase = new Proxy({} as IVerificationDatabase, {
+export const verificationDb: IVerificationDatabase = new Proxy({} as IVerificationDatabase, {
   get(target, prop) {
     if (!dbInstance) {
       dbInstance = createVerificationContract()

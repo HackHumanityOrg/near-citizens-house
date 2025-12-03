@@ -356,21 +356,19 @@ export const voteRequestSchema = z.object({
 export type VoteRequest = z.infer<typeof voteRequestSchema>
 
 // ============================================================================
-// Governance Database Interface
+// Governance Database Interface (Read-Only)
 // ============================================================================
 
+/**
+ * Read-only interface for governance contract queries.
+ * Write operations (createProposal, vote, etc.) are handled client-side
+ * via the useGovernance hook with user wallet signing.
+ */
 export interface IGovernanceDatabase {
-  // Read methods
   getProposal(proposalId: number): Promise<Proposal | null>
   getProposals(from: number, limit: number, status?: ProposalStatus): Promise<Proposal[]>
   getVote(proposalId: number, accountId: string): Promise<Vote | null>
   hasVoted(proposalId: number, accountId: string): Promise<boolean>
   getVoteCounts(proposalId: number): Promise<VoteCounts>
   getProposalCount(): Promise<number>
-
-  // Write methods
-  createProposal(title: string, description: string, discourseUrl?: string): Promise<number>
-  vote(proposalId: number, vote: Vote): Promise<void>
-  finalizeProposal(proposalId: number): Promise<void>
-  cancelProposal(proposalId: number): Promise<void>
 }

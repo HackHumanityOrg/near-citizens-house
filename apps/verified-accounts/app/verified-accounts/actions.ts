@@ -1,7 +1,11 @@
 "use server"
 
 import { unstable_cache } from "next/cache"
-import { db, type VerifiedAccount, type NearContractDatabase } from "@near-citizens/shared/verification-contract"
+import {
+  verificationDb,
+  type VerifiedAccount,
+  type NearContractDatabase,
+} from "@near-citizens/shared/verification-contract"
 import { verifyStoredProofWithDetails } from "@near-citizens/shared/zk-verify"
 import {
   parseUserContextData,
@@ -32,7 +36,7 @@ export interface GetVerifiedAccountsResult {
  * Fetches accounts from NEAR contract and verifies each one.
  */
 async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise<GetVerifiedAccountsResult> {
-  const nearDb = db as NearContractDatabase
+  const nearDb = verificationDb as NearContractDatabase
 
   // Get paginated accounts from NEAR contract
   const { accounts, total } = await nearDb.getVerifiedAccounts(fromIndex, limit)
@@ -169,7 +173,7 @@ export async function getVerifiedAccountsWithStatus(
  */
 export async function isAccountVerified(nearAccountId: string): Promise<boolean> {
   try {
-    return await db.isAccountVerified(nearAccountId)
+    return await verificationDb.isAccountVerified(nearAccountId)
   } catch (error) {
     console.error("Error checking account verification:", error)
     return false

@@ -3,7 +3,7 @@ import { revalidateTag } from "next/cache"
 import { SELF_CONFIG, CONSTANTS, ERROR_MESSAGES } from "@near-citizens/shared/config"
 import type { SelfVerificationResult, NearSignatureData } from "@near-citizens/shared/types"
 import { verifyRequestSchema } from "@near-citizens/shared/types"
-import { db, type VerificationDataWithSignature } from "@near-citizens/shared/verification-contract"
+import { verificationDb, type VerificationDataWithSignature } from "@near-citizens/shared/verification-contract"
 import { getVerifier } from "@near-citizens/shared/self-verifier"
 
 // Maximum age for signature timestamps (10 minutes)
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
         publicSignals: publicSignals.map(String),
       }
 
-      await db.storeVerification({
+      await verificationDb.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
         userId: selfVerificationResult.userData?.userIdentifier || "unknown",

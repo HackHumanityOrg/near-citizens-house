@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { NearConnector } from "@hot-labs/near-connect"
-import type { NearWalletBase, SignedMessage } from "@hot-labs/near-connect"
+import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from "@hot-labs/near-connect"
+import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS, ERROR_MESSAGES } from "./config"
 import type { NearSignatureData } from "./types"
@@ -13,6 +14,7 @@ interface NearWalletContextType {
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   signMessage: (message: string) => Promise<NearSignatureData>
+  signAndSendTransaction: (params: SignAndSendTransactionParams) => Promise<FinalExecutionOutcome>
   isLoading: boolean
 }
 
@@ -120,6 +122,34 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     [nearConnector, accountId],
   )
 
+  const signAndSendTransaction = useCallback(
+    async (params: SignAndSendTransactionParams): Promise<FinalExecutionOutcome> => {
+      if (!nearConnector || !accountId) {
+        throw new Error(ERROR_MESSAGES.WALLET_NOT_CONNECTED)
+      }
+
+      const wallet = await nearConnector.wallet()
+
+      if (!wallet || !("signAndSendTransaction" in wallet)) {
+        throw new Error("Wallet does not support transaction signing")
+      }
+
+      try {
+        const result = await (wallet as NearWalletBase).signAndSendTransaction({
+          signerId: accountId,
+          ...params,
+        })
+
+        return result
+      } catch (error) {
+        console.error("Failed to sign and send transaction:", error)
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+        throw new Error(`Transaction failed: ${errorMessage}`)
+      }
+    },
+    [nearConnector, accountId],
+  )
+
   return (
     <NearWalletContext.Provider
       value={{
@@ -128,6 +158,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         connect,
         disconnect,
         signMessage,
+        signAndSendTransaction,
         isLoading,
       }}
     >

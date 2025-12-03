@@ -1,9 +1,33 @@
-// Single source of truth for Self.xyz disclosure configuration
-// Frontend and backend configs MUST match for verification to succeed
-// Note: excludedCountries uses ISO 3166-1 alpha-3 codes (e.g., "USA", "IRN")
+// ==============================================================================
+// CENTRALIZED ENVIRONMENT CONFIGURATION
+// ==============================================================================
+// All environment variables should be accessed through this file.
+// Do NOT use process.env directly elsewhere in the codebase.
+// ==============================================================================
+
+// NEAR Network Configuration
+export const NEAR_CONFIG = {
+  networkId: (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet",
+  rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || "https://rpc.testnet.near.org",
+  // Contract addresses
+  verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
+  governanceContractId: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT || "",
+  // Backend wallet credentials (server-side only)
+  backendAccountId: process.env.NEAR_ACCOUNT_ID || "",
+  backendPrivateKey: process.env.NEAR_PRIVATE_KEY || "",
+  // Explorer URLs
+  get explorerUrl() {
+    return this.networkId === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io"
+  },
+  get explorerAccountUrl() {
+    return (accountId: string) => `${this.explorerUrl}/address/${accountId}`
+  },
+}
+
+// Self.xyz Configuration
 const DISCLOSURE_CONFIG = {
   minimumAge: 18,
-  excludedCountries: [] as const, // Empty array - add country codes like "USA", "IRN" if needed
+  excludedCountries: [] as const,
   ofac: false,
 }
 
@@ -21,6 +45,7 @@ export const SELF_CONFIG = {
   },
   endpointType: "https" as const,
   logoBase64: "/self-logo.png",
+  useMockPassport: process.env.SELF_USE_MOCK_PASSPORT === "true",
   disclosures: {
     minimumAge: DISCLOSURE_CONFIG.minimumAge,
     ofac: DISCLOSURE_CONFIG.ofac,
@@ -28,16 +53,28 @@ export const SELF_CONFIG = {
   backendConfig: DISCLOSURE_CONFIG,
 }
 
-export const NEAR_CONFIG = {
-  networkId: (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet",
-  contractName: process.env.NEAR_CONTRACT_ID || "",
-  rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || "https://near-testnet.drpc.org",
+// Celo RPC Configuration (for ZK proof verification)
+export const CELO_CONFIG = {
+  rpcUrls: process.env.CELO_RPC_URLS ? process.env.CELO_RPC_URLS.split(",") : null, // null means use built-in defaults
 }
 
+// Discourse Configuration
+export const DISCOURSE_CONFIG = {
+  url: process.env.NEXT_PUBLIC_DISCOURSE_URL || "",
+  appName: "NEAR Citizens House",
+  scopes: "read,session_info",
+  storageKeys: {
+    authState: "discourse_auth_state",
+    profile: "discourse_profile",
+  },
+}
+
+// Application Constants
 export const CONSTANTS = {
   SIGNING_MESSAGE: "Identify myself",
 }
 
+// Error Messages
 export const ERROR_MESSAGES = {
   WALLET_NOT_CONNECTED: "Wallet not connected",
   SIGNING_NOT_SUPPORTED:
@@ -49,15 +86,4 @@ export const ERROR_MESSAGES = {
   DUPLICATE_PASSPORT: "This passport has already been registered. Each passport can only be used once.",
   NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
   NEAR_SIGNATURE_MISSING: "Invalid or missing NEAR signature data in proof",
-}
-
-// Discourse configuration
-export const DISCOURSE_CONFIG = {
-  url: process.env.NEXT_PUBLIC_DISCOURSE_URL || "",
-  appName: "NEAR Citizens House",
-  scopes: "read,session_info",
-  storageKeys: {
-    authState: "discourse_auth_state",
-    profile: "discourse_profile",
-  },
 }

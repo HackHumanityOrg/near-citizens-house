@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@near-citizens/ui"
+import { NEAR_CONFIG } from "@near-citizens/shared"
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, ExternalLink, List } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
 import type { VerifiedAccountWithStatus } from "@/app/verified-accounts/actions"
@@ -95,7 +96,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                         : "No verified accounts yet"}
                     </span>
                     <a
-                      href={`https://${process.env.NEXT_PUBLIC_NEAR_NETWORK === "mainnet" ? "" : "testnet."}nearblocks.io/address/${process.env.NEXT_PUBLIC_NEAR_CONTRACT_ID || "v1.widefile4023.testnet"}`}
+                      href={NEAR_CONFIG.explorerAccountUrl(NEAR_CONFIG.verificationContractId)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs hover:text-foreground transition-colors"
@@ -131,7 +132,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                                 <TableRow key={account.nearAccountId}>
                                   <TableCell className="font-mono text-sm">
                                     <a
-                                      href={`https://explorer.${process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"}.near.org/accounts/${account.nearAccountId}`}
+                                      href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="hover:text-primary inline-flex items-center gap-1"

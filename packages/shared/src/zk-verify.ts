@@ -11,15 +11,13 @@
  */
 import { ethers } from "ethers"
 import type { SelfProofData } from "./types"
+import { SELF_CONFIG, CELO_CONFIG } from "./config"
 
 export type { SelfProofData as StoredProofData }
 
 // Self.xyz IdentityVerificationHub addresses
 const IDENTITY_VERIFICATION_HUB_MAINNET = "0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF"
 const IDENTITY_VERIFICATION_HUB_TESTNET = "0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74"
-
-// Get configuration from environment or use defaults
-const USE_MOCK_PASSPORT = process.env.SELF_USE_MOCK_PASSPORT === "true"
 
 // Multiple free Celo RPC endpoints for automatic fallback
 const CELO_RPC_URLS_MAINNET = [
@@ -32,17 +30,14 @@ const CELO_RPC_URLS_MAINNET = [
 
 const CELO_RPC_URLS_TESTNET = ["https://alfajores-forno.celo-testnet.org"]
 
-// Allow override via environment variable (comma-separated list)
-// Example: CELO_RPC_URLS="https://rpc1.com,https://rpc2.com,https://rpc3.com"
-const CELO_RPC_URLS = process.env.CELO_RPC_URLS
-  ? process.env.CELO_RPC_URLS.split(",")
-      .map((url) => url.trim())
-      .filter(Boolean)
-  : USE_MOCK_PASSPORT
+// Use config values for RPC URLs and mock passport setting
+const CELO_RPC_URLS = CELO_CONFIG.rpcUrls
+  ? CELO_CONFIG.rpcUrls.map((url) => url.trim()).filter(Boolean)
+  : SELF_CONFIG.useMockPassport
     ? CELO_RPC_URLS_TESTNET
     : CELO_RPC_URLS_MAINNET
 
-const IDENTITY_VERIFICATION_HUB_ADDRESS = USE_MOCK_PASSPORT
+const IDENTITY_VERIFICATION_HUB_ADDRESS = SELF_CONFIG.useMockPassport
   ? IDENTITY_VERIFICATION_HUB_TESTNET
   : IDENTITY_VERIFICATION_HUB_MAINNET
 

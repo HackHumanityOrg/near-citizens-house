@@ -5,6 +5,7 @@ import { type Proposal, type ProposalStatus } from "@near-citizens/shared"
 import { ProposalCard } from "./proposal-card"
 import { Button } from "@near-citizens/ui"
 import { Loader2 } from "lucide-react"
+import { getProposalsWithStats } from "@/lib/actions/governance"
 
 interface ProposalWithStats {
   proposal: Proposal
@@ -31,20 +32,10 @@ export function ProposalList({ initialProposals = [], statusFilter }: ProposalLi
   const loadMore = async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({
-        from: (page * 10).toString(),
-        limit: "10",
-      })
+      const { proposals: newProposals } = await getProposalsWithStats(page * 10, 10, statusFilter)
 
-      if (statusFilter) {
-        params.set("status", statusFilter)
-      }
-
-      const response = await fetch(`/api/governance/proposals?${params}`)
-      const data = await response.json()
-
-      if (data.proposals && data.proposals.length > 0) {
-        setProposals((prev) => [...prev, ...data.proposals])
+      if (newProposals && newProposals.length > 0) {
+        setProposals((prev) => [...prev, ...newProposals])
         setPage((p) => p + 1)
       } else {
         setHasMore(false)
@@ -61,6 +52,7 @@ export function ProposalList({ initialProposals = [], statusFilter }: ProposalLi
     if (initialProposals.length === 0 && !loading) {
       loadMore()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (proposals.length === 0 && !loading) {
