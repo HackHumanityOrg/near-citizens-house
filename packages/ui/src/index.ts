@@ -16,7 +16,10 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./dialog"
+export { Input } from "./input"
+export { Label } from "./label"
 export { Progress } from "./progress"
+export { Textarea } from "./textarea"
 export { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./table"
 
 // Shared infrastructure components

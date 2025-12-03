@@ -256,6 +256,7 @@ export interface IVerificationDatabase {
   storeVerification(data: VerificationDataWithSignature): Promise<void>
   getVerifiedAccount(nearAccountId: string): Promise<VerifiedAccount | null>
   getAllVerifiedAccounts(): Promise<VerifiedAccount[]>
+  getVerifiedAccounts(fromIndex?: number, limit?: number): Promise<{ accounts: VerifiedAccount[]; total: number }>
 }
 
 // ============================================================================

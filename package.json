@@ -13,8 +13,8 @@
     "build:contract:verification": "cd contracts/verified-accounts && cargo near build non-reproducible-wasm",
     "build:contract:governance": "cd contracts/governance && cargo near build non-reproducible-wasm",
     "build:contracts:all": "pnpm run build:contract:verification && pnpm run build:contract:governance",
-    "test:contract:verification": "cd contracts/verified-accounts && cargo test",
-    "test:contract:governance": "cd contracts/governance && cargo test",
+    "test:contract:verification": "cd contracts/verified-accounts && cargo test -- --test-threads=1",
+    "test:contract:governance": "cd contracts/governance && cargo test -- --test-threads=1",
     "test:contracts:all": "pnpm run test:contract:verification && pnpm run test:contract:governance",
     "lint:contract": "cd contracts/verified-accounts && cargo clippy --all-targets -- -D warnings",
     "lint:contract:verification": "cd contracts/verified-accounts && cargo clippy --all-targets -- -D warnings",
@@ -56,5 +56,5 @@
     "node": ">=18",
     "pnpm": ">=8"
   },
-  "packageManager": "pnpm@8.15.0"
+  "packageManager": "pnpm@10.24.0"
 }

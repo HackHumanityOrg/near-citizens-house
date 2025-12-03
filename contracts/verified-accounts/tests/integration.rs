@@ -226,6 +226,7 @@ async fn test_unauthorized_pause() -> anyhow::Result<()> {
 
     let result = unauthorized
         .call(contract.id(), "pause")
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
         .transact()
         .await?;
 
@@ -240,17 +241,25 @@ async fn test_unauthorized_pause() -> anyhow::Result<()> {
 async fn test_authorized_pause_unpause() -> anyhow::Result<()> {
     let (_worker, contract, backend) = init().await?;
 
-    // Pause the contract
-    let result = backend.call(contract.id(), "pause").transact().await?;
-    assert!(result.is_success());
+    // Pause the contract (requires 1 yocto deposit)
+    let result = backend
+        .call(contract.id(), "pause")
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+    assert!(result.is_success(), "Pause failed: {:?}", result.failures());
 
     // Verify it's paused
     let is_paused: bool = contract.view("is_paused").await?.json()?;
     assert!(is_paused);
 
-    // Unpause the contract
-    let result = backend.call(contract.id(), "unpause").transact().await?;
-    assert!(result.is_success());
+    // Unpause the contract (requires 1 yocto deposit)
+    let result = backend
+        .call(contract.id(), "unpause")
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+    assert!(result.is_success(), "Unpause failed: {:?}", result.failures());
 
     // Verify it's unpaused
     let is_paused: bool = contract.view("is_paused").await?.json()?;
@@ -264,25 +273,34 @@ async fn test_update_backend_wallet() -> anyhow::Result<()> {
     let (worker, contract, backend) = init().await?;
     let new_backend = worker.dev_create_account().await?;
 
-    // Update backend wallet
+    // Update backend wallet (requires 1 yocto deposit)
     let result = backend
         .call(contract.id(), "update_backend_wallet")
         .args_json(json!({"new_backend_wallet": new_backend.id()}))
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
         .transact()
         .await?;
-    assert!(result.is_success());
+    assert!(result.is_success(), "Update backend wallet failed: {:?}", result.failures());
 
     // Verify new backend wallet
     let current_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
     assert_eq!(current_backend, *new_backend.id());
 
-    // Old backend can no longer pause
-    let result = backend.call(contract.id(), "pause").transact().await?;
+    // Old backend can no longer pause (with 1 yocto deposit)
+    let result = backend
+        .call(contract.id(), "pause")
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
     assert!(result.is_failure());
 
-    // New backend can pause
-    let result = new_backend.call(contract.id(), "pause").transact().await?;
-    assert!(result.is_success());
+    // New backend can pause (with 1 yocto deposit)
+    let result = new_backend
+        .call(contract.id(), "pause")
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+    assert!(result.is_success(), "New backend pause failed: {:?}", result.failures());
 
     Ok(())
 }
@@ -294,9 +312,13 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
     let (worker, contract, backend) = init().await?;
     let user = worker.dev_create_account().await?;
 
-    // Pause the contract
-    let result = backend.call(contract.id(), "pause").transact().await?;
-    assert!(result.is_success());
+    // Pause the contract (requires 1 yocto deposit)
+    let result = backend
+        .call(contract.id(), "pause")
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+    assert!(result.is_success(), "Pause failed: {:?}", result.failures());
 
     // Try to store verification - should fail
     let result = backend
@@ -746,7 +768,7 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
 
     // Get the verified account data
     let account_data: serde_json::Value = contract
-        .view("get_verified_account")
+        .view("get_account_with_proof")
         .args_json(json!({"near_account_id": user.id()}))
         .await?
         .json()?;

@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
-import { governanceDb } from "@near-citizens/shared"
-
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
+import { governanceDb, db as verificationDb } from "@near-citizens/shared"
 
 /**
  * GET /api/governance/proposals/[id]
  * Get a single proposal with vote counts and stats
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const proposalId = parseInt(params.id, 10)
+    const { id } = await params
+    const proposalId = parseInt(id, 10)
 
     if (isNaN(proposalId) || proposalId < 0) {
       return NextResponse.json({ error: "Invalid proposal ID" }, { status: 400 })
@@ -26,16 +21,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Proposal not found" }, { status: 404 })
     }
 
-    // Get vote counts
-    const voteCounts = await governanceDb.getVoteCounts(proposalId)
-
-    // Get total citizens count for quorum calculation
-    const totalCitizens = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/verified-accounts/count`,
-    )
-      .then((res) => res.json())
-      .then((data) => data.count as number)
-      .catch(() => 0)
+    // Get vote counts and total citizens count in parallel
+    const [voteCounts, { total: totalCitizens }] = await Promise.all([
+      governanceDb.getVoteCounts(proposalId),
+      verificationDb.getVerifiedAccounts(0, 1), // Just need the total count
+    ])
 
     const quorumRequired = Math.floor((totalCitizens * 10) / 100)
 

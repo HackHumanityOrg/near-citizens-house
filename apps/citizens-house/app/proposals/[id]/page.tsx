@@ -6,9 +6,9 @@ import { ProposalDetail } from "@/components/proposals/proposal-detail"
 import { ArrowLeft, Loader2 } from "lucide-react"
 
 interface ProposalPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 async function getProposal(id: string, accountId?: string) {
@@ -33,7 +33,8 @@ async function getProposal(id: string, accountId?: string) {
 }
 
 export async function generateMetadata({ params }: ProposalPageProps) {
-  const data = await getProposal(params.id)
+  const { id } = await params
+  const data = await getProposal(id)
 
   if (!data) {
     return {
@@ -48,11 +49,12 @@ export async function generateMetadata({ params }: ProposalPageProps) {
 }
 
 export default async function ProposalPage({ params }: ProposalPageProps) {
+  const { id } = await params
   // TODO: Get actual wallet address from wallet connection
   // For now, we'll check cookies or session
   const accountId = undefined // Replace with actual wallet connection
 
-  const data = await getProposal(params.id, accountId)
+  const data = await getProposal(id, accountId)
 
   if (!data) {
     notFound()

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { governanceDb, type ProposalStatus } from "@near-citizens/shared"
+import { governanceDb, db as verificationDb, type ProposalStatus } from "@near-citizens/shared"
 
 /**
  * GET /api/governance/proposals
@@ -17,32 +17,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid pagination parameters" }, { status: 400 })
     }
 
-    // Get proposals from contract
-    const proposals = await governanceDb.getProposals(from, limit, status)
-
-    // Get vote counts and total citizens for each proposal
-    const [totalCitizens, proposalsWithStats] = await Promise.all([
-      // Get total verified citizens count (from verification contract)
-      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/verified-accounts/count`)
-        .then((res) => res.json())
-        .then((data) => data.count as number)
-        .catch(() => 0),
-
-      // Get vote counts for each proposal
-      Promise.all(
-        proposals.map(async (proposal) => {
-          const voteCounts = await governanceDb.getVoteCounts(proposal.id)
-          const quorumRequired = Math.floor((totalCitizens * 10) / 100)
-
-          return {
-            proposal,
-            voteCounts,
-            quorumRequired,
-            totalCitizens,
-          }
-        }),
-      ),
+    // Get proposals from contract and total citizens count in parallel
+    const [proposals, { total: totalCitizens }] = await Promise.all([
+      governanceDb.getProposals(from, limit, status),
+      verificationDb.getVerifiedAccounts(0, 1), // Just need the total count
     ])
+
+    // Get vote counts for each proposal
+    const proposalsWithStats = await Promise.all(
+      proposals.map(async (proposal) => {
+        const voteCounts = await governanceDb.getVoteCounts(proposal.id)
+        const quorumRequired = Math.floor((totalCitizens * 10) / 100)
+
+        return {
+          proposal,
+          voteCounts,
+          quorumRequired,
+          totalCitizens,
+        }
+      }),
+    )
 
     return NextResponse.json({ proposals: proposalsWithStats })
   } catch (error) {
