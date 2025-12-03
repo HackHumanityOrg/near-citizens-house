@@ -6,23 +6,31 @@ import { CreateProposalForm } from "@/components/proposals/create-proposal-form"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@near-citizens/shared"
 import { ArrowLeft, Loader2, Wallet } from "lucide-react"
-import { checkVerificationStatus, getTotalCitizens } from "@/lib/actions/governance"
+import { checkVerificationStatus, getTotalCitizens, getGovernanceParameters } from "@/lib/actions/governance"
 import { GovernanceHeader } from "@/components/shared/governance-header"
+
+interface GovernanceParams {
+  quorumPercentageMin: number
+  quorumPercentageMax: number
+  quorumPercentageDefault: number
+}
 
 function CreateProposalContent() {
   const { accountId, isConnected, connect, isLoading: walletLoading } = useNearWallet()
   const [isVerified, setIsVerified] = useState<boolean | null>(null)
   const [totalCitizens, setTotalCitizens] = useState<number>(0)
+  const [governanceParams, setGovernanceParams] = useState<GovernanceParams | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
-      // Always fetch total citizens for the quorum display
+      // Fetch total citizens and governance parameters for the quorum display
       try {
-        const total = await getTotalCitizens()
+        const [total, params] = await Promise.all([getTotalCitizens(), getGovernanceParameters()])
         setTotalCitizens(total)
+        setGovernanceParams(params)
       } catch (error) {
-        console.error("Error fetching total citizens:", error)
+        console.error("Error fetching data:", error)
       }
 
       if (!accountId) {
@@ -99,7 +107,13 @@ function CreateProposalContent() {
       </div>
 
       {/* Form */}
-      <CreateProposalForm isVerified={isVerified || false} totalCitizens={totalCitizens} />
+      <CreateProposalForm
+        isVerified={isVerified || false}
+        totalCitizens={totalCitizens}
+        quorumPercentageMin={governanceParams?.quorumPercentageMin ?? 1}
+        quorumPercentageMax={governanceParams?.quorumPercentageMax ?? 100}
+        quorumPercentageDefault={governanceParams?.quorumPercentageDefault ?? 10}
+      />
     </div>
   )
 }

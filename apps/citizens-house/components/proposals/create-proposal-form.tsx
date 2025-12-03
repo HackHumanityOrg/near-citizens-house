@@ -21,9 +21,18 @@ import { useGovernance } from "@/hooks/governance"
 interface CreateProposalFormProps {
   isVerified: boolean
   totalCitizens: number
+  quorumPercentageMin: number
+  quorumPercentageMax: number
+  quorumPercentageDefault: number
 }
 
-export function CreateProposalForm({ isVerified, totalCitizens }: CreateProposalFormProps) {
+export function CreateProposalForm({
+  isVerified,
+  totalCitizens,
+  quorumPercentageMin,
+  quorumPercentageMax,
+  quorumPercentageDefault,
+}: CreateProposalFormProps) {
   const router = useRouter()
   const { createProposal, isLoading, error, clearError } = useGovernance()
 
@@ -35,13 +44,13 @@ export function CreateProposalForm({ isVerified, totalCitizens }: CreateProposal
   } = useForm<CreateProposalRequest>({
     resolver: zodResolver(createProposalRequestSchema),
     defaultValues: {
-      quorumPercentage: 10, // Default to 10%
+      quorumPercentage: quorumPercentageDefault,
     },
   })
 
   const titleLength = watch("title")?.length || 0
   const descriptionLength = watch("description")?.length || 0
-  const quorumPercentage = watch("quorumPercentage") || 10
+  const quorumPercentage = watch("quorumPercentage") || quorumPercentageDefault
 
   // Calculate how many votes are needed for quorum
   const requiredVotes = Math.ceil((totalCitizens * quorumPercentage) / 100)
@@ -156,13 +165,13 @@ export function CreateProposalForm({ isVerified, totalCitizens }: CreateProposal
               <Input
                 id="quorumPercentage"
                 type="number"
-                min={1}
-                max={100}
+                min={quorumPercentageMin}
+                max={quorumPercentageMax}
                 {...register("quorumPercentage", { valueAsNumber: true })}
                 className="w-24"
                 disabled={isLoading}
               />
-              <span className="text-sm text-muted-foreground">% of verified citizens</span>
+              <span className="text-sm text-muted-foreground">% of verified citizens ({quorumPercentageMin}-{quorumPercentageMax}%)</span>
             </div>
             <p className="text-xs text-muted-foreground">
               {totalCitizens > 0 ? (

@@ -337,11 +337,11 @@ impl GovernanceContract {
     #[private]
     pub fn callback_vote(&mut self, voter: AccountId, proposal_id: u64, vote: Vote) {
         // Parse verification info from promise result (Option<VerifiedAccountInfo>)
-        // The interface uses Borsh serialization
+        // NEAR cross-contract calls use JSON serialization by default
         let verified_info: Option<verified_accounts_interface::VerifiedAccountInfo> =
             match env::promise_result(0) {
                 PromiseResult::Successful(data) => {
-                    near_sdk::borsh::from_slice(&data).unwrap_or(None)
+                    near_sdk::serde_json::from_slice(&data).unwrap_or(None)
                 }
                 _ => env::panic_str("Failed to get verification info"),
             };
@@ -544,20 +544,18 @@ impl GovernanceContract {
         limit: u64,
         status: Option<ProposalStatus>,
     ) -> Vec<Proposal> {
-        let limit = std::cmp::min(limit, MAX_BATCH_SIZE as u64);
-        let keys = self.proposals.keys_as_vector();
-        let from_index = std::cmp::min(from_index, keys.len());
-        let to_index = std::cmp::min(from_index + limit, keys.len());
+        let limit = std::cmp::min(limit, MAX_BATCH_SIZE as u64) as usize;
+        let from_index = from_index as usize;
 
-        (from_index..to_index)
-            .filter_map(|index| keys.get(index).and_then(|id| self.proposals.get(&id)))
-            .filter(|proposal| {
-                if let Some(ref filter_status) = status {
-                    &proposal.status == filter_status
-                } else {
-                    true
-                }
+        // Filter by status first, then apply pagination
+        self.proposals
+            .iter()
+            .filter(|(_, proposal)| {
+                status.as_ref().map_or(true, |s| &proposal.status == s)
             })
+            .map(|(_, proposal)| proposal)
+            .skip(from_index)
+            .take(limit)
             .collect()
     }
 

@@ -1,6 +1,13 @@
 "use server"
 
-import { governanceDb, verificationDb, type ProposalStatus, type Vote, type Proposal } from "@near-citizens/shared"
+import {
+  governanceDb,
+  verificationDb,
+  type ProposalStatus,
+  type Vote,
+  type Proposal,
+  type GovernanceParameters,
+} from "@near-citizens/shared"
 
 interface ProposalWithStats {
   proposal: Proposal
@@ -125,5 +132,23 @@ export async function getUserVote(proposalId: number, accountId: string): Promis
   } catch (error) {
     console.error("[Server Action] Error getting user vote:", error)
     return null
+  }
+}
+
+/**
+ * Server action to get governance parameters from contract
+ */
+export async function getGovernanceParameters(): Promise<GovernanceParameters> {
+  try {
+    return await governanceDb.getParameters()
+  } catch (error) {
+    console.error("[Server Action] Error getting governance parameters:", error)
+    // Return defaults on error
+    return {
+      votingPeriodDays: 7,
+      quorumPercentageMin: 1,
+      quorumPercentageMax: 100,
+      quorumPercentageDefault: 10,
+    }
   }
 }

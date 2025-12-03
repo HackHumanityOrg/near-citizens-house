@@ -1,16 +1,23 @@
 import { Suspense } from "react"
-import Link from "next/link"
-import { Button } from "@near-citizens/ui"
 import { ProposalList } from "@/components/proposals/proposal-list"
+import { ProposalTabs } from "@/components/proposals/proposal-tabs"
 import { Loader2 } from "lucide-react"
 import { GovernanceHeader } from "@/components/shared/governance-header"
+import { type ProposalStatus } from "@near-citizens/shared"
 
 export const metadata = {
   title: "Proposals | Citizens House",
   description: "View and vote on community proposals",
 }
 
-export default function ProposalsPage() {
+interface ProposalsPageProps {
+  searchParams: Promise<{ status?: string }>
+}
+
+export default async function ProposalsPage({ searchParams }: ProposalsPageProps) {
+  const params = await searchParams
+  const statusFilter = params.status as ProposalStatus | undefined
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
       <GovernanceHeader />
@@ -22,28 +29,7 @@ export default function ProposalsPage() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6 border-b">
-          <Link href="/proposals">
-            <Button variant="ghost" className="border-b-2 border-primary rounded-none">
-              All
-            </Button>
-          </Link>
-          <Link href="/proposals?status=Active">
-            <Button variant="ghost" className="rounded-none">
-              Active
-            </Button>
-          </Link>
-          <Link href="/proposals?status=Passed">
-            <Button variant="ghost" className="rounded-none">
-              Passed
-            </Button>
-          </Link>
-          <Link href="/proposals?status=Failed">
-            <Button variant="ghost" className="rounded-none">
-              Failed
-            </Button>
-          </Link>
-        </div>
+        <ProposalTabs currentStatus={statusFilter} />
 
         {/* Proposals List */}
         <Suspense
@@ -53,7 +39,7 @@ export default function ProposalsPage() {
             </div>
           }
         >
-          <ProposalList />
+          <ProposalList key={statusFilter || "all"} statusFilter={statusFilter} />
         </Suspense>
       </div>
     </div>

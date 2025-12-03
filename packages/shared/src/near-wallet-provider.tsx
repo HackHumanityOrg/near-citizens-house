@@ -30,6 +30,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
       try {
         const connector = new NearConnector({
           network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
+          providers: NEAR_CONFIG.publicRpcUrls,
           autoConnect: true,
           logger: process.env.NODE_ENV === "development" ? console : undefined,
         })

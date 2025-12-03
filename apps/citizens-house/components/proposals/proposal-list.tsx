@@ -48,15 +48,45 @@ export function ProposalList({ initialProposals = [], statusFilter }: ProposalLi
     }
   }
 
-  // Load initial data if not provided
+  // Load initial data when component mounts or statusFilter changes
   useEffect(() => {
-    if (initialProposals.length === 0 && !loading) {
-      loadMore()
+    // Reset state when filter changes
+    setProposals([])
+    setPage(0)
+    setHasMore(true)
+
+    const loadInitial = async () => {
+      setLoading(true)
+      try {
+        const { proposals: newProposals } = await getProposalsWithStats(0, 10, statusFilter)
+        if (newProposals && newProposals.length > 0) {
+          setProposals(newProposals)
+          setPage(1)
+        } else {
+          setHasMore(false)
+        }
+      } catch (error) {
+        console.error("Error loading proposals:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (initialProposals.length === 0) {
+      loadInitial()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [statusFilter])
 
-  if (proposals.length === 0 && !loading) {
+  if (loading && proposals.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (proposals.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">

@@ -351,7 +351,14 @@ export type TransformedProposal = z.output<typeof contractProposalSchema>
 export const createProposalRequestSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(10000),
-  discourseUrl: z.string().url().max(500).optional(),
+  discourseUrl: z
+    .string()
+    .max(500)
+    .optional()
+    .transform((val) => (val === "" ? undefined : val))
+    .refine((val) => !val || /^https?:\/\/.+/.test(val), {
+      message: "Must be a valid URL",
+    }),
   quorumPercentage: z.number().int().min(1).max(100),
 })
 export type CreateProposalRequest = z.infer<typeof createProposalRequestSchema>
@@ -361,6 +368,30 @@ export const voteRequestSchema = z.object({
   vote: voteSchema,
 })
 export type VoteRequest = z.infer<typeof voteRequestSchema>
+
+// Governance parameters from contract
+export const governanceParametersSchema = z.object({
+  votingPeriodDays: z.number(),
+  quorumPercentageMin: z.number(),
+  quorumPercentageMax: z.number(),
+  quorumPercentageDefault: z.number(),
+})
+export type GovernanceParameters = z.infer<typeof governanceParametersSchema>
+
+// Contract format for GovernanceParameters (snake_case)
+export const contractGovernanceParametersSchema = z
+  .object({
+    voting_period_days: z.number(),
+    quorum_percentage_min: z.number(),
+    quorum_percentage_max: z.number(),
+    quorum_percentage_default: z.number(),
+  })
+  .transform((data) => ({
+    votingPeriodDays: data.voting_period_days,
+    quorumPercentageMin: data.quorum_percentage_min,
+    quorumPercentageMax: data.quorum_percentage_max,
+    quorumPercentageDefault: data.quorum_percentage_default,
+  }))
 
 // ============================================================================
 // Governance Database Interface (Read-Only)
@@ -378,4 +409,5 @@ export interface IGovernanceDatabase {
   hasVoted(proposalId: number, accountId: string): Promise<boolean>
   getVoteCounts(proposalId: number): Promise<VoteCounts>
   getProposalCount(): Promise<number>
+  getParameters(): Promise<GovernanceParameters>
 }

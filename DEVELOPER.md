@@ -314,6 +314,27 @@ cargo clippy --all-targets -- -D warnings
 
 ### Contract Deployment
 
+This project uses **`cargo-near`** for building and deploying contracts, with credentials stored in the **macOS Keychain** (or legacy keychain on other platforms).
+
+#### Prerequisites
+
+```bash
+# Install cargo-near
+cargo install cargo-near
+
+# Verify installation
+cargo near --version
+```
+
+#### Keychain Setup
+
+When you create a contract account, credentials are saved to the system keychain. On macOS, this uses the native Keychain. On Linux/WSL, use `save-to-legacy-keychain` instead.
+
+```bash
+# Check existing keychain accounts
+cat ~/.near-credentials/accounts.json
+```
+
 #### Fresh Deployment (New Contract)
 
 **1. Create Contract Account:**
@@ -322,32 +343,49 @@ The contract account needs at least **3 NEAR** for storage and gas costs.
 
 ```bash
 # Create a sub-account for the contract (e.g., v1.YOUR_ACCOUNT.testnet)
+# This saves credentials to your system keychain
+cargo near create-dev-account use-specific-seed-phrase '<YOUR_SEED_PHRASE>' \
+  --account-id v1.YOUR_ACCOUNT.testnet \
+  network-config testnet create
+```
+
+Or using an existing funded account:
+
+```bash
 near account create-account fund-myself v1.YOUR_ACCOUNT.testnet '3 NEAR' \
   autogenerate-new-keypair save-to-keychain \
   sign-as YOUR_ACCOUNT.testnet \
   network-config testnet sign-with-keychain send
 ```
 
-**2. Build the Contract:**
+**2. Build and Deploy Contract:**
+
+The `cargo near deploy` command builds and deploys in one step:
 
 ```bash
-# From project root
-npm run build:contract
+# From the contract directory (e.g., contracts/verified-accounts)
+cd contracts/verified-accounts
 
-# Or directly
-cd contracts/verified-accounts && cargo near build non-reproducible-wasm
+# Build and deploy using keychain credentials
+cargo near deploy build-non-reproducible-wasm v1.YOUR_ACCOUNT.testnet \
+  without-init-call \
+  network-config testnet sign-with-keychain send
 ```
 
-**3. Deploy Contract:**
+Or build separately first:
 
 ```bash
+# Build only
+cargo near build non-reproducible-wasm
+
+# Deploy pre-built WASM (from project root)
 near contract deploy v1.YOUR_ACCOUNT.testnet \
   use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
   without-init-call \
   network-config testnet sign-with-keychain send
 ```
 
-**4. Initialize Contract:**
+**3. Initialize Contract:**
 
 ```bash
 near contract call-function as-transaction v1.YOUR_ACCOUNT.testnet new \
@@ -357,7 +395,7 @@ near contract call-function as-transaction v1.YOUR_ACCOUNT.testnet new \
   network-config testnet sign-with-keychain send
 ```
 
-**5. Verify Deployment:**
+**4. Verify Deployment:**
 
 ```bash
 # Check backend wallet
@@ -373,22 +411,17 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 
 To upgrade an existing contract while **preserving all stored verification data**:
 
-**1. Build the new contract:**
-
 ```bash
-npm run build:contract
-```
+# From the contract directory
+cd contracts/verified-accounts
 
-**2. Deploy over existing contract (no init):**
-
-```bash
-near contract deploy v1.YOUR_ACCOUNT.testnet \
-  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
+# Build and deploy in one command (do NOT init again)
+cargo near deploy build-non-reproducible-wasm v1.YOUR_ACCOUNT.testnet \
   without-init-call \
   network-config testnet sign-with-keychain send
 ```
 
-**3. Verify the upgrade preserved state:**
+**Verify the upgrade preserved state:**
 
 ```bash
 # Check count - should show existing verifications
@@ -401,6 +434,30 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 > - Do NOT call `new` again (this would fail or reset state)
 > - State is preserved as long as data structures are compatible
 > - If you change the contract's data schema, you may need state migration
+
+#### Governance Contract Deployment
+
+The governance contract follows the same pattern:
+
+```bash
+# From the governance contract directory
+cd contracts/governance
+
+# Build and deploy
+cargo near deploy build-non-reproducible-wasm governance-v1.YOUR_ACCOUNT.testnet \
+  without-init-call \
+  network-config testnet sign-with-keychain send
+```
+
+For fresh deployment, initialize with the verified-accounts contract reference:
+
+```bash
+near contract call-function as-transaction governance-v1.YOUR_ACCOUNT.testnet new \
+  json-args '{"verified_accounts_contract":"verification-v1.YOUR_ACCOUNT.testnet"}' \
+  prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' \
+  sign-as governance-v1.YOUR_ACCOUNT.testnet \
+  network-config testnet sign-with-keychain send
+```
 
 #### Deleting a Contract
 
@@ -702,16 +759,13 @@ near account create-account fund-myself v1.YOUR_ACCOUNT.testnet '3 NEAR' \
   sign-as YOUR_ACCOUNT.testnet \
   network-config testnet sign-with-keychain send
 
-# 2. Build
-npm run build:contract
-
-# 3. Deploy
-near contract deploy v1.YOUR_ACCOUNT.testnet \
-  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
+# 2. Build and deploy (from contract directory)
+cd contracts/verified-accounts
+cargo near deploy build-non-reproducible-wasm v1.YOUR_ACCOUNT.testnet \
   without-init-call \
   network-config testnet sign-with-keychain send
 
-# 4. Initialize
+# 3. Initialize
 near contract call-function as-transaction v1.YOUR_ACCOUNT.testnet new \
   json-args '{"backend_wallet":"YOUR_BACKEND.testnet"}' \
   prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' \
@@ -722,18 +776,24 @@ near contract call-function as-transaction v1.YOUR_ACCOUNT.testnet new \
 **Quick Reference - Upgrade (Preserve State):**
 
 ```bash
-# 1. Build new contract
-npm run build:contract
-
-# 2. Deploy over existing (do NOT init again)
-near contract deploy v1.YOUR_ACCOUNT.testnet \
-  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
+# From contract directory - build and deploy in one step (do NOT init again)
+cd contracts/verified-accounts
+cargo near deploy build-non-reproducible-wasm v1.YOUR_ACCOUNT.testnet \
   without-init-call \
   network-config testnet sign-with-keychain send
 
-# 3. Verify state preserved
+# Verify state preserved
 near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
   get_verified_count json-args {} network-config testnet now
+```
+
+**Quick Reference - Governance Contract Upgrade:**
+
+```bash
+cd contracts/governance
+cargo near deploy build-non-reproducible-wasm governance-v1.YOUR_ACCOUNT.testnet \
+  without-init-call \
+  network-config testnet sign-with-keychain send
 ```
 
 ### Production Checklist

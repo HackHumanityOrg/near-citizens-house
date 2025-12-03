@@ -68,7 +68,11 @@ export class NearContractDatabase implements IVerificationDatabase {
       const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
       const signer = new KeyPairSigner(keyPair)
 
-      this.provider = new JsonRpcProvider({ url: this.rpcUrl })
+      // Include RPC headers for authenticated access (e.g., FastNear API key)
+      this.provider = new JsonRpcProvider({
+        url: this.rpcUrl,
+        headers: NEAR_CONFIG.rpcHeaders,
+      })
 
       // Account constructor types don't match the actual implementation
       // The provider and signer interfaces are compatible at runtime
@@ -80,6 +84,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 
       console.log(`[NearContractDB] Initialized with account: ${this.backendAccountId}`)
       console.log(`[NearContractDB] Contract ID: ${this.contractId}`)
+      console.log(`[NearContractDB] RPC URL: ${this.rpcUrl}`)
     } catch (error) {
       console.error("[NearContractDB] Initialization error:", error)
       throw error

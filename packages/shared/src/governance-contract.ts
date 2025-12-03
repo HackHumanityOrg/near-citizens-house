@@ -8,16 +8,18 @@ import { JsonRpcProvider } from "@near-js/providers"
 import {
   contractProposalSchema,
   contractVoteCountsSchema,
+  contractGovernanceParametersSchema,
   type ContractProposal,
   type IGovernanceDatabase,
   type Proposal,
   type ProposalStatus,
   type Vote,
   type VoteCounts,
+  type GovernanceParameters,
 } from "./types"
 import { NEAR_CONFIG } from "./config"
 
-export type { IGovernanceDatabase, Proposal, Vote, VoteCounts, ProposalStatus }
+export type { IGovernanceDatabase, Proposal, Vote, VoteCounts, ProposalStatus, GovernanceParameters }
 
 // Contract format for vote (matches Rust enum)
 type ContractVote = "Yes" | "No" | "Abstain"
@@ -46,9 +48,14 @@ export class NearGovernanceContract implements IGovernanceDatabase {
 
   private async init(rpcUrl: string) {
     try {
-      this.provider = new JsonRpcProvider({ url: rpcUrl })
+      // Include RPC headers for authenticated access (e.g., FastNear API key)
+      this.provider = new JsonRpcProvider({
+        url: rpcUrl,
+        headers: NEAR_CONFIG.rpcHeaders,
+      })
       console.log(`[GovernanceContract] Initialized read-only client`)
       console.log(`[GovernanceContract] Contract ID: ${this.contractId}`)
+      console.log(`[GovernanceContract] RPC URL: ${rpcUrl}`)
     } catch (error) {
       console.error("[GovernanceContract] Initialization error:", error)
       throw error
@@ -168,6 +175,40 @@ export class NearGovernanceContract implements IGovernanceDatabase {
     } catch (error) {
       console.error("[GovernanceContract] Error getting proposal count:", error)
       return 0
+    }
+  }
+
+  async getParameters(): Promise<GovernanceParameters> {
+    await this.ensureInitialized()
+
+    try {
+      const result = await this.provider!.callFunction<{
+        voting_period_days: number
+        quorum_percentage_min: number
+        quorum_percentage_max: number
+        quorum_percentage_default: number
+      }>(this.contractId, "get_parameters", {})
+
+      if (!result) {
+        // Return defaults if contract call fails
+        return {
+          votingPeriodDays: 7,
+          quorumPercentageMin: 1,
+          quorumPercentageMax: 100,
+          quorumPercentageDefault: 10,
+        }
+      }
+
+      return contractGovernanceParametersSchema.parse(result)
+    } catch (error) {
+      console.error("[GovernanceContract] Error getting parameters:", error)
+      // Return defaults on error
+      return {
+        votingPeriodDays: 7,
+        quorumPercentageMin: 1,
+        quorumPercentageMax: 100,
+        quorumPercentageDefault: 10,
+      }
     }
   }
 }

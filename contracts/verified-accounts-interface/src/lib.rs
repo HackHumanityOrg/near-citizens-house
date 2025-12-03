@@ -32,9 +32,8 @@
 //!     pub fn callback_verified_action(&mut self) {
 //!         let is_verified: bool = match env::promise_result(0) {
 //!             PromiseResult::Successful(data) => {
-//!                 // IMPORTANT: ext_contract uses Borsh serialization by default
-//!                 // Use borsh::from_slice, NOT serde_json::from_slice
-//!                 near_sdk::borsh::from_slice(&data).unwrap_or(false)
+//!                 // NEAR cross-contract calls use JSON serialization by default
+//!                 near_sdk::serde_json::from_slice(&data).unwrap_or(false)
 //!             }
 //!             _ => false,
 //!         };
@@ -125,12 +124,13 @@ pub struct VerifiedAccount {
 ///
 /// ## Important: Serialization Format
 ///
-/// **This interface uses Borsh serialization** (NEAR SDK default).
-/// When handling promise results in callbacks, you MUST use:
+/// **NEAR cross-contract calls use JSON serialization by default**.
+/// When handling promise results in callbacks, you should use:
 /// ```ignore
-/// near_sdk::borsh::from_slice(&data)
+/// near_sdk::serde_json::from_slice(&data)
 /// ```
-/// NOT `serde_json::from_slice(&data)` - that will fail silently!
+/// The types in this crate derive both `Serialize`/`Deserialize` (for JSON)
+/// and `BorshSerialize`/`BorshDeserialize` (for storage) to support both.
 ///
 /// ## Gas Recommendations
 ///
