@@ -279,7 +279,7 @@ impl GovernanceContract {
             }
         }
         // Validate quorum percentage (1-100)
-        if quorum_percentage < 1 || quorum_percentage > 100 {
+        if !(1..=100).contains(&quorum_percentage) {
             env::panic_str("Quorum percentage must be between 1 and 100");
         }
 
@@ -559,7 +559,7 @@ impl GovernanceContract {
         self.proposals
             .iter()
             .filter(|(_, proposal)| {
-                status.as_ref().map_or(true, |s| &proposal.status == s)
+                status.as_ref().is_none_or(|s| &proposal.status == s)
             })
             .map(|(_, proposal)| proposal)
             .skip(from_index)

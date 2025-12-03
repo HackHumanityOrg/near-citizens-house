@@ -51,4 +51,4 @@ jobs:
 
       - name: Run clippy
         working-directory: contracts/verified-accounts
-        run: cargo clippy --lib -- -D warnings
+        run: RUSTFLAGS="--cfg clippy" cargo clippy --lib -- -D warnings

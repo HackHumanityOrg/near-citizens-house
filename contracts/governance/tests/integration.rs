@@ -2871,3 +2871,793 @@ async fn test_stress_many_votes_single_proposal() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// ==================== PHASE 5: BOUNDARY AND EDGE CASE TESTS ====================
+
+/// Test input validation: Empty title is rejected
+#[tokio::test]
+async fn test_create_proposal_empty_title_rejected() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    let result = user
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "",
+            "description": "Valid description",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_failure());
+    // Check for error message
+    let failure_str = format!("{:?}", result.failures());
+    assert!(
+        failure_str.contains("Title cannot be empty"),
+        "Expected 'Title cannot be empty' error, got: {}",
+        failure_str
+    );
+
+    Ok(())
+}
+
+/// Test input validation: Empty description is rejected
+#[tokio::test]
+async fn test_create_proposal_empty_description_rejected() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    let result = user
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "Valid title",
+            "description": "",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_failure());
+    let failure_str = format!("{:?}", result.failures());
+    assert!(
+        failure_str.contains("Description cannot be empty"),
+        "Expected 'Description cannot be empty' error, got: {}",
+        failure_str
+    );
+
+    Ok(())
+}
+
+/// Test boundary: Title at exact 200 char limit is accepted
+#[tokio::test]
+async fn test_create_proposal_title_at_max_limit() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    // Create a title of exactly 200 characters
+    let title = "x".repeat(200);
+
+    let result = user
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": title,
+            "description": "Valid description",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Title at exactly 200 chars should be accepted: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Test boundary: Title at 201 chars (over limit) is rejected
+#[tokio::test]
+async fn test_create_proposal_title_over_limit() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    // Create a title of 201 characters (over limit)
+    let title = "x".repeat(201);
+
+    let result = user
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": title,
+            "description": "Valid description",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_failure());
+    let failure_str = format!("{:?}", result.failures());
+    assert!(
+        failure_str.contains("Title exceeds maximum length"),
+        "Expected title length error, got: {}",
+        failure_str
+    );
+
+    Ok(())
+}
+
+/// Test boundary: Description at exact 10,000 char limit is accepted
+#[tokio::test]
+async fn test_create_proposal_description_at_max_limit() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    let description = "x".repeat(10_000);
+
+    let result = user
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "Valid title",
+            "description": description,
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Description at exactly 10,000 chars should be accepted: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Test boundary: Discourse URL at exact 500 char limit is accepted
+#[tokio::test]
+async fn test_create_proposal_url_at_max_limit() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    let url = "x".repeat(500);
+
+    let result = user
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "Valid title",
+            "description": "Valid description",
+            "discourse_url": url,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Discourse URL at exactly 500 chars should be accepted: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Test that proposal ID increments correctly
+#[tokio::test]
+async fn test_proposal_id_increments() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    let id1 = create_proposal_helper(user, &env.governance, "First", 10).await?;
+    let id2 = create_proposal_helper(user, &env.governance, "Second", 10).await?;
+    let id3 = create_proposal_helper(user, &env.governance, "Third", 10).await?;
+
+    assert_eq!(id1, 0, "First proposal should have ID 0");
+    assert_eq!(id2, 1, "Second proposal should have ID 1");
+    assert_eq!(id3, 2, "Third proposal should have ID 2");
+
+    let count: u64 = env.governance.view("get_proposal_count").await?.json()?;
+    assert_eq!(count, 3, "Total count should be 3");
+
+    Ok(())
+}
+
+/// Test that voting_ends_at is exactly 7 days from created_at
+#[tokio::test]
+async fn test_voting_period_is_7_days() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(user, &env.governance, "Test", 10).await?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    let created_at = proposal["created_at"].as_u64().unwrap();
+    let voting_ends_at = proposal["voting_ends_at"].as_u64().unwrap();
+
+    // 7 days in nanoseconds
+    let seven_days_ns: u64 = 7 * 24 * 60 * 60 * 1_000_000_000;
+
+    assert_eq!(
+        voting_ends_at - created_at,
+        seven_days_ns,
+        "Voting period should be exactly 7 days"
+    );
+
+    Ok(())
+}
+
+// ==================== PHASE 6: EVENT VERIFICATION TESTS ====================
+
+/// Test that ProposalCreatedEvent is emitted with correct fields
+#[tokio::test]
+async fn test_event_proposal_created() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    let result = user
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "Event Test Proposal",
+            "description": "Testing event emission",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    // Check for EVENT_JSON in logs
+    let logs = result.logs();
+    let event_log = logs
+        .iter()
+        .find(|log| log.starts_with("EVENT_JSON:"))
+        .expect("Should have EVENT_JSON log");
+
+    // Parse the event
+    let json_str = &event_log["EVENT_JSON:".len()..];
+    let event: serde_json::Value = serde_json::from_str(json_str)?;
+
+    assert_eq!(event["event"], "proposal_created");
+    assert_eq!(event["data"]["proposal_id"], 0);
+    assert_eq!(event["data"]["title"], "Event Test Proposal");
+    assert!(event["data"]["proposer"].as_str().is_some());
+
+    Ok(())
+}
+
+/// Test that VoteCastEvent is emitted with correct fields
+#[tokio::test]
+async fn test_event_vote_cast() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(2).await?;
+    let proposer = &env.verified_users[0];
+    let voter = &env.verified_users[1];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    let result = voter
+        .call(env.governance.id(), "vote")
+        .args_json(json!({
+            "proposal_id": proposal_id,
+            "vote": "Yes"
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    // Check for EVENT_JSON in logs
+    let logs = result.logs();
+    let event_log = logs
+        .iter()
+        .find(|log| log.starts_with("EVENT_JSON:"))
+        .expect("Should have EVENT_JSON log");
+
+    let json_str = &event_log["EVENT_JSON:".len()..];
+    let event: serde_json::Value = serde_json::from_str(json_str)?;
+
+    assert_eq!(event["event"], "vote_cast");
+    assert_eq!(event["data"]["proposal_id"], proposal_id);
+    assert_eq!(event["data"]["vote"], "Yes");
+    assert!(event["data"]["voter"].as_str().is_some());
+
+    Ok(())
+}
+
+/// Test that ProposalFinalizedEvent is emitted with correct fields
+#[tokio::test]
+async fn test_event_proposal_finalized() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(3).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    // Cast votes
+    vote_helper(&env.verified_users[0], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "No")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[2], &env.governance, proposal_id, "Abstain")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    let result = proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    // Check for EVENT_JSON in logs
+    let logs = result.logs();
+    let event_log = logs
+        .iter()
+        .find(|log| log.starts_with("EVENT_JSON:"))
+        .expect("Should have EVENT_JSON log");
+
+    let json_str = &event_log["EVENT_JSON:".len()..];
+    let event: serde_json::Value = serde_json::from_str(json_str)?;
+
+    assert_eq!(event["event"], "proposal_finalized");
+    assert_eq!(event["data"]["proposal_id"], proposal_id);
+    assert_eq!(event["data"]["yes_votes"], 1);
+    assert_eq!(event["data"]["no_votes"], 1);
+    assert_eq!(event["data"]["abstain_votes"], 1);
+    assert_eq!(event["data"]["total_votes"], 3);
+
+    Ok(())
+}
+
+/// Test that ProposalCancelledEvent is emitted with correct fields
+#[tokio::test]
+async fn test_event_proposal_cancelled() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    let result = proposer
+        .call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    // Check for EVENT_JSON in logs
+    let logs = result.logs();
+    let event_log = logs
+        .iter()
+        .find(|log| log.starts_with("EVENT_JSON:"))
+        .expect("Should have EVENT_JSON log");
+
+    let json_str = &event_log["EVENT_JSON:".len()..];
+    let event: serde_json::Value = serde_json::from_str(json_str)?;
+
+    assert_eq!(event["event"], "proposal_cancelled");
+    assert_eq!(event["data"]["proposal_id"], proposal_id);
+    assert!(event["data"]["cancelled_by"].as_str().is_some());
+
+    Ok(())
+}
+
+// ==================== PHASE 7: STATE CONSISTENCY TESTS ====================
+
+/// Test that vote counts match actual votes stored
+#[tokio::test]
+async fn test_vote_counts_match_actual_votes() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(6).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    // Cast various votes
+    vote_helper(&env.verified_users[0], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[2], &env.governance, proposal_id, "No")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[3], &env.governance, proposal_id, "Abstain")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[4], &env.governance, proposal_id, "Abstain")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[5], &env.governance, proposal_id, "Abstain")
+        .await?
+        .into_result()?;
+
+    // Get vote counts
+    let counts: serde_json::Value = env
+        .governance
+        .view("get_vote_counts")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(counts["yes_votes"], 2);
+    assert_eq!(counts["no_votes"], 1);
+    assert_eq!(counts["abstain_votes"], 3);
+    assert_eq!(counts["total_votes"], 6);
+
+    // Verify each individual vote
+    for i in 0..6 {
+        let has_voted: bool = env
+            .governance
+            .view("has_voted")
+            .args_json(json!({
+                "proposal_id": proposal_id,
+                "account_id": env.verified_users[i].id()
+            }))
+            .await?
+            .json()?;
+        assert!(has_voted, "User {} should have voted", i);
+    }
+
+    Ok(())
+}
+
+/// Test that proposal count matches proposals stored
+#[tokio::test]
+async fn test_proposal_count_matches_stored() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    // Create 5 proposals
+    for i in 0..5 {
+        create_proposal_helper(user, &env.governance, &format!("Proposal {}", i), 10).await?;
+    }
+
+    let count: u64 = env.governance.view("get_proposal_count").await?.json()?;
+    assert_eq!(count, 5);
+
+    // Verify all proposals exist
+    for i in 0..5 {
+        let proposal: Option<serde_json::Value> = env
+            .governance
+            .view("get_proposal")
+            .args_json(json!({"proposal_id": i}))
+            .await?
+            .json()?;
+        assert!(proposal.is_some(), "Proposal {} should exist", i);
+    }
+
+    // Proposal 5 should not exist
+    let proposal_5: Option<serde_json::Value> = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": 5}))
+        .await?
+        .json()?;
+    assert!(proposal_5.is_none(), "Proposal 5 should not exist");
+
+    Ok(())
+}
+
+/// Test valid status transitions
+#[tokio::test]
+async fn test_status_transitions_are_valid() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(3).await?;
+    let proposer = &env.verified_users[0];
+
+    // Test Active -> Passed
+    let proposal_passed = create_proposal_helper(proposer, &env.governance, "Pass Test", 10).await?;
+    vote_helper(&env.verified_users[0], &env.governance, proposal_passed, "Yes")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[1], &env.governance, proposal_passed, "Yes")
+        .await?
+        .into_result()?;
+
+    // Test Active -> Failed (will be no votes)
+    let proposal_failed = create_proposal_helper(proposer, &env.governance, "Fail Test", 10).await?;
+    vote_helper(&env.verified_users[0], &env.governance, proposal_failed, "No")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[1], &env.governance, proposal_failed, "No")
+        .await?
+        .into_result()?;
+
+    // Test Active -> Cancelled
+    let proposal_cancelled =
+        create_proposal_helper(proposer, &env.governance, "Cancel Test", 10).await?;
+    proposer
+        .call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": proposal_cancelled}))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Test Active -> QuorumNotMet (no votes)
+    let proposal_quorum =
+        create_proposal_helper(proposer, &env.governance, "Quorum Test", 100).await?;
+    vote_helper(&env.verified_users[0], &env.governance, proposal_quorum, "Yes")
+        .await?
+        .into_result()?; // Only 1 of 3 voted with 100% quorum
+
+    advance_past_voting_period(&env.worker).await?;
+
+    // Finalize proposals
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_passed}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_failed}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_quorum}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Verify statuses
+    let p_passed: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_passed}))
+        .await?
+        .json()?;
+    assert_eq!(p_passed["status"], "Passed");
+
+    let p_failed: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_failed}))
+        .await?
+        .json()?;
+    assert_eq!(p_failed["status"], "Failed");
+
+    let p_cancelled: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_cancelled}))
+        .await?
+        .json()?;
+    assert_eq!(p_cancelled["status"], "Cancelled");
+
+    let p_quorum: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_quorum}))
+        .await?
+        .json()?;
+    assert_eq!(p_quorum["status"], "QuorumNotMet");
+
+    Ok(())
+}
+
+// ==================== PHASE 8: PAGINATION TESTS ====================
+
+/// Test get_proposals pagination with from_index and limit
+#[tokio::test]
+async fn test_get_proposals_pagination() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    // Create 15 proposals
+    for i in 0..15 {
+        create_proposal_helper(user, &env.governance, &format!("Proposal {}", i), 10).await?;
+    }
+
+    // Get first page (5 items)
+    let page1: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 0, "limit": 5, "status": null }))
+        .await?
+        .json()?;
+    assert_eq!(page1.len(), 5);
+    assert_eq!(page1[0]["id"], 0);
+    assert_eq!(page1[4]["id"], 4);
+
+    // Get second page
+    let page2: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 5, "limit": 5, "status": null }))
+        .await?
+        .json()?;
+    assert_eq!(page2.len(), 5);
+    assert_eq!(page2[0]["id"], 5);
+    assert_eq!(page2[4]["id"], 9);
+
+    // Get third page (only 5 remaining)
+    let page3: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 10, "limit": 5, "status": null }))
+        .await?
+        .json()?;
+    assert_eq!(page3.len(), 5);
+    assert_eq!(page3[0]["id"], 10);
+    assert_eq!(page3[4]["id"], 14);
+
+    Ok(())
+}
+
+/// Test get_proposals with limit capped at MAX_BATCH_SIZE (100)
+#[tokio::test]
+async fn test_get_proposals_limit_capped() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    // Create 5 proposals
+    for i in 0..5 {
+        create_proposal_helper(user, &env.governance, &format!("Proposal {}", i), 10).await?;
+    }
+
+    // Request more than MAX_BATCH_SIZE (should be capped)
+    let result: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 0, "limit": 1000, "status": null }))
+        .await?
+        .json()?;
+
+    // Should return only 5 (what exists), not 1000
+    assert_eq!(result.len(), 5);
+
+    Ok(())
+}
+
+/// Test get_proposals with status filter
+#[tokio::test]
+async fn test_get_proposals_status_filter() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(2).await?;
+    let user = &env.verified_users[0];
+
+    // Create 3 proposals
+    let p1 = create_proposal_helper(user, &env.governance, "Active 1", 10).await?;
+    let p2 = create_proposal_helper(user, &env.governance, "Active 2", 10).await?;
+    let p3 = create_proposal_helper(user, &env.governance, "To Cancel", 10).await?;
+
+    // Cancel one
+    user.call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": p3}))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Vote on one to make it pass
+    vote_helper(&env.verified_users[0], &env.governance, p1, "Yes")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[1], &env.governance, p1, "Yes")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    user.call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": p1}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Filter by Active only
+    let active: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 0, "limit": 100, "status": "Active" }))
+        .await?
+        .json()?;
+    assert_eq!(active.len(), 1);
+    assert_eq!(active[0]["id"], p2);
+
+    // Filter by Cancelled only
+    let cancelled: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 0, "limit": 100, "status": "Cancelled" }))
+        .await?
+        .json()?;
+    assert_eq!(cancelled.len(), 1);
+    assert_eq!(cancelled[0]["id"], p3);
+
+    // Filter by Passed only
+    let passed: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 0, "limit": 100, "status": "Passed" }))
+        .await?
+        .json()?;
+    assert_eq!(passed.len(), 1);
+    assert_eq!(passed[0]["id"], p1);
+
+    Ok(())
+}
+
+/// Test get_proposals with from_index beyond range
+#[tokio::test]
+async fn test_get_proposals_from_index_beyond_range() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let user = &env.verified_users[0];
+
+    // Create 3 proposals
+    for i in 0..3 {
+        create_proposal_helper(user, &env.governance, &format!("Proposal {}", i), 10).await?;
+    }
+
+    // Request from_index beyond range
+    let result: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 100, "limit": 10, "status": null }))
+        .await?
+        .json()?;
+
+    // Should return empty array
+    assert!(result.is_empty());
+
+    Ok(())
+}
+
+/// Test get_vote_counts for non-existent proposal returns defaults
+#[tokio::test]
+async fn test_get_vote_counts_nonexistent_proposal() -> anyhow::Result<()> {
+    let (_, governance, _, _) = setup().await?;
+
+    let counts: serde_json::Value = governance
+        .view("get_vote_counts")
+        .args_json(json!({"proposal_id": 999}))
+        .await?
+        .json()?;
+
+    // Should return default zeros
+    assert_eq!(counts["yes_votes"], 0);
+    assert_eq!(counts["no_votes"], 0);
+    assert_eq!(counts["abstain_votes"], 0);
+    assert_eq!(counts["total_votes"], 0);
+
+    Ok(())
+}
