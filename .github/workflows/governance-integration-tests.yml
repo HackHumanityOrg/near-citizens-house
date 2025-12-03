@@ -4,17 +4,17 @@ on:
   push:
     branches: [main]
     paths:
-      - 'contracts/governance/**'
-      - 'contracts/verified-accounts/**'
-      - 'contracts/verified-accounts-interface/**'
-      - '.github/workflows/governance-integration-tests.yml'
+      - "contracts/governance/**"
+      - "contracts/verified-accounts/**"
+      - "contracts/verified-accounts-interface/**"
+      - ".github/workflows/governance-integration-tests.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'contracts/governance/**'
-      - 'contracts/verified-accounts/**'
-      - 'contracts/verified-accounts-interface/**'
-      - '.github/workflows/governance-integration-tests.yml'
+      - "contracts/governance/**"
+      - "contracts/verified-accounts/**"
+      - "contracts/verified-accounts-interface/**"
+      - ".github/workflows/governance-integration-tests.yml"
   workflow_dispatch:
 
 env:

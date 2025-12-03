@@ -163,7 +163,9 @@ export function ProposalDetail({
             </div>
             <div>
               <dt className="text-muted-foreground">Quorum Requirement</dt>
-              <dd className="font-medium">{proposal.quorumPercentage}% ({quorumRequired} votes)</dd>
+              <dd className="font-medium">
+                {proposal.quorumPercentage}% ({quorumRequired} votes)
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Total Citizens</dt>

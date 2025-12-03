@@ -26,10 +26,7 @@ export function ProposalTabs({ currentStatus }: ProposalTabsProps) {
 
         return (
           <Link key={tab.label} href={href}>
-            <Button
-              variant="ghost"
-              className={`rounded-none ${isActive ? "border-b-2 border-primary" : ""}`}
-            >
+            <Button variant="ghost" className={`rounded-none ${isActive ? "border-b-2 border-primary" : ""}`}>
               {tab.label}
             </Button>
           </Link>

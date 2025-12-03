@@ -18,7 +18,7 @@ export function VoteProgress({
   quorumPercentage,
   showLabels = true,
 }: VoteProgressProps) {
-  const { yesVotes, noVotes, abstainVotes, totalVotes } = voteCounts
+  const { yesVotes, noVotes, abstainVotes } = voteCounts
 
   // Only Yes + No count toward quorum (not Abstain)
   const quorumVotes = yesVotes + noVotes
@@ -82,9 +82,7 @@ export function VoteProgress({
           </div>
         )}
         {showLabels && abstainVotes > 0 && (
-          <div className="text-xs text-muted-foreground">
-            Abstain votes ({abstainVotes}) do not count toward quorum
-          </div>
+          <div className="text-xs text-muted-foreground">Abstain votes ({abstainVotes}) do not count toward quorum</div>
         )}
       </div>
     </div>

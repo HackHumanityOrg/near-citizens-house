@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     console.error("Discourse profile fetch error:", error)
 
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Invalid request parameters", details: error.errors }, { status: 400 })
+      return NextResponse.json({ error: "Invalid request parameters", details: error.issues }, { status: 400 })
     }
 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

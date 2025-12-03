@@ -4,15 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'contracts/verified-accounts/src/**'
-      - 'contracts/verified-accounts-interface/**'
-      - '.github/workflows/verified-accounts-unit-tests.yml'
+      - "contracts/verified-accounts/src/**"
+      - "contracts/verified-accounts-interface/**"
+      - ".github/workflows/verified-accounts-unit-tests.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'contracts/verified-accounts/src/**'
-      - 'contracts/verified-accounts-interface/**'
-      - '.github/workflows/verified-accounts-unit-tests.yml'
+      - "contracts/verified-accounts/src/**"
+      - "contracts/verified-accounts-interface/**"
+      - ".github/workflows/verified-accounts-unit-tests.yml"
   workflow_dispatch:
 
 env:

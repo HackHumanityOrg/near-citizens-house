@@ -9,9 +9,7 @@
 const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet"
 
 // Default RPC URLs for FastNear
-const defaultRpcUrl = networkId === "mainnet"
-  ? "https://rpc.mainnet.fastnear.com"
-  : "https://rpc.testnet.fastnear.com"
+const defaultRpcUrl = networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
 
 export const NEAR_CONFIG = {
   networkId,
@@ -28,16 +26,8 @@ export const NEAR_CONFIG = {
   // Public RPC URLs for frontend wallet transactions (no API key needed)
   // Used by @hot-labs/near-connect for transaction signing with automatic failover
   publicRpcUrls: {
-    mainnet: [
-      "https://free.rpc.fastnear.com",
-      "https://near.lava.build:443",
-      "https://rpc.shitzuapes.xyz",
-    ],
-    testnet: [
-      "https://rpc.testnet.fastnear.com",
-      "https://test.rpc.fastnear.com",
-      "https://near-testnet.drpc.org",
-    ],
+    mainnet: ["https://free.rpc.fastnear.com", "https://near.lava.build:443", "https://rpc.shitzuapes.xyz"],
+    testnet: ["https://rpc.testnet.fastnear.com", "https://test.rpc.fastnear.com", "https://near-testnet.drpc.org"],
   },
   // Contract addresses
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",

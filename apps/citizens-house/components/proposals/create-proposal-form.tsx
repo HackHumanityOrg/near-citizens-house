@@ -59,12 +59,7 @@ export function CreateProposalForm({
     clearError()
 
     try {
-      const proposalId = await createProposal(
-        data.title,
-        data.description,
-        data.quorumPercentage,
-        data.discourseUrl,
-      )
+      const proposalId = await createProposal(data.title, data.description, data.quorumPercentage, data.discourseUrl)
 
       // Redirect to the new proposal
       router.push(`/proposals/${proposalId}`)
@@ -171,7 +166,9 @@ export function CreateProposalForm({
                 className="w-24"
                 disabled={isLoading}
               />
-              <span className="text-sm text-muted-foreground">% of verified citizens ({quorumPercentageMin}-{quorumPercentageMax}%)</span>
+              <span className="text-sm text-muted-foreground">
+                % of verified citizens ({quorumPercentageMin}-{quorumPercentageMax}%)
+              </span>
             </div>
             <p className="text-xs text-muted-foreground">
               {totalCitizens > 0 ? (
@@ -183,9 +180,7 @@ export function CreateProposalForm({
                 "Loading citizen count..."
               )}
             </p>
-            {errors.quorumPercentage && (
-              <p className="text-xs text-destructive">{errors.quorumPercentage.message}</p>
-            )}
+            {errors.quorumPercentage && <p className="text-xs text-destructive">{errors.quorumPercentage.message}</p>}
           </div>
 
           {/* Error Display */}
@@ -222,8 +217,8 @@ export function CreateProposalForm({
               submitting. You can cancel your proposal while voting is active.
             </p>
             <p className="text-sm text-muted-foreground">
-              <strong>Voting:</strong> Citizens can vote Yes, No, or Abstain. Only Yes and No votes count toward
-              quorum. Proposals pass if Yes votes exceed No votes when quorum is met.
+              <strong>Voting:</strong> Citizens can vote Yes, No, or Abstain. Only Yes and No votes count toward quorum.
+              Proposals pass if Yes votes exceed No votes when quorum is met.
             </p>
           </div>
         </form>

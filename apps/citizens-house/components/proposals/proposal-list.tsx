@@ -94,8 +94,7 @@ export function ProposalList({ initialProposals = [], statusFilter }: ProposalLi
     }
 
     return () => abortController.abort()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter])
+  }, [statusFilter, initialProposals.length])
 
   if (loading && proposals.length === 0) {
     return (

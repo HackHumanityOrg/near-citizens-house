@@ -83,12 +83,7 @@ export function useGovernance(): UseGovernanceResult {
   const clearError = useCallback(() => setError(null), [])
 
   const createProposal = useCallback(
-    async (
-      title: string,
-      description: string,
-      quorumPercentage: number,
-      discourseUrl?: string,
-    ): Promise<number> => {
+    async (title: string, description: string, quorumPercentage: number, discourseUrl?: string): Promise<number> => {
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
