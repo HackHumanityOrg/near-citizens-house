@@ -96,6 +96,7 @@ export function ProposalDetail({
             voteCounts={voteCounts}
             quorumRequired={quorumRequired}
             totalCitizens={totalCitizens}
+            quorumPercentage={proposal.quorumPercentage}
             showLabels={true}
           />
 
@@ -116,14 +117,18 @@ export function ProposalDetail({
           {!isActive && (
             <div className="pt-4 border-t">
               <h3 className="font-semibold mb-2">Final Results</h3>
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">{voteCounts.yesVotes}</div>
-                  <div className="text-sm text-muted-foreground">Yes Votes</div>
+                  <div className="text-sm text-muted-foreground">Yes</div>
                 </div>
                 <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg">
                   <div className="text-2xl font-bold text-red-600">{voteCounts.noVotes}</div>
-                  <div className="text-sm text-muted-foreground">No Votes</div>
+                  <div className="text-sm text-muted-foreground">No</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-2xl font-bold text-muted-foreground">{voteCounts.abstainVotes}</div>
+                  <div className="text-sm text-muted-foreground">Abstain</div>
                 </div>
               </div>
             </div>
@@ -155,6 +160,14 @@ export function ProposalDetail({
               <dd>
                 <ProposalStatusBadge status={proposal.status} />
               </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Quorum Requirement</dt>
+              <dd className="font-medium">{proposal.quorumPercentage}% ({quorumRequired} votes)</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Total Citizens</dt>
+              <dd className="font-medium">{totalCitizens}</dd>
             </div>
           </dl>
         </CardContent>

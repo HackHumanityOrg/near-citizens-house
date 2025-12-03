@@ -45,6 +45,7 @@ export function ProposalCard({ proposal, voteCounts, quorumRequired, totalCitize
               voteCounts={voteCounts}
               quorumRequired={quorumRequired}
               totalCitizens={totalCitizens}
+              quorumPercentage={proposal.quorumPercentage}
               showLabels={true}
             />
           )}

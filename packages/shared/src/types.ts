@@ -264,7 +264,7 @@ export interface IVerificationDatabase {
 // ============================================================================
 
 // Vote choice enum
-export const voteSchema = z.enum(["Yes", "No"])
+export const voteSchema = z.enum(["Yes", "No", "Abstain"])
 export type Vote = z.infer<typeof voteSchema>
 
 // Proposal status enum
@@ -275,6 +275,7 @@ export type ProposalStatus = z.infer<typeof proposalStatusSchema>
 export const voteCountsSchema = z.object({
   yesVotes: z.number(),
   noVotes: z.number(),
+  abstainVotes: z.number(),
   totalVotes: z.number(),
 })
 export type VoteCounts = z.infer<typeof voteCountsSchema>
@@ -289,6 +290,7 @@ export const proposalSchema = z.object({
   createdAt: z.number(), // milliseconds
   votingEndsAt: z.number(), // milliseconds
   status: proposalStatusSchema,
+  quorumPercentage: z.number(), // 1-100
 })
 export type Proposal = z.infer<typeof proposalSchema>
 
@@ -307,11 +309,13 @@ export const contractVoteCountsSchema = z
   .object({
     yes_votes: z.number(),
     no_votes: z.number(),
+    abstain_votes: z.number(),
     total_votes: z.number(),
   })
   .transform((data) => ({
     yesVotes: data.yes_votes,
     noVotes: data.no_votes,
+    abstainVotes: data.abstain_votes,
     totalVotes: data.total_votes,
   }))
 
@@ -326,6 +330,7 @@ export const contractProposalSchema = z
     created_at: z.number(), // nanoseconds
     voting_ends_at: z.number(), // nanoseconds
     status: z.string(),
+    quorum_percentage: z.number(), // 1-100
   })
   .transform((data) => ({
     id: data.id,
@@ -336,6 +341,7 @@ export const contractProposalSchema = z
     createdAt: Math.floor(data.created_at / 1_000_000), // nanoseconds → milliseconds
     votingEndsAt: Math.floor(data.voting_ends_at / 1_000_000), // nanoseconds → milliseconds
     status: data.status as ProposalStatus,
+    quorumPercentage: data.quorum_percentage,
   }))
 
 export type ContractProposal = z.input<typeof contractProposalSchema>
@@ -346,6 +352,7 @@ export const createProposalRequestSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(10000),
   discourseUrl: z.string().url().max(500).optional(),
+  quorumPercentage: z.number().int().min(1).max(100),
 })
 export type CreateProposalRequest = z.infer<typeof createProposalRequestSchema>
 

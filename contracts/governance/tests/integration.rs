@@ -58,7 +58,10 @@ async fn test_contract_initialization() -> anyhow::Result<()> {
     let params: serde_json::Value = governance.view("get_parameters").await?.json()?;
 
     assert_eq!(params.get("voting_period_days"), Some(&serde_json::json!(7)));
-    assert_eq!(params.get("quorum_percentage"), Some(&serde_json::json!(10)));
+    // Quorum is now per-proposal, so we check the bounds and default
+    assert_eq!(params.get("quorum_percentage_min"), Some(&serde_json::json!(1)));
+    assert_eq!(params.get("quorum_percentage_max"), Some(&serde_json::json!(100)));
+    assert_eq!(params.get("quorum_percentage_default"), Some(&serde_json::json!(10)));
 
     // Check verified accounts reference
     let va_contract: String = governance
@@ -89,7 +92,8 @@ async fn test_create_proposal_not_verified() -> anyhow::Result<()> {
         .args_json(json!({
             "title": "Test Proposal",
             "description": "This should fail",
-            "discourse_url": null
+            "discourse_url": null,
+            "quorum_percentage": 10
         }))
         .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
         .transact()
@@ -183,6 +187,7 @@ async fn test_get_vote_counts_default() -> anyhow::Result<()> {
 
     assert_eq!(counts.get("yes_votes"), Some(&serde_json::json!(0)));
     assert_eq!(counts.get("no_votes"), Some(&serde_json::json!(0)));
+    assert_eq!(counts.get("abstain_votes"), Some(&serde_json::json!(0)));
     assert_eq!(counts.get("total_votes"), Some(&serde_json::json!(0)));
 
     Ok(())

@@ -2,7 +2,7 @@
 
 import { Button } from "@near-citizens/ui"
 import { type Vote, useNearWallet } from "@near-citizens/shared"
-import { ThumbsUp, ThumbsDown, Loader2 } from "lucide-react"
+import { ThumbsUp, ThumbsDown, Minus, Loader2 } from "lucide-react"
 import { useGovernance } from "@/hooks/governance"
 
 interface VoteButtonProps {
@@ -37,15 +37,22 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">You voted:</span>
         <div className="flex items-center gap-1 font-medium">
-          {currentVote === "Yes" ? (
+          {currentVote === "Yes" && (
             <>
               <ThumbsUp className="h-4 w-4 text-green-600" />
               <span className="text-green-600">Yes</span>
             </>
-          ) : (
+          )}
+          {currentVote === "No" && (
             <>
               <ThumbsDown className="h-4 w-4 text-red-600" />
               <span className="text-red-600">No</span>
+            </>
+          )}
+          {currentVote === "Abstain" && (
+            <>
+              <Minus className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Abstain</span>
             </>
           )}
         </div>
@@ -63,7 +70,7 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
           className="flex-1 bg-green-600 hover:bg-green-700"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
-          Vote Yes
+          Yes
         </Button>
         <Button
           onClick={() => handleVote("No")}
@@ -72,7 +79,16 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
           className="flex-1"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
-          Vote No
+          No
+        </Button>
+        <Button
+          onClick={() => handleVote("Abstain")}
+          disabled={disabled || isLoading}
+          variant="outline"
+          className="flex-1"
+        >
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Minus className="mr-2 h-4 w-4" />}
+          Abstain
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

@@ -51,7 +51,12 @@ function extractReturnValue<T>(result: TransactionResult): T | null {
 
 export interface UseGovernanceResult {
   /** Create a new governance proposal */
-  createProposal: (title: string, description: string, discourseUrl?: string) => Promise<number>
+  createProposal: (
+    title: string,
+    description: string,
+    quorumPercentage: number,
+    discourseUrl?: string,
+  ) => Promise<number>
   /** Cast a vote on a proposal */
   vote: (proposalId: number, vote: Vote) => Promise<void>
   /** Finalize a proposal after voting ends */
@@ -78,7 +83,12 @@ export function useGovernance(): UseGovernanceResult {
   const clearError = useCallback(() => setError(null), [])
 
   const createProposal = useCallback(
-    async (title: string, description: string, discourseUrl?: string): Promise<number> => {
+    async (
+      title: string,
+      description: string,
+      quorumPercentage: number,
+      discourseUrl?: string,
+    ): Promise<number> => {
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
@@ -102,6 +112,7 @@ export function useGovernance(): UseGovernanceResult {
                   title,
                   description,
                   discourse_url: discourseUrl || null,
+                  quorum_percentage: quorumPercentage,
                 },
                 gas: DEFAULT_GAS,
                 deposit: ONE_YOCTO, // Required for cross-contract call

@@ -20,9 +20,10 @@ import { useGovernance } from "@/hooks/governance"
 
 interface CreateProposalFormProps {
   isVerified: boolean
+  totalCitizens: number
 }
 
-export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
+export function CreateProposalForm({ isVerified, totalCitizens }: CreateProposalFormProps) {
   const router = useRouter()
   const { createProposal, isLoading, error, clearError } = useGovernance()
 
@@ -33,16 +34,28 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
     watch,
   } = useForm<CreateProposalRequest>({
     resolver: zodResolver(createProposalRequestSchema),
+    defaultValues: {
+      quorumPercentage: 10, // Default to 10%
+    },
   })
 
   const titleLength = watch("title")?.length || 0
   const descriptionLength = watch("description")?.length || 0
+  const quorumPercentage = watch("quorumPercentage") || 10
+
+  // Calculate how many votes are needed for quorum
+  const requiredVotes = Math.ceil((totalCitizens * quorumPercentage) / 100)
 
   const onSubmit = async (data: CreateProposalRequest) => {
     clearError()
 
     try {
-      const proposalId = await createProposal(data.title, data.description, data.discourseUrl)
+      const proposalId = await createProposal(
+        data.title,
+        data.description,
+        data.quorumPercentage,
+        data.discourseUrl,
+      )
 
       // Redirect to the new proposal
       router.push(`/proposals/${proposalId}`)
@@ -81,8 +94,8 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
       <CardHeader>
         <CardTitle>Create New Proposal</CardTitle>
         <CardDescription>
-          Submit a proposal for the community to vote on. All proposals run for 7 days and require 10% participation to
-          pass.
+          Submit a proposal for the community to vote on. All proposals run for 7 days. You can set a custom quorum
+          requirement.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -134,6 +147,38 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
             {errors.discourseUrl && <p className="text-xs text-destructive">{errors.discourseUrl.message}</p>}
           </div>
 
+          {/* Quorum Percentage */}
+          <div className="space-y-2">
+            <Label htmlFor="quorumPercentage">
+              Quorum Requirement <span className="text-destructive">*</span>
+            </Label>
+            <div className="flex items-center gap-3">
+              <Input
+                id="quorumPercentage"
+                type="number"
+                min={1}
+                max={100}
+                {...register("quorumPercentage", { valueAsNumber: true })}
+                className="w-24"
+                disabled={isLoading}
+              />
+              <span className="text-sm text-muted-foreground">% of verified citizens</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {totalCitizens > 0 ? (
+                <>
+                  Currently <strong>{totalCitizens}</strong> verified citizens. At {quorumPercentage}%,{" "}
+                  <strong>{requiredVotes}</strong> Yes/No votes are needed to reach quorum.
+                </>
+              ) : (
+                "Loading citizen count..."
+              )}
+            </p>
+            {errors.quorumPercentage && (
+              <p className="text-xs text-destructive">{errors.quorumPercentage.message}</p>
+            )}
+          </div>
+
           {/* Error Display */}
           {error && (
             <div className="flex items-start gap-3 p-4 border border-destructive rounded-lg bg-destructive/10">
@@ -162,10 +207,14 @@ export function CreateProposalForm({ isVerified }: CreateProposalFormProps) {
           </div>
 
           {/* Info Notice */}
-          <div className="p-4 bg-muted/50 rounded-lg">
+          <div className="p-4 bg-muted/50 rounded-lg space-y-2">
             <p className="text-sm text-muted-foreground">
               <strong>Note:</strong> Once created, proposals cannot be edited. Make sure all details are correct before
               submitting. You can cancel your proposal while voting is active.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              <strong>Voting:</strong> Citizens can vote Yes, No, or Abstain. Only Yes and No votes count toward
+              quorum. Proposals pass if Yes votes exceed No votes when quorum is met.
             </p>
           </div>
         </form>

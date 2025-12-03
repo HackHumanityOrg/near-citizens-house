@@ -12,6 +12,7 @@ interface ProposalWithStats {
   voteCounts: {
     yesVotes: number
     noVotes: number
+    abstainVotes: number
     totalVotes: number
   }
   quorumRequired: number

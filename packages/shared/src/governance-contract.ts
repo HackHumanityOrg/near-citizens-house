@@ -20,12 +20,13 @@ import { NEAR_CONFIG } from "./config"
 export type { IGovernanceDatabase, Proposal, Vote, VoteCounts, ProposalStatus }
 
 // Contract format for vote (matches Rust enum)
-type ContractVote = "Yes" | "No"
+type ContractVote = "Yes" | "No" | "Abstain"
 
 // Contract format for VoteCounts (snake_case)
 interface ContractVoteCounts {
   yes_votes: number
   no_votes: number
+  abstain_votes: number
   total_votes: number
 }
 
@@ -146,14 +147,14 @@ export class NearGovernanceContract implements IGovernanceDatabase {
       })
 
       if (!result) {
-        return { yesVotes: 0, noVotes: 0, totalVotes: 0 }
+        return { yesVotes: 0, noVotes: 0, abstainVotes: 0, totalVotes: 0 }
       }
 
       // Validate and transform contract response using Zod schema
       return contractVoteCountsSchema.parse(result)
     } catch (error) {
       console.error("[GovernanceContract] Error getting vote counts:", error)
-      return { yesVotes: 0, noVotes: 0, totalVotes: 0 }
+      return { yesVotes: 0, noVotes: 0, abstainVotes: 0, totalVotes: 0 }
     }
   }
 

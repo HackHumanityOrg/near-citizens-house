@@ -6,16 +6,25 @@ import { CreateProposalForm } from "@/components/proposals/create-proposal-form"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@near-citizens/shared"
 import { ArrowLeft, Loader2, Wallet } from "lucide-react"
-import { checkVerificationStatus } from "@/lib/actions/governance"
+import { checkVerificationStatus, getTotalCitizens } from "@/lib/actions/governance"
 import { GovernanceHeader } from "@/components/shared/governance-header"
 
 function CreateProposalContent() {
   const { accountId, isConnected, connect, isLoading: walletLoading } = useNearWallet()
   const [isVerified, setIsVerified] = useState<boolean | null>(null)
+  const [totalCitizens, setTotalCitizens] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkVerification = async () => {
+    const loadData = async () => {
+      // Always fetch total citizens for the quorum display
+      try {
+        const total = await getTotalCitizens()
+        setTotalCitizens(total)
+      } catch (error) {
+        console.error("Error fetching total citizens:", error)
+      }
+
       if (!accountId) {
         setIsVerified(false)
         setLoading(false)
@@ -34,7 +43,7 @@ function CreateProposalContent() {
     }
 
     if (!walletLoading) {
-      checkVerification()
+      loadData()
     }
   }, [accountId, walletLoading])
 
@@ -90,7 +99,7 @@ function CreateProposalContent() {
       </div>
 
       {/* Form */}
-      <CreateProposalForm isVerified={isVerified || false} />
+      <CreateProposalForm isVerified={isVerified || false} totalCitizens={totalCitizens} />
     </div>
   )
 }

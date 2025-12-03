@@ -7,8 +7,10 @@
 //!
 //! - **True 1p1v**: Each verified citizen gets exactly one vote per proposal
 //! - **Sybil Resistant**: Integrates with verified-accounts oracle via cross-contract calls
-//! - **Quorum Enforcement**: Proposals require 10% citizen participation
-//! - **Majority Voting**: Proposals pass with >50% yes votes
+//! - **Per-Proposal Quorum**: Proposers set quorum percentage (1-100%) at creation
+//! - **Abstain Votes**: Yes/No/Abstain options, where Abstain doesn't count toward quorum
+//! - **Snapshot Voting**: Only accounts verified before proposal creation can vote
+//! - **Majority Voting**: Proposals pass with >50% yes votes (among Yes/No votes)
 //! - **7-Day Voting Period**: Fixed voting window for all proposals
 //! - **Immutable**: No upgrade mechanism for maximum security and trust
 //!
@@ -18,11 +20,13 @@
 //! - All write operations verify citizenship via verified-accounts contract
 //! - Two-step pattern: verify → callback to complete action
 //! - Prevents non-citizens from creating proposals or voting
+//! - Snapshot voting: voters must be verified before proposal creation
 //!
 //! ## Input Validation
 //! - Title max 200 characters
 //! - Description max 10,000 characters
 //! - Discourse URL max 500 characters
+//! - Quorum percentage 1-100%
 //! - Prevents storage abuse
 //!
 //! ## State Validation
@@ -56,9 +60,6 @@ const MAX_BATCH_SIZE: usize = 100;
 /// Voting period in nanoseconds (7 days)
 const VOTING_PERIOD_NS: u64 = 7 * 24 * 60 * 60 * 1_000_000_000;
 
-/// Quorum percentage (10% of verified citizens must vote)
-const QUORUM_PERCENTAGE: u8 = 10;
-
 /// Storage key prefixes for collections
 #[derive(BorshStorageKey, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
@@ -78,6 +79,7 @@ pub enum StorageKey {
 pub enum Vote {
     Yes,
     No,
+    Abstain,
 }
 
 /// Proposal status
@@ -104,6 +106,7 @@ pub enum ProposalStatus {
 pub struct VoteCounts {
     pub yes_votes: u64,
     pub no_votes: u64,
+    pub abstain_votes: u64,
     pub total_votes: u64,
 }
 
@@ -121,6 +124,7 @@ pub struct Proposal {
     pub created_at: u64,
     pub voting_ends_at: u64,
     pub status: ProposalStatus,
+    pub quorum_percentage: u8,
 }
 
 /// Event emitted when a proposal is created
@@ -149,8 +153,10 @@ pub struct ProposalFinalizedEvent {
     pub status: String,
     pub yes_votes: u64,
     pub no_votes: u64,
+    pub abstain_votes: u64,
     pub total_votes: u64,
     pub quorum_required: u64,
+    pub quorum_percentage: u8,
 }
 
 /// Event emitted when a proposal is cancelled
@@ -212,6 +218,7 @@ impl GovernanceContract {
         title: String,
         description: String,
         discourse_url: Option<String>,
+        quorum_percentage: u8,
     ) -> Promise {
         // Cross-contract call to verify citizenship
         ext_verified_accounts::ext(self.verified_accounts_contract.clone())
@@ -225,6 +232,7 @@ impl GovernanceContract {
                         title,
                         description,
                         discourse_url,
+                        quorum_percentage,
                     ),
             )
     }
@@ -237,6 +245,7 @@ impl GovernanceContract {
         title: String,
         description: String,
         discourse_url: Option<String>,
+        quorum_percentage: u8,
     ) -> u64 {
         // Check verification result
         let is_verified = match env::promise_result(0) {
@@ -268,6 +277,10 @@ impl GovernanceContract {
                 env::panic_str("Discourse URL exceeds maximum length of 500 characters");
             }
         }
+        // Validate quorum percentage (1-100)
+        if quorum_percentage < 1 || quorum_percentage > 100 {
+            env::panic_str("Quorum percentage must be between 1 and 100");
+        }
 
         // Create proposal
         let id = self.next_proposal_id;
@@ -283,6 +296,7 @@ impl GovernanceContract {
             created_at: now,
             voting_ends_at: now + VOTING_PERIOD_NS,
             status: ProposalStatus::Active,
+            quorum_percentage,
         };
 
         self.proposals.insert(&id, &proposal);
@@ -304,12 +318,13 @@ impl GovernanceContract {
     }
 
     /// Cast a vote on a proposal (requires verified citizenship)
+    /// Uses snapshot voting: only accounts verified before proposal creation can vote
     #[payable]
     pub fn vote(&mut self, proposal_id: u64, vote: Vote) -> Promise {
-        // Cross-contract call to verify citizenship
+        // Cross-contract call to get account verification info (for snapshot check)
         ext_verified_accounts::ext(self.verified_accounts_contract.clone())
-            .with_static_gas(Gas::from_tgas(5))
-            .is_account_verified(env::predecessor_account_id())
+            .with_static_gas(Gas::from_tgas(8))
+            .get_account(env::predecessor_account_id())
             .then(
                 Self::ext(env::current_account_id())
                     .with_static_gas(Gas::from_tgas(15))
@@ -318,25 +333,35 @@ impl GovernanceContract {
     }
 
     /// Callback to complete vote after verification check
+    /// Uses snapshot voting: voters must be verified before proposal creation
     #[private]
     pub fn callback_vote(&mut self, voter: AccountId, proposal_id: u64, vote: Vote) {
-        // Check verification result
-        let is_verified = match env::promise_result(0) {
-            PromiseResult::Successful(data) => {
-                near_sdk::serde_json::from_slice::<bool>(&data).unwrap_or(false)
-            }
-            _ => false,
-        };
+        // Parse verification info from promise result (Option<VerifiedAccountInfo>)
+        // The interface uses Borsh serialization
+        let verified_info: Option<verified_accounts_interface::VerifiedAccountInfo> =
+            match env::promise_result(0) {
+                PromiseResult::Successful(data) => {
+                    near_sdk::borsh::from_slice(&data).unwrap_or(None)
+                }
+                _ => env::panic_str("Failed to get verification info"),
+            };
 
-        if !is_verified {
-            env::panic_str("Only verified citizens can vote");
-        }
+        // Check account is verified
+        let account_info = verified_info
+            .unwrap_or_else(|| env::panic_str("Only verified citizens can vote"));
 
         // Get proposal
         let proposal = self
             .proposals
             .get(&proposal_id)
             .unwrap_or_else(|| env::panic_str("Proposal not found"));
+
+        // Snapshot voting: voter must have been verified BEFORE proposal creation
+        if account_info.verified_at >= proposal.created_at {
+            env::panic_str(
+                "You must be verified before the proposal was created to vote on it",
+            );
+        }
 
         // Validate proposal state
         if proposal.status != ProposalStatus::Active {
@@ -362,6 +387,7 @@ impl GovernanceContract {
         match vote {
             Vote::Yes => counts.yes_votes += 1,
             Vote::No => counts.no_votes += 1,
+            Vote::Abstain => counts.abstain_votes += 1,
         }
         counts.total_votes += 1;
 
@@ -376,6 +402,7 @@ impl GovernanceContract {
                 vote: match vote {
                     Vote::Yes => "Yes".to_string(),
                     Vote::No => "No".to_string(),
+                    Vote::Abstain => "Abstain".to_string(),
                 },
             },
         );
@@ -424,11 +451,15 @@ impl GovernanceContract {
         // Get vote counts
         let counts = self.vote_counts.get(&proposal_id).unwrap_or_default();
 
-        // Calculate quorum requirement
-        let quorum_required = (total_citizens * u64::from(QUORUM_PERCENTAGE)) / 100;
+        // Calculate quorum requirement using proposal's quorum percentage
+        let quorum_required =
+            (total_citizens * u64::from(proposal.quorum_percentage)) / 100;
+
+        // Only Yes + No votes count toward quorum (Abstain does not)
+        let quorum_votes = counts.yes_votes + counts.no_votes;
 
         // Determine final status
-        proposal.status = if counts.total_votes < quorum_required {
+        proposal.status = if quorum_votes < quorum_required {
             ProposalStatus::QuorumNotMet
         } else if counts.yes_votes > counts.no_votes {
             ProposalStatus::Passed
@@ -446,8 +477,10 @@ impl GovernanceContract {
                 status: format!("{:?}", proposal.status),
                 yes_votes: counts.yes_votes,
                 no_votes: counts.no_votes,
+                abstain_votes: counts.abstain_votes,
                 total_votes: counts.total_votes,
                 quorum_required,
+                quorum_percentage: proposal.quorum_percentage,
             },
         );
     }
@@ -539,10 +572,13 @@ impl GovernanceContract {
     }
 
     /// Get governance parameters
+    /// Note: quorum_percentage is now per-proposal, not a global parameter
     pub fn get_parameters(&self) -> near_sdk::serde_json::Value {
         near_sdk::serde_json::json!({
             "voting_period_days": 7,
-            "quorum_percentage": QUORUM_PERCENTAGE,
+            "quorum_percentage_min": 1,
+            "quorum_percentage_max": 100,
+            "quorum_percentage_default": 10,
         })
     }
 }
@@ -579,7 +615,9 @@ mod tests {
         let params = contract.get_parameters();
 
         assert_eq!(params["voting_period_days"], 7);
-        assert_eq!(params["quorum_percentage"], 10);
+        assert_eq!(params["quorum_percentage_min"], 1);
+        assert_eq!(params["quorum_percentage_max"], 100);
+        assert_eq!(params["quorum_percentage_default"], 10);
     }
 
     #[test]
@@ -587,6 +625,7 @@ mod tests {
         let counts = VoteCounts::default();
         assert_eq!(counts.yes_votes, 0);
         assert_eq!(counts.no_votes, 0);
+        assert_eq!(counts.abstain_votes, 0);
         assert_eq!(counts.total_votes, 0);
     }
 }

@@ -1,21 +1,13 @@
 "use server"
 
-import { governanceDb, verificationDb, type ProposalStatus, type Vote } from "@near-citizens/shared"
+import { governanceDb, verificationDb, type ProposalStatus, type Vote, type Proposal } from "@near-citizens/shared"
 
 interface ProposalWithStats {
-  proposal: {
-    id: number
-    title: string
-    description: string
-    proposer: string
-    discourseUrl: string | null
-    createdAt: number
-    votingEndsAt: number
-    status: ProposalStatus
-  }
+  proposal: Proposal
   voteCounts: {
     yesVotes: number
     noVotes: number
+    abstainVotes: number
     totalVotes: number
   }
   quorumRequired: number
@@ -38,13 +30,12 @@ export async function getProposalsWithStats(
       verificationDb.getVerifiedAccounts(0, 1),
     ])
 
-    // Calculate quorum (10% of verified citizens)
-    const quorumRequired = Math.ceil(totalCitizens * 0.1)
-
-    // Get vote counts for each proposal
+    // Get vote counts for each proposal and calculate quorum using proposal's percentage
     const proposalsWithStats = await Promise.all(
       proposals.map(async (proposal) => {
         const voteCounts = await governanceDb.getVoteCounts(proposal.id)
+        // Use proposal's quorum percentage (only Yes + No count toward quorum)
+        const quorumRequired = Math.ceil((totalCitizens * proposal.quorumPercentage) / 100)
         return {
           proposal,
           voteCounts,
@@ -78,8 +69,8 @@ export async function getProposalWithStats(proposalId: number, accountId?: strin
       verificationDb.getVerifiedAccounts(0, 1),
     ])
 
-    // Calculate quorum (10% of verified citizens)
-    const quorumRequired = Math.ceil(totalCitizens * 0.1)
+    // Use proposal's quorum percentage (only Yes + No count toward quorum)
+    const quorumRequired = Math.ceil((totalCitizens * proposal.quorumPercentage) / 100)
 
     // Get user's vote if accountId provided
     let userVote: Vote | null = null
@@ -97,6 +88,19 @@ export async function getProposalWithStats(proposalId: number, accountId?: strin
   } catch (error) {
     console.error("[Server Action] Error fetching proposal:", error)
     return null
+  }
+}
+
+/**
+ * Server action to get total verified citizens count
+ */
+export async function getTotalCitizens(): Promise<number> {
+  try {
+    const { total } = await verificationDb.getVerifiedAccounts(0, 1)
+    return total
+  } catch (error) {
+    console.error("[Server Action] Error fetching total citizens:", error)
+    return 0
   }
 }
 
