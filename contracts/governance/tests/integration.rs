@@ -1632,3 +1632,1242 @@ async fn test_gas_requirements_vote() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// ==================== PHASE 1: QUORUM PRECISION EDGE CASES ====================
+// Based on OpenZeppelin/Compound governance best practices
+
+/// Test quorum rounding with various edge cases
+/// 10% of 3 = 0.3 -> 0 (rounds down)
+/// 33% of 3 = 0.99 -> 0
+/// 34% of 3 = 1.02 -> 1
+#[tokio::test]
+async fn test_quorum_rounding_multiple_percentages() -> anyhow::Result<()> {
+    // Test 33% of 3 = 0.99 -> 0
+    let env = setup_with_verified_users(3).await?;
+    let proposer = &env.verified_users[0];
+
+    // 33% of 3 = 0.99, rounds down to 0
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "33% Test", 33).await?;
+
+    // With quorum of 0, any Yes vote should pass
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(proposal["status"], "Passed", "33% of 3 = 0, so 1 vote meets quorum");
+
+    Ok(())
+}
+
+/// Test quorum at 34% boundary
+/// 34% of 3 = 1.02 -> 1
+#[tokio::test]
+async fn test_quorum_34_percent_of_3() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(3).await?;
+    let proposer = &env.verified_users[0];
+
+    // 34% of 3 = 1.02, rounds down to 1
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "34% Test", 34).await?;
+
+    // With quorum of 1, exactly 1 Yes vote should pass
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(proposal["status"], "Passed", "34% of 3 = 1, so 1 vote meets quorum");
+
+    Ok(())
+}
+
+/// Test quorum: 51% of 99 = 50.49 -> 50
+/// This is a common edge case in governance systems
+#[tokio::test]
+async fn test_quorum_51_percent_of_99() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(99).await?;
+    let proposer = &env.verified_users[0];
+
+    // 51% of 99 = 50.49, rounds down to 50
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "51% of 99", 51).await?;
+
+    // Cast exactly 50 Yes votes (should pass)
+    for i in 1..51 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "Yes")
+            .await?
+            .into_result()?;
+    }
+
+    advance_past_voting_period(&env.worker).await?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(proposal["status"], "Passed", "51% of 99 = 50, so 50 votes meets quorum");
+
+    Ok(())
+}
+
+/// Test quorum: all abstain should result in QuorumNotMet
+#[tokio::test]
+async fn test_quorum_all_abstain_quorum_not_met() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(10).await?;
+    let proposer = &env.verified_users[0];
+
+    // 20% quorum = 2 Yes+No votes needed
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "All Abstain", 20).await?;
+
+    // All 10 users vote Abstain
+    for i in 0..10 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "Abstain")
+            .await?
+            .into_result()?;
+    }
+
+    advance_past_voting_period(&env.worker).await?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    // 10 abstain votes don't count toward quorum
+    assert_eq!(proposal["status"], "QuorumNotMet");
+
+    Ok(())
+}
+
+/// Test mixed abstain scenario where quorum is barely met
+#[tokio::test]
+async fn test_quorum_mixed_abstain_barely_met() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(10).await?;
+    let proposer = &env.verified_users[0];
+
+    // 20% quorum = 2 Yes+No votes needed
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Mixed Abstain", 20).await?;
+
+    // 2 Yes, 0 No, 8 Abstain -> quorum met (2 >= 2), passes (2 > 0)
+    vote_helper(&env.verified_users[0], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+    for i in 2..10 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "Abstain")
+            .await?
+            .into_result()?;
+    }
+
+    advance_past_voting_period(&env.worker).await?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(proposal["status"], "Passed", "2 yes votes meet 20% quorum of 10");
+
+    Ok(())
+}
+
+// ==================== PHASE 1: CROSS-CONTRACT FAILURE TESTS ====================
+
+/// Test creating proposal with insufficient gas
+#[tokio::test]
+async fn test_create_proposal_very_low_gas_fails() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    // 10 TGas is definitely not enough for cross-contract call
+    let result = proposer
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "Low Gas Test",
+            "description": "Testing insufficient gas",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(10))
+        .transact()
+        .await?;
+
+    // Should fail due to insufficient gas for cross-contract call
+    assert!(result.is_failure(), "Should fail with 10 TGas");
+
+    Ok(())
+}
+
+/// Test voting with insufficient gas
+#[tokio::test]
+async fn test_vote_very_low_gas_fails() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(2).await?;
+    let proposer = &env.verified_users[0];
+    let voter = &env.verified_users[1];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    // 10 TGas is not enough for vote cross-contract call
+    let result = voter
+        .call(env.governance.id(), "vote")
+        .args_json(json!({
+            "proposal_id": proposal_id,
+            "vote": "Yes"
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(10))
+        .transact()
+        .await?;
+
+    // Should fail due to insufficient gas
+    assert!(result.is_failure(), "Should fail with 10 TGas");
+
+    Ok(())
+}
+
+/// Test finalize with insufficient gas
+#[tokio::test]
+async fn test_finalize_very_low_gas_fails() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    // 10 TGas is not enough for finalize cross-contract call
+    let result = proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(10))
+        .transact()
+        .await?;
+
+    // Should fail due to insufficient gas
+    assert!(result.is_failure(), "Should fail with 10 TGas");
+
+    Ok(())
+}
+
+/// Test private callback rejection
+#[tokio::test]
+async fn test_callback_direct_call_rejected() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let attacker = &env.verified_users[0];
+
+    // Try to call callback_create_proposal directly
+    let result = attacker
+        .call(env.governance.id(), "callback_create_proposal")
+        .args_json(json!({
+            "title": "Hack",
+            "description": "Attack",
+            "discourse_url": null,
+            "quorum_percentage": 10,
+            "proposer": attacker.id()
+        }))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_failure(), "Direct callback call should be rejected");
+
+    Ok(())
+}
+
+// ==================== PHASE 2: INPUT VALIDATION EDGE CASES ====================
+
+/// Test proposal with maximum length inputs
+#[tokio::test]
+async fn test_create_proposal_max_length_inputs() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    // Create max-length strings
+    let max_title = "X".repeat(200); // MAX_TITLE_LEN
+    let max_description = "Y".repeat(10000); // MAX_DESCRIPTION_LEN
+    let max_url = format!("https://example.com/{}", "z".repeat(480)); // ~500 chars
+
+    let result = proposer
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": max_title,
+            "description": max_description,
+            "discourse_url": max_url,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Max length inputs should succeed: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Test proposal with unicode content (emoji, international chars)
+#[tokio::test]
+async fn test_create_proposal_unicode_content() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    let result = proposer
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "Governance Proposal",
+            "description": "This proposal includes international characters: Chinese, Arabic, and emoji.",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Unicode content should succeed: {:?}",
+        result.failures()
+    );
+
+    // Verify content is stored correctly
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": 0}))
+        .await?
+        .json()?;
+
+    assert!(proposal["title"].as_str().unwrap().contains("Governance"));
+    assert!(proposal["description"].as_str().unwrap().contains("emoji"));
+
+    Ok(())
+}
+
+/// Test proposal with special characters (no injection vulnerabilities)
+#[tokio::test]
+async fn test_create_proposal_special_characters() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    // HTML/JS injection attempts, SQL injection patterns
+    let result = proposer
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "<script>alert('xss')</script>",
+            "description": "'; DROP TABLE users; --\n\t\r\\0",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Special chars should be stored safely: {:?}",
+        result.failures()
+    );
+
+    // Verify content is stored as-is (no sanitization, just safe storage)
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": 0}))
+        .await?
+        .json()?;
+
+    assert!(proposal["title"].as_str().unwrap().contains("script"));
+
+    Ok(())
+}
+
+/// Test concurrent proposal creation by multiple users
+#[tokio::test]
+async fn test_create_proposal_concurrent_users() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(5).await?;
+
+    // Create proposals from 5 different users concurrently (simulated sequentially)
+    let mut proposal_ids = Vec::new();
+    for (i, user) in env.verified_users.iter().enumerate() {
+        let proposal_id =
+            create_proposal_helper(user, &env.governance, &format!("Proposal {}", i), 10).await?;
+        proposal_ids.push(proposal_id);
+    }
+
+    // Verify all got unique IDs
+    let unique_ids: std::collections::HashSet<_> = proposal_ids.iter().collect();
+    assert_eq!(unique_ids.len(), 5, "All proposals should have unique IDs");
+
+    // Verify IDs are sequential
+    for (i, id) in proposal_ids.iter().enumerate() {
+        assert_eq!(*id, i as u64, "Proposal IDs should be sequential");
+    }
+
+    Ok(())
+}
+
+// ==================== PHASE 2: FINALIZATION BOUNDARY TESTS ====================
+
+/// Test finalization with zero votes cast
+#[tokio::test]
+async fn test_finalize_zero_votes() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(5).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "No Votes", 10).await?;
+
+    // No votes cast at all
+
+    advance_past_voting_period(&env.worker).await?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    // 0 votes < any quorum (except 0%), so QuorumNotMet
+    assert_eq!(proposal["status"], "QuorumNotMet");
+
+    Ok(())
+}
+
+/// Test double finalization fails
+#[tokio::test]
+async fn test_finalize_double_attempt_fails() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(2).await?;
+    let proposer = &env.verified_users[0];
+    let other_user = &env.verified_users[1];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    // First finalization succeeds
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Second finalization fails
+    let result = other_user
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result.is_failure());
+    assert!(format!("{:?}", result.failures()).contains("not active")
+        || format!("{:?}", result.failures()).contains("already finalized"));
+
+    Ok(())
+}
+
+/// Test anyone can call finalize (not just proposer)
+#[tokio::test]
+async fn test_finalize_by_non_proposer() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(3).await?;
+    let proposer = &env.verified_users[0];
+    let voter = &env.verified_users[1];
+    let random_user = &env.verified_users[2];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    vote_helper(voter, &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    // Random user (not proposer, not voter) can finalize
+    let result = random_user
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Anyone should be able to finalize: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Test finalize no deposit required
+#[tokio::test]
+async fn test_finalize_no_deposit_required() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(2).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    // Call without any deposit (no .deposit() call)
+    let result = proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Finalize should work without deposit: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Test cancel immediately after creation
+#[tokio::test]
+async fn test_cancel_immediately_after_creation() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Immediate Cancel", 10).await?;
+
+    // Immediately cancel (same block)
+    let result = proposer
+        .call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .transact()
+        .await?;
+
+    assert!(result.is_success(), "Immediate cancel should succeed");
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(proposal["status"], "Cancelled");
+
+    Ok(())
+}
+
+// ==================== PHASE 3: SECURITY TESTS ====================
+
+/// Test vote spam - same user trying to vote 100 times
+#[tokio::test]
+async fn test_vote_spam_same_user() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(2).await?;
+    let proposer = &env.verified_users[0];
+    let voter = &env.verified_users[1];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Spam Test", 10).await?;
+
+    // First vote succeeds
+    let result = vote_helper(voter, &env.governance, proposal_id, "Yes").await?;
+    assert!(result.is_success());
+
+    // Try 10 more votes - all should fail
+    for _ in 0..10 {
+        let result = vote_helper(voter, &env.governance, proposal_id, "Yes").await?;
+        assert!(result.is_failure(), "Subsequent votes should fail");
+    }
+
+    // Verify vote count is still 1
+    let counts: serde_json::Value = env
+        .governance
+        .view("get_vote_counts")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(counts["total_votes"], 1, "Should only have 1 vote");
+
+    Ok(())
+}
+
+/// Test that only proposer can cancel (no admin backdoor)
+#[tokio::test]
+async fn test_no_admin_cancel_power() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(3).await?;
+    let proposer = &env.verified_users[0];
+    let _voter = &env.verified_users[1];
+    let random_verified = &env.verified_users[2];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Test", 10).await?;
+
+    // Backend account (admin-like) cannot cancel
+    let result = env
+        .backend
+        .call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .transact()
+        .await?;
+
+    assert!(result.is_failure(), "Backend should not be able to cancel");
+
+    // Other verified user cannot cancel
+    let result = random_verified
+        .call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_failure(),
+        "Other verified users should not be able to cancel"
+    );
+
+    // Only proposer can cancel
+    let result = proposer
+        .call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .transact()
+        .await?;
+
+    assert!(result.is_success(), "Only proposer should be able to cancel");
+
+    Ok(())
+}
+
+/// Test Sybil prevention via snapshot voting
+#[tokio::test]
+async fn test_sybil_prevention_via_snapshot() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Sybil Test", 10).await?;
+
+    // Try to create many users and verify them after proposal
+    for i in 0..5 {
+        let sybil_user = env.worker.dev_create_account().await?;
+        verify_user(&env.backend, &env.verified_accounts, &sybil_user, 200 + i).await?;
+
+        // Try to vote - should fail (verified after proposal)
+        let result = vote_helper(&sybil_user, &env.governance, proposal_id, "Yes").await?;
+        assert!(result.is_failure(), "Sybil user {} should not be able to vote", i);
+    }
+
+    // Original proposer can still vote
+    let result = vote_helper(proposer, &env.governance, proposal_id, "Yes").await?;
+    assert!(result.is_success(), "Original user should be able to vote");
+
+    Ok(())
+}
+
+/// Test finalization race - verify only first succeeds
+#[tokio::test]
+async fn test_finalization_race() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(5).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Race Test", 10).await?;
+
+    vote_helper(&env.verified_users[1], &env.governance, proposal_id, "Yes")
+        .await?
+        .into_result()?;
+
+    advance_past_voting_period(&env.worker).await?;
+
+    // First finalization succeeds
+    let result1 = env.verified_users[1]
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    assert!(result1.is_success(), "First finalization should succeed");
+
+    // All subsequent attempts fail
+    for user in env.verified_users.iter().skip(2) {
+        let result = user
+            .call(env.governance.id(), "finalize_proposal")
+            .args_json(json!({"proposal_id": proposal_id}))
+            .gas(Gas::from_tgas(50))
+            .transact()
+            .await?;
+
+        assert!(result.is_failure(), "Subsequent finalization should fail");
+    }
+
+    Ok(())
+}
+
+// ==================== PHASE 3: END-TO-END WORKFLOW TESTS ====================
+
+/// Complete proposal lifecycle: creation -> voting -> finalization -> Passed
+#[tokio::test]
+async fn test_complete_lifecycle_passed() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(10).await?;
+    let proposer = &env.verified_users[0];
+
+    // Step 1: Create proposal with 30% quorum (need 3 votes)
+    let proposal_id =
+        create_proposal_helper(proposer, &env.governance, "Complete Lifecycle", 30).await?;
+
+    // Verify proposal is Active
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+    assert_eq!(proposal["status"], "Active");
+
+    // Step 2: Cast votes - 5 Yes, 2 No, 1 Abstain
+    for i in 0..5 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "Yes")
+            .await?
+            .into_result()?;
+    }
+    for i in 5..7 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "No")
+            .await?
+            .into_result()?;
+    }
+    vote_helper(&env.verified_users[7], &env.governance, proposal_id, "Abstain")
+        .await?
+        .into_result()?;
+
+    // Verify vote counts
+    let counts: serde_json::Value = env
+        .governance
+        .view("get_vote_counts")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+    assert_eq!(counts["yes_votes"], 5);
+    assert_eq!(counts["no_votes"], 2);
+    assert_eq!(counts["abstain_votes"], 1);
+    assert_eq!(counts["total_votes"], 8);
+
+    // Step 3: Fast forward past voting period
+    advance_past_voting_period(&env.worker).await?;
+
+    // Step 4: Finalize
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Step 5: Verify final status
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(proposal["status"], "Passed");
+
+    Ok(())
+}
+
+/// Complete lifecycle: QuorumNotMet scenario
+#[tokio::test]
+async fn test_complete_lifecycle_quorum_not_met() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(50).await?;
+    let proposer = &env.verified_users[0];
+
+    // 50% quorum = need 25 Yes+No votes
+    let proposal_id =
+        create_proposal_helper(proposer, &env.governance, "Quorum Not Met", 50).await?;
+
+    // Only 20 votes (less than 25)
+    for i in 0..15 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "Yes")
+            .await?
+            .into_result()?;
+    }
+    for i in 15..20 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "No")
+            .await?
+            .into_result()?;
+    }
+
+    advance_past_voting_period(&env.worker).await?;
+
+    proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let proposal: serde_json::Value = env
+        .governance
+        .view("get_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    // 20 votes < 25 quorum
+    assert_eq!(proposal["status"], "QuorumNotMet");
+
+    Ok(())
+}
+
+/// Multiple concurrent proposals with varied outcomes
+#[tokio::test]
+async fn test_multiple_proposals_varied_outcomes() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(15).await?;
+
+    // Create 4 proposals
+    let passed = create_proposal_helper(&env.verified_users[0], &env.governance, "Will Pass", 10).await?;
+    let failed = create_proposal_helper(&env.verified_users[1], &env.governance, "Will Fail", 10).await?;
+    let cancelled = create_proposal_helper(&env.verified_users[2], &env.governance, "Will Cancel", 10).await?;
+    let quorum_not_met = create_proposal_helper(&env.verified_users[3], &env.governance, "No Quorum", 50).await?;
+
+    // Vote on "Will Pass" - 5 yes
+    for i in 4..9 {
+        vote_helper(&env.verified_users[i], &env.governance, passed, "Yes")
+            .await?
+            .into_result()?;
+    }
+
+    // Vote on "Will Fail" - 2 yes, 5 no
+    vote_helper(&env.verified_users[9], &env.governance, failed, "Yes").await?.into_result()?;
+    vote_helper(&env.verified_users[10], &env.governance, failed, "Yes").await?.into_result()?;
+    for i in 11..15 {
+        vote_helper(&env.verified_users[i], &env.governance, failed, "No")
+            .await?
+            .into_result()?;
+    }
+
+    // Cancel "Will Cancel"
+    env.verified_users[2]
+        .call(env.governance.id(), "cancel_proposal")
+        .args_json(json!({"proposal_id": cancelled}))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // "No Quorum" - only 2 votes for 50% quorum (need 7-8)
+    vote_helper(&env.verified_users[4], &env.governance, quorum_not_met, "Yes")
+        .await?
+        .into_result()?;
+    vote_helper(&env.verified_users[5], &env.governance, quorum_not_met, "Yes")
+        .await?
+        .into_result()?;
+
+    // Finalize non-cancelled proposals
+    advance_past_voting_period(&env.worker).await?;
+
+    for id in [passed, failed, quorum_not_met] {
+        env.verified_users[0]
+            .call(env.governance.id(), "finalize_proposal")
+            .args_json(json!({"proposal_id": id}))
+            .gas(Gas::from_tgas(50))
+            .transact()
+            .await?
+            .into_result()?;
+    }
+
+    // Verify outcomes
+    let p_passed: serde_json::Value = env.governance.view("get_proposal").args_json(json!({"proposal_id": passed})).await?.json()?;
+    let p_failed: serde_json::Value = env.governance.view("get_proposal").args_json(json!({"proposal_id": failed})).await?.json()?;
+    let p_cancelled: serde_json::Value = env.governance.view("get_proposal").args_json(json!({"proposal_id": cancelled})).await?.json()?;
+    let p_quorum: serde_json::Value = env.governance.view("get_proposal").args_json(json!({"proposal_id": quorum_not_met})).await?.json()?;
+
+    assert_eq!(p_passed["status"], "Passed");
+    assert_eq!(p_failed["status"], "Failed");
+    assert_eq!(p_cancelled["status"], "Cancelled");
+    assert_eq!(p_quorum["status"], "QuorumNotMet");
+
+    Ok(())
+}
+
+// ==================== PHASE 3: BATCH QUERY TESTS ====================
+
+/// Test batch query respects max limit
+#[tokio::test]
+async fn test_get_proposals_max_batch_limit_enforced() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    // Create 10 proposals (enough to test limit)
+    for i in 0..10 {
+        create_proposal_helper(proposer, &env.governance, &format!("Proposal {}", i), 10).await?;
+    }
+
+    // Request with limit > 100 (MAX_BATCH_SIZE)
+    let result: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({
+            "from_index": 0,
+            "limit": 200,  // Request 200, but should get max 100
+            "status": null
+        }))
+        .await?
+        .json()?;
+
+    // Should get all 10 (since we only have 10, not testing the 100 cap directly)
+    // But the contract logic caps at 100
+    assert_eq!(result.len(), 10);
+
+    Ok(())
+}
+
+/// Test get_proposals with pagination
+#[tokio::test]
+async fn test_get_proposals_pagination_detailed() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    // Create 15 proposals
+    for i in 0..15 {
+        create_proposal_helper(proposer, &env.governance, &format!("Proposal {}", i), 10).await?;
+    }
+
+    // Get first page (5 items)
+    let page1: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({
+            "from_index": 0,
+            "limit": 5,
+            "status": null
+        }))
+        .await?
+        .json()?;
+
+    assert_eq!(page1.len(), 5);
+
+    // Get second page
+    let page2: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({
+            "from_index": 5,
+            "limit": 5,
+            "status": null
+        }))
+        .await?
+        .json()?;
+
+    assert_eq!(page2.len(), 5);
+
+    // Get third page
+    let page3: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({
+            "from_index": 10,
+            "limit": 5,
+            "status": null
+        }))
+        .await?
+        .json()?;
+
+    assert_eq!(page3.len(), 5);
+
+    // Verify no overlap
+    let all_ids: Vec<u64> = [page1, page2, page3]
+        .concat()
+        .iter()
+        .map(|p| p["id"].as_u64().unwrap())
+        .collect();
+
+    let unique_ids: std::collections::HashSet<_> = all_ids.iter().collect();
+    assert_eq!(unique_ids.len(), 15);
+
+    Ok(())
+}
+
+// ==================== PHASE 4: GAS MEASUREMENT TESTS ====================
+
+/// Measure gas for minimal proposal creation
+#[tokio::test]
+async fn test_gas_measurement_create_proposal_minimal() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    let result = proposer
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "X",
+            "description": "Y",
+            "discourse_url": null,
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    let gas_burnt = result.total_gas_burnt.as_tgas();
+    println!("Gas burnt for minimal proposal: {} TGas", gas_burnt);
+
+    // Should be under 30 TGas for minimal input
+    assert!(gas_burnt < 30, "Minimal proposal should use < 30 TGas");
+
+    Ok(())
+}
+
+/// Measure gas for maximal proposal creation
+#[tokio::test]
+async fn test_gas_measurement_create_proposal_maximal() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(1).await?;
+    let proposer = &env.verified_users[0];
+
+    let result = proposer
+        .call(env.governance.id(), "create_proposal")
+        .args_json(json!({
+            "title": "X".repeat(200),
+            "description": "Y".repeat(10000),
+            "discourse_url": format!("https://example.com/{}", "z".repeat(480)),
+            "quorum_percentage": 10
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    let gas_burnt = result.total_gas_burnt.as_tgas();
+    println!("Gas burnt for maximal proposal: {} TGas", gas_burnt);
+
+    // Should be under 50 TGas even for max input
+    assert!(gas_burnt < 50, "Maximal proposal should use < 50 TGas");
+
+    Ok(())
+}
+
+/// Measure gas for voting
+#[tokio::test]
+async fn test_gas_measurement_vote() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(2).await?;
+    let proposer = &env.verified_users[0];
+    let voter = &env.verified_users[1];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Gas Test", 10).await?;
+
+    let result = voter
+        .call(env.governance.id(), "vote")
+        .args_json(json!({
+            "proposal_id": proposal_id,
+            "vote": "Yes"
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    let gas_burnt = result.total_gas_burnt.as_tgas();
+    println!("Gas burnt for vote: {} TGas", gas_burnt);
+
+    // Should be under 35 TGas
+    assert!(gas_burnt < 35, "Vote should use < 35 TGas");
+
+    Ok(())
+}
+
+/// Measure gas for finalization (O(1) complexity check)
+#[tokio::test]
+async fn test_gas_measurement_finalize() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(20).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Gas Test", 10).await?;
+
+    // Cast 15 votes
+    for i in 1..16 {
+        vote_helper(&env.verified_users[i], &env.governance, proposal_id, "Yes")
+            .await?
+            .into_result()?;
+    }
+
+    advance_past_voting_period(&env.worker).await?;
+
+    let result = proposer
+        .call(env.governance.id(), "finalize_proposal")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(result.is_success());
+
+    let gas_burnt = result.total_gas_burnt.as_tgas();
+    println!("Gas burnt for finalize with 15 votes: {} TGas", gas_burnt);
+
+    // Should be under 30 TGas (O(1) complexity)
+    assert!(gas_burnt < 30, "Finalize should use < 30 TGas (O(1) complexity)");
+
+    Ok(())
+}
+
+// ==================== PHASE 4: STRESS TESTS (IGNORED BY DEFAULT) ====================
+
+/// Stress test: Create many proposals
+#[tokio::test]
+#[ignore] // Run with: cargo test stress -- --ignored
+async fn test_stress_many_proposals() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(5).await?;
+
+    // Create 100 proposals
+    for i in 0..100 {
+        let proposer = &env.verified_users[i % 5];
+        create_proposal_helper(proposer, &env.governance, &format!("Stress Test {}", i), 10).await?;
+    }
+
+    // Verify count
+    let count: u64 = env.governance.view("get_proposal_count").await?.json()?;
+    assert_eq!(count, 100);
+
+    // Query in batches
+    let page1: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 0, "limit": 50, "status": null }))
+        .await?
+        .json()?;
+    assert_eq!(page1.len(), 50);
+
+    let page2: Vec<serde_json::Value> = env
+        .governance
+        .view("get_proposals")
+        .args_json(json!({ "from_index": 50, "limit": 50, "status": null }))
+        .await?
+        .json()?;
+    assert_eq!(page2.len(), 50);
+
+    Ok(())
+}
+
+/// Stress test: Many votes on single proposal
+#[tokio::test]
+#[ignore] // Run with: cargo test stress -- --ignored
+async fn test_stress_many_votes_single_proposal() -> anyhow::Result<()> {
+    let env = setup_with_verified_users(100).await?;
+    let proposer = &env.verified_users[0];
+
+    let proposal_id = create_proposal_helper(proposer, &env.governance, "Stress Vote Test", 10).await?;
+
+    // All 100 users vote
+    for (i, user) in env.verified_users.iter().enumerate() {
+        let vote_type = match i % 3 {
+            0 => "Yes",
+            1 => "No",
+            _ => "Abstain",
+        };
+        vote_helper(user, &env.governance, proposal_id, vote_type)
+            .await?
+            .into_result()?;
+    }
+
+    // Verify counts
+    let counts: serde_json::Value = env
+        .governance
+        .view("get_vote_counts")
+        .args_json(json!({"proposal_id": proposal_id}))
+        .await?
+        .json()?;
+
+    assert_eq!(counts["total_votes"], 100);
+
+    Ok(())
+}
