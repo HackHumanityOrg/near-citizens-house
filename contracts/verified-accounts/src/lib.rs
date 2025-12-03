@@ -328,6 +328,41 @@ impl Contract {
             "Only backend wallet can store verifications"
         );
 
+        // Early storage cost estimation based on actual data structures:
+        //
+        // VerifiedAccount struct (Borsh serialized):
+        //   - nullifier: ~64 bytes (hex string)
+        //   - near_account_id: ~64 bytes max
+        //   - user_id: ~256 bytes max
+        //   - attestation_id: ~256 bytes max
+        //   - verified_at: 8 bytes (u64)
+        //   - user_context_data: ~4096 bytes max
+        //   - self_proof.proof (Groth16 BN254):
+        //       - a: 2 × ~77 bytes (256-bit field elements as decimal strings) = ~154 bytes
+        //       - b: 4 × ~77 bytes = ~308 bytes
+        //       - c: 2 × ~77 bytes = ~154 bytes
+        //   - self_proof.public_signals: 21 × ~77 bytes = ~1617 bytes
+        //   Subtotal: ~7,000 bytes worst case
+        //
+        // Additional collections storage:
+        //   - used_signatures LookupSet: 64 bytes + ~40 bytes key overhead
+        //   - nullifiers LookupSet: ~64 bytes + ~40 bytes key overhead
+        //   - accounts UnorderedMap: ~64 bytes key + ~40 bytes overhead
+        //   Subtotal: ~300 bytes
+        //
+        // Total with Borsh overhead (~10%): ~8,000 bytes
+        // Using 10KB (10,240 bytes) as conservative estimate
+        //
+        // NEAR storage cost: 1e19 yoctoNEAR per byte (100KB = 1 NEAR)
+        // 10KB = 0.1 NEAR = 1e23 yoctoNEAR
+        const ESTIMATED_STORAGE_BYTES: u128 = 10_240;
+        let estimated_cost = env::storage_byte_cost().saturating_mul(ESTIMATED_STORAGE_BYTES);
+        assert!(
+            env::account_balance() >= estimated_cost,
+            "Insufficient contract balance for storage. Estimated required: {} yoctoNEAR (~0.1 NEAR)",
+            estimated_cost
+        );
+
         // Verify signature data matches the account being verified
         assert_eq!(
             signature_data.account_id, near_account_id,
@@ -571,8 +606,9 @@ impl Contract {
     }
 
     /// Get interface version for compatibility checking (public read)
+    /// Derived from Cargo.toml version to ensure consistency
     pub fn interface_version(&self) -> String {
-        "1.0.0".to_string()
+        env!("CARGO_PKG_VERSION").to_string()
     }
 }
 
