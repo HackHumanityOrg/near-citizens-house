@@ -10,6 +10,9 @@ export * from "./verification-contract"
 // Governance Contract
 export * from "./governance-contract"
 
+// Bridge Contract
+export * from "./bridge-contract"
+
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"
 

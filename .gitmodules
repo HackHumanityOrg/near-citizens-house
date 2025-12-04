@@ -1,0 +1,3 @@
+[submodule "contracts/sputnik-dao-contract"]
+	path = contracts/sputnik-dao-contract
+	url = https://github.com/near-daos/sputnik-dao-contract.git

@@ -32,6 +32,7 @@ export const NEAR_CONFIG = {
   // Contract addresses
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
   governanceContractId: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT || "",
+  bridgeContractId: process.env.NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT || "",
   // Backend wallet credentials (server-side only)
   backendAccountId: process.env.NEAR_ACCOUNT_ID || "",
   backendPrivateKey: process.env.NEAR_PRIVATE_KEY || "",

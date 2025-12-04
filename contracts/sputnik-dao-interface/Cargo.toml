@@ -1,0 +1,15 @@
+[package]
+name = "sputnik-dao-interface"
+version = "1.0.0"
+edition = "2021"
+description = "Interface for cross-contract calls to SputnikDAO v2 contract"
+license = "MIT"
+
+[dependencies]
+near-sdk = { version = "5.19", features = ["legacy"] }
+
+[dev-dependencies]
+near-sdk = { version = "5.19", features = ["legacy", "unit-testing"] }
+
+[lib]
+crate-type = ["rlib"]

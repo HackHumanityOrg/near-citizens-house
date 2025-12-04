@@ -1,0 +1,51 @@
+{
+  "config": {
+    "name": "Citizens House DAO",
+    "purpose": "Verified citizen governance for NEAR ecosystem",
+    "metadata": ""
+  },
+  "policy": {
+    "roles": [
+      {
+        "name": "bridge",
+        "kind": {
+          "Group": ["BRIDGE_CONTRACT_ID"]
+        },
+        "permissions": [
+          "AddMemberToRole:AddProposal",
+          "AddMemberToRole:VoteApprove",
+          "Vote:AddProposal"
+        ],
+        "vote_policy": {}
+      },
+      {
+        "name": "citizen",
+        "kind": {
+          "Group": []
+        },
+        "permissions": [
+          "*:VoteApprove",
+          "*:VoteReject"
+        ],
+        "vote_policy": {}
+      },
+      {
+        "name": "all",
+        "kind": "Everyone",
+        "permissions": [
+          "*:Finalize"
+        ],
+        "vote_policy": {}
+      }
+    ],
+    "default_vote_policy": {
+      "weight_kind": "RoleWeight",
+      "quorum": "0",
+      "threshold": [1, 2]
+    },
+    "proposal_bond": "100000000000000000000000",
+    "proposal_period": "604800000000000",
+    "bounty_bond": "100000000000000000000000",
+    "bounty_forgiveness_period": "604800000000000"
+  }
+}
