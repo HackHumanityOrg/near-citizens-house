@@ -12,9 +12,9 @@
           "Group": ["BRIDGE_CONTRACT_ID"]
         },
         "permissions": [
-          "AddMemberToRole:AddProposal",
-          "AddMemberToRole:VoteApprove",
-          "Vote:AddProposal"
+          "add_member_to_role:AddProposal",
+          "add_member_to_role:VoteApprove",
+          "vote:AddProposal"
         ],
         "vote_policy": {}
       },

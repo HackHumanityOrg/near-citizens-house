@@ -8,7 +8,7 @@
 //!
 //! - **Add Members**: Verified citizens can be added to SputnikDAO as members
 //! - **Create Proposals**: Backend can create text-only proposals on SputnikDAO
-//! - **Minimal Permissions**: Bridge has only AddMemberToRole and Vote:AddProposal permissions
+//! - **Minimal Permissions**: Bridge has only `add_member_to_role` and `vote` proposal permissions
 //! - **Backend Authorization**: All functions require backend wallet as caller
 //!
 //! # Architecture
