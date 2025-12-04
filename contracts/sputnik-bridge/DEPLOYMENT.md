@@ -17,6 +17,7 @@ This document provides step-by-step instructions for deploying the complete Sput
 ```
 
 **Contracts to deploy:**
+
 1. **SputnikDAO Factory** (optional - use existing factory)
 2. **SputnikDAO Instance** - The DAO contract
 3. **Sputnik Bridge** - Bridge between verified accounts and SputnikDAO
@@ -45,11 +46,11 @@ near --version
 
 You'll need the following accounts:
 
-| Account | Purpose | Testnet Example | Mainnet Example |
-|---------|---------|-----------------|-----------------|
-| Backend Wallet | Signs bridge transactions | `backend.testnet` | `backend.near` |
-| Bridge Contract | Hosts bridge contract | `bridge.citizens-house.testnet` | `bridge.citizens-house.near` |
-| SputnikDAO | Hosts DAO contract | `dao.citizens-house.testnet` | `dao.citizens-house.near` |
+| Account           | Purpose                      | Testnet Example                   | Mainnet Example                |
+| ----------------- | ---------------------------- | --------------------------------- | ------------------------------ |
+| Backend Wallet    | Signs bridge transactions    | `backend.testnet`                 | `backend.near`                 |
+| Bridge Contract   | Hosts bridge contract        | `bridge.citizens-house.testnet`   | `bridge.citizens-house.near`   |
+| SputnikDAO        | Hosts DAO contract           | `dao.citizens-house.testnet`      | `dao.citizens-house.near`      |
 | Verified Accounts | Existing verification oracle | `verified.citizens-house.testnet` | `verified.citizens-house.near` |
 
 ### 3. Create Accounts (Testnet)
@@ -107,6 +108,7 @@ ls -lh contracts/sputnik-dao-contract/sputnikdao2/target/wasm32-unknown-unknown/
 **Option A: Use SputnikDAO Factory (Recommended)**
 
 The SputnikDAO factory is already deployed:
+
 - Testnet: `sputnik-dao.testnet`
 - Mainnet: `sputnik-dao.near`
 
@@ -153,11 +155,7 @@ Create the policy JSON file `dao-policy.json`:
         "kind": {
           "Group": ["bridge.citizens-house.testnet"]
         },
-        "permissions": [
-          "AddMemberToRole:AddProposal",
-          "AddMemberToRole:VoteApprove",
-          "Vote:AddProposal"
-        ],
+        "permissions": ["AddMemberToRole:AddProposal", "AddMemberToRole:VoteApprove", "Vote:AddProposal"],
         "vote_policy": {}
       },
       {
@@ -165,18 +163,13 @@ Create the policy JSON file `dao-policy.json`:
         "kind": {
           "Group": []
         },
-        "permissions": [
-          "*:VoteApprove",
-          "*:VoteReject"
-        ],
+        "permissions": ["*:VoteApprove", "*:VoteReject"],
         "vote_policy": {}
       },
       {
         "name": "all",
         "kind": "Everyone",
-        "permissions": [
-          "*:Finalize"
-        ],
+        "permissions": ["*:Finalize"],
         "vote_policy": {}
       }
     ],
@@ -261,6 +254,7 @@ near contract call-function as-read-only bridge.citizens-house.testnet get_info 
 ```
 
 Expected output:
+
 ```json
 {
   "backend_wallet": "backend.testnet",
@@ -453,22 +447,27 @@ citizens-house.near              # Top-level account
 ### Common Issues
 
 **1. "Account is not verified"**
+
 - Ensure the account is registered in the verified-accounts contract
 - Check: `near contract call-function as-read-only verified.citizens-house.testnet is_account_verified json-args '{"near_account_id": "alice.testnet"}' network-config testnet now`
 
 **2. "Only backend wallet can call this function"**
+
 - Ensure you're signing with the correct backend wallet
 - Check bridge config: `near contract call-function as-read-only bridge.citizens-house.testnet get_backend_wallet json-args '{}' network-config testnet now`
 
 **3. "Exceeded the prepaid gas"**
+
 - Increase gas limit to 200+ TGas for cross-contract calls
 - The add_member flow requires 3 cross-contract calls
 
 **4. "Proposal bond not attached"**
+
 - Ensure sufficient deposit is attached (0.1 NEAR default)
 - Check DAO's proposal_bond in policy
 
 **5. "Member not added to DAO"**
+
 - Check bridge has correct permissions in DAO policy
 - Verify bridge account is in the "bridge" role
 
@@ -495,30 +494,30 @@ near contract view-storage bridge.citizens-house.testnet \
 
 ### Contract Addresses (Testnet)
 
-| Contract | Address |
-|----------|---------|
-| SputnikDAO Factory | `sputnik-dao.testnet` |
-| Citizens House DAO | `dao.citizens-house.testnet` |
-| Bridge Contract | `bridge.citizens-house.testnet` |
-| Verified Accounts | `verified.citizens-house.testnet` |
+| Contract           | Address                           |
+| ------------------ | --------------------------------- |
+| SputnikDAO Factory | `sputnik-dao.testnet`             |
+| Citizens House DAO | `dao.citizens-house.testnet`      |
+| Bridge Contract    | `bridge.citizens-house.testnet`   |
+| Verified Accounts  | `verified.citizens-house.testnet` |
 
 ### Gas Requirements
 
-| Operation | Gas (TGas) |
-|-----------|------------|
-| add_member | 200 |
-| create_proposal | 100 |
-| act_proposal (vote) | 50 |
-| act_proposal (finalize) | 50 |
+| Operation               | Gas (TGas) |
+| ----------------------- | ---------- |
+| add_member              | 200        |
+| create_proposal         | 100        |
+| act_proposal (vote)     | 50         |
+| act_proposal (finalize) | 50         |
 
 ### Deposit Requirements
 
-| Operation | Deposit |
-|-----------|---------|
-| add_member | 0.1 NEAR (proposal bond) |
+| Operation       | Deposit                  |
+| --------------- | ------------------------ |
+| add_member      | 0.1 NEAR (proposal bond) |
 | create_proposal | 0.1 NEAR (proposal bond) |
-| Voting | 0 NEAR |
-| Finalize | 0 NEAR |
+| Voting          | 0 NEAR                   |
+| Finalize        | 0 NEAR                   |
 
 ---
 

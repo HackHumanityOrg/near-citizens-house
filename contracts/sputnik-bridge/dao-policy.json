@@ -11,11 +11,7 @@
         "kind": {
           "Group": ["BRIDGE_CONTRACT_ID"]
         },
-        "permissions": [
-          "add_member_to_role:AddProposal",
-          "add_member_to_role:VoteApprove",
-          "vote:AddProposal"
-        ],
+        "permissions": ["add_member_to_role:AddProposal", "add_member_to_role:VoteApprove", "vote:AddProposal"],
         "vote_policy": {}
       },
       {
@@ -23,18 +19,13 @@
         "kind": {
           "Group": []
         },
-        "permissions": [
-          "*:VoteApprove",
-          "*:VoteReject"
-        ],
+        "permissions": ["*:VoteApprove", "*:VoteReject"],
         "vote_policy": {}
       },
       {
         "name": "all",
         "kind": "Everyone",
-        "permissions": [
-          "*:Finalize"
-        ],
+        "permissions": ["*:Finalize"],
         "vote_policy": {}
       }
     ],

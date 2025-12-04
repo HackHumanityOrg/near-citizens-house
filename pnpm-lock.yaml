@@ -14,6 +14,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.1
+      '@next/eslint-plugin-next':
+        specifier: ^16.0.7
+        version: 16.0.7
       eslint:
         specifier: ^9.39.1
         version: 9.39.1(jiti@2.6.1)
@@ -39,8 +42,8 @@ importers:
   apps/citizens-house:
     dependencies:
       '@hookform/resolvers':
-        specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.68.0(react@19.2.1))
+        specifier: ^3.10.0
+        version: 3.10.0(react-hook-form@7.68.0(react@19.2.1))
       '@near-citizens/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -714,6 +717,11 @@ packages:
 
   '@ethersproject/wordlists@5.8.0':
     resolution: {integrity: sha512-2df9bbXicZws2Sb5S6ET493uJ0Z84Fjr3pC4tu/qlnZERibZCeUVuqdtt+7Tv9xxhUxHoIekIA7avrKUWHrezg==}
+
+  '@hookform/resolvers@3.10.0':
+    resolution: {integrity: sha512-79Dv+3mDF7i+2ajj7SkypSKHhl1cbln1OGavqrsF7p6mbUv11xpqpacPsGDCTRvCSjEEIez2ef1NveSVL3b0Ag==}
+    peerDependencies:
+      react-hook-form: ^7.0.0
 
   '@hookform/resolvers@5.2.2':
     resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
@@ -5274,6 +5282,10 @@ snapshots:
       '@ethersproject/logger': 5.8.0
       '@ethersproject/properties': 5.8.0
       '@ethersproject/strings': 5.8.0
+
+  '@hookform/resolvers@3.10.0(react-hook-form@7.68.0(react@19.2.1))':
+    dependencies:
+      react-hook-form: 7.68.0(react@19.2.1)
 
   '@hookform/resolvers@5.2.2(react-hook-form@7.68.0(react@19.2.1))':
     dependencies:

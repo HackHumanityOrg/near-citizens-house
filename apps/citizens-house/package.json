@@ -10,7 +10,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^3.10.0",
     "@near-citizens/shared": "workspace:*",
     "@near-citizens/ui": "workspace:*",
     "@vercel/analytics": "^1.6.1",
