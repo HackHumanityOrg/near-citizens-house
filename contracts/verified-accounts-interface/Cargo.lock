@@ -311,15 +311,15 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.177"
+version = "0.2.178"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976"
+checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
 
 [[package]]
 name = "log"
-version = "0.4.28"
+version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
+checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
 name = "memchr"
@@ -335,9 +335,9 @@ checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
 name = "near-account-id"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bf7d8c37ea9408d536af7e998bd0d4f9699de1f6b0d12280d28ae46977c4501"
+checksum = "cc9abfbee8838cdc236cdcb5d8c6c5d6121c63981f7c367a9234e3e42ac17475"
 dependencies = [
  "borsh",
  "serde",
@@ -345,9 +345,9 @@ dependencies = [
 
 [[package]]
 name = "near-gas"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41ca4044222f2f392ab61d27d0aefc5106b1ece4dcd22c5c987e3c75371d2a37"
+checksum = "1cecd5d9463587f34f2b7ff4c7104297483a543be8a68a4a04a8ac96c419d1a1"
 dependencies = [
  "borsh",
  "serde",
@@ -355,9 +355,9 @@ dependencies = [
 
 [[package]]
 name = "near-sdk"
-version = "5.19.0"
+version = "5.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd67d070bcad337bf6f9969a41c7dd7c8afae50a3244b9f8d522773f81423de6"
+checksum = "d46a11cb3fe78b1785a46fb4a7cc5fcd5abd9733c1a131d756559925a0d6549f"
 dependencies = [
  "base64",
  "borsh",
@@ -376,9 +376,9 @@ dependencies = [
 
 [[package]]
 name = "near-sdk-macros"
-version = "5.19.0"
+version = "5.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "748124018df490df4e137b33ecc705adc3a1a65a9fd4e8681bc8e6831a93361c"
+checksum = "e4265bb742a3f1ebed6afc5b288d5ab0453777b4dc4fe7c77a1f50729cdf4c6b"
 dependencies = [
  "Inflector",
  "darling 0.20.11",

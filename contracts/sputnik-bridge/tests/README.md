@@ -28,7 +28,7 @@ The tests use `near-workspaces` to deploy three contracts:
 
 ## Test Summary
 
-**Total: 45 tests**
+**Total: 56 tests**
 
 ### A. Setup Tests (3 tests)
 
@@ -102,33 +102,54 @@ The tests use `near-workspaces` to deploy three contracts:
 | `test_citizen_cannot_add_proposal_to_dao_directly` | Citizens cannot bypass bridge to add proposals directly to DAO |
 | `test_random_account_cannot_add_proposal_to_dao` | Random accounts are blocked by DAO policy from adding proposals |
 | `test_citizen_cannot_vote_remove` | Citizens lack VoteRemove permission (only VoteApprove/VoteReject) |
-| `test_anyone_can_finalize_proposal` | Anyone can finalize proposals per the "all" role's `*:Finalize` permission |
+| `test_anyone_can_finalize_proposal` | Verifies expired proposals can be finalized by anyone (tests on InProgress→Expired transition) |
 
 ### I. Callback Security Tests (4 tests)
 
 | Test | Description |
 |------|-------------|
-| `test_callback_add_member_cannot_be_called_externally` | `callback_add_member` is protected by #[private] macro |
-| `test_callback_proposal_created_cannot_be_called_externally` | `callback_proposal_created` is protected by #[private] macro |
-| `test_callback_member_added_cannot_be_called_externally` | `callback_member_added` is protected by #[private] macro |
-| `test_callback_vote_proposal_created_cannot_be_called_externally` | `callback_vote_proposal_created` is protected by #[private] macro |
+| `test_callback_add_member_cannot_be_called_externally` | `callback_add_member` protected by #[private] macro - verifies error contains "predecessor" or "private" |
+| `test_callback_proposal_created_cannot_be_called_externally` | `callback_proposal_created` protected by #[private] macro - verifies error message |
+| `test_callback_member_added_cannot_be_called_externally` | `callback_member_added` protected by #[private] macro - verifies error message |
+| `test_callback_vote_proposal_created_cannot_be_called_externally` | `callback_vote_proposal_created` protected by #[private] macro - verifies error message |
 
-### J. Edge Case Tests (4 tests)
+### J. Edge Case Tests (7 tests)
 
 | Test | Description |
 |------|-------------|
-| `test_add_member_already_citizen` | Adding an existing citizen doesn't corrupt state |
+| `test_add_member_already_citizen` | Re-adding existing citizen succeeds idempotently (creates new proposal, user remains citizen) |
 | `test_cannot_vote_twice_on_same_proposal` | User cannot vote twice on the same proposal |
 | `test_vote_on_nonexistent_proposal_fails` | Voting on non-existent proposal ID fails |
 | `test_create_proposal_exactly_max_length` | Proposal with exactly 10,000 character description succeeds (boundary test) |
+| `test_create_proposal_single_char_description` | Proposal with single character description succeeds (minimum boundary) |
+| `test_create_proposal_whitespace_only_description` | Whitespace-only descriptions are rejected as "cannot be empty" (trimmed to empty) |
+| `test_create_proposal_unicode_description` | Unicode characters (emoji, CJK) in descriptions are preserved |
 
 ### K. Deposit/Bond Tests (3 tests)
 
 | Test | Description |
 |------|-------------|
-| `test_add_member_insufficient_deposit` | add_member with 0.1 NEAR (insufficient) fails |
-| `test_create_proposal_insufficient_deposit` | create_proposal with 0.1 NEAR (insufficient) fails |
+| `test_add_member_insufficient_deposit` | add_member with 0.1 NEAR (insufficient) fails with proper error message |
+| `test_create_proposal_insufficient_deposit` | create_proposal with 0.1 NEAR (insufficient) fails with proper error message |
 | `test_add_member_zero_deposit` | add_member with zero deposit fails |
+
+### L. Cross-Contract Call Failure Tests (6 tests)
+
+| Test | Description |
+|------|-------------|
+| `test_add_member_verification_fails_no_state_change` | State unchanged when verification cross-contract call fails |
+| `test_create_proposal_dao_failure_no_event` | No proposal_created event emitted when DAO rejects |
+| `test_add_member_dao_failure_no_event` | No member_added event emitted when DAO rejects |
+| `test_multiple_failures_dont_corrupt_state` | Multiple failures maintain state consistency |
+| `test_gas_exhaustion_partial_operation` | Gas exhaustion doesn't corrupt state, proper error message |
+| `test_successful_operation_after_failed_callback` | System works normally after callback failures |
+
+### M. Concurrent Operations Tests (2 tests)
+
+| Test | Description |
+|------|-------------|
+| `test_concurrent_member_additions` | Multiple users added in rapid succession all succeed |
+| `test_concurrent_proposal_voting` | Multiple citizens voting in rapid succession works correctly |
 
 ## Helper Functions
 

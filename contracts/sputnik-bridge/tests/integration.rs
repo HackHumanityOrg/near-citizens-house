@@ -763,25 +763,27 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
-    let env = setup_with_users(2).await?;
-    let citizen = env.user(0);
-    let random_account = env.user(1);
+    let env = setup_with_users(1).await?;
+    let random_account = env.user(0);
 
-    // Setup: verify and add citizen
-    verify_user(&env.backend, &env.verified_accounts, citizen, 0).await?;
-    add_member_via_bridge(&env.backend, &env.bridge, citizen).await?.into_result()?;
-
-    // Create and approve a proposal
+    // Create a Vote proposal (will be InProgress initially)
     create_proposal_via_bridge(&env.backend, &env.bridge, "Finalize test").await?.into_result()?;
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
 
-    vote_on_proposal(citizen, &env.sputnik_dao, proposal_id, "VoteApprove", json!("Vote"))
-        .await?
-        .into_result()?;
+    // Verify proposal is InProgress before finalization
+    let proposal_before = get_proposal(&env.sputnik_dao, proposal_id).await?;
+    assert_eq!(
+        proposal_before.status,
+        ProposalStatus::InProgress,
+        "Proposal should be InProgress initially"
+    );
+
+    // Advance time past proposal period to make it finalizable
+    env.worker.fast_forward(100).await?;
 
     // Random account (not citizen, not bridge) tries to finalize
     // Per production policy, "all" role has *:Finalize permission
-    let _result = random_account
+    let result = random_account
         .call(env.sputnik_dao.id(), "act_proposal")
         .args_json(json!({
             "id": proposal_id,
@@ -793,14 +795,19 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Finalize on already-approved proposal should succeed or be no-op
-    // The key point is it shouldn't fail due to permissions
-    // Note: May fail if proposal already finalized, which is expected
-    let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
+    // Finalize should succeed (per "all" role permissions)
+    assert!(
+        result.is_success(),
+        "Random account should be able to finalize proposals. Failures: {:?}",
+        result.failures()
+    );
+
+    // Proposal should now be Expired (finalized with no votes after period)
+    let proposal_after = get_proposal(&env.sputnik_dao, proposal_id).await?;
     assert_eq!(
-        proposal.status,
-        ProposalStatus::Approved,
-        "Proposal should remain approved (finalize is allowed for everyone)"
+        proposal_after.status,
+        ProposalStatus::Expired,
+        "Proposal should be Expired after finalization with no votes"
     );
 
     Ok(())
@@ -823,6 +830,15 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
 
     assert!(result.is_failure(), "External call to callback_add_member should fail");
 
+    // Verify it fails due to #[private] macro protection (predecessor != current_account)
+    let error_indicates_private = contains_error(&result, "predecessor")
+        || contains_error(&result, "Method callback_add_member is private");
+    assert!(
+        error_indicates_private,
+        "Should fail due to #[private] macro protection. Actual failures: {:?}",
+        result.failures()
+    );
+
     Ok(())
 }
 
@@ -840,6 +856,15 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
         .await?;
 
     assert!(result.is_failure(), "External call to callback_proposal_created should fail");
+
+    // Verify it fails due to #[private] macro protection
+    let error_indicates_private = contains_error(&result, "predecessor")
+        || contains_error(&result, "Method callback_proposal_created is private");
+    assert!(
+        error_indicates_private,
+        "Should fail due to #[private] macro protection. Actual failures: {:?}",
+        result.failures()
+    );
 
     Ok(())
 }
@@ -862,6 +887,15 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
 
     assert!(result.is_failure(), "External call to callback_member_added should fail");
 
+    // Verify it fails due to #[private] macro protection
+    let error_indicates_private = contains_error(&result, "predecessor")
+        || contains_error(&result, "Method callback_member_added is private");
+    assert!(
+        error_indicates_private,
+        "Should fail due to #[private] macro protection. Actual failures: {:?}",
+        result.failures()
+    );
+
     Ok(())
 }
 
@@ -879,6 +913,15 @@ async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> an
         .await?;
 
     assert!(result.is_failure(), "External call to callback_vote_proposal_created should fail");
+
+    // Verify it fails due to #[private] macro protection
+    let error_indicates_private = contains_error(&result, "predecessor")
+        || contains_error(&result, "Method callback_vote_proposal_created is private");
+    assert!(
+        error_indicates_private,
+        "Should fail due to #[private] macro protection. Actual failures: {:?}",
+        result.failures()
+    );
 
     Ok(())
 }
@@ -898,13 +941,31 @@ async fn test_add_member_already_citizen() -> anyhow::Result<()> {
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
     assert!(is_citizen, "User should be a citizen");
 
-    // Try to add the same user again
-    let _result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+    // Get proposal count before re-adding
+    let initial_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
-    // This may succeed (creating another proposal) or fail - behavior depends on sputnik-dao
-    // The important thing is it doesn't cause state corruption
+    // Try to add the same user again - this tests idempotency
+    let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+
+    // SputnikDAO allows idempotent member additions (adding existing member is a no-op)
+    // The bridge should succeed because verification passes and DAO accepts the proposal
+    assert!(
+        result.is_success(),
+        "Re-adding existing citizen should succeed (idempotent). Failures: {:?}",
+        result.failures()
+    );
+
+    // A new proposal should be created (even if the member already exists)
+    let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
+    assert_eq!(
+        final_proposal_count,
+        initial_proposal_count + 1,
+        "A new proposal should be created even for existing citizen"
+    );
+
+    // User should still be a citizen (no state corruption)
     let is_still_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(is_still_citizen, "User should still be a citizen after duplicate add attempt");
+    assert!(is_still_citizen, "User should still be a citizen after duplicate add");
 
     Ok(())
 }
@@ -972,6 +1033,68 @@ async fn test_create_proposal_exactly_max_length() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn test_create_proposal_single_char_description() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    // Create proposal with minimum valid description (1 character)
+    let result = create_proposal_via_bridge(&env.backend, &env.bridge, "x").await?;
+
+    // Should succeed - single character is valid
+    assert!(
+        result.is_success(),
+        "Proposal with single char description should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_create_proposal_whitespace_only_description() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    // Create proposal with only whitespace (spaces, tabs, newlines)
+    let result = create_proposal_via_bridge(&env.backend, &env.bridge, "   \t\n   ").await?;
+
+    // Contract should reject whitespace-only descriptions as effectively empty
+    assert!(result.is_failure(), "Whitespace-only description should be rejected");
+    assert!(
+        contains_error(&result, "cannot be empty"),
+        "Should fail with 'cannot be empty' error. Actual failures: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_create_proposal_unicode_description() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    // Create proposal with unicode characters (emoji, CJK, etc.)
+    let unicode_description = "Vote on 🗳️ proposal 提案 مقترح";
+
+    let result = create_proposal_via_bridge(&env.backend, &env.bridge, unicode_description).await?;
+
+    // Should succeed - unicode is valid text
+    assert!(
+        result.is_success(),
+        "Proposal with unicode description should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify the proposal was created with correct description
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
+    assert!(
+        proposal.description.contains("🗳️") && proposal.description.contains("提案"),
+        "Description should preserve unicode characters"
+    );
+
+    Ok(())
+}
+
 // ==================== K. DEPOSIT/BOND TESTS ====================
 
 #[tokio::test]
@@ -995,6 +1118,16 @@ async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
     // Should fail due to insufficient proposal bond
     assert!(result.is_failure(), "Add member with insufficient deposit should fail");
 
+    // Verify error message mentions insufficient deposit/bond
+    let has_deposit_error = contains_error(&result, "Not enough deposit")
+        || contains_error(&result, "ERR_MIN_BOND")
+        || contains_error(&result, "insufficient");
+    assert!(
+        has_deposit_error,
+        "Error should mention insufficient deposit. Failures: {:?}",
+        result.failures()
+    );
+
     Ok(())
 }
 
@@ -1014,6 +1147,16 @@ async fn test_create_proposal_insufficient_deposit() -> anyhow::Result<()> {
 
     // Should fail due to insufficient proposal bond
     assert!(result.is_failure(), "Create proposal with insufficient deposit should fail");
+
+    // Verify error message mentions insufficient deposit/bond
+    let has_deposit_error = contains_error(&result, "Not enough deposit")
+        || contains_error(&result, "ERR_MIN_BOND")
+        || contains_error(&result, "insufficient");
+    assert!(
+        has_deposit_error,
+        "Error should mention insufficient deposit. Failures: {:?}",
+        result.failures()
+    );
 
     Ok(())
 }
@@ -1216,6 +1359,17 @@ async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
     // Should fail due to gas exhaustion
     assert!(result.is_failure(), "Should fail with insufficient gas");
 
+    // Verify the failure is gas-related (prepaid gas exceeded, not enough gas, etc.)
+    let has_gas_error = contains_error(&result, "gas")
+        || contains_error(&result, "Gas")
+        || contains_error(&result, "Exceeded")
+        || contains_error(&result, "prepaid");
+    assert!(
+        has_gas_error,
+        "Error should mention gas exhaustion. Failures: {:?}",
+        result.failures()
+    );
+
     // Verify user was NOT added (no partial state corruption)
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
     assert!(
@@ -1251,6 +1405,89 @@ async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()>
 
     assert!(!is_user1_citizen, "User1 should NOT be a citizen (failed)");
     assert!(is_user2_citizen, "User2 should be a citizen (succeeded)");
+
+    Ok(())
+}
+
+// ==================== M. CONCURRENT OPERATIONS TESTS ====================
+//
+// These tests verify that the contract handles multiple operations correctly
+// when executed in sequence (simulating concurrent load).
+
+#[tokio::test]
+async fn test_concurrent_member_additions() -> anyhow::Result<()> {
+    let env = setup_with_users(5).await?;
+
+    // Verify all users first
+    for (i, user) in env.users.iter().enumerate() {
+        verify_user(&env.backend, &env.verified_accounts, user, i).await?;
+    }
+
+    // Add all members in rapid succession (simulating concurrent additions)
+    let mut results = Vec::new();
+    for user in &env.users {
+        let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+        results.push((user.id().to_string(), result.is_success()));
+    }
+
+    // All additions should succeed
+    for (user_id, success) in &results {
+        assert!(success, "Adding user {} should succeed", user_id);
+    }
+
+    // Verify all users are citizens
+    for user in &env.users {
+        let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+        assert!(is_citizen, "User {} should be in citizen role", user.id());
+    }
+
+    // Verify correct number of proposals were created (one per user)
+    let proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
+    assert!(
+        proposal_count >= env.users.len() as u64,
+        "Should have at least {} proposals, got {}",
+        env.users.len(),
+        proposal_count
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_concurrent_proposal_voting() -> anyhow::Result<()> {
+    let env = setup_with_users(5).await?;
+
+    // Setup: Verify and add all users as citizens
+    for (i, user) in env.users.iter().enumerate() {
+        verify_user(&env.backend, &env.verified_accounts, user, i).await?;
+        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+    }
+
+    // Create a Vote proposal
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Concurrent voting test").await?.into_result()?;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+
+    // All citizens vote in rapid succession
+    // First 3 vote approve, last 2 vote reject
+    let mut vote_results = Vec::new();
+    for (i, user) in env.users.iter().enumerate() {
+        let action = if i < 3 { "VoteApprove" } else { "VoteReject" };
+        let result = vote_on_proposal(user, &env.sputnik_dao, proposal_id, action, json!("Vote")).await?;
+        vote_results.push((user.id().to_string(), action, result.is_success()));
+    }
+
+    // Verify all votes were registered (only first 2 votes needed for majority)
+    // After 2 approve votes (40%), still in progress (need 50%)
+    // After 3 approve votes (60%), proposal passes
+    let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
+
+    // With 3 approve votes out of 5 (60%), proposal should be approved
+    // The remaining 2 reject votes happen after the proposal is already approved
+    assert_eq!(
+        proposal.status,
+        ProposalStatus::Approved,
+        "Proposal should be approved with 3/5 (60%) approval votes"
+    );
 
     Ok(())
 }

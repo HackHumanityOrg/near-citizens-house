@@ -252,7 +252,8 @@ impl SputnikBridge {
     pub fn create_proposal(&mut self, description: String) -> Promise {
         self.assert_backend_wallet();
 
-        // Input validation
+        // Input validation - trim whitespace and check for empty
+        let description = description.trim().to_string();
         if description.is_empty() {
             env::panic_str("Description cannot be empty");
         }

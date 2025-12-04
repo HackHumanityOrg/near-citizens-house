@@ -361,7 +361,7 @@ export const createProposalRequestSchema = z.object({
     }),
   quorumPercentage: z.number().int().min(1).max(100),
 })
-export type CreateProposalRequest = z.infer<typeof createProposalRequestSchema>
+export type CreateProposalRequest = z.input<typeof createProposalRequestSchema>
 
 export const voteRequestSchema = z.object({
   proposalId: z.number(),

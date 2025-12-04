@@ -1045,9 +1045,9 @@ dependencies = [
 
 [[package]]
 name = "near-vm-runner"
-version = "0.34.0"
+version = "0.34.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ce3394cf86d81701be198b6d699b54e2229f8d1eaf959161a4236ead4851048"
+checksum = "9adf070bf3d12c6ab1799b382de13f23d5190963b293d2068d4842012430fb3a"
 dependencies = [
  "blst",
  "borsh",
