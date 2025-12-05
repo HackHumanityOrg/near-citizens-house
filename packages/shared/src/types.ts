@@ -120,48 +120,6 @@ export const verifiedAccountSchema = z.object({
 export type VerifiedAccount = z.infer<typeof verifiedAccountSchema>
 
 // ============================================================================
-// Discourse Integration Schemas
-// ============================================================================
-
-// Discourse user profile
-export const discourseProfileSchema = z.object({
-  username: z.string(),
-  email: z.string().nullable(),
-  avatar_url: z.string(),
-  trust_level: z.number(),
-  name: z.string().nullable(),
-})
-
-export type DiscourseProfile = z.infer<typeof discourseProfileSchema>
-
-// Discourse authentication state
-export const discourseAuthStateSchema = z.object({
-  privateKeyPem: z.string(),
-  nonce: z.string(),
-  clientId: z.string(),
-})
-
-export type DiscourseAuthState = z.infer<typeof discourseAuthStateSchema>
-
-// Discourse RSA key pair
-export const keyPairSchema = z.object({
-  privateKeyPem: z.string(),
-  publicKeyPem: z.string(),
-})
-
-export type KeyPair = z.infer<typeof keyPairSchema>
-
-// Decrypted Discourse payload
-export const decryptedPayloadSchema = z.object({
-  key: z.string(),
-  nonce: z.string(),
-  push: z.boolean().optional(),
-  api: z.number().optional(),
-})
-
-export type DecryptedPayload = z.infer<typeof decryptedPayloadSchema>
-
-// ============================================================================
 // Verification Utility Schemas
 // ============================================================================
 

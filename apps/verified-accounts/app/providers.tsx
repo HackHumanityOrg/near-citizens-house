@@ -1,6 +1,6 @@
 "use client"
 
-import { NearWalletProvider, DiscourseProvider } from "@near-citizens/shared"
+import { NearWalletProvider } from "@near-citizens/shared"
 import { ErrorBoundary } from "@near-citizens/ui"
 
 interface ProvidersProps {
@@ -10,9 +10,7 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <NearWalletProvider>
-      <DiscourseProvider>
-        <ErrorBoundary>{children}</ErrorBoundary>
-      </DiscourseProvider>
+      <ErrorBoundary>{children}</ErrorBoundary>
     </NearWalletProvider>
   )
 }

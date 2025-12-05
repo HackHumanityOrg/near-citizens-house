@@ -9,7 +9,6 @@
     "./types": "./src/types.ts",
     "./verification-contract": "./src/verification-contract.ts",
     "./near-wallet-provider": "./src/near-wallet-provider.tsx",
-    "./discourse-provider": "./src/discourse-provider.tsx",
     "./verification": "./src/verification.ts",
     "./self-verifier": "./src/self-verifier.ts",
     "./zk-verify": "./src/zk-verify.ts"
@@ -45,12 +44,10 @@
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
     "ethers": "^6.16.0",
-    "node-forge": "^1.3.3",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/node": "^24",
-    "@types/node-forge": "^1.3.14",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5",

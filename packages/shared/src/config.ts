@@ -33,6 +33,7 @@ export const NEAR_CONFIG = {
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
   governanceContractId: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT || "",
   bridgeContractId: process.env.NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT || "",
+  // sputnikDaoContractId: process.env.NEXT_PUBLIC_SPUTNIK_DAO_CONTRACT || "",
   // Backend wallet credentials (server-side only)
   backendAccountId: process.env.NEAR_ACCOUNT_ID || "",
   backendPrivateKey: process.env.NEAR_PRIVATE_KEY || "",
@@ -77,17 +78,6 @@ export const SELF_CONFIG = {
 // Celo RPC Configuration (for ZK proof verification)
 export const CELO_CONFIG = {
   rpcUrls: process.env.CELO_RPC_URLS ? process.env.CELO_RPC_URLS.split(",") : null, // null means use built-in defaults
-}
-
-// Discourse Configuration
-export const DISCOURSE_CONFIG = {
-  url: process.env.NEXT_PUBLIC_DISCOURSE_URL || "",
-  appName: "NEAR Citizens House",
-  scopes: "read,session_info",
-  storageKeys: {
-    authState: "discourse_auth_state",
-    profile: "discourse_profile",
-  },
 }
 
 // Application Constants

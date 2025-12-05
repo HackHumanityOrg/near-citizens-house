@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
-import { useNearWallet, useDiscourse } from "@near-citizens/shared"
+import React, { useState, useEffect } from "react"
+import { useNearWallet } from "@near-citizens/shared"
 import {
   Button,
   Card,
@@ -11,32 +11,23 @@ import {
   CardTitle,
   Alert,
   AlertDescription,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
 } from "@near-citizens/ui"
 import { PassportQrScanner } from "./passport-qr-scanner"
-import { DiscourseBadgeClaim } from "./discourse-badge-claim"
-import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, MessageSquare } from "lucide-react"
+import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle } from "lucide-react"
 import type { NearSignatureData } from "@near-citizens/shared/types"
 import type { VerificationStep } from "@/types/ui"
-import { CONSTANTS, ERROR_MESSAGES, DISCOURSE_CONFIG } from "@near-citizens/shared/config"
+import { CONSTANTS, ERROR_MESSAGES } from "@near-citizens/shared/config"
 import { isAccountVerified } from "@/app/verified-accounts/actions"
 
 export function IdentityVerificationFlow() {
   const { accountId, isConnected, connect, disconnect, signMessage, isLoading } = useNearWallet()
-  const { isConnected: discourseConnected, profile: discourseProfile, disconnect: disconnectDiscourse } = useDiscourse()
   const [currentStep, setCurrentStep] = useState(1)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
   const [isSigningMessage, setIsSigningMessage] = useState(false)
   const [signError, setSignError] = useState<string | null>(null)
   const [verificationError, setVerificationError] = useState<string | null>(null)
   const [selfVerificationComplete, setSelfVerificationComplete] = useState(false)
-  const [discourseError, setDiscourseError] = useState<string | null>(null)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
-
-  // Check if Discourse is configured
-  const discourseEnabled = !!DISCOURSE_CONFIG.url
 
   // Check if wallet is already verified when connected
   useEffect(() => {
@@ -48,7 +39,7 @@ export function IdentityVerificationFlow() {
         const isVerified = await isAccountVerified(accountId)
 
         if (isVerified) {
-          // Already verified - skip to Discourse step (or final if no Discourse)
+          // Already verified - show success
           setNearSignature({
             accountId,
             signature: "",
@@ -59,13 +50,7 @@ export function IdentityVerificationFlow() {
             recipient: accountId,
           })
           setSelfVerificationComplete(true)
-          // If Discourse is enabled and not connected, go to step 4
-          // Otherwise, stay at step 3 (which will show success)
-          if (discourseEnabled && !discourseConnected) {
-            setCurrentStep(4)
-          } else {
-            setCurrentStep(discourseEnabled ? 4 : 3)
-          }
+          setCurrentStep(3)
         } else if (currentStep === 1) {
           // Not verified - move to step 2
           setCurrentStep(2)
@@ -82,9 +67,9 @@ export function IdentityVerificationFlow() {
     }
 
     checkExistingVerification()
-  }, [accountId, isConnected, discourseEnabled, discourseConnected, currentStep])
+  }, [accountId, isConnected, currentStep])
 
-  const baseSteps: VerificationStep[] = [
+  const steps: VerificationStep[] = [
     {
       id: "connect",
       title: "Connect Wallet",
@@ -104,19 +89,6 @@ export function IdentityVerificationFlow() {
       status: selfVerificationComplete ? "complete" : currentStep === 3 ? "active" : "pending",
     },
   ]
-
-  // Add Discourse step if configured
-  const steps: VerificationStep[] = discourseEnabled
-    ? [
-        ...baseSteps,
-        {
-          id: "discourse",
-          title: "Link Discourse",
-          description: "Connect your Discourse forum account",
-          status: discourseConnected ? "complete" : currentStep === 4 ? "active" : "pending",
-        },
-      ]
-    : baseSteps
 
   const handleConnect = async () => {
     await connect()
@@ -142,10 +114,6 @@ export function IdentityVerificationFlow() {
   const handleVerificationSuccess = () => {
     setVerificationError(null)
     setSelfVerificationComplete(true)
-    // If Discourse is enabled, move to step 4
-    if (discourseEnabled) {
-      setCurrentStep(4)
-    }
   }
 
   const handleVerificationError = (error: string) => {
@@ -163,18 +131,8 @@ export function IdentityVerificationFlow() {
     setNearSignature(null)
     setVerificationError(null)
     setSelfVerificationComplete(false)
-    setDiscourseError(null)
     setCurrentStep(1)
   }
-
-  // Discourse handlers
-  const handleDiscourseSuccess = useCallback(() => {
-    setDiscourseError(null)
-  }, [])
-
-  const handleDiscourseError = useCallback((error: string) => {
-    setDiscourseError(error)
-  }, [])
 
   return (
     <div className="space-y-6" role="region" aria-label="Identity verification process">
@@ -381,8 +339,7 @@ export function IdentityVerificationFlow() {
                 onSuccess={handleVerificationSuccess}
                 onError={handleVerificationError}
               />
-            ) : !discourseEnabled ? (
-              // No Discourse - show success immediately
+            ) : (
               <Card role="status" aria-labelledby="success-title">
                 <CardHeader>
                   <div className="flex items-center gap-2">
@@ -412,102 +369,6 @@ export function IdentityVerificationFlow() {
                     Your verified identity is now securely linked to your NEAR wallet. You can use this verification for
                     decentralized applications that require identity proof.
                   </p>
-                </CardContent>
-              </Card>
-            ) : null}
-          </>
-        )}
-
-        {/* Step 4: Discourse Authentication */}
-        {currentStep === 4 && selfVerificationComplete && discourseEnabled && (
-          <>
-            {discourseError && !discourseConnected ? (
-              <Card role="alert">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
-                    <CardTitle>Discourse Connection Failed</CardTitle>
-                  </div>
-                  <CardDescription>There was an error connecting to Discourse</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                    <AlertDescription>{discourseError}</AlertDescription>
-                  </Alert>
-
-                  <DiscourseBadgeClaim
-                    onSuccess={handleDiscourseSuccess}
-                    onError={handleDiscourseError}
-                    onDisconnectWallet={handleStartOver}
-                  />
-                </CardContent>
-              </Card>
-            ) : !discourseConnected ? (
-              <DiscourseBadgeClaim
-                onSuccess={handleDiscourseSuccess}
-                onError={handleDiscourseError}
-                onDisconnectWallet={handleStartOver}
-              />
-            ) : (
-              // Full verification complete - show final success
-              <Card role="status" aria-labelledby="success-title">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
-                    <CardTitle id="success-title">Verification Complete!</CardTitle>
-                  </div>
-                  <CardDescription>Your identity has been verified and you are signed in to Discourse</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <dl className="p-4 bg-background rounded-lg space-y-3">
-                    <div className="flex items-center justify-between">
-                      <dt className="text-sm font-medium">NEAR Account</dt>
-                      <dd className="text-sm text-muted-foreground font-mono">{nearSignature?.accountId}</dd>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <dt className="text-sm font-medium">Identity Status</dt>
-                      <dd className="text-sm text-primary font-medium flex items-center gap-1">
-                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                        <span>Verified</span>
-                      </dd>
-                    </div>
-                    {discourseProfile && (
-                      <>
-                        <div className="border-t pt-3 mt-3">
-                          <dt className="text-sm font-medium mb-2 flex items-center gap-2">
-                            <MessageSquare className="h-4 w-4" aria-hidden="true" />
-                            Discourse Account
-                          </dt>
-                          <dd className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={discourseProfile.avatar_url} alt={discourseProfile.username} />
-                              <AvatarFallback>{discourseProfile.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="text-sm font-medium">
-                                {discourseProfile.name || discourseProfile.username}
-                              </div>
-                              <div className="text-xs text-muted-foreground">@{discourseProfile.username}</div>
-                            </div>
-                          </dd>
-                        </div>
-                      </>
-                    )}
-                  </dl>
-
-                  <p className="text-sm text-muted-foreground">
-                    Your identity is verified on-chain and you have authenticated with Discourse.
-                  </p>
-
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" onClick={disconnectDiscourse} className="flex-1">
-                      Sign out of Discourse
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleStartOver} className="flex-1">
-                      Disconnect Wallet
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             )}
