@@ -5,9 +5,11 @@
   "scripts": {
     "dev:verification": "pnpm --filter verified-accounts dev",
     "dev:governance": "pnpm --filter citizens-house dev",
+    "dev:sputnik": "pnpm --filter @near-citizens/sputnik-dao dev",
     "dev:all": "pnpm --parallel --filter \"./apps/*\" dev",
     "build:verification": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --filter verified-accounts build",
     "build:governance": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --filter citizens-house build",
+    "build:sputnik": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --filter @near-citizens/sputnik-dao build",
     "build:all": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --parallel --filter \"./apps/*\" build",
     "build:contract": "pnpm --filter verified-accounts build:contract",
     "build:contract:verification": "cd contracts/verified-accounts && cargo near build non-reproducible-wasm",

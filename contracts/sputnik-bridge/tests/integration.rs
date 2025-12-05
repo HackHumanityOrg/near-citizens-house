@@ -558,12 +558,11 @@ async fn test_member_added_event_emitted() -> anyhow::Result<()> {
 
     let events = parse_events(&logs);
 
-    let member_added = events.iter().find(|e| e.event == "member_added");
-    assert!(
-        member_added.is_some(),
-        "member_added event should be emitted. Events: {:?}",
-        events
-    );
+    let member_added = events.iter().find(|e| e.event == "member_added").expect("member_added event missing");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    assert_eq!(member_added.data["member_id"], json!(user.id().to_string()));
+    assert_eq!(member_added.data["role"], json!("citizen"));
+    assert_eq!(member_added.data["proposal_id"].as_u64(), Some(proposal_id));
 
     Ok(())
 }
@@ -580,12 +579,11 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
 
     let events = parse_events(&logs);
 
-    let proposal_created = events.iter().find(|e| e.event == "proposal_created");
-    assert!(
-        proposal_created.is_some(),
-        "proposal_created event should be emitted. Events: {:?}",
-        events
-    );
+    let proposal_created =
+        events.iter().find(|e| e.event == "proposal_created").expect("proposal_created event missing");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    assert_eq!(proposal_created.data["proposal_id"].as_u64(), Some(proposal_id));
+    assert_eq!(proposal_created.data["description"], json!("Event test"));
 
     Ok(())
 }
@@ -612,6 +610,54 @@ async fn test_update_backend_wallet() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let new_backend = env.user(0);
+
+    // Rotate backend wallet
+    env.backend
+        .call(env.bridge.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": new_backend.id() }))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Old backend can still verify users in verified-accounts
+    verify_user(&env.backend, &env.verified_accounts, new_backend, 0).await?;
+
+    // Old backend should now be blocked from bridge write calls
+    let old_backend_result = env
+        .backend
+        .call(env.bridge.id(), "add_member")
+        .args_json(json!({ "near_account_id": new_backend.id() }))
+        .deposit(NearToken::from_near(1))
+        .gas(Gas::from_tgas(200))
+        .transact()
+        .await?;
+    assert!(
+        old_backend_result.is_failure(),
+        "Old backend should be rejected after rotation"
+    );
+    assert!(contains_error(&old_backend_result, "Only backend wallet"));
+
+    // New backend must be able to add members
+    let add_result = new_backend
+        .call(env.bridge.id(), "add_member")
+        .args_json(json!({ "near_account_id": new_backend.id() }))
+        .deposit(NearToken::from_near(1))
+        .gas(Gas::from_tgas(200))
+        .transact()
+        .await?;
+    assert!(add_result.is_success(), "New backend should be authorized");
+
+    let is_citizen = is_account_in_role(&env.sputnik_dao, new_backend.id().as_str(), "citizen").await?;
+    assert!(is_citizen, "Rotated backend should successfully add members");
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_update_citizen_role() -> anyhow::Result<()> {
     let env = setup().await?;
 
@@ -625,6 +671,92 @@ async fn test_update_citizen_role() -> anyhow::Result<()> {
 
     let citizen_role: String = env.bridge.view("get_citizen_role").await?.json()?;
     assert_eq!(citizen_role, "voter");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Result<()> {
+    // Start with policy that already defines the new role we plan to use ("voter")
+    let env = setup_with_policy_and_users(
+        1,
+        |bridge_account_id| {
+            json!({
+                "roles": [
+                    {
+                        "name": "bridge",
+                        "kind": { "Group": [bridge_account_id] },
+                        "permissions": [
+                            "add_member_to_role:AddProposal",
+                            "add_member_to_role:VoteApprove",
+                            "vote:AddProposal"
+                        ],
+                        "vote_policy": {}
+                    },
+                    {
+                        "name": "citizen",
+                        "kind": { "Group": [] },
+                        "permissions": [
+                            "vote:VoteApprove",
+                            "vote:VoteReject"
+                        ],
+                        "vote_policy": {}
+                    },
+                    {
+                        "name": "voter",
+                        "kind": { "Group": [] },
+                        "permissions": [
+                            "vote:VoteApprove",
+                            "vote:VoteReject"
+                        ],
+                        "vote_policy": {}
+                    },
+                    {
+                        "name": "all",
+                        "kind": "Everyone",
+                        "permissions": ["*:Finalize"],
+                        "vote_policy": {}
+                    }
+                ],
+                "default_vote_policy": {
+                    "weight_kind": "RoleWeight",
+                    "quorum": "0",
+                    "threshold": [1, 2]
+                },
+                "proposal_bond": PROPOSAL_BOND.to_string(),
+                "proposal_period": PROPOSAL_PERIOD_NS.to_string(),
+                "bounty_bond": PROPOSAL_BOND.to_string(),
+                "bounty_forgiveness_period": PROPOSAL_PERIOD_NS.to_string()
+            })
+        },
+        true,
+    )
+    .await?;
+    let user = env.user(0);
+
+    env.backend
+        .call(env.bridge.id(), "update_citizen_role")
+        .args_json(json!({ "new_role": "voter" }))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?
+        .into_result()?;
+
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+    let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+    let logs = extract_event_logs(&result);
+    result.into_result()?;
+
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+
+    let is_voter = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "voter").await?;
+    assert!(is_voter, "User should be placed into the updated citizen role");
+
+    let events = parse_events(&logs);
+    let member_added = events.iter().find(|e| e.event == "member_added").expect("member_added event missing");
+    assert_eq!(member_added.data["member_id"], json!(user.id().to_string()));
+    assert_eq!(member_added.data["role"], json!("voter"));
+    assert_eq!(member_added.data["proposal_id"].as_u64(), Some(proposal_id));
 
     Ok(())
 }
@@ -1218,6 +1350,55 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
     // Verify user is NOT in citizen role
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
     assert!(!is_citizen, "User should not be added when verification fails");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
+    // Bridge lacks VoteApprove permission, so auto-approval should fail
+    let env = setup_with_policy_and_users(1, create_policy_without_autoapprove, true).await?;
+    let user = env.user(0);
+
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+
+    let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+    assert!(result.is_failure(), "Auto-approve should fail without permission");
+
+    let logs = extract_event_logs(&result);
+    let events = parse_events(&logs);
+    assert!(
+        events.iter().all(|e| e.event != "member_added"),
+        "member_added event must not be emitted on auto-approve failure"
+    );
+
+    let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+    assert!(!is_citizen, "User should not be added when auto-approve fails");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
+    // Verification contract is uninitialized; promise should return Failure
+    let env = setup_uninitialized_verified_with_users(1).await?;
+    let user = env.user(0);
+
+    let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+    assert!(result.is_failure(), "Verification promise failure should abort flow");
+
+    let logs = extract_event_logs(&result);
+    let events = parse_events(&logs);
+    assert!(
+        events.iter().all(|e| e.event != "member_added"),
+        "No events should be emitted when verification promise fails"
+    );
+
+    let proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    assert_eq!(proposal_count, 0, "No proposals should be created after promise failure");
+
+    let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+    assert!(!is_citizen, "User must not be added when verification promise fails");
 
     Ok(())
 }

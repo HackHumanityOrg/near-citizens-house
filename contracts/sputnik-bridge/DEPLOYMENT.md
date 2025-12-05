@@ -163,7 +163,7 @@ Create the policy JSON file `dao-policy.json`:
         "kind": {
           "Group": []
         },
-        "permissions": ["*:VoteApprove", "*:VoteReject"],
+        "permissions": ["vote:VoteApprove", "vote:VoteReject"],
         "vote_policy": {}
       },
       {

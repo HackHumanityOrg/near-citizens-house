@@ -29,7 +29,7 @@ The tests use `near-workspaces` to deploy three contracts:
 
 ## Test Summary
 
-**Total: 56 tests**
+**Total: 60 tests**
 
 ### A. Setup Tests (3 tests)
 
@@ -86,13 +86,15 @@ The tests use `near-workspaces` to deploy three contracts:
 | `test_member_added_event_emitted`     | `member_added` event is emitted when a user is successfully added   |
 | `test_proposal_created_event_emitted` | `proposal_created` event is emitted when a Vote proposal is created |
 
-### G. Admin Tests (3 tests)
+### G. Admin Tests (5 tests)
 
-| Test                         | Description                                     |
-| ---------------------------- | ----------------------------------------------- |
-| `test_update_backend_wallet` | Backend can update the backend_wallet address   |
-| `test_update_citizen_role`   | Backend can update the citizen_role name        |
-| `test_get_info`              | get_info returns correct contract configuration |
+| Test                                             | Description                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `test_update_backend_wallet`                     | Backend can update the backend_wallet address                                         |
+| `test_backend_wallet_rotation_enforced`          | Rotating backend blocks the old wallet and authorizes the new one for bridge actions  |
+| `test_update_citizen_role`                       | Backend can update the citizen_role name                                              |
+| `test_update_citizen_role_applies_to_members_and_events` | Updated role is used when adding members and reflected in emitted events      |
+| `test_get_info`                                  | get_info returns correct contract configuration                                       |
 
 ### H. Access Control Security Tests (6 tests)
 
@@ -134,11 +136,13 @@ The tests use `near-workspaces` to deploy three contracts:
 | `test_create_proposal_insufficient_deposit` | create_proposal with 0.1 NEAR (insufficient) fails with proper error message |
 | `test_add_member_zero_deposit`              | add_member with zero deposit fails                                           |
 
-### L. Cross-Contract Call Failure Tests (6 tests)
+### L. Cross-Contract Call Failure Tests (8 tests)
 
 | Test                                                 | Description                                                 |
 | ---------------------------------------------------- | ----------------------------------------------------------- |
 | `test_add_member_verification_fails_no_state_change` | State unchanged when verification cross-contract call fails |
+| `test_add_member_auto_approve_failure_no_event`      | Auto-approve failure (missing permission) emits no event and adds no member |
+| `test_verification_promise_failure_no_event`         | Uninitialized verification contract causes promise failure, no proposal/event |
 | `test_create_proposal_dao_failure_no_event`          | No proposal_created event emitted when DAO rejects          |
 | `test_add_member_dao_failure_no_event`               | No member_added event emitted when DAO rejects              |
 | `test_multiple_failures_dont_corrupt_state`          | Multiple failures maintain state consistency                |

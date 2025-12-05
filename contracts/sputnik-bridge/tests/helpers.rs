@@ -231,8 +231,53 @@ pub fn create_test_policy(bridge_account_id: &str) -> serde_json::Value {
                     "Group": []
                 },
                 "permissions": [
-                    "*:VoteApprove",
-                    "*:VoteReject"
+                    "vote:VoteApprove",
+                    "vote:VoteReject"
+                ],
+                "vote_policy": {}
+            },
+            {
+                "name": "all",
+                "kind": "Everyone",
+                "permissions": ["*:Finalize"],
+                "vote_policy": {}
+            }
+        ],
+            "default_vote_policy": {
+                "weight_kind": "RoleWeight",
+                "quorum": "0",
+                "threshold": [1, 2]
+            },
+            "proposal_bond": PROPOSAL_BOND.to_string(),
+            "proposal_period": PROPOSAL_PERIOD_NS.to_string(),
+            "bounty_bond": PROPOSAL_BOND.to_string(),
+            "bounty_forgiveness_period": PROPOSAL_PERIOD_NS.to_string()
+        })
+}
+
+/// Policy that removes the bridge's auto-approve power (no VoteApprove permission)
+pub fn create_policy_without_autoapprove(bridge_account_id: &str) -> serde_json::Value {
+    json!({
+        "roles": [
+            {
+                "name": "bridge",
+                "kind": {
+                    "Group": [bridge_account_id]
+                },
+                "permissions": [
+                    "add_member_to_role:AddProposal",
+                    "vote:AddProposal"
+                ],
+                "vote_policy": {}
+            },
+            {
+                "name": "citizen",
+                "kind": {
+                    "Group": []
+                },
+                "permissions": [
+                    "vote:VoteApprove",
+                    "vote:VoteReject"
                 ],
                 "vote_policy": {}
             },
@@ -257,30 +302,50 @@ pub fn create_test_policy(bridge_account_id: &str) -> serde_json::Value {
 
 // ==================== TEST ENVIRONMENT SETUP ====================
 
-/// Full setup - deploys sputnik-dao, verified-accounts, and bridge contracts
-pub async fn setup() -> anyhow::Result<TestEnv> {
+async fn deploy_verified_accounts(
+    worker: &Worker<Sandbox>,
+    backend: &Account,
+    initialize: bool,
+) -> anyhow::Result<Contract> {
+    let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
+
+    if initialize {
+        verified_accounts
+            .call("new")
+            .args_json(json!({
+                "backend_wallet": backend.id()
+            }))
+            .transact()
+            .await?
+            .into_result()?;
+    }
+
+    Ok(verified_accounts)
+}
+
+/// Shared setup used by all test environments; allows custom policy and
+/// choosing whether the verified-accounts contract is initialized.
+pub async fn setup_with_policy_builder<F>(
+    policy_builder: F,
+    initialize_verified: bool,
+) -> anyhow::Result<TestEnv>
+where
+    F: FnOnce(&str) -> serde_json::Value,
+{
     let worker = near_workspaces::sandbox().await?;
 
     // Create backend account
     let backend = worker.dev_create_account().await?;
 
-    // Deploy verified-accounts contract
-    let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
-    verified_accounts
-        .call("new")
-        .args_json(json!({
-            "backend_wallet": backend.id()
-        }))
-        .transact()
-        .await?
-        .into_result()?;
+    // Deploy verified-accounts contract (optionally uninitialized)
+    let verified_accounts = deploy_verified_accounts(&worker, &backend, initialize_verified).await?;
 
     // Deploy bridge contract first (we need its ID for DAO policy)
     let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
 
-    // Deploy sputnik-dao with policy including bridge in council
+    // Deploy sputnik-dao with provided policy (bridge id injected)
     let sputnik_dao = worker.dev_deploy(SPUTNIKDAO_WASM).await?;
-    let policy = create_test_policy(bridge.id().as_str());
+    let policy = policy_builder(bridge.id().as_str());
 
     sputnik_dao
         .call("new")
@@ -319,6 +384,11 @@ pub async fn setup() -> anyhow::Result<TestEnv> {
     })
 }
 
+/// Full setup - deploys sputnik-dao, verified-accounts, and bridge contracts
+pub async fn setup() -> anyhow::Result<TestEnv> {
+    setup_with_policy_builder(create_test_policy, true).await
+}
+
 /// Setup with N user accounts created (not verified yet)
 pub async fn setup_with_users(count: usize) -> anyhow::Result<TestEnv> {
     let mut env = setup().await?;
@@ -329,6 +399,31 @@ pub async fn setup_with_users(count: usize) -> anyhow::Result<TestEnv> {
     }
 
     Ok(env)
+}
+
+/// Setup with custom policy and optional uninitialized verified-accounts contract
+pub async fn setup_with_policy_and_users<F>(
+    count: usize,
+    policy_builder: F,
+    initialize_verified: bool,
+) -> anyhow::Result<TestEnv>
+where
+    F: FnOnce(&str) -> serde_json::Value,
+{
+    let mut env = setup_with_policy_builder(policy_builder, initialize_verified).await?;
+
+    for _ in 0..count {
+        let user = env.worker.dev_create_account().await?;
+        env.users.push(user);
+    }
+
+    Ok(env)
+}
+
+/// Setup where the verified-accounts contract is intentionally left uninitialized
+/// to simulate a cross-contract promise failure on verification.
+pub async fn setup_uninitialized_verified_with_users(count: usize) -> anyhow::Result<TestEnv> {
+    setup_with_policy_and_users(count, create_test_policy, false).await
 }
 
 // ==================== VERIFICATION HELPERS ====================
@@ -530,4 +625,3 @@ pub fn contains_error(result: &ExecutionFinalResult, expected: &str) -> bool {
 
     false
 }
-

@@ -13,8 +13,8 @@ export * from "./governance-contract"
 // Bridge Contract
 export * from "./bridge-contract"
 
-// // SputnikDAO Contract
-// export * from "./sputnik-dao-contract"
+// SputnikDAO Contract
+export * from "./sputnik-dao-contract"
 
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"

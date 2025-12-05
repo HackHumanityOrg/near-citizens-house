@@ -11,7 +11,10 @@
     "./near-wallet-provider": "./src/near-wallet-provider.tsx",
     "./verification": "./src/verification.ts",
     "./self-verifier": "./src/self-verifier.ts",
-    "./zk-verify": "./src/zk-verify.ts"
+    "./zk-verify": "./src/zk-verify.ts",
+    "./sputnik-dao-contract": "./src/sputnik-dao-contract.ts",
+    "./sputnik-dao-types": "./src/sputnik-dao-types.ts",
+    "./bridge-contract": "./src/bridge-contract.ts"
   },
   "scripts": {
     "lint": "eslint .",
