@@ -403,16 +403,20 @@ NEXT_PUBLIC_NEAR_DAO_CONTRACT=dao.citizens-house.testnet
 ```typescript
 import { bridgeContract } from "@near-citizens/shared"
 
-// Get bridge info
+// Get bridge info (read-only operations)
 const info = await bridgeContract.getInfo()
 console.log(info)
 
-// Add member (backend only)
-await bridgeContract.addMember("alice.testnet", 0.1)
-
-// Create proposal (backend only)
-const proposalId = await bridgeContract.createProposal("# My Proposal\n\nDescription here", 0.1)
+// View methods available:
+const backendWallet = await bridgeContract.getBackendWallet()
+const sputnikDao = await bridgeContract.getSputnikDao()
+const verifiedContract = await bridgeContract.getVerifiedAccountsContract()
+const citizenRole = await bridgeContract.getCitizenRole()
 ```
+
+**Note:** Write operations (addMember, createProposal, etc.) are performed client-side
+through the frontend app. The user must connect with the backend_wallet and sign
+transactions through the wallet interface. See `apps/sputnik-dao/hooks/admin-actions.ts`.
 
 ---
 

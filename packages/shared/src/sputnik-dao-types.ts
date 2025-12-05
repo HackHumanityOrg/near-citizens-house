@@ -50,10 +50,9 @@ export type SputnikVote = z.infer<typeof sputnikVoteSchema>
 
 /**
  * Vote proposal kind (text-only governance)
+ * SputnikDAO returns just "Vote" as a string for this kind
  */
-export const sputnikProposalKindVoteSchema = z.object({
-  Vote: z.object({}).optional(),
-})
+export const sputnikProposalKindVoteSchema = z.literal("Vote")
 
 /**
  * Add member to role proposal kind
@@ -165,7 +164,7 @@ export const contractSputnikProposalSchema = z.object({
   kind: sputnikProposalKindSchema,
   status: sputnikProposalStatusSchema,
   // vote_counts is a map from role name to [approve, reject, remove] counts
-  vote_counts: z.record(z.string(), z.tuple([z.string(), z.string(), z.string()])),
+  vote_counts: z.record(z.string(), z.tuple([z.number(), z.number(), z.number()])),
   // votes is a map from account ID to vote choice
   votes: z.record(z.string(), sputnikVoteSchema),
   submission_time: z.string(), // U64 as string (nanoseconds)
@@ -176,15 +175,15 @@ export const contractSputnikProposalSchema = z.object({
  */
 export const sputnikProposalSchema = contractSputnikProposalSchema.transform((data) => {
   // Aggregate vote counts across all roles
-  let totalApprove = BigInt(0)
-  let totalReject = BigInt(0)
-  let totalRemove = BigInt(0)
+  let totalApprove = 0
+  let totalReject = 0
+  let totalRemove = 0
 
-  const voteCounts = Object.values(data.vote_counts) as [string, string, string][]
+  const voteCounts = Object.values(data.vote_counts) as [number, number, number][]
   for (const [approve, reject, remove] of voteCounts) {
-    totalApprove += BigInt(approve)
-    totalReject += BigInt(reject)
-    totalRemove += BigInt(remove)
+    totalApprove += approve
+    totalReject += reject
+    totalRemove += remove
   }
 
   return {
@@ -197,10 +196,10 @@ export const sputnikProposalSchema = contractSputnikProposalSchema.transform((da
     votes: data.votes,
     submissionTime: Math.floor(parseInt(data.submission_time) / 1_000_000), // nanoseconds → milliseconds
     // Aggregated counts for display
-    totalApprove: Number(totalApprove),
-    totalReject: Number(totalReject),
-    totalRemove: Number(totalRemove),
-    totalVotes: Number(totalApprove + totalReject + totalRemove),
+    totalApprove,
+    totalReject,
+    totalRemove,
+    totalVotes: totalApprove + totalReject + totalRemove,
   }
 })
 
@@ -269,14 +268,18 @@ export interface ISputnikDaoContract {
  * Get human-readable proposal kind description
  */
 export function getProposalKindLabel(kind: SputnikProposalKind): string {
-  if ("Vote" in kind) {
+  // Vote proposals are just the string "Vote"
+  if (kind === "Vote") {
     return "Vote"
   }
-  if ("AddMemberToRole" in kind) {
-    return `Add ${kind.AddMemberToRole.member_id} to ${kind.AddMemberToRole.role}`
-  }
-  if ("RemoveMemberFromRole" in kind) {
-    return `Remove ${kind.RemoveMemberFromRole.member_id} from ${kind.RemoveMemberFromRole.role}`
+  // Object-based kinds
+  if (typeof kind === "object") {
+    if ("AddMemberToRole" in kind) {
+      return `Add ${kind.AddMemberToRole.member_id} to ${kind.AddMemberToRole.role}`
+    }
+    if ("RemoveMemberFromRole" in kind) {
+      return `Remove ${kind.RemoveMemberFromRole.member_id} from ${kind.RemoveMemberFromRole.role}`
+    }
   }
   return "Unknown"
 }

@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react"
 import { useNearWallet, NEAR_CONFIG } from "@near-citizens/shared"
 
-// Gas constants
+// Gas constants (as strings for wallet compatibility)
 const ADD_MEMBER_GAS = "200000000000000" // 200 TGas (cross-contract calls)
 const CREATE_PROPOSAL_GAS = "100000000000000" // 100 TGas
 const UPDATE_GAS = "30000000000000" // 30 TGas
@@ -56,9 +56,9 @@ function extractReturnValue<T>(result: TransactionResult): T | null {
 
 export interface UseAdminActionsResult {
   /** Add a verified member to SputnikDAO via bridge */
-  addMember: (accountId: string, proposalBondNear: number) => Promise<string>
+  addMember: (accountId: string, proposalBondYocto: string) => Promise<string>
   /** Create a Vote proposal via bridge */
-  createProposal: (description: string, proposalBondNear: number) => Promise<number>
+  createProposal: (description: string, proposalBondYocto: string) => Promise<number>
   /** Update the backend wallet address */
   updateBackendWallet: (newWallet: string) => Promise<void>
   /** Update the citizen role name */
@@ -79,11 +79,11 @@ export interface UseAdminActionsResult {
  * ```tsx
  * const { addMember, createProposal, isLoading, error } = useAdminActions()
  *
- * // Add a verified member (requires proposal bond)
- * await addMember("alice.near", 0.1) // 0.1 NEAR bond
+ * // Add a verified member (requires proposal bond in yoctoNEAR)
+ * await addMember("alice.near", "100000000000000000000000") // 0.1 NEAR
  *
  * // Create a Vote proposal
- * const proposalId = await createProposal("Should we do X?", 0.1)
+ * const proposalId = await createProposal("Should we do X?", policy.proposalBond)
  * ```
  */
 export function useAdminActions(): UseAdminActionsResult {
@@ -94,7 +94,7 @@ export function useAdminActions(): UseAdminActionsResult {
   const clearError = useCallback(() => setError(null), [])
 
   const addMember = useCallback(
-    async (accountId: string, proposalBondNear: number): Promise<string> => {
+    async (accountId: string, proposalBondYocto: string): Promise<string> => {
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
@@ -107,8 +107,8 @@ export function useAdminActions(): UseAdminActionsResult {
       setError(null)
 
       try {
-        // Convert NEAR to yoctoNEAR string
-        const depositYocto = BigInt(Math.floor(proposalBondNear * 1e24)).toString()
+        // Use yoctoNEAR directly to avoid floating point precision issues
+        console.log(`[AdminActions] addMember deposit: ${proposalBondYocto} yoctoNEAR`)
 
         const result = await signAndSendTransaction({
           receiverId: NEAR_CONFIG.bridgeContractId,
@@ -121,7 +121,7 @@ export function useAdminActions(): UseAdminActionsResult {
                   near_account_id: accountId,
                 },
                 gas: ADD_MEMBER_GAS,
-                deposit: depositYocto,
+                deposit: proposalBondYocto,
               },
             },
           ],
@@ -141,7 +141,7 @@ export function useAdminActions(): UseAdminActionsResult {
   )
 
   const createProposal = useCallback(
-    async (description: string, proposalBondNear: number): Promise<number> => {
+    async (description: string, proposalBondYocto: string): Promise<number> => {
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
@@ -154,8 +154,8 @@ export function useAdminActions(): UseAdminActionsResult {
       setError(null)
 
       try {
-        // Convert NEAR to yoctoNEAR string
-        const depositYocto = BigInt(Math.floor(proposalBondNear * 1e24)).toString()
+        // Use yoctoNEAR directly to avoid floating point precision issues
+        console.log(`[AdminActions] createProposal deposit: ${proposalBondYocto} yoctoNEAR`)
 
         const result = await signAndSendTransaction({
           receiverId: NEAR_CONFIG.bridgeContractId,
@@ -168,7 +168,7 @@ export function useAdminActions(): UseAdminActionsResult {
                   description,
                 },
                 gas: CREATE_PROPOSAL_GAS,
-                deposit: depositYocto,
+                deposit: proposalBondYocto,
               },
             },
           ],

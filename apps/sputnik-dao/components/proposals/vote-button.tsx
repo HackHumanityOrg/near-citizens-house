@@ -2,7 +2,7 @@
 
 import { Button } from "@near-citizens/ui"
 import { type SputnikAction, type SputnikProposalKind, type SputnikVote, useNearWallet } from "@near-citizens/shared"
-import { ThumbsUp, ThumbsDown, Trash2, Loader2 } from "lucide-react"
+import { ThumbsUp, ThumbsDown, Loader2 } from "lucide-react"
 import { useSputnikDao } from "@/hooks/sputnik-dao"
 
 interface VoteButtonProps {
@@ -57,12 +57,6 @@ export function VoteButton({
               <span className="text-red-600">Reject</span>
             </>
           )}
-          {currentVote === "Remove" && (
-            <>
-              <Trash2 className="h-4 w-4 text-orange-600" />
-              <span className="text-orange-600">Remove</span>
-            </>
-          )}
         </div>
       </div>
     )
@@ -88,16 +82,6 @@ export function VoteButton({
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
           Reject
-        </Button>
-        <Button
-          onClick={() => handleVote("VoteRemove")}
-          disabled={disabled || isLoading}
-          variant="outline"
-          className="flex-1 text-orange-600 border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
-          title="Vote to remove as spam"
-        >
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-          Remove
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

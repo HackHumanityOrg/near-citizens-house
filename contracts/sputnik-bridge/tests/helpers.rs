@@ -255,6 +255,63 @@ pub fn create_test_policy(bridge_account_id: &str) -> serde_json::Value {
         })
 }
 
+/// Production-like policy with differentiated vote policies:
+/// - AddMemberToRole: quorum 0, threshold 50% - bridge alone can auto-approve
+/// - Vote proposals: quorum 0, threshold 7% of citizens - requires citizen participation
+///
+/// This ensures the backend wallet can add members without citizen approval,
+/// but governance proposals need meaningful citizen engagement.
+pub fn create_policy_with_citizen_quorum(bridge_account_id: &str) -> serde_json::Value {
+    json!({
+        "roles": [
+            {
+                "name": "bridge",
+                "kind": {
+                    "Group": [bridge_account_id]
+                },
+                "permissions": [
+                    "add_member_to_role:AddProposal",
+                    "add_member_to_role:VoteApprove",
+                    "vote:AddProposal"
+                ],
+                "vote_policy": {}  // Uses default - bridge can auto-approve add_member proposals
+            },
+            {
+                "name": "citizen",
+                "kind": {
+                    "Group": []
+                },
+                "permissions": [
+                    "vote:VoteApprove",
+                    "vote:VoteReject"
+                ],
+                "vote_policy": {
+                    "vote": {
+                        "weight_kind": "RoleWeight",
+                        "quorum": "0",
+                        "threshold": [7, 100]  // 7% of citizens must approve
+                    }
+                }
+            },
+            {
+                "name": "all",
+                "kind": "Everyone",
+                "permissions": ["*:Finalize"],
+                "vote_policy": {}
+            }
+        ],
+        "default_vote_policy": {
+            "weight_kind": "RoleWeight",
+            "quorum": "0",
+            "threshold": [1, 2]  // 50% for add_member_to_role (bridge is only voter)
+        },
+        "proposal_bond": PROPOSAL_BOND.to_string(),
+        "proposal_period": PROPOSAL_PERIOD_NS.to_string(),
+        "bounty_bond": PROPOSAL_BOND.to_string(),
+        "bounty_forgiveness_period": PROPOSAL_PERIOD_NS.to_string()
+    })
+}
+
 /// Policy that removes the bridge's auto-approve power (no VoteApprove permission)
 pub fn create_policy_without_autoapprove(bridge_account_id: &str) -> serde_json::Value {
     json!({

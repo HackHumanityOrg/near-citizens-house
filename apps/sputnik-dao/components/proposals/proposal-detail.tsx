@@ -24,7 +24,7 @@ export function ProposalDetail({
   const submittedDate = new Date(proposal.submissionTime).toLocaleDateString()
   const submittedTime = new Date(proposal.submissionTime).toLocaleTimeString()
   const isInProgress = proposal.status === "InProgress"
-  const isVoteProposal = "Vote" in proposal.kind
+  const isVoteProposal = proposal.kind === "Vote"
 
   return (
     <div className="space-y-6">
@@ -70,7 +70,7 @@ export function ProposalDetail({
           </div>
 
           {/* Member details for AddMemberToRole */}
-          {"AddMemberToRole" in proposal.kind && (
+          {typeof proposal.kind === "object" && "AddMemberToRole" in proposal.kind && (
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-medium mb-2">Member Addition Details</h4>
               <p className="text-sm">
@@ -85,7 +85,7 @@ export function ProposalDetail({
           )}
 
           {/* Member details for RemoveMemberFromRole */}
-          {"RemoveMemberFromRole" in proposal.kind && (
+          {typeof proposal.kind === "object" && "RemoveMemberFromRole" in proposal.kind && (
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-medium mb-2">Member Removal Details</h4>
               <p className="text-sm">

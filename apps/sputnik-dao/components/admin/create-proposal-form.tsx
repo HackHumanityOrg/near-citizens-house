@@ -57,10 +57,11 @@ export function CreateProposalForm() {
     setSuccess(null)
 
     try {
-      // Use policy bond or default to 0.1 NEAR
-      const bondNear = policy ? Number(BigInt(policy.proposalBond) / BigInt(1e24)) : 0.1
+      // Use policy bond directly in yoctoNEAR to avoid floating point precision issues
+      // Default: 0.1 NEAR = 100000000000000000000000 yoctoNEAR
+      const bondYocto = policy?.proposalBond || "100000000000000000000000"
 
-      const proposalId = await createProposal(data.description, bondNear)
+      const proposalId = await createProposal(data.description, bondYocto)
       setSuccess({ proposalId })
       reset()
 

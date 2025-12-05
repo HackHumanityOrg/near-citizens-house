@@ -29,7 +29,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   #{proposal.id}
                 </span>
-                {"Vote" in proposal.kind ? null : (
+                {proposal.kind === "Vote" ? null : (
                   <span className="text-xs text-muted-foreground">
                     {kindLabel}
                   </span>
@@ -37,7 +37,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
               </div>
               <CardTitle className="text-lg line-clamp-2">
                 {/* For Vote proposals, use description as title. For AddMember, use kind label */}
-                {"Vote" in proposal.kind
+                {proposal.kind === "Vote"
                   ? proposal.description.slice(0, 100) + (proposal.description.length > 100 ? "..." : "")
                   : kindLabel}
               </CardTitle>
@@ -51,7 +51,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
 
         <CardContent className="space-y-4">
           {/* Description Preview (only for Vote proposals with longer descriptions) */}
-          {"Vote" in proposal.kind && proposal.description.length > 100 && (
+          {proposal.kind === "Vote" && proposal.description.length > 100 && (
             <p className="text-sm text-muted-foreground line-clamp-2">{proposal.description}</p>
           )}
 

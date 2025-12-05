@@ -42,16 +42,18 @@ export async function getProposalsReversed(
   page: number = 0,
   pageSize: number = 10,
 ): Promise<{ proposals: SputnikProposal[]; hasMore: boolean; total: number }> {
-  const lastId = await sputnikDaoDb.getLastProposalId()
-  const total = lastId + 1 // IDs are 0-indexed
+  // get_last_proposal_id returns the next proposal ID to be used, which equals total count
+  const total = await sputnikDaoDb.getLastProposalId()
 
   if (total === 0) {
     return { proposals: [], hasMore: false, total: 0 }
   }
 
+  const lastExistingId = total - 1
+
   // Calculate starting index for this page (from end)
   const startFromEnd = page * pageSize
-  const endIndex = lastId - startFromEnd
+  const endIndex = lastExistingId - startFromEnd
   const startIndex = Math.max(0, endIndex - pageSize + 1)
   const count = endIndex - startIndex + 1
 
