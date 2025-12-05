@@ -52,9 +52,7 @@ export function SputnikHeader() {
                 )}
 
                 {/* Account ID display */}
-                <span className="text-sm text-muted-foreground hidden sm:inline">
-                  {accountId?.split(".")[0]}...
-                </span>
+                <span className="text-sm text-muted-foreground hidden sm:inline">{accountId?.split(".")[0]}...</span>
 
                 {/* Disconnect button */}
                 <Button variant="outline" size="sm" onClick={disconnect}>

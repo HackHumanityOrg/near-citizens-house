@@ -4,14 +4,27 @@ import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, Label, Alert } from "@near-citizens/ui"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+  Button,
+  Input,
+  Label,
+  Alert,
+} from "@near-citizens/ui"
 import { type BridgeInfo } from "@near-citizens/shared"
 import { useAdminActions } from "@/hooks/admin-actions"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 import { Loader2, Settings, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react"
 
 const updateBackendWalletSchema = z.object({
-  newBackendWallet: z.string().min(1, "Account ID is required").regex(/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/, "Invalid NEAR account ID format"),
+  newBackendWallet: z
+    .string()
+    .min(1, "Account ID is required")
+    .regex(/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/, "Invalid NEAR account ID format"),
 })
 
 const updateCitizenRoleSchema = z.object({
@@ -59,7 +72,7 @@ export function UpdateSettingsForm() {
     try {
       await updateBackendWallet(data.newBackendWallet)
       setSuccess(`Backend wallet updated to ${data.newBackendWallet}`)
-      setInfo((prev) => prev ? { ...prev, backendWallet: data.newBackendWallet } : null)
+      setInfo((prev) => (prev ? { ...prev, backendWallet: data.newBackendWallet } : null))
     } catch {
       // Error is set by hook
     }
@@ -72,7 +85,7 @@ export function UpdateSettingsForm() {
     try {
       await updateCitizenRole(data.newRole)
       setSuccess(`Citizen role updated to ${data.newRole}`)
-      setInfo((prev) => prev ? { ...prev, citizenRole: data.newRole } : null)
+      setInfo((prev) => (prev ? { ...prev, citizenRole: data.newRole } : null))
     } catch {
       // Error is set by hook
     }
@@ -97,9 +110,7 @@ export function UpdateSettingsForm() {
             <Settings className="h-5 w-5" />
             Update Backend Wallet
           </CardTitle>
-          <CardDescription>
-            Change the wallet that has admin permissions on the bridge contract.
-          </CardDescription>
+          <CardDescription>Change the wallet that has admin permissions on the bridge contract.</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert className="mb-4 border-yellow-200 bg-yellow-50 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
@@ -150,24 +161,17 @@ export function UpdateSettingsForm() {
             Update Citizen Role
           </CardTitle>
           <CardDescription>
-            Change the role name used for citizens in SputnikDAO.
-            Current role: <code className="bg-muted px-1 rounded">{info?.citizenRole}</code>
+            Change the role name used for citizens in SputnikDAO. Current role:{" "}
+            <code className="bg-muted px-1 rounded">{info?.citizenRole}</code>
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={citizenRoleForm.handleSubmit(handleUpdateCitizenRole)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="newRole">New Role Name</Label>
-              <Input
-                id="newRole"
-                placeholder="citizen"
-                {...citizenRoleForm.register("newRole")}
-                disabled={isLoading}
-              />
+              <Input id="newRole" placeholder="citizen" {...citizenRoleForm.register("newRole")} disabled={isLoading} />
               {citizenRoleForm.formState.errors.newRole && (
-                <p className="text-sm text-destructive">
-                  {citizenRoleForm.formState.errors.newRole.message}
-                </p>
+                <p className="text-sm text-destructive">{citizenRoleForm.formState.errors.newRole.message}</p>
               )}
             </div>
 

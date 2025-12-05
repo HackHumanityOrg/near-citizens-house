@@ -29,13 +29,7 @@ export type SputnikProposalStatus = z.infer<typeof sputnikProposalStatusSchema>
  * Vote/Action types for SputnikDAO
  * Used when calling act_proposal
  */
-export const sputnikActionSchema = z.enum([
-  "VoteApprove",
-  "VoteReject",
-  "VoteRemove",
-  "Finalize",
-  "MoveToHub",
-])
+export const sputnikActionSchema = z.enum(["VoteApprove", "VoteReject", "VoteRemove", "Finalize", "MoveToHub"])
 export type SputnikAction = z.infer<typeof sputnikActionSchema>
 
 /**
@@ -45,49 +39,7 @@ export const sputnikVoteSchema = z.enum(["Approve", "Reject", "Remove"])
 export type SputnikVote = z.infer<typeof sputnikVoteSchema>
 
 // ============================================================================
-// Proposal Kind Types
-// ============================================================================
-
-/**
- * Vote proposal kind (text-only governance)
- * SputnikDAO returns just "Vote" as a string for this kind
- */
-export const sputnikProposalKindVoteSchema = z.literal("Vote")
-
-/**
- * Add member to role proposal kind
- */
-export const sputnikProposalKindAddMemberSchema = z.object({
-  AddMemberToRole: z.object({
-    member_id: z.string(),
-    role: z.string(),
-  }),
-})
-
-/**
- * Remove member from role proposal kind
- */
-export const sputnikProposalKindRemoveMemberSchema = z.object({
-  RemoveMemberFromRole: z.object({
-    member_id: z.string(),
-    role: z.string(),
-  }),
-})
-
-/**
- * All supported proposal kinds
- * Note: SputnikDAO has more kinds (Transfer, FunctionCall, etc.)
- * but we only support the safe ones through the bridge
- */
-export const sputnikProposalKindSchema = z.union([
-  sputnikProposalKindVoteSchema,
-  sputnikProposalKindAddMemberSchema,
-  sputnikProposalKindRemoveMemberSchema,
-])
-export type SputnikProposalKind = z.infer<typeof sputnikProposalKindSchema>
-
-// ============================================================================
-// Policy Types
+// Policy Types (must be defined before Proposal Kind Types)
 // ============================================================================
 
 /**
@@ -151,8 +103,73 @@ export const sputnikPolicySchema = z.object({
 export type SputnikPolicy = z.infer<typeof sputnikPolicySchema>
 
 // ============================================================================
+// Proposal Kind Types
+// ============================================================================
+
+/**
+ * Vote proposal kind (text-only governance)
+ * SputnikDAO returns just "Vote" as a string for this kind
+ */
+export const sputnikProposalKindVoteSchema = z.literal("Vote")
+
+/**
+ * Add member to role proposal kind
+ */
+export const sputnikProposalKindAddMemberSchema = z.object({
+  AddMemberToRole: z.object({
+    member_id: z.string(),
+    role: z.string(),
+  }),
+})
+
+/**
+ * Remove member from role proposal kind
+ */
+export const sputnikProposalKindRemoveMemberSchema = z.object({
+  RemoveMemberFromRole: z.object({
+    member_id: z.string(),
+    role: z.string(),
+  }),
+})
+
+/**
+ * Change policy / add or update role proposal kind
+ * Used by the bridge for dynamic quorum updates
+ */
+export const sputnikProposalKindChangePolicySchema = z.object({
+  ChangePolicyAddOrUpdateRole: z.object({
+    role: z.object({
+      name: z.string(),
+      kind: roleKindSchema,
+      permissions: z.array(z.string()),
+      vote_policy: z.record(z.string(), votePolicySchema).optional(),
+    }),
+  }),
+})
+
+/**
+ * All supported proposal kinds
+ * Note: SputnikDAO has more kinds (Transfer, FunctionCall, etc.)
+ * but we only support the safe ones through the bridge
+ */
+export const sputnikProposalKindSchema = z.union([
+  sputnikProposalKindVoteSchema,
+  sputnikProposalKindAddMemberSchema,
+  sputnikProposalKindRemoveMemberSchema,
+  sputnikProposalKindChangePolicySchema,
+])
+export type SputnikProposalKind = z.infer<typeof sputnikProposalKindSchema>
+
+// ============================================================================
 // Proposal Types
 // ============================================================================
+
+/**
+ * Helper to coerce string or number to number (SputnikDAO returns U128 as strings)
+ */
+const coerceToNumber = z
+  .union([z.number(), z.string()])
+  .transform((val) => (typeof val === "string" ? parseInt(val, 10) : val))
 
 /**
  * Contract format for proposal (snake_case)
@@ -164,7 +181,8 @@ export const contractSputnikProposalSchema = z.object({
   kind: sputnikProposalKindSchema,
   status: sputnikProposalStatusSchema,
   // vote_counts is a map from role name to [approve, reject, remove] counts
-  vote_counts: z.record(z.string(), z.tuple([z.number(), z.number(), z.number()])),
+  // SputnikDAO returns these as strings (U128) so we coerce to numbers
+  vote_counts: z.record(z.string(), z.tuple([coerceToNumber, coerceToNumber, coerceToNumber])),
   // votes is a map from account ID to vote choice
   votes: z.record(z.string(), sputnikVoteSchema),
   submission_time: z.string(), // U64 as string (nanoseconds)
@@ -265,6 +283,39 @@ export interface ISputnikDaoContract {
 // ============================================================================
 
 /**
+ * Proposal category for filtering/grouping
+ */
+export type ProposalCategory = "all" | "vote" | "membership" | "policy"
+
+/**
+ * Get proposal category from kind
+ */
+export function getProposalCategory(kind: SputnikProposalKind): ProposalCategory {
+  if (kind === "Vote") {
+    return "vote"
+  }
+  if (typeof kind === "object") {
+    if ("AddMemberToRole" in kind || "RemoveMemberFromRole" in kind) {
+      return "membership"
+    }
+    if ("ChangePolicyAddOrUpdateRole" in kind) {
+      return "policy"
+    }
+  }
+  return "vote" // fallback
+}
+
+/**
+ * Category labels for display
+ */
+export const PROPOSAL_CATEGORY_LABELS: Record<ProposalCategory, string> = {
+  all: "All",
+  vote: "Votes",
+  membership: "Membership",
+  policy: "Policy",
+}
+
+/**
  * Get human-readable proposal kind description
  */
 export function getProposalKindLabel(kind: SputnikProposalKind): string {
@@ -279,6 +330,9 @@ export function getProposalKindLabel(kind: SputnikProposalKind): string {
     }
     if ("RemoveMemberFromRole" in kind) {
       return `Remove ${kind.RemoveMemberFromRole.member_id} from ${kind.RemoveMemberFromRole.role}`
+    }
+    if ("ChangePolicyAddOrUpdateRole" in kind) {
+      return `Update ${kind.ChangePolicyAddOrUpdateRole.role.name} role policy`
     }
   }
   return "Unknown"

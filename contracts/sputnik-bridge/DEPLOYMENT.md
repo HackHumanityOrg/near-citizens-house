@@ -8,62 +8,140 @@ This document provides step-by-step instructions for deploying the complete Sput
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Backend Wallet │────▶│ Bridge Contract │────▶│   SputnikDAO    │
 └─────────────────┘     └────────┬────────┘     └─────────────────┘
-                                 │
-                                 ▼
-                        ┌─────────────────┐
-                        │ Verified Accounts│
-                        │    Contract      │
-                        └─────────────────┘
+                               │
+                               ▼
+                      ┌─────────────────┐
+                      │ Verified Accounts│
+                      │    Contract      │
+                      └─────────────────┘
 ```
 
 **Contracts to deploy:**
 
-1. **SputnikDAO Factory** (optional - use existing factory)
+1. **Verified Accounts** - Identity verification oracle
 2. **SputnikDAO Instance** - The DAO contract
 3. **Sputnik Bridge** - Bridge between verified accounts and SputnikDAO
+
+## Current Testnet Deployment
+
+| Contract          | Address                                  |
+| ----------------- | ---------------------------------------- |
+| Backend Wallet    | `widefile4023.testnet`                   |
+| Verified Accounts | `verification-v1.widefile4023.testnet`   |
+| SputnikDAO        | `sputnik-dao-v1.widefile4023.testnet`    |
+| Bridge Contract   | `sputnik-bridge-v1.widefile4023.testnet` |
+
+## Voting Model
+
+The Citizens House uses a dynamic quorum system for Vote proposals:
+
+| Parameter               | Value                                  | Description                                         |
+| ----------------------- | -------------------------------------- | --------------------------------------------------- |
+| **Threshold**           | 50%                                    | Majority of participating voters must vote YES      |
+| **Quorum**              | 7%                                     | Minimum percentage of citizens who must participate |
+| **Effective Threshold** | `max(quorum, (citizen_count / 2) + 1)` | Actual votes needed to pass                         |
+
+### How It Works
+
+1. **Member Addition**: When a new citizen is added via the bridge, two proposals are created:
+   - `AddMemberToRole` proposal (auto-approved by bridge)
+   - `ChangePolicyAddOrUpdateRole` proposal to update quorum (auto-approved by bridge)
+
+2. **Dynamic Quorum**: After each member addition, the bridge automatically updates the citizen role's vote policy:
+   - `quorum = ceil(citizen_count * 7 / 100)` (minimum participation)
+   - `threshold = [1, 2]` (50% of voters must approve)
+
+3. **Voting**: For a Vote proposal to pass:
+   - At least `quorum` citizens must vote
+   - At least 50% of those votes must be YES
+   - Example with 100 citizens: need 7+ votes, with 4+ being YES
+
+### Bridge Permissions
+
+The bridge requires these permissions to manage the DAO:
+
+| Permission                              | Purpose                                  |
+| --------------------------------------- | ---------------------------------------- |
+| `add_member_to_role:AddProposal`        | Create member addition proposals         |
+| `add_member_to_role:VoteApprove`        | Auto-approve member additions            |
+| `policy_add_or_update_role:AddProposal` | Create quorum update proposals           |
+| `policy_add_or_update_role:VoteApprove` | Auto-approve quorum updates              |
+| `vote:AddProposal`                      | Create Vote proposals on behalf of users |
+
+---
 
 ## Prerequisites
 
 ### 1. Install Required Tools
 
 ```bash
-# Install Rust (if not installed)
+# Install Rust 1.86.0 (required - newer versions have WASM incompatibilities)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup install 1.86.0
 rustup target add wasm32-unknown-unknown
 
 # Install cargo-near
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/latest/download/cargo-near-installer.sh | sh
 
-# Install NEAR CLI
-npm install -g near-cli-rs
+# Install NEAR CLI (via npx, no global install needed)
+# Commands use: npx near-cli-rs ...
 
 # Verify installations
 cargo near --version
-near --version
+npx near-cli-rs --version
 ```
 
-### 2. Set Up NEAR Accounts
+### 2. Set Up Parent Account Credentials
 
-You'll need the following accounts:
-
-| Account           | Purpose                      | Testnet Example                   | Mainnet Example                |
-| ----------------- | ---------------------------- | --------------------------------- | ------------------------------ |
-| Backend Wallet    | Signs bridge transactions    | `backend.testnet`                 | `backend.near`                 |
-| Bridge Contract   | Hosts bridge contract        | `bridge.citizens-house.testnet`   | `bridge.citizens-house.near`   |
-| SputnikDAO        | Hosts DAO contract           | `dao.citizens-house.testnet`      | `dao.citizens-house.near`      |
-| Verified Accounts | Existing verification oracle | `verified.citizens-house.testnet` | `verified.citizens-house.near` |
-
-### 3. Create Accounts (Testnet)
+If deploying to sub-accounts (e.g., `dao.parent.testnet`), you need the parent account credentials in the legacy keychain format:
 
 ```bash
-# Create backend wallet (if needed)
-near account create-account fund-myself backend.testnet autogenerate-new-keypair save-to-keychain network-config testnet create
+# Create the credentials directory
+mkdir -p ~/.near-credentials/testnet
 
-# Create bridge contract account
-near account create-account fund-myself bridge.citizens-house.testnet autogenerate-new-keypair save-to-keychain network-config testnet create
+# Get the public key for your account
+npx near-cli-rs account list-keys YOUR_PARENT_ACCOUNT.testnet \
+  network-config testnet now
 
-# Create DAO account
-near account create-account fund-myself dao.citizens-house.testnet autogenerate-new-keypair save-to-keychain network-config testnet create
+# Create credentials file with your private key
+cat > ~/.near-credentials/testnet/YOUR_PARENT_ACCOUNT.testnet.json << EOF
+{
+  "account_id": "YOUR_PARENT_ACCOUNT.testnet",
+  "public_key": "ed25519:YOUR_PUBLIC_KEY",
+  "private_key": "ed25519:YOUR_PRIVATE_KEY"
+}
+EOF
+```
+
+### 3. Create Sub-Accounts
+
+```bash
+# Set your parent account
+PARENT=widefile4023.testnet
+
+# Create sub-accounts with 5 NEAR each
+# Format: fund-myself <new_account> '<amount>' autogenerate-new-keypair save-to-keychain sign-as <parent>
+
+npx near-cli-rs account create-account fund-myself sputnik-dao-v1.$PARENT '5 NEAR' \
+  autogenerate-new-keypair save-to-keychain \
+  sign-as $PARENT \
+  network-config testnet sign-with-keychain send
+
+npx near-cli-rs account create-account fund-myself sputnik-bridge-v1.$PARENT '5 NEAR' \
+  autogenerate-new-keypair save-to-keychain \
+  sign-as $PARENT \
+  network-config testnet sign-with-keychain send
+
+npx near-cli-rs account create-account fund-myself verification-v1.$PARENT '5 NEAR' \
+  autogenerate-new-keypair save-to-keychain \
+  sign-as $PARENT \
+  network-config testnet sign-with-keychain send
+```
+
+**Note:** If you hit rate limits, use `testnet-fastnear` instead of `testnet`:
+
+```bash
+network-config testnet-fastnear sign-with-keychain send
 ```
 
 ---
@@ -76,70 +154,88 @@ near account create-account fund-myself dao.citizens-house.testnet autogenerate-
 cd contracts/sputnik-bridge
 cargo near build non-reproducible-wasm
 
-# Output: target/near/sputnik_bridge.wasm
+# Output: target/near/sputnik_bridge.wasm (~202KB)
 ```
 
-### 1.2 Build SputnikDAO Contract (from submodule)
+### 1.2 Build Verified Accounts Contract
 
 ```bash
+cd contracts/verified-accounts
+cargo near build non-reproducible-wasm
+
+# Output: target/near/verified_accounts.wasm (~177KB)
+```
+
+### 1.3 Use Pre-built SputnikDAO Contract
+
+**Important:** Building SputnikDAO with Rust 1.87+ causes WASM deserialization errors. Use the pre-built WASM from the submodule:
+
+```bash
+# Pre-built WASM location (recommended)
+contracts/sputnik-dao-contract/sputnikdao2/res/sputnikdao2.wasm  # ~420KB
+
+# If you must build from source, use Rust 1.86.0:
 cd contracts/sputnik-dao-contract/sputnikdao2
-
-# Build the DAO contract
+rustup override set 1.86.0
 cargo build --target wasm32-unknown-unknown --release
-
-# The WASM will be at:
-# target/wasm32-unknown-unknown/release/sputnikdao2.wasm
 ```
 
-### 1.3 Verify Builds
+### 1.4 Verify Builds
 
 ```bash
-# Check file sizes (should be < 4MB for deployment)
 ls -lh contracts/sputnik-bridge/target/near/sputnik_bridge.wasm
-ls -lh contracts/sputnik-dao-contract/sputnikdao2/target/wasm32-unknown-unknown/release/sputnikdao2.wasm
+ls -lh contracts/verified-accounts/target/near/verified_accounts.wasm
+ls -lh contracts/sputnik-dao-contract/sputnikdao2/res/sputnikdao2.wasm
 ```
 
 ---
 
-## Phase 2: Deploy SputnikDAO
+## Phase 2: Deploy Verified Accounts Contract
 
-### 2.1 Deploy DAO Contract
-
-**Option A: Use SputnikDAO Factory (Recommended)**
-
-The SputnikDAO factory is already deployed:
-
-- Testnet: `sputnik-dao.testnet`
-- Mainnet: `sputnik-dao.near`
+### 2.1 Deploy Contract
 
 ```bash
-# Create DAO via factory
-near contract call-function as-transaction sputnik-dao.testnet create \
-  json-args '{
-    "name": "citizens-house",
-    "args": "BASE64_ENCODED_POLICY"
-  }' \
-  prepaid-gas '150 Tgas' \
-  attached-deposit '6 NEAR' \
-  sign-as backend.testnet \
-  network-config testnet \
-  sign-with-keychain send
-```
-
-**Option B: Direct Deployment**
-
-```bash
-# Deploy DAO contract directly
-near contract deploy dao.citizens-house.testnet \
-  use-file contracts/sputnik-dao-contract/sputnikdao2/target/wasm32-unknown-unknown/release/sputnikdao2.wasm \
+npx near-cli-rs contract deploy verification-v1.widefile4023.testnet \
+  use-file contracts/verified-accounts/target/near/verified_accounts.wasm \
   without-init-call \
-  network-config testnet \
-  sign-with-keychain send
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-### 2.2 Initialize DAO with Policy
+### 2.2 Initialize Contract
 
-Create the policy JSON file `dao-policy.json`:
+```bash
+npx near-cli-rs contract call-function as-transaction verification-v1.widefile4023.testnet new \
+  json-args '{"backend_wallet": "widefile4023.testnet"}' \
+  prepaid-gas '30 Tgas' \
+  attached-deposit '0 NEAR' \
+  sign-as verification-v1.widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
+```
+
+---
+
+## Phase 3: Deploy SputnikDAO
+
+### 3.1 Deploy DAO Contract
+
+```bash
+# Use pre-built WASM to avoid Rust version issues
+npx near-cli-rs contract deploy sputnik-dao-v1.widefile4023.testnet \
+  use-file contracts/sputnik-dao-contract/sputnikdao2/res/sputnikdao2.wasm \
+  without-init-call \
+  network-config testnet-fastnear sign-with-keychain send
+```
+
+**Note:** SputnikDAO WASM is ~420KB and requires more storage. If you see "remaining balance will not be enough to cover storage", fund the account first:
+
+```bash
+npx near-cli-rs tokens widefile4023.testnet send-near sputnik-dao-v1.widefile4023.testnet '1 NEAR' \
+  network-config testnet-fastnear sign-with-keychain send
+```
+
+### 3.2 Update dao-policy.json
+
+Before initializing, update `contracts/sputnik-bridge/dao-policy.json` with your bridge contract address:
 
 ```json
 {
@@ -153,9 +249,15 @@ Create the policy JSON file `dao-policy.json`:
       {
         "name": "bridge",
         "kind": {
-          "Group": ["bridge.citizens-house.testnet"]
+          "Group": ["sputnik-bridge-v1.widefile4023.testnet"]
         },
-        "permissions": ["AddMemberToRole:AddProposal", "AddMemberToRole:VoteApprove", "Vote:AddProposal"],
+        "permissions": [
+          "add_member_to_role:AddProposal",
+          "add_member_to_role:VoteApprove",
+          "policy_add_or_update_role:AddProposal",
+          "policy_add_or_update_role:VoteApprove",
+          "vote:AddProposal"
+        ],
         "vote_policy": {}
       },
       {
@@ -164,7 +266,13 @@ Create the policy JSON file `dao-policy.json`:
           "Group": []
         },
         "permissions": ["vote:VoteApprove", "vote:VoteReject"],
-        "vote_policy": {}
+        "vote_policy": {
+          "vote": {
+            "weight_kind": "RoleWeight",
+            "quorum": "0",
+            "threshold": [1, 2]
+          }
+        }
       },
       {
         "name": "all",
@@ -186,237 +294,215 @@ Create the policy JSON file `dao-policy.json`:
 }
 ```
 
-Initialize the DAO:
+### 3.3 Initialize DAO with Policy
 
 ```bash
-# If deployed directly (not via factory), initialize with policy
-near contract call-function as-transaction dao.citizens-house.testnet new \
-  json-args "$(cat dao-policy.json)" \
+npx near-cli-rs contract call-function as-transaction sputnik-dao-v1.widefile4023.testnet new \
+  json-args "$(cat contracts/sputnik-bridge/dao-policy.json)" \
   prepaid-gas '100 Tgas' \
   attached-deposit '0 NEAR' \
-  sign-as dao.citizens-house.testnet \
-  network-config testnet \
-  sign-with-keychain send
+  sign-as sputnik-dao-v1.widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-### 2.3 Verify DAO Deployment
+### 3.4 Verify DAO Deployment
 
 ```bash
-# Check DAO policy
-near contract call-function as-read-only dao.citizens-house.testnet get_policy \
+npx near-cli-rs contract call-function as-read-only sputnik-dao-v1.widefile4023.testnet get_policy \
   json-args '{}' \
-  network-config testnet now
-
-# Check roles
-near contract call-function as-read-only dao.citizens-house.testnet get_policy \
-  json-args '{}' \
-  network-config testnet now | jq '.roles'
+  network-config testnet-fastnear now
 ```
 
 ---
 
-## Phase 3: Deploy Bridge Contract
+## Phase 4: Deploy Bridge Contract
 
-### 3.1 Deploy Bridge WASM
+### 4.1 Deploy Bridge WASM
 
 ```bash
-near contract deploy bridge.citizens-house.testnet \
+npx near-cli-rs contract deploy sputnik-bridge-v1.widefile4023.testnet \
   use-file contracts/sputnik-bridge/target/near/sputnik_bridge.wasm \
   without-init-call \
-  network-config testnet \
-  sign-with-keychain send
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-### 3.2 Initialize Bridge Contract
+### 4.2 Initialize Bridge Contract
 
 ```bash
-near contract call-function as-transaction bridge.citizens-house.testnet new \
+npx near-cli-rs contract call-function as-transaction sputnik-bridge-v1.widefile4023.testnet new \
   json-args '{
-    "backend_wallet": "backend.testnet",
-    "sputnik_dao": "dao.citizens-house.testnet",
-    "verified_accounts_contract": "verified.citizens-house.testnet",
+    "backend_wallet": "widefile4023.testnet",
+    "sputnik_dao": "sputnik-dao-v1.widefile4023.testnet",
+    "verified_accounts_contract": "verification-v1.widefile4023.testnet",
     "citizen_role": "citizen"
   }' \
   prepaid-gas '30 Tgas' \
   attached-deposit '0 NEAR' \
-  sign-as bridge.citizens-house.testnet \
-  network-config testnet \
-  sign-with-keychain send
+  sign-as sputnik-bridge-v1.widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-### 3.3 Verify Bridge Deployment
+### 4.3 Verify Bridge Deployment
 
 ```bash
-# Check bridge info
-near contract call-function as-read-only bridge.citizens-house.testnet get_info \
+npx near-cli-rs contract call-function as-read-only sputnik-bridge-v1.widefile4023.testnet get_info \
   json-args '{}' \
-  network-config testnet now
+  network-config testnet-fastnear now
 ```
 
 Expected output:
 
 ```json
 {
-  "backend_wallet": "backend.testnet",
-  "sputnik_dao": "dao.citizens-house.testnet",
-  "verified_accounts_contract": "verified.citizens-house.testnet",
+  "backend_wallet": "widefile4023.testnet",
+  "sputnik_dao": "sputnik-dao-v1.widefile4023.testnet",
+  "verified_accounts_contract": "verification-v1.widefile4023.testnet",
   "citizen_role": "citizen"
 }
 ```
 
 ---
 
-## Phase 4: Fund Contracts
+## Phase 5: Fund Contracts
 
-### 4.1 Fund Bridge Contract for Proposal Bonds
+### 5.1 Fund Bridge Contract for Proposal Bonds
 
-The bridge needs NEAR to pay proposal bonds when adding members:
+The bridge needs NEAR to pay proposal bonds when adding members. Each `add_member` call creates two proposals (member addition + quorum update):
 
 ```bash
-# Send 10 NEAR to bridge contract for proposal bonds
-near tokens backend.testnet send-near bridge.citizens-house.testnet '10 NEAR' \
-  network-config testnet \
-  sign-with-keychain send
+# Send 10+ NEAR to bridge contract for proposal bonds
+npx near-cli-rs tokens widefile4023.testnet send-near sputnik-bridge-v1.widefile4023.testnet '10 NEAR' \
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-### 4.2 Verify Balances
+### 5.2 Verify Balances
 
 ```bash
 # Check bridge balance
-near account view-account-summary bridge.citizens-house.testnet \
-  network-config testnet now
+npx near-cli-rs account view-account-summary sputnik-bridge-v1.widefile4023.testnet \
+  network-config testnet-fastnear now
 
 # Check DAO balance
-near account view-account-summary dao.citizens-house.testnet \
-  network-config testnet now
+npx near-cli-rs account view-account-summary sputnik-dao-v1.widefile4023.testnet \
+  network-config testnet-fastnear now
 ```
 
 ---
 
-## Phase 5: Test Deployment
+## Phase 6: Test Deployment
 
-### 5.1 Test Add Member Flow
+### 6.1 Test Add Member Flow
 
 First, ensure you have a verified account in the verified-accounts contract.
 
 ```bash
 # Add a verified citizen to the DAO
-near contract call-function as-transaction bridge.citizens-house.testnet add_member \
-  json-args '{
-    "near_account_id": "alice.testnet"
-  }' \
-  prepaid-gas '200 Tgas' \
-  attached-deposit '0.1 NEAR' \
-  sign-as backend.testnet \
-  network-config testnet \
-  sign-with-keychain send
+# Note: Requires 300 TGas for full chain including quorum update
+npx near-cli-rs contract call-function as-transaction sputnik-bridge-v1.widefile4023.testnet add_member \
+  json-args '{"near_account_id": "alice.testnet"}' \
+  prepaid-gas '300 Tgas' \
+  attached-deposit '1 NEAR' \
+  sign-as widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-### 5.2 Verify Member Was Added
+### 6.2 Verify Member Was Added and Quorum Updated
 
 ```bash
-# Check DAO policy for new member
-near contract call-function as-read-only dao.citizens-house.testnet get_policy \
+# Check DAO policy for new member and quorum
+npx near-cli-rs contract call-function as-read-only sputnik-dao-v1.widefile4023.testnet get_policy \
   json-args '{}' \
-  network-config testnet now | jq '.roles[] | select(.name == "citizen")'
+  network-config testnet-fastnear now | jq '.roles[] | select(.name == "citizen")'
 ```
 
-### 5.3 Test Create Proposal Flow
+### 6.3 Test Create Proposal Flow
 
 ```bash
 # Create a text proposal
-near contract call-function as-transaction bridge.citizens-house.testnet create_proposal \
-  json-args '{
-    "description": "# Test Proposal\n\nThis is a test governance proposal."
-  }' \
+npx near-cli-rs contract call-function as-transaction sputnik-bridge-v1.widefile4023.testnet create_proposal \
+  json-args '{"description": "# Test Proposal\n\nThis is a test governance proposal."}' \
   prepaid-gas '100 Tgas' \
-  attached-deposit '0.1 NEAR' \
-  sign-as backend.testnet \
-  network-config testnet \
-  sign-with-keychain send
+  attached-deposit '1 NEAR' \
+  sign-as widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-### 5.4 Verify Proposal Created
+### 6.4 Verify Proposal Created
 
 ```bash
-# Get last proposal
-near contract call-function as-read-only dao.citizens-house.testnet get_last_proposal_id \
+# Get last proposal ID
+npx near-cli-rs contract call-function as-read-only sputnik-dao-v1.widefile4023.testnet get_last_proposal_id \
   json-args '{}' \
-  network-config testnet now
+  network-config testnet-fastnear now
 
 # Get proposal details (replace 0 with actual ID)
-near contract call-function as-read-only dao.citizens-house.testnet get_proposal \
+npx near-cli-rs contract call-function as-read-only sputnik-dao-v1.widefile4023.testnet get_proposal \
   json-args '{"id": 0}' \
-  network-config testnet now
-```
-
-### 5.5 Test Voting (as citizen)
-
-```bash
-# Vote on proposal (must be done by a citizen, not through bridge)
-near contract call-function as-transaction dao.citizens-house.testnet act_proposal \
-  json-args '{
-    "id": 0,
-    "action": "VoteApprove"
-  }' \
-  prepaid-gas '50 Tgas' \
-  attached-deposit '0 NEAR' \
-  sign-as alice.testnet \
-  network-config testnet \
-  sign-with-keychain send
-```
-
-### 5.6 Test Finalization (anyone can finalize)
-
-```bash
-# Wait for proposal period to end, then finalize
-near contract call-function as-transaction dao.citizens-house.testnet act_proposal \
-  json-args '{
-    "id": 0,
-    "action": "Finalize"
-  }' \
-  prepaid-gas '50 Tgas' \
-  attached-deposit '0 NEAR' \
-  sign-as anyone.testnet \
-  network-config testnet \
-  sign-with-keychain send
+  network-config testnet-fastnear now
 ```
 
 ---
 
-## Phase 6: Configure Frontend
+## Phase 7: Configure Frontend
 
-### 6.1 Update Environment Variables
+### 7.1 Update Environment Variables
 
 Add to your `.env` file:
 
 ```bash
-# Bridge Contract
-NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT=bridge.citizens-house.testnet
+# Sputnik DAO and Bridge
+NEXT_PUBLIC_SPUTNIK_DAO_CONTRACT=sputnik-dao-v1.widefile4023.testnet
+NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT=sputnik-bridge-v1.widefile4023.testnet
 
-# SputnikDAO Contract (for direct voting)
-NEXT_PUBLIC_NEAR_DAO_CONTRACT=dao.citizens-house.testnet
+# Verification Contract
+NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT=verification-v1.widefile4023.testnet
+
+# Backend wallet (for signing transactions)
+NEAR_ACCOUNT_ID=widefile4023.testnet
+NEAR_PRIVATE_KEY=ed25519:YOUR_PRIVATE_KEY
 ```
 
-### 6.2 Verify TypeScript Client Works
+---
 
-```typescript
-import { bridgeContract } from "@near-citizens/shared"
+## Redeployment Guide
 
-// Get bridge info (read-only operations)
-const info = await bridgeContract.getInfo()
-console.log(info)
+To redeploy contracts (e.g., after code changes):
 
-// View methods available:
-const backendWallet = await bridgeContract.getBackendWallet()
-const sputnikDao = await bridgeContract.getSputnikDao()
-const verifiedContract = await bridgeContract.getVerifiedAccountsContract()
-const citizenRole = await bridgeContract.getCitizenRole()
+### Delete and Recreate Accounts
+
+```bash
+# Delete existing accounts (funds returned to beneficiary)
+npx near-cli-rs account delete-account sputnik-dao-v1.widefile4023.testnet \
+  beneficiary widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
+
+npx near-cli-rs account delete-account sputnik-bridge-v1.widefile4023.testnet \
+  beneficiary widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
+
+# Recreate accounts
+npx near-cli-rs account create-account fund-myself sputnik-dao-v1.widefile4023.testnet '5 NEAR' \
+  autogenerate-new-keypair save-to-keychain \
+  sign-as widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
+
+npx near-cli-rs account create-account fund-myself sputnik-bridge-v1.widefile4023.testnet '5 NEAR' \
+  autogenerate-new-keypair save-to-keychain \
+  sign-as widefile4023.testnet \
+  network-config testnet-fastnear sign-with-keychain send
 ```
 
-**Note:** Write operations (addMember, createProposal, etc.) are performed client-side
-through the frontend app. The user must connect with the backend_wallet and sign
-transactions through the wallet interface. See `apps/sputnik-dao/hooks/admin-actions.ts`.
+### Redeploy Code Only (Keep State)
+
+If you only need to update the contract code without resetting state:
+
+```bash
+# Redeploy bridge contract (keeps existing state)
+npx near-cli-rs contract deploy sputnik-bridge-v1.widefile4023.testnet \
+  use-file contracts/sputnik-bridge/target/near/sputnik_bridge.wasm \
+  without-init-call \
+  network-config testnet-fastnear sign-with-keychain send
+```
 
 ---
 
@@ -450,78 +536,111 @@ citizens-house.near              # Top-level account
 
 ### Common Issues
 
-**1. "Account is not verified"**
+**1. "this client has exceeded the rate limit"**
+
+- Use `testnet-fastnear` instead of `testnet` in network-config
+- Alternative RPC endpoints: `testnet-lava`
+- Wait 60 seconds between requests if persistent
+
+**2. "CompilationError(PrepareError(Deserialization))"**
+
+- SputnikDAO was built with incompatible Rust version (1.87+)
+- Use pre-built WASM from `contracts/sputnik-dao-contract/sputnikdao2/res/sputnikdao2.wasm`
+- Or build with Rust 1.86.0: `rustup override set 1.86.0`
+
+**3. "remaining balance will not be enough to cover storage"**
+
+- Account needs more NEAR for contract storage
+- SputnikDAO requires ~0.5 NEAR for storage
+- Fund the account before deploying
+
+**4. "Access key file not found"**
+
+- Create credentials file in `~/.near-credentials/testnet/ACCOUNT.json`
+- Must include `account_id`, `public_key`, and `private_key`
+- Get public key with: `near account list-keys ACCOUNT network-config testnet now`
+
+**5. "Account is not verified"**
 
 - Ensure the account is registered in the verified-accounts contract
-- Check: `near contract call-function as-read-only verified.citizens-house.testnet is_account_verified json-args '{"near_account_id": "alice.testnet"}' network-config testnet now`
+- Check: `near contract call-function as-read-only verification-v1.widefile4023.testnet is_account_verified json-args '{"near_account_id": "alice.testnet"}' network-config testnet-fastnear now`
 
-**2. "Only backend wallet can call this function"**
+**6. "Only backend wallet can call this function"**
 
 - Ensure you're signing with the correct backend wallet
-- Check bridge config: `near contract call-function as-read-only bridge.citizens-house.testnet get_backend_wallet json-args '{}' network-config testnet now`
+- Check bridge config with `get_info` method
 
-**3. "Exceeded the prepaid gas"**
+**7. "Exceeded the prepaid gas"**
 
-- Increase gas limit to 200+ TGas for cross-contract calls
-- The add_member flow requires 3 cross-contract calls
+- Use 300 TGas for `add_member` (includes quorum update chain)
+- Use 100 TGas for `create_proposal`
+- The add_member flow creates 2 proposals with 7 cross-contract calls
 
-**4. "Proposal bond not attached"**
+**8. "Proposal bond not attached"**
 
-- Ensure sufficient deposit is attached (0.1 NEAR default)
-- Check DAO's proposal_bond in policy
+- `add_member` requires ~1 NEAR (for 2 proposal bonds)
+- `create_proposal` requires ~0.1 NEAR (for 1 proposal bond)
 
-**5. "Member not added to DAO"**
+**9. "ERR_PERMISSION_DENIED" or "Failed to create quorum update proposal"**
 
-- Check bridge has correct permissions in DAO policy
-- Verify bridge account is in the "bridge" role
+- Bridge is missing required permissions in DAO policy
+- Verify bridge has all 5 permissions listed in dao-policy.json
 
 ### Useful Debug Commands
 
 ```bash
 # View all proposals
-near contract call-function as-read-only dao.citizens-house.testnet get_proposals \
+npx near-cli-rs contract call-function as-read-only sputnik-dao-v1.widefile4023.testnet get_proposals \
   json-args '{"from_index": 0, "limit": 100}' \
-  network-config testnet now
-
-# View transaction logs
-near transaction view TX_HASH network-config testnet
+  network-config testnet-fastnear now
 
 # Check contract state
-near contract view-storage bridge.citizens-house.testnet \
+npx near-cli-rs contract view-storage sputnik-bridge-v1.widefile4023.testnet \
   all as-json \
-  network-config testnet now
+  network-config testnet-fastnear now
+
+# Check citizen quorum
+npx near-cli-rs contract call-function as-read-only sputnik-dao-v1.widefile4023.testnet get_policy \
+  json-args '{}' \
+  network-config testnet-fastnear now | jq '.roles[] | select(.name == "citizen") | .vote_policy'
+
+# View available network configs
+npx near-cli-rs config show-connections
 ```
 
 ---
 
 ## Quick Reference
 
-### Contract Addresses (Testnet)
-
-| Contract           | Address                           |
-| ------------------ | --------------------------------- |
-| SputnikDAO Factory | `sputnik-dao.testnet`             |
-| Citizens House DAO | `dao.citizens-house.testnet`      |
-| Bridge Contract    | `bridge.citizens-house.testnet`   |
-| Verified Accounts  | `verified.citizens-house.testnet` |
-
 ### Gas Requirements
 
-| Operation               | Gas (TGas) |
-| ----------------------- | ---------- |
-| add_member              | 200        |
-| create_proposal         | 100        |
-| act_proposal (vote)     | 50         |
-| act_proposal (finalize) | 50         |
+| Operation               | Gas (TGas) | Notes                                |
+| ----------------------- | ---------- | ------------------------------------ |
+| add_member              | 300        | Includes quorum update (2 proposals) |
+| create_proposal         | 100        | Single Vote proposal                 |
+| act_proposal (vote)     | 50         | Voting on proposals                  |
+| act_proposal (finalize) | 50         | Finalizing after voting period       |
 
 ### Deposit Requirements
 
-| Operation       | Deposit                  |
-| --------------- | ------------------------ |
-| add_member      | 0.1 NEAR (proposal bond) |
-| create_proposal | 0.1 NEAR (proposal bond) |
-| Voting          | 0 NEAR                   |
-| Finalize        | 0 NEAR                   |
+| Operation       | Deposit                    |
+| --------------- | -------------------------- |
+| add_member      | 1 NEAR (2 proposal bonds)  |
+| create_proposal | 0.1 NEAR (1 proposal bond) |
+| Voting          | 0 NEAR                     |
+| Finalize        | 0 NEAR                     |
+
+### Voting Requirements
+
+| Citizens | Quorum (7%) | Threshold (50%) | Effective Votes Needed |
+| -------- | ----------- | --------------- | ---------------------- |
+| 1        | 1           | 1               | 1 YES                  |
+| 10       | 1           | 6               | 6 YES                  |
+| 50       | 4           | 26              | 26 YES                 |
+| 100      | 7           | 51              | 51 YES                 |
+| 1000     | 70          | 501             | 501 YES                |
+
+_Effective threshold = max(quorum, (citizen_count / 2) + 1)_
 
 ---
 
@@ -532,9 +651,11 @@ Before going live:
 - [ ] Backend wallet private key is securely stored (not in git)
 - [ ] Bridge contract has correct backend_wallet set
 - [ ] DAO policy has minimal permissions for bridge role
+- [ ] Bridge has `policy_add_or_update_role` permissions for dynamic quorum
 - [ ] Citizens can only vote (not create proposals or finalize)
 - [ ] Everyone can finalize (prevents stuck proposals)
 - [ ] Verified accounts contract is correctly configured
-- [ ] Bridge contract is funded for proposal bonds
+- [ ] Bridge contract is funded for proposal bonds (enough for 2 per member)
 - [ ] All contracts tested on testnet first
 - [ ] Reproducible builds verified on mainnet
+- [ ] Quorum updates correctly after member additions

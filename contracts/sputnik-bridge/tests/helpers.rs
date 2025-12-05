@@ -4,6 +4,7 @@
 //! generating NEP-413 signatures, and manipulating test time.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(dead_code)] // Shared helpers - not all functions used by every test file
 
 use borsh::BorshSerialize;
 use near_workspaces::result::ExecutionFinalResult;
@@ -28,15 +29,19 @@ pub const VERIFIED_ACCOUNTS_WASM: &[u8] =
 pub const SPUTNIKDAO_WASM: &[u8] =
     include_bytes!("../../sputnik-dao-contract/sputnikdao2/res/sputnikdao2.wasm");
 
+/// Test policy JSON - mirrors production dao-policy.json but with fast periods
+pub const TEST_POLICY_JSON: &str = include_str!("../dao-policy.test.json");
+
 // ==================== CONSTANTS ====================
 
 /// NEP-413 prefix tag: 2^31 + 413 = 2147484061
 pub const NEP413_TAG: u32 = 2147484061;
 
 /// Proposal period in nanoseconds (10 seconds for fast testing)
+/// This must match dao-policy.test.json
 pub const PROPOSAL_PERIOD_NS: u64 = 10_000_000_000;
 
-/// Proposal bond (1 NEAR - must match attached deposit)
+/// Proposal bond (1 NEAR - matches dao-policy.test.json)
 pub const PROPOSAL_BOND: u128 = 1_000_000_000_000_000_000_000_000;
 
 // ==================== DATA STRUCTURES ====================
@@ -200,161 +205,70 @@ pub fn test_self_proof() -> serde_json::Value {
 
 // ==================== POLICY CREATION ====================
 
+/// Load and parse the test policy JSON, replacing BRIDGE_CONTRACT_ID placeholder
+/// with the actual bridge account ID.
+///
+/// This loads from dao-policy.test.json which mirrors production dao-policy.json
+/// but with fast periods (10 seconds instead of 7 days) for testing.
+fn load_test_policy_json(bridge_account_id: &str) -> serde_json::Value {
+    let json_str = TEST_POLICY_JSON.replace("BRIDGE_CONTRACT_ID", bridge_account_id);
+    let full_policy: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse dao-policy.test.json");
+    // Return just the policy part (not config)
+    full_policy
+        .get("policy")
+        .expect("Missing 'policy' key in dao-policy.test.json")
+        .clone()
+}
+
 /// Create a test DAO policy with short proposal period
 ///
 /// The policy matches production dao-policy.json structure:
-/// - "bridge" role - contains bridge contract, can add add_member_to_role and vote proposals
+/// - "bridge" role - contains bridge contract, can add add_member_to_role, vote, and policy update proposals
 /// - "citizen" role - empty initially, can vote on all proposal types
 /// - "all" role (Everyone) - can only finalize proposals
 ///
 /// NOTE: sputnik-dao uses lowercase snake_case for proposal kind labels internally:
 /// - add_member_to_role (not AddMemberToRole)
+/// - policy_add_or_update_role (not ChangePolicyAddOrUpdateRole)
 /// - vote (not Vote)
 pub fn create_test_policy(bridge_account_id: &str) -> serde_json::Value {
-    json!({
-        "roles": [
-            {
-                "name": "bridge",
-                "kind": {
-                    "Group": [bridge_account_id]
-                },
-                "permissions": [
-                    "add_member_to_role:AddProposal",
-                    "add_member_to_role:VoteApprove",
-                    "vote:AddProposal"
-                ],
-                "vote_policy": {}
-            },
-            {
-                "name": "citizen",
-                "kind": {
-                    "Group": []
-                },
-                "permissions": [
-                    "vote:VoteApprove",
-                    "vote:VoteReject"
-                ],
-                "vote_policy": {}
-            },
-            {
-                "name": "all",
-                "kind": "Everyone",
-                "permissions": ["*:Finalize"],
-                "vote_policy": {}
-            }
-        ],
-            "default_vote_policy": {
-                "weight_kind": "RoleWeight",
-                "quorum": "0",
-                "threshold": [1, 2]
-            },
-            "proposal_bond": PROPOSAL_BOND.to_string(),
-            "proposal_period": PROPOSAL_PERIOD_NS.to_string(),
-            "bounty_bond": PROPOSAL_BOND.to_string(),
-            "bounty_forgiveness_period": PROPOSAL_PERIOD_NS.to_string()
-        })
+    load_test_policy_json(bridge_account_id)
 }
 
-/// Production-like policy with differentiated vote policies:
-/// - AddMemberToRole: quorum 0, threshold 50% - bridge alone can auto-approve
-/// - Vote proposals: quorum 0, threshold 7% of citizens - requires citizen participation
+/// Production-like policy with dynamic quorum updates:
+/// - AddMemberToRole: bridge alone can auto-approve (default 50% threshold, bridge is only voter)
+/// - ChangePolicyAddOrUpdateRole: bridge can auto-approve (for updating quorum after member addition)
+/// - Vote proposals: initially 0 quorum, 50% threshold - will be updated dynamically by bridge
 ///
-/// This ensures the backend wallet can add members without citizen approval,
-/// but governance proposals need meaningful citizen engagement.
-pub fn create_policy_with_citizen_quorum(bridge_account_id: &str) -> serde_json::Value {
-    json!({
-        "roles": [
-            {
-                "name": "bridge",
-                "kind": {
-                    "Group": [bridge_account_id]
-                },
-                "permissions": [
-                    "add_member_to_role:AddProposal",
-                    "add_member_to_role:VoteApprove",
-                    "vote:AddProposal"
-                ],
-                "vote_policy": {}  // Uses default - bridge can auto-approve add_member proposals
-            },
-            {
-                "name": "citizen",
-                "kind": {
-                    "Group": []
-                },
-                "permissions": [
-                    "vote:VoteApprove",
-                    "vote:VoteReject"
-                ],
-                "vote_policy": {
-                    "vote": {
-                        "weight_kind": "RoleWeight",
-                        "quorum": "0",
-                        "threshold": [7, 100]  // 7% of citizens must approve
-                    }
-                }
-            },
-            {
-                "name": "all",
-                "kind": "Everyone",
-                "permissions": ["*:Finalize"],
-                "vote_policy": {}
-            }
-        ],
-        "default_vote_policy": {
-            "weight_kind": "RoleWeight",
-            "quorum": "0",
-            "threshold": [1, 2]  // 50% for add_member_to_role (bridge is only voter)
-        },
-        "proposal_bond": PROPOSAL_BOND.to_string(),
-        "proposal_period": PROPOSAL_PERIOD_NS.to_string(),
-        "bounty_bond": PROPOSAL_BOND.to_string(),
-        "bounty_forgiveness_period": PROPOSAL_PERIOD_NS.to_string()
-    })
+/// After each member addition, the bridge updates the citizen role's vote_policy
+/// to set quorum = ceil(7% * citizen_count), ensuring minimum participation.
+///
+/// This is now identical to create_test_policy since dao-policy.test.json has the full
+/// production structure with dynamic quorum support.
+pub fn create_policy_with_dynamic_quorum(bridge_account_id: &str) -> serde_json::Value {
+    load_test_policy_json(bridge_account_id)
 }
 
 /// Policy that removes the bridge's auto-approve power (no VoteApprove permission)
+/// This is a variant of the test policy for testing permission errors.
 pub fn create_policy_without_autoapprove(bridge_account_id: &str) -> serde_json::Value {
-    json!({
-        "roles": [
-            {
-                "name": "bridge",
-                "kind": {
-                    "Group": [bridge_account_id]
-                },
-                "permissions": [
+    let mut policy = load_test_policy_json(bridge_account_id);
+
+    // Modify the bridge role to remove VoteApprove permissions
+    if let Some(roles) = policy.get_mut("roles").and_then(|r| r.as_array_mut()) {
+        for role in roles.iter_mut() {
+            if role.get("name").and_then(|n| n.as_str()) == Some("bridge") {
+                // Replace permissions with limited set (no VoteApprove)
+                role["permissions"] = json!([
                     "add_member_to_role:AddProposal",
                     "vote:AddProposal"
-                ],
-                "vote_policy": {}
-            },
-            {
-                "name": "citizen",
-                "kind": {
-                    "Group": []
-                },
-                "permissions": [
-                    "vote:VoteApprove",
-                    "vote:VoteReject"
-                ],
-                "vote_policy": {}
-            },
-            {
-                "name": "all",
-                "kind": "Everyone",
-                "permissions": ["*:Finalize"],
-                "vote_policy": {}
+                ]);
             }
-        ],
-        "default_vote_policy": {
-            "weight_kind": "RoleWeight",
-            "quorum": "0",
-            "threshold": [1, 2]
-        },
-        "proposal_bond": PROPOSAL_BOND.to_string(),
-        "proposal_period": PROPOSAL_PERIOD_NS.to_string(),
-        "bounty_bond": PROPOSAL_BOND.to_string(),
-        "bounty_forgiveness_period": PROPOSAL_PERIOD_NS.to_string()
-    })
+        }
+    }
+
+    policy
 }
 
 // ==================== TEST ENVIRONMENT SETUP ====================
@@ -539,6 +453,7 @@ pub async fn is_user_verified(
 // ==================== BRIDGE HELPERS ====================
 
 /// Add a verified member to the DAO via the bridge
+/// Requires ~255 TGas for the full chain including quorum updates
 pub async fn add_member_via_bridge(
     backend: &Account,
     bridge: &Contract,
@@ -548,7 +463,7 @@ pub async fn add_member_via_bridge(
         .call(bridge.id(), "add_member")
         .args_json(json!({ "near_account_id": user.id() }))
         .deposit(NearToken::from_near(1))
-        .gas(Gas::from_tgas(200))
+        .gas(Gas::from_tgas(300))
         .transact()
         .await?)
 }
@@ -631,6 +546,101 @@ pub async fn is_account_in_role(
     }
 
     Ok(false)
+}
+
+/// Get citizen count from DAO policy
+pub async fn get_citizen_count(dao: &Contract, role_name: &str) -> anyhow::Result<usize> {
+    let policy: serde_json::Value = get_dao_policy(dao).await?;
+
+    if let Some(roles) = policy.get("roles").and_then(|r| r.as_array()) {
+        for role in roles {
+            if role.get("name").and_then(|n| n.as_str()) == Some(role_name) {
+                if let Some(kind) = role.get("kind") {
+                    if let Some(group) = kind.get("Group").and_then(|g| g.as_array()) {
+                        return Ok(group.len());
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(0)
+}
+
+/// Get the quorum value for Vote proposals from the citizen role's vote_policy
+pub async fn get_vote_quorum(dao: &Contract, role_name: &str) -> anyhow::Result<u64> {
+    let policy: serde_json::Value = get_dao_policy(dao).await?;
+
+    if let Some(roles) = policy.get("roles").and_then(|r| r.as_array()) {
+        for role in roles {
+            if role.get("name").and_then(|n| n.as_str()) == Some(role_name) {
+                if let Some(vote_policy) = role.get("vote_policy") {
+                    if let Some(vote) = vote_policy.get("vote") {
+                        if let Some(quorum) = vote.get("quorum") {
+                            // Quorum can be a string or number depending on serialization
+                            if let Some(q_str) = quorum.as_str() {
+                                return Ok(q_str.parse().unwrap_or(0));
+                            }
+                            if let Some(q_num) = quorum.as_u64() {
+                                return Ok(q_num);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(0)
+}
+
+/// Get the threshold for Vote proposals from the citizen role's vote_policy
+/// Returns (numerator, denominator) for ratio threshold, or (weight, 0) for fixed weight
+pub async fn get_vote_threshold(dao: &Contract, role_name: &str) -> anyhow::Result<(u64, u64)> {
+    let policy: serde_json::Value = get_dao_policy(dao).await?;
+
+    if let Some(roles) = policy.get("roles").and_then(|r| r.as_array()) {
+        for role in roles {
+            if role.get("name").and_then(|n| n.as_str()) == Some(role_name) {
+                if let Some(vote_policy) = role.get("vote_policy") {
+                    if let Some(vote) = vote_policy.get("vote") {
+                        if let Some(threshold) = vote.get("threshold") {
+                            // Threshold can be a ratio [num, denom] or a fixed weight
+                            if let Some(arr) = threshold.as_array() {
+                                if arr.len() == 2 {
+                                    let num = arr[0].as_u64().unwrap_or(0);
+                                    let denom = arr[1].as_u64().unwrap_or(1);
+                                    return Ok((num, denom));
+                                }
+                            }
+                            // Fixed weight (U128 as string)
+                            if let Some(w_str) = threshold.as_str() {
+                                return Ok((w_str.parse().unwrap_or(0), 0));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Return default 50% threshold if not found
+    Ok((1, 2))
+}
+
+/// Calculate the effective threshold for a proposal
+/// effective_threshold = max(quorum, (num * citizen_count / denom) + 1)
+/// Note: SputnikDAO uses (num * weight / denom) + 1, NOT ceiling division
+pub fn calculate_effective_threshold(quorum: u64, threshold: (u64, u64), citizen_count: u64) -> u64 {
+    let threshold_weight = if threshold.1 == 0 {
+        // Fixed weight
+        threshold.0
+    } else {
+        // Ratio: (num * citizen_count / denom) + 1 (SputnikDAO formula)
+        (threshold.0 * citizen_count / threshold.1) + 1
+    };
+
+    std::cmp::max(quorum, threshold_weight)
 }
 
 // ==================== EVENT PARSING ====================

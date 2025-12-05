@@ -134,9 +134,7 @@ function createBridgeContractReader(): IBridgeContractReader {
   const { bridgeContractId, rpcUrl } = NEAR_CONFIG
 
   if (!bridgeContractId) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT configuration. Please set the bridge contract address.",
-    )
+    throw new Error("Missing NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT configuration. Please set the bridge contract address.")
   }
 
   console.log("[BridgeContract] Creating read-only bridge contract client")

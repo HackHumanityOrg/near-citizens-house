@@ -4,14 +4,27 @@ import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, Label, Alert } from "@near-citizens/ui"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+  Button,
+  Input,
+  Label,
+  Alert,
+} from "@near-citizens/ui"
 import { type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
 import { useAdminActions } from "@/hooks/admin-actions"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
 import { Loader2, UserPlus, CheckCircle, AlertCircle } from "lucide-react"
 
 const addMemberSchema = z.object({
-  accountId: z.string().min(1, "Account ID is required").regex(/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/, "Invalid NEAR account ID format"),
+  accountId: z
+    .string()
+    .min(1, "Account ID is required")
+    .regex(/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/, "Invalid NEAR account ID format"),
 })
 
 type AddMemberFormData = z.infer<typeof addMemberSchema>
@@ -68,23 +81,16 @@ export function AddMemberForm() {
           Add Verified Member
         </CardTitle>
         <CardDescription>
-          Add a verified account to the SputnikDAO as a citizen member.
-          The account must be verified in the verified-accounts contract first.
+          Add a verified account to the SputnikDAO as a citizen member. The account must be verified in the
+          verified-accounts contract first.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="accountId">NEAR Account ID</Label>
-            <Input
-              id="accountId"
-              placeholder="alice.near"
-              {...register("accountId")}
-              disabled={isLoading}
-            />
-            {errors.accountId && (
-              <p className="text-sm text-destructive">{errors.accountId.message}</p>
-            )}
+            <Input id="accountId" placeholder="alice.near" {...register("accountId")} disabled={isLoading} />
+            {errors.accountId && <p className="text-sm text-destructive">{errors.accountId.message}</p>}
           </div>
 
           {/* Bond Info */}
@@ -94,8 +100,8 @@ export function AddMemberForm() {
               <div>
                 <p className="text-sm font-medium">Proposal Bond Required</p>
                 <p className="text-sm text-muted-foreground">
-                  This action requires {formatProposalBond(policy.proposalBond)} as a proposal bond.
-                  The bond is returned when the proposal is finalized.
+                  This action requires {formatProposalBond(policy.proposalBond)} as a proposal bond. The bond is
+                  returned when the proposal is finalized.
                 </p>
               </div>
             </Alert>

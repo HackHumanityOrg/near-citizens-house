@@ -76,6 +76,39 @@ pub enum ProposalKind {
         /// The name of the role.
         role: String,
     },
+
+    /// Add or update a role in the DAO policy.
+    /// Used to dynamically update vote thresholds as membership changes.
+    ChangePolicyAddOrUpdateRole {
+        /// The role definition to add or update.
+        role: RolePermission,
+    },
+}
+
+/// How permissions are assigned to a role.
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub enum RoleKind {
+    /// Role applies to everyone.
+    Everyone,
+    /// Role applies only to specific group of accounts.
+    Group(Vec<AccountId>),
+}
+
+/// Role permission definition for DAO policy.
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct RolePermission {
+    /// Name of the role (e.g., "citizen", "council").
+    pub name: String,
+    /// Kind of role membership.
+    pub kind: RoleKind,
+    /// Set of permissions (e.g., "vote:VoteApprove", "add_member_to_role:AddProposal").
+    pub permissions: Vec<String>,
+    /// Per-proposal-kind voting policies. Empty uses default.
+    pub vote_policy: std::collections::HashMap<String, VotePolicy>,
 }
 
 // ==================== Action Types ====================
@@ -225,5 +258,41 @@ mod tests {
         let action = Action::VoteApprove;
         let json = near_sdk::serde_json::to_string(&action).unwrap();
         assert!(json.contains("VoteApprove"));
+    }
+
+    #[test]
+    fn test_change_policy_add_or_update_role_serialization() {
+        use std::collections::HashMap;
+
+        let mut vote_policy = HashMap::new();
+        vote_policy.insert(
+            "vote".to_string(),
+            VotePolicy {
+                weight_kind: WeightKind::RoleWeight,
+                quorum: U128(0),
+                threshold: WeightOrRatio::Ratio(7, 100),
+            },
+        );
+
+        let input = ProposalInput {
+            description: "Update citizen role threshold".to_string(),
+            kind: ProposalKind::ChangePolicyAddOrUpdateRole {
+                role: RolePermission {
+                    name: "citizen".to_string(),
+                    kind: RoleKind::Group(vec!["alice.near".parse().unwrap()]),
+                    permissions: vec!["vote:VoteApprove".to_string()],
+                    vote_policy,
+                },
+            },
+        };
+
+        let json = near_sdk::serde_json::to_string(&input).unwrap();
+        assert!(json.contains("ChangePolicyAddOrUpdateRole"));
+        assert!(json.contains("citizen"));
+        assert!(json.contains("alice.near"));
+
+        // Verify it can be deserialized
+        let decoded: ProposalInput = near_sdk::serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.description, input.description);
     }
 }

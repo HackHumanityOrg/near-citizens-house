@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { SputnikHeader } from "@/components/shared/sputnik-header"
 import { ProposalDetailWrapper } from "@/components/proposals/proposal-detail-wrapper"
-import { getProposal } from "@/lib/actions/sputnik-dao"
+import { getProposal, getPolicy } from "@/lib/actions/sputnik-dao"
 import { Button } from "@near-citizens/ui"
 import { ArrowLeft } from "lucide-react"
 
@@ -20,7 +20,7 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
     notFound()
   }
 
-  const proposal = await getProposal(proposalId)
+  const [proposal, policy] = await Promise.all([getProposal(proposalId), getPolicy()])
 
   if (!proposal) {
     notFound()
@@ -39,7 +39,7 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
           </Button>
         </Link>
 
-        <ProposalDetailWrapper initialProposal={proposal} />
+        <ProposalDetailWrapper initialProposal={proposal} policy={policy} />
       </main>
     </div>
   )

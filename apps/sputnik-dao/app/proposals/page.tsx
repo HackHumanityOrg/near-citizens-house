@@ -9,9 +9,7 @@ export const dynamic = "force-dynamic"
 async function ProposalListLoader() {
   const { proposals, hasMore, total } = await getProposalsReversed(0, 10)
 
-  return (
-    <ProposalList initialProposals={proposals} initialHasMore={hasMore} initialTotal={total} />
-  )
+  return <ProposalList initialProposals={proposals} initialHasMore={hasMore} initialTotal={total} />
 }
 
 export default function ProposalsPage() {
@@ -22,9 +20,7 @@ export default function ProposalsPage() {
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Proposals</h1>
-          <p className="text-muted-foreground">
-            View and vote on SputnikDAO proposals
-          </p>
+          <p className="text-muted-foreground">View and vote on SputnikDAO proposals</p>
         </div>
 
         <Suspense

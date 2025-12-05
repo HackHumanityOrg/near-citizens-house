@@ -21,6 +21,8 @@ export { Label } from "./label"
 export { Progress } from "./progress"
 export { Textarea } from "./textarea"
 export { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./table"
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs"
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip"
 
 // Shared infrastructure components
 export { ErrorBoundary } from "./error-boundary"

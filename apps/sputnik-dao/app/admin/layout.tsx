@@ -35,9 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <CardTitle>Connect Wallet</CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Please connect your wallet to access the admin panel.
-              </p>
+              <p className="text-muted-foreground">Please connect your wallet to access the admin panel.</p>
               <Button onClick={connect} className="w-full">
                 <LogIn className="mr-2 h-4 w-4" />
                 Connect Wallet
@@ -61,9 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <CardTitle>Access Denied</CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                You don&apos;t have permission to access the admin panel.
-              </p>
+              <p className="text-muted-foreground">You don&apos;t have permission to access the admin panel.</p>
               <div className="text-sm bg-muted p-3 rounded-lg">
                 <p className="text-muted-foreground mb-1">Your wallet:</p>
                 <code className="text-xs break-all">{accountId}</code>

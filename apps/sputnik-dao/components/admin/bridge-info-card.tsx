@@ -56,9 +56,7 @@ export function BridgeInfoCard() {
           <Settings className="h-5 w-5" />
           Bridge Configuration
         </CardTitle>
-        <CardDescription>
-          Current settings for the SputnikDAO bridge contract
-        </CardDescription>
+        <CardDescription>Current settings for the SputnikDAO bridge contract</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Backend Wallet */}

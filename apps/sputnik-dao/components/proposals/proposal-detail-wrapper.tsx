@@ -1,16 +1,17 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useNearWallet, type SputnikProposal, type SputnikVote } from "@near-citizens/shared"
+import { useNearWallet, type SputnikProposal, type SputnikVote, type TransformedPolicy } from "@near-citizens/shared"
 import { ProposalDetail } from "./proposal-detail"
 import { getUserVote, getProposal } from "@/lib/actions/sputnik-dao"
 import { Loader2 } from "lucide-react"
 
 interface ProposalDetailWrapperProps {
   initialProposal: SputnikProposal
+  policy: TransformedPolicy
 }
 
-export function ProposalDetailWrapper({ initialProposal }: ProposalDetailWrapperProps) {
+export function ProposalDetailWrapper({ initialProposal, policy }: ProposalDetailWrapperProps) {
   const { accountId, isConnected } = useNearWallet()
   const [proposal, setProposal] = useState<SputnikProposal>(initialProposal)
   const [userVote, setUserVote] = useState<SputnikVote | null>(null)
@@ -70,6 +71,7 @@ export function ProposalDetailWrapper({ initialProposal }: ProposalDetailWrapper
   return (
     <ProposalDetail
       proposal={proposal}
+      policy={policy}
       userVote={userVote}
       canVote={canVote}
       isConnected={isConnected}

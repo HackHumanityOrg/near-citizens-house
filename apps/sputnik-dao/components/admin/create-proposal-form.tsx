@@ -5,14 +5,27 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Textarea, Label, Alert } from "@near-citizens/ui"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+  Button,
+  Textarea,
+  Label,
+  Alert,
+} from "@near-citizens/ui"
 import { type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
 import { useAdminActions } from "@/hooks/admin-actions"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
 import { Loader2, FileText, CheckCircle, AlertCircle } from "lucide-react"
 
 const createProposalSchema = z.object({
-  description: z.string().min(1, "Description is required").max(10000, "Description must be less than 10,000 characters"),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(10000, "Description must be less than 10,000 characters"),
 })
 
 type CreateProposalFormData = z.infer<typeof createProposalSchema>
@@ -84,8 +97,8 @@ export function CreateProposalForm() {
           Create Vote Proposal
         </CardTitle>
         <CardDescription>
-          Create a text-only governance proposal for citizens to vote on.
-          This creates a &quot;Vote&quot; type proposal on SputnikDAO.
+          Create a text-only governance proposal for citizens to vote on. This creates a &quot;Vote&quot; type proposal
+          on SputnikDAO.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -104,9 +117,7 @@ export function CreateProposalForm() {
               {...register("description")}
               disabled={isLoading}
             />
-            {errors.description && (
-              <p className="text-sm text-destructive">{errors.description.message}</p>
-            )}
+            {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
           </div>
 
           {/* Bond Info */}
@@ -116,8 +127,8 @@ export function CreateProposalForm() {
               <div>
                 <p className="text-sm font-medium">Proposal Bond Required</p>
                 <p className="text-sm text-muted-foreground">
-                  This action requires {formatProposalBond(policy.proposalBond)} as a proposal bond.
-                  The bond is returned when the proposal is finalized.
+                  This action requires {formatProposalBond(policy.proposalBond)} as a proposal bond. The bond is
+                  returned when the proposal is finalized.
                 </p>
               </div>
             </Alert>
@@ -137,9 +148,7 @@ export function CreateProposalForm() {
               <CheckCircle className="h-4 w-4" />
               <div>
                 <p className="font-medium">Proposal created successfully!</p>
-                <p className="text-sm">
-                  Proposal ID: {success.proposalId}. Redirecting...
-                </p>
+                <p className="text-sm">Proposal ID: {success.proposalId}. Redirecting...</p>
               </div>
             </Alert>
           )}

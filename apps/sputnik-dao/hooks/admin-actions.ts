@@ -4,7 +4,8 @@ import { useCallback, useState } from "react"
 import { useNearWallet, NEAR_CONFIG } from "@near-citizens/shared"
 
 // Gas constants (as strings for wallet compatibility)
-const ADD_MEMBER_GAS = "200000000000000" // 200 TGas (cross-contract calls)
+// add_member creates 2 proposals (member + quorum update) with 7 cross-contract calls
+const ADD_MEMBER_GAS = "300000000000000" // 300 TGas (max allowed, needed for full chain)
 const CREATE_PROPOSAL_GAS = "100000000000000" // 100 TGas
 const UPDATE_GAS = "30000000000000" // 30 TGas
 const ONE_YOCTO = "1" // 1 yoctoNEAR

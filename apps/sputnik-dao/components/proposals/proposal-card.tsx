@@ -26,14 +26,8 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <ProposalStatusBadge status={proposal.status} />
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                  #{proposal.id}
-                </span>
-                {proposal.kind === "Vote" ? null : (
-                  <span className="text-xs text-muted-foreground">
-                    {kindLabel}
-                  </span>
-                )}
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">#{proposal.id}</span>
+                {proposal.kind === "Vote" ? null : <span className="text-xs text-muted-foreground">{kindLabel}</span>}
               </div>
               <CardTitle className="text-lg line-clamp-2">
                 {/* For Vote proposals, use description as title. For AddMember, use kind label */}

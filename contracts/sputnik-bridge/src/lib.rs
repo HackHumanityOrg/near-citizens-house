@@ -27,19 +27,35 @@
 //! - Bridge has minimal SputnikDAO permissions (cannot transfer funds, etc.)
 //! - Citizens vote directly on SputnikDAO, not through the bridge
 
+use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, Gas, NearSchema, PanicOnDefault, Promise, PromiseResult};
-use sputnik_dao_interface::{ext_sputnik_dao, Action, ProposalInput, ProposalKind};
+use sputnik_dao_interface::{
+    ext_sputnik_dao, Action, ProposalInput, ProposalKind, RoleKind, RolePermission, VotePolicy,
+    WeightKind, WeightOrRatio,
+};
+use std::collections::HashMap;
 use verified_accounts_interface::ext_verified_accounts;
 
 /// Maximum description length for proposals (prevents storage abuse)
 const MAX_DESCRIPTION_LEN: usize = 10_000;
 
 /// Gas allocations for cross-contract calls
+/// These are optimized to fit within NEAR's 300 TGas transaction limit
+/// Each callback reservation includes ~15 TGas execution overhead
 const GAS_FOR_VERIFICATION: Gas = Gas::from_tgas(5);
-const GAS_FOR_ADD_PROPOSAL: Gas = Gas::from_tgas(50);
-const GAS_FOR_ACT_PROPOSAL: Gas = Gas::from_tgas(50);
-const GAS_FOR_CALLBACK: Gas = Gas::from_tgas(20);
+const GAS_FOR_ADD_PROPOSAL: Gas = Gas::from_tgas(30);
+const GAS_FOR_ACT_PROPOSAL: Gas = Gas::from_tgas(30);
+const GAS_FOR_GET_POLICY: Gas = Gas::from_tgas(10);
+const GAS_FOR_CALLBACK: Gas = Gas::from_tgas(20); // Includes execution overhead
+
+/// Total gas needed for the quorum update chain after member is added
+/// get_policy(10) + add_proposal(30) + get_proposal(10) + act_proposal(30) + callbacks(4*20) = ~160 TGas
+const GAS_FOR_QUORUM_UPDATE: Gas = Gas::from_tgas(160);
+
+/// Quorum percentage for Vote proposals (7% of citizens)
+/// This is used to calculate the minimum number of votes required
+const QUORUM_PERCENT: u64 = 7;
 
 /// Event emitted when a member is added
 #[derive(Serialize)]
@@ -56,6 +72,15 @@ pub struct MemberAddedEvent {
 pub struct ProposalCreatedEvent {
     pub proposal_id: u64,
     pub description: String,
+}
+
+/// Event emitted when citizen quorum is updated
+#[derive(Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct QuorumUpdatedEvent {
+    pub citizen_count: u64,
+    pub new_quorum: u64,
+    pub proposal_id: u64,
 }
 
 /// Helper to emit JSON events in NEAR standard format
@@ -137,12 +162,20 @@ impl SputnikBridge {
         self.assert_backend_wallet();
 
         // Cross-contract call to verify citizenship
+        // Gas chain: verification -> callback_add_member -> add_proposal -> callback_proposal_created
+        //            -> act_proposal -> callback_member_added -> quorum_update_chain
         ext_verified_accounts::ext(self.verified_accounts_contract.clone())
             .with_static_gas(GAS_FOR_VERIFICATION)
             .is_account_verified(near_account_id.clone())
             .then(
                 Self::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_ADD_PROPOSAL.saturating_add(GAS_FOR_ACT_PROPOSAL).saturating_add(GAS_FOR_CALLBACK))
+                    .with_static_gas(
+                        GAS_FOR_ADD_PROPOSAL
+                            .saturating_add(GAS_FOR_CALLBACK)
+                            .saturating_add(GAS_FOR_ACT_PROPOSAL)
+                            .saturating_add(GAS_FOR_CALLBACK)
+                            .saturating_add(GAS_FOR_QUORUM_UPDATE),
+                    )
                     .with_attached_deposit(env::attached_deposit())
                     .callback_add_member(near_account_id),
             )
@@ -178,7 +211,11 @@ impl SputnikBridge {
             .add_proposal(proposal)
             .then(
                 Self::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_ACT_PROPOSAL.saturating_add(GAS_FOR_CALLBACK))
+                    .with_static_gas(
+                        GAS_FOR_ACT_PROPOSAL
+                            .saturating_add(GAS_FOR_CALLBACK)
+                            .saturating_add(GAS_FOR_QUORUM_UPDATE),
+                    )
                     .callback_proposal_created(near_account_id),
             )
     }
@@ -208,14 +245,14 @@ impl SputnikBridge {
             )
             .then(
                 Self::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_CALLBACK)
+                    .with_static_gas(GAS_FOR_CALLBACK.saturating_add(GAS_FOR_QUORUM_UPDATE))
                     .callback_member_added(near_account_id, proposal_id),
             )
     }
 
-    /// Final callback after member is added
+    /// Callback after member addition is approved - now update the quorum
     #[private]
-    pub fn callback_member_added(&mut self, near_account_id: AccountId, proposal_id: u64) {
+    pub fn callback_member_added(&mut self, near_account_id: AccountId, proposal_id: u64) -> Promise {
         // Check act_proposal succeeded
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
@@ -230,6 +267,205 @@ impl SputnikBridge {
                 );
             }
             _ => env::panic_str("Failed to approve member addition proposal"),
+        }
+
+        // Query the DAO policy to get the updated citizen count for quorum calculation
+        ext_sputnik_dao::ext(self.sputnik_dao.clone())
+            .with_static_gas(GAS_FOR_GET_POLICY)
+            .get_policy()
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(
+                        GAS_FOR_QUORUM_UPDATE.saturating_sub(GAS_FOR_GET_POLICY), // Remaining gas for chain
+                    )
+                    .callback_policy_received_for_quorum(),
+            )
+    }
+
+    /// Callback after receiving DAO policy - calculate and update quorum
+    #[private]
+    pub fn callback_policy_received_for_quorum(&mut self) -> Promise {
+        // Parse policy from result
+        let policy_json: near_sdk::serde_json::Value = match env::promise_result(0) {
+            PromiseResult::Successful(data) => near_sdk::serde_json::from_slice(&data)
+                .unwrap_or_else(|_| env::panic_str("Failed to deserialize policy")),
+            _ => env::panic_str("Failed to get policy"),
+        };
+
+        // Extract citizen role info and proposal bond
+        let roles = policy_json
+            .get("roles")
+            .and_then(|r| r.as_array())
+            .unwrap_or_else(|| env::panic_str("Failed to parse roles"));
+
+        let proposal_bond: u128 = policy_json
+            .get("proposal_bond")
+            .and_then(|b| b.as_str())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or_else(|| env::panic_str("Failed to parse proposal_bond"));
+
+        // Find citizen role and extract member list + permissions
+        let mut citizen_members: Vec<AccountId> = Vec::new();
+        let mut citizen_permissions: Vec<String> = Vec::new();
+
+        for role in roles {
+            if role.get("name").and_then(|n| n.as_str()) == Some(&self.citizen_role) {
+                // Extract group members
+                if let Some(kind) = role.get("kind") {
+                    if let Some(group) = kind.get("Group").and_then(|g| g.as_array()) {
+                        for member in group {
+                            if let Some(account_str) = member.as_str() {
+                                if let Ok(account_id) = account_str.parse::<AccountId>() {
+                                    citizen_members.push(account_id);
+                                }
+                            }
+                        }
+                    }
+                }
+                // Extract permissions
+                if let Some(perms) = role.get("permissions").and_then(|p| p.as_array()) {
+                    for perm in perms {
+                        if let Some(perm_str) = perm.as_str() {
+                            citizen_permissions.push(perm_str.to_string());
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        // Calculate new quorum: ceil(citizen_count * 7 / 100)
+        let citizen_count = citizen_members.len() as u64;
+        let new_quorum = if citizen_count == 0 {
+            0
+        } else {
+            (citizen_count * QUORUM_PERCENT + 99) / 100 // Ceiling division
+        };
+
+        // Build the updated citizen role with new quorum for Vote proposals
+        // Vote policy: 50% threshold + dynamic quorum based on 7% of citizens
+        let mut vote_policy_map: HashMap<String, VotePolicy> = HashMap::new();
+        vote_policy_map.insert(
+            "vote".to_string(),
+            VotePolicy {
+                weight_kind: WeightKind::RoleWeight,
+                quorum: U128(new_quorum as u128),
+                threshold: WeightOrRatio::Ratio(1, 2), // 50% of citizens
+            },
+        );
+
+        let updated_role = RolePermission {
+            name: self.citizen_role.clone(),
+            kind: RoleKind::Group(citizen_members),
+            permissions: citizen_permissions,
+            vote_policy: vote_policy_map,
+        };
+
+        // Create ChangePolicyAddOrUpdateRole proposal
+        let proposal = ProposalInput {
+            description: format!(
+                "Update {} role quorum to {} ({}% of {} citizens)",
+                self.citizen_role, new_quorum, QUORUM_PERCENT, citizen_count
+            ),
+            kind: ProposalKind::ChangePolicyAddOrUpdateRole { role: updated_role },
+        };
+
+        env::log_str(&format!(
+            "Updating quorum: citizen_count={}, new_quorum={}",
+            citizen_count, new_quorum
+        ));
+
+        ext_sputnik_dao::ext(self.sputnik_dao.clone())
+            .with_static_gas(GAS_FOR_ADD_PROPOSAL)
+            .with_attached_deposit(near_sdk::NearToken::from_yoctonear(proposal_bond))
+            .add_proposal(proposal)
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(
+                        GAS_FOR_GET_POLICY
+                            .saturating_add(GAS_FOR_ACT_PROPOSAL)
+                            .saturating_add(GAS_FOR_CALLBACK)
+                            .saturating_add(GAS_FOR_CALLBACK),
+                    )
+                    .callback_quorum_proposal_created(citizen_count, new_quorum),
+            )
+    }
+
+    /// Callback after quorum update proposal is created - query the proposal to get exact kind
+    #[private]
+    pub fn callback_quorum_proposal_created(
+        &mut self,
+        citizen_count: u64,
+        new_quorum: u64,
+    ) -> Promise {
+        // Get proposal ID from result
+        let proposal_id = match env::promise_result(0) {
+            PromiseResult::Successful(data) => near_sdk::serde_json::from_slice::<u64>(&data)
+                .unwrap_or_else(|_| env::panic_str("Failed to deserialize proposal ID")),
+            _ => env::panic_str("Failed to create quorum update proposal"),
+        };
+
+        // Query get_proposal to get the exact stored kind (avoids HashSet ordering issues)
+        ext_sputnik_dao::ext(self.sputnik_dao.clone())
+            .with_static_gas(GAS_FOR_GET_POLICY) // get_proposal uses similar gas
+            .get_proposal(proposal_id)
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(GAS_FOR_ACT_PROPOSAL.saturating_add(GAS_FOR_CALLBACK))
+                    .callback_got_quorum_proposal(citizen_count, new_quorum, proposal_id),
+            )
+    }
+
+    /// Callback after getting the proposal - use stored kind for act_proposal
+    #[private]
+    pub fn callback_got_quorum_proposal(
+        &mut self,
+        citizen_count: u64,
+        new_quorum: u64,
+        proposal_id: u64,
+    ) -> Promise {
+        // Parse the proposal from result
+        let proposal_json: near_sdk::serde_json::Value = match env::promise_result(0) {
+            PromiseResult::Successful(data) => near_sdk::serde_json::from_slice(&data)
+                .unwrap_or_else(|_| env::panic_str("Failed to deserialize proposal")),
+            _ => env::panic_str("Failed to get proposal"),
+        };
+
+        // Extract the kind from the proposal
+        let kind_json = proposal_json
+            .get("kind")
+            .unwrap_or_else(|| env::panic_str("Proposal missing kind field"));
+
+        // Deserialize the kind into our ProposalKind type
+        let kind: ProposalKind = near_sdk::serde_json::from_value(kind_json.clone())
+            .unwrap_or_else(|_| env::panic_str("Failed to deserialize proposal kind"));
+
+        // Auto-approve the proposal using the exact stored kind
+        ext_sputnik_dao::ext(self.sputnik_dao.clone())
+            .with_static_gas(GAS_FOR_ACT_PROPOSAL)
+            .act_proposal(proposal_id, Action::VoteApprove, kind, None)
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(GAS_FOR_CALLBACK)
+                    .callback_quorum_updated(citizen_count, new_quorum, proposal_id),
+            )
+    }
+
+    /// Final callback after quorum is updated
+    #[private]
+    pub fn callback_quorum_updated(&mut self, citizen_count: u64, new_quorum: u64, proposal_id: u64) {
+        match env::promise_result(0) {
+            PromiseResult::Successful(_) => {
+                emit_event(
+                    "quorum_updated",
+                    &QuorumUpdatedEvent {
+                        citizen_count,
+                        new_quorum,
+                        proposal_id,
+                    },
+                );
+            }
+            _ => env::panic_str("Failed to approve quorum update proposal"),
         }
     }
 

@@ -24,10 +24,7 @@ export function VoteProgress({
     <div className="space-y-2">
       {/* Progress bar showing approve vs reject ratio */}
       <div className="relative h-3 w-full rounded-full bg-red-200 dark:bg-red-900 overflow-hidden">
-        <div
-          className="h-full bg-green-500 transition-all duration-300"
-          style={{ width: `${approvePercent}%` }}
-        />
+        <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${approvePercent}%` }} />
       </div>
 
       {/* Vote counts */}

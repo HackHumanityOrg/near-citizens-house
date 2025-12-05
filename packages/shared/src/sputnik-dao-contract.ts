@@ -61,11 +61,7 @@ export class SputnikDaoContract implements ISputnikDaoContract {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<ContractSputnikProposal>(
-        this.contractId,
-        "get_proposal",
-        { id },
-      )
+      const result = await this.provider!.callFunction<ContractSputnikProposal>(this.contractId, "get_proposal", { id })
 
       if (!result) {
         return null
@@ -83,11 +79,10 @@ export class SputnikDaoContract implements ISputnikDaoContract {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<ContractSputnikProposal[]>(
-        this.contractId,
-        "get_proposals",
-        { from_index: fromIndex, limit },
-      )
+      const result = await this.provider!.callFunction<ContractSputnikProposal[]>(this.contractId, "get_proposals", {
+        from_index: fromIndex,
+        limit,
+      })
 
       if (!result) {
         return []
@@ -105,11 +100,7 @@ export class SputnikDaoContract implements ISputnikDaoContract {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<number>(
-        this.contractId,
-        "get_last_proposal_id",
-        {},
-      )
+      const result = await this.provider!.callFunction<number>(this.contractId, "get_last_proposal_id", {})
 
       return result ?? 0
     } catch (error) {
@@ -122,11 +113,7 @@ export class SputnikDaoContract implements ISputnikDaoContract {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<SputnikPolicy>(
-        this.contractId,
-        "get_policy",
-        {},
-      )
+      const result = await this.provider!.callFunction<SputnikPolicy>(this.contractId, "get_policy", {})
 
       if (!result) {
         throw new Error("Failed to get DAO policy")

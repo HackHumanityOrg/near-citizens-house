@@ -9,7 +9,7 @@
       {
         "name": "bridge",
         "kind": {
-          "Group": ["sputnik-bridge-v1.widefile4023.testnet"]
+          "Group": ["BRIDGE_CONTRACT_ID"]
         },
         "permissions": [
           "add_member_to_role:AddProposal",
@@ -46,9 +46,9 @@
       "quorum": "0",
       "threshold": [1, 2]
     },
-    "proposal_bond": "100000000000000000000000",
-    "proposal_period": "604800000000000",
-    "bounty_bond": "100000000000000000000000",
-    "bounty_forgiveness_period": "604800000000000"
+    "proposal_bond": "1000000000000000000000000",
+    "proposal_period": "10000000000",
+    "bounty_bond": "1000000000000000000000000",
+    "bounty_forgiveness_period": "10000000000"
   }
 }
