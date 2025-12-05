@@ -14,7 +14,7 @@ const navItems = [
   },
   {
     href: "/admin/members",
-    label: "Add Members",
+    label: "Add Citizen",
     icon: UserPlus,
   },
   {
