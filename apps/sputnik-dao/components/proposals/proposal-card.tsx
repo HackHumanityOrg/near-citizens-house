@@ -12,7 +12,6 @@ interface ProposalCardProps {
 }
 
 export function ProposalCard({ proposal }: ProposalCardProps) {
-  const isInProgress = proposal.status === "InProgress"
   const kindLabel = getProposalKindLabel(proposal.kind)
 
   // Format submission time

@@ -87,13 +87,11 @@ export function ProposalDetail({
 }: ProposalDetailProps) {
   const kindLabel = getProposalKindLabel(proposal.kind)
   const submittedDate = new Date(proposal.submissionTime).toLocaleDateString()
-  const submittedTime = new Date(proposal.submissionTime).toLocaleTimeString()
   const isInProgress = proposal.status === "InProgress"
   const isVoteProposal = proposal.kind === "Vote"
 
   // Calculate expiration time
   const expirationTime = proposal.submissionTime + policy.proposalPeriodMs
-  const expirationDate = new Date(expirationTime)
   const now = Date.now()
   const isExpired = now > expirationTime
   const timeRemaining = expirationTime - now

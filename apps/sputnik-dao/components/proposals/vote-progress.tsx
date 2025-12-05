@@ -1,4 +1,3 @@
-import { Progress } from "@near-citizens/ui"
 import { ThumbsUp, ThumbsDown, Trash2 } from "lucide-react"
 
 interface VoteProgressProps {

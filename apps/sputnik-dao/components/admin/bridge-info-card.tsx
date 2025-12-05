@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@near
 import { type BridgeInfo, type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
-import { Loader2, ExternalLink, Wallet, Users, FileText, Settings } from "lucide-react"
+import { Loader2, Wallet, Users, FileText, Settings } from "lucide-react"
 
 export function BridgeInfoCard() {
   const [info, setInfo] = useState<BridgeInfo | null>(null)
