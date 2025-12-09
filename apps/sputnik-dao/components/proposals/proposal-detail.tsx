@@ -32,6 +32,7 @@ interface ProposalDetailProps {
   userVote: SputnikVote | null
   canVote: boolean
   isConnected: boolean
+  connect: () => Promise<void>
   isVerified: boolean
   isLoadingVerification: boolean
   isCitizen: boolean
@@ -92,6 +93,7 @@ export function ProposalDetail({
   userVote,
   canVote,
   isConnected,
+  connect,
   isVerified,
   isLoadingVerification,
   isCitizen,
@@ -304,7 +306,11 @@ export function ProposalDetail({
             {/* Vote Button or Status */}
             <div className="pt-4 border-t">
               {!isConnected ? (
-                <p className="text-sm text-muted-foreground text-center">Connect your wallet to vote</p>
+                <p className="text-sm text-muted-foreground text-center">
+                  <button onClick={connect} className="text-primary font-medium underline hover:no-underline">
+                    Connect wallet to vote
+                  </button>
+                </p>
               ) : !isInProgress ? (
                 <p className="text-sm text-muted-foreground text-center">
                   Voting has ended. Final status: {PROPOSAL_STATUS_LABELS[proposal.status]}

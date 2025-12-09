@@ -28,7 +28,7 @@ interface ProposalDetailWrapperProps {
 }
 
 export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: ProposalDetailWrapperProps) {
-  const { accountId, isConnected } = useNearWallet()
+  const { accountId, isConnected, connect } = useNearWallet()
   const { isVerified, loading: isLoadingVerification } = useVerification()
 
   // SWR for user vote - keyed by proposal ID and account
@@ -65,6 +65,7 @@ export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: P
       userVote={userVote ?? null}
       canVote={canVote}
       isConnected={isConnected}
+      connect={connect}
       isVerified={isVerified}
       isLoadingVerification={isLoadingVerification}
       isCitizen={userIsCitizen}
