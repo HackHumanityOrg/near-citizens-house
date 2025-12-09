@@ -24,6 +24,7 @@ import { VoteProgress } from "./vote-progress"
 import { VoteButton } from "./vote-button"
 import { FinalizeButton } from "./finalize-button"
 import { Clock, User, Hash, Timer, AlertTriangle } from "lucide-react"
+import { extractProposalTitle } from "@/lib/utils/proposal"
 
 interface ProposalDetailProps {
   proposal: SputnikProposal
@@ -145,9 +146,7 @@ export function ProposalDetail({
                 {proposal.id}
               </Badge>
               <CardTitle className="text-xl sm:text-2xl truncate">
-                {isVoteProposal
-                  ? proposal.description.split("\n")[0].trim().slice(0, 100) || "Vote Proposal"
-                  : kindLabel}
+                {isVoteProposal ? extractProposalTitle(proposal.description) : kindLabel}
               </CardTitle>
             </div>
             <div className="flex items-center gap-2 shrink-0">

@@ -28,7 +28,7 @@
   --vote-for-bg-light: oklch(0.962 0.044 156.743); /* green-100 */
   --vote-against: oklch(0.577 0.245 27.325); /* red-600 */
   --vote-against-bg: oklch(0.637 0.237 25.331); /* red-500 */
-  --vote-against-bg-light: oklch(0.898 0.061 18.334); /* red-200 */
+  --vote-against-bg-light: oklch(0.704 0.191 22.216); /* red-400 - more visible */
   --vote-remove: oklch(0.705 0.213 47.604); /* orange-500 */
 
   /* Status colors */
@@ -64,7 +64,7 @@
   --vote-for-bg-light: oklch(0.266 0.065 152.934); /* green-950 */
   --vote-against: oklch(0.789 0.193 21.952); /* red-400 - brighter for dark bg */
   --vote-against-bg: oklch(0.444 0.177 26.899); /* red-800 - softer for dark mode */
-  --vote-against-bg-light: oklch(0.258 0.092 26.042); /* red-950 */
+  --vote-against-bg-light: oklch(0.396 0.141 25.723); /* red-900 - more visible */
   --vote-remove: oklch(0.789 0.16 70.08); /* amber-400 */
 
   /* Status colors - dark mode */

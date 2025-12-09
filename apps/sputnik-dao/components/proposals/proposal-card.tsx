@@ -4,6 +4,7 @@ import { type SputnikProposal, getProposalKindLabel } from "@near-citizens/share
 import { ProposalStatusBadge } from "./proposal-status-badge"
 import { VoteProgress } from "./vote-progress"
 import { User, Hash } from "lucide-react"
+import { extractProposalTitle } from "@/lib/utils/proposal"
 
 interface ProposalCardProps {
   proposal: SputnikProposal
@@ -12,13 +13,6 @@ interface ProposalCardProps {
 export function ProposalCard({ proposal }: ProposalCardProps) {
   const kindLabel = getProposalKindLabel(proposal.kind)
   const isVoteProposal = proposal.kind === "Vote"
-
-  // Extract title from description (first line or first 80 chars)
-  const getTitle = () => {
-    const firstLine = proposal.description.split("\n")[0].trim()
-    if (firstLine.length <= 80) return firstLine
-    return firstLine.slice(0, 80) + "..."
-  }
 
   return (
     <Link href={`/proposals/${proposal.id}`}>
@@ -31,7 +25,9 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
                 <Hash className="h-3 w-3" />
                 {proposal.id}
               </Badge>
-              <CardTitle className="text-lg line-clamp-2">{isVoteProposal ? getTitle() : kindLabel}</CardTitle>
+              <CardTitle className="text-lg line-clamp-2">
+                {isVoteProposal ? extractProposalTitle(proposal.description) : kindLabel}
+              </CardTitle>
             </div>
             <ProposalStatusBadge status={proposal.status} />
           </div>
