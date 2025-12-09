@@ -17,6 +17,7 @@ import {
   type TransformedPolicy,
   getProposalKindLabel,
   PROPOSAL_STATUS_LABELS,
+  APP_URLS,
 } from "@near-citizens/shared"
 import { ProposalStatusBadge } from "./proposal-status-badge"
 import { VoteProgress } from "./vote-progress"
@@ -319,7 +320,7 @@ export function ProposalDetail({
                 <p className="text-sm text-muted-foreground text-center">
                   Only verified citizens can vote.{" "}
                   <a
-                    href="https://citizenshouse.vercel.app/"
+                    href={APP_URLS.verification}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary font-medium hover:underline"

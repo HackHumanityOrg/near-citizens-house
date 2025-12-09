@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { createProposalRequestSchema, type CreateProposalRequest } from "@near-citizens/shared"
+import { createProposalRequestSchema, type CreateProposalRequest, APP_URLS } from "@near-citizens/shared"
 import {
   Button,
   Card,
@@ -82,7 +82,12 @@ export function CreateProposalForm({
             <div>
               <p className="text-sm text-muted-foreground">
                 Please complete identity verification first. Visit the{" "}
-                <a href="/" className="text-primary hover:underline">
+                <a
+                  href={APP_URLS.verification}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
                   Verified Accounts
                 </a>{" "}
                 app to verify your passport.

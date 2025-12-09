@@ -1,6 +1,6 @@
 "use server"
 
-import { bridgeContract, type BridgeInfo } from "@near-citizens/shared"
+import { bridgeContract, verificationDb, type BridgeInfo } from "@near-citizens/shared"
 
 /**
  * Get bridge contract configuration
@@ -35,4 +35,16 @@ export async function getVerifiedAccountsContract(): Promise<string> {
  */
 export async function getCitizenRole(): Promise<string> {
   return bridgeContract.getCitizenRole()
+}
+
+/**
+ * Check if an account is verified
+ */
+export async function checkVerificationStatus(accountId: string): Promise<boolean> {
+  try {
+    return await verificationDb.isAccountVerified(accountId)
+  } catch (error) {
+    console.error("[Server Action] Error checking verification:", error)
+    return false
+  }
 }

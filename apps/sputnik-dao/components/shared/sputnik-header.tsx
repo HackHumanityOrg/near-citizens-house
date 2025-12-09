@@ -1,14 +1,35 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button, ThemeToggle } from "@near-citizens/ui"
-import { useNearWallet } from "@near-citizens/shared"
+import { useNearWallet, APP_URLS } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
-import { LogIn, LogOut, Loader2 } from "lucide-react"
+import { LogIn, LogOut, Loader2, ShieldCheck } from "lucide-react"
+import { checkVerificationStatus } from "@/lib/actions/bridge"
 
 export function SputnikHeader() {
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
+  const [isVerified, setIsVerified] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    async function checkStatus() {
+      if (!accountId) {
+        setIsVerified(null)
+        return
+      }
+
+      try {
+        const verified = await checkVerificationStatus(accountId)
+        setIsVerified(verified)
+      } catch {
+        setIsVerified(false)
+      }
+    }
+
+    checkStatus()
+  }, [accountId])
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -31,9 +52,21 @@ export function SputnikHeader() {
             </nav>
           </div>
 
-          {/* Right Side: Theme Toggle & Wallet */}
+          {/* Right Side: Verification > Wallet > Theme Toggle */}
           <div className="flex items-center gap-4">
-            <ThemeToggle />
+            {/* Get Verified button - shown when connected but not verified */}
+            {isConnected && isVerified === false && (
+              <a href={APP_URLS.verification} target="_blank" rel="noopener noreferrer">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-md"
+                >
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Get Verified
+                </Button>
+              </a>
+            )}
 
             {isLoading ? (
               <Button variant="outline" disabled>
@@ -41,22 +74,18 @@ export function SputnikHeader() {
                 Connecting...
               </Button>
             ) : isConnected ? (
-              <div className="flex items-center gap-2">
-                {/* Account ID display */}
-                <span className="text-sm text-muted-foreground hidden sm:inline">{accountId?.split(".")[0]}...</span>
-
-                {/* Disconnect button */}
-                <Button variant="outline" size="sm" onClick={disconnect}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Disconnect
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={disconnect}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Disconnect
+              </Button>
             ) : (
               <Button onClick={connect}>
                 <LogIn className="mr-2 h-4 w-4" />
                 Connect Wallet
               </Button>
             )}
+
+            <ThemeToggle />
           </div>
         </div>
       </div>

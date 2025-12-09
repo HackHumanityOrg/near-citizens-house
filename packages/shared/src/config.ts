@@ -46,6 +46,12 @@ export const NEAR_CONFIG = {
   },
 }
 
+// App URLs (for cross-app navigation)
+export const APP_URLS = {
+  verification: process.env.NEXT_PUBLIC_VERIFICATION_APP_URL || "https://verification.houseofstake.dev",
+  citizensHouse: process.env.NEXT_PUBLIC_CITIZENS_HOUSE_APP_URL || "https://citizenshouse.houseofstake.dev",
+}
+
 // Self.xyz Configuration
 const DISCLOSURE_CONFIG = {
   minimumAge: 18,
@@ -57,13 +63,7 @@ export const SELF_CONFIG = {
   appName: "NEAR Citizens House",
   scope: "near-citizens-house",
   get endpoint() {
-    if (process.env.NEXT_PUBLIC_SELF_ENDPOINT) {
-      return process.env.NEXT_PUBLIC_SELF_ENDPOINT
-    }
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/api/verify`
-    }
-    throw new Error("NEXT_PUBLIC_SELF_ENDPOINT must be set for server-side rendering")
+    return `${APP_URLS.verification}/api/verify`
   },
   endpointType: "https" as const,
   logoBase64: "/self-logo.png",
