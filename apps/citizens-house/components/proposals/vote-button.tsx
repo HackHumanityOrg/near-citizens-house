@@ -67,7 +67,7 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
           onClick={() => handleVote("Yes")}
           disabled={disabled || isLoading}
           variant="default"
-          className="flex-1 bg-vote-for-bg hover:bg-vote-for-hover text-black"
+          className="flex-1 bg-vote-for-bg hover:bg-vote-for-hover text-white dark:text-black"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
           Yes
@@ -75,8 +75,8 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
         <Button
           onClick={() => handleVote("No")}
           disabled={disabled || isLoading}
-          variant="destructive"
-          className="flex-1"
+          variant="default"
+          className="flex-1 bg-vote-against-bg hover:bg-vote-against text-white dark:text-black"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
           No
