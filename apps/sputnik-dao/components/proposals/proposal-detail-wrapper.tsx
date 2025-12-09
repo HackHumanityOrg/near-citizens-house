@@ -6,12 +6,27 @@ import { ProposalDetail } from "./proposal-detail"
 import { getUserVote, getProposal } from "@/lib/actions/sputnik-dao"
 import { Loader2 } from "lucide-react"
 
+/** Check if the account is a citizen (member of the citizen role in the DAO policy) */
+function isCitizen(policy: TransformedPolicy, accountId: string | null | undefined): boolean {
+  if (!accountId) return false
+
+  const citizenRole = policy.roles.find((r) => r.name === "citizen")
+  if (!citizenRole) return false
+
+  if (typeof citizenRole.kind === "object" && "Group" in citizenRole.kind) {
+    return citizenRole.kind.Group.includes(accountId)
+  }
+
+  return false
+}
+
 interface ProposalDetailWrapperProps {
   initialProposal: SputnikProposal
   policy: TransformedPolicy
+  serverTime: number
 }
 
-export function ProposalDetailWrapper({ initialProposal, policy }: ProposalDetailWrapperProps) {
+export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: ProposalDetailWrapperProps) {
   const { accountId, isConnected } = useNearWallet()
   const [proposal, setProposal] = useState<SputnikProposal>(initialProposal)
   const [userVote, setUserVote] = useState<SputnikVote | null>(null)
@@ -56,17 +71,10 @@ export function ProposalDetailWrapper({ initialProposal, policy }: ProposalDetai
     }
   }, [proposal.id, accountId])
 
-  // Check if user can vote (for now, assume they can if connected and proposal is InProgress)
-  // In a real implementation, you'd check the DAO policy to see if user has voting permissions
-  const canVote = isConnected && proposal.status === "InProgress" && !userVote
-
-  if (isLoadingVote) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
+  // Check if user can vote: must be connected, a citizen, proposal in progress, and not already voted
+  // Disable voting while loading to prevent premature votes
+  const canVote =
+    isConnected && !isLoadingVote && isCitizen(policy, accountId) && proposal.status === "InProgress" && !userVote
 
   return (
     <ProposalDetail
@@ -76,6 +84,7 @@ export function ProposalDetailWrapper({ initialProposal, policy }: ProposalDetai
       canVote={canVote}
       isConnected={isConnected}
       onVoteSuccess={handleVoteSuccess}
+      serverTime={serverTime}
     />
   )
 }

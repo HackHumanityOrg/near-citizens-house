@@ -2,6 +2,7 @@ import js from "@eslint/js"
 import nextPlugin from "@next/eslint-plugin-next"
 import prettierConfig from "eslint-config-prettier"
 import prettierPlugin from "eslint-plugin-prettier"
+import reactHooksPlugin from "eslint-plugin-react-hooks"
 import tseslint from "typescript-eslint"
 
 const eslintConfig = [
@@ -23,6 +24,9 @@ const eslintConfig = [
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  // React Hooks plugin - flat config recommended preset with all React Compiler rules
+  // See: https://react.dev/reference/eslint-plugin-react-hooks
+  reactHooksPlugin.configs.flat.recommended,
   {
     files: ["**/*.{js,mjs,ts,tsx}"],
     plugins: {

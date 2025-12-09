@@ -13,7 +13,7 @@ import {
   AlertDescription,
 } from "@near-citizens/ui"
 import { PassportQrScanner } from "./passport-qr-scanner"
-import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle } from "lucide-react"
+import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, LogOut } from "lucide-react"
 import type { NearSignatureData } from "@near-citizens/shared/types"
 import type { VerificationStep } from "@/types/ui"
 import { CONSTANTS, ERROR_MESSAGES } from "@near-citizens/shared/config"
@@ -31,12 +31,17 @@ export function IdentityVerificationFlow() {
 
   // Check if wallet is already verified when connected
   useEffect(() => {
+    let cancelled = false
+
     async function checkExistingVerification() {
       if (!accountId || !isConnected) return
 
       setIsCheckingVerification(true)
       try {
         const isVerified = await isAccountVerified(accountId)
+
+        // Don't update state if effect was cancelled (e.g., user disconnected)
+        if (cancelled) return
 
         if (isVerified) {
           // Already verified - show success
@@ -56,18 +61,48 @@ export function IdentityVerificationFlow() {
           setCurrentStep(2)
         }
       } catch (error) {
+        if (cancelled) return
         console.error("Error checking verification status:", error)
         // On error, just proceed to step 2
         if (currentStep === 1) {
           setCurrentStep(2)
         }
       } finally {
-        setIsCheckingVerification(false)
+        if (!cancelled) {
+          setIsCheckingVerification(false)
+        }
       }
     }
 
     checkExistingVerification()
+
+    return () => {
+      cancelled = true
+    }
   }, [accountId, isConnected, currentStep])
+
+  // Reset flow when wallet disconnects externally (not via our disconnect button)
+  useEffect(() => {
+    if (!isConnected && currentStep > 1) {
+      // Wallet disconnected while in flow - reset everything
+      setNearSignature(null)
+      setSignError(null)
+      setVerificationError(null)
+      setSelfVerificationComplete(false)
+      setCurrentStep(1)
+    }
+  }, [isConnected, currentStep])
+
+  // Invalidate signature if user connects a different wallet
+  useEffect(() => {
+    if (nearSignature && accountId && nearSignature.accountId !== accountId) {
+      // Different wallet connected - signature is invalid, go back to sign step
+      setNearSignature(null)
+      setVerificationError(null)
+      setSelfVerificationComplete(false)
+      setCurrentStep(2)
+    }
+  }, [accountId, nearSignature])
 
   const steps: VerificationStep[] = [
     {
@@ -129,6 +164,7 @@ export function IdentityVerificationFlow() {
   const handleStartOver = () => {
     disconnect()
     setNearSignature(null)
+    setSignError(null)
     setVerificationError(null)
     setSelfVerificationComplete(false)
     setCurrentStep(1)
@@ -249,19 +285,9 @@ export function IdentityVerificationFlow() {
                 role="status"
                 aria-label="Connected wallet information"
               >
-                <div className="flex items-center justify-between">
-                  <span id="wallet-label" className="text-sm font-medium">
-                    Connected Wallet
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto p-0 text-muted-foreground"
-                    onClick={handleStartOver}
-                  >
-                    Disconnect
-                  </Button>
-                </div>
+                <span id="wallet-label" className="text-sm font-medium">
+                  Connected Wallet
+                </span>
                 <div className="text-sm text-muted-foreground font-mono break-all" aria-labelledby="wallet-label">
                   {accountId}
                 </div>
@@ -297,6 +323,11 @@ export function IdentityVerificationFlow() {
               <p className="text-xs text-muted-foreground text-center">
                 This will open your wallet to sign a message. No transaction fees required.
               </p>
+
+              <Button onClick={handleStartOver} variant="outline" size="sm" className="w-full">
+                <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+                Disconnect Wallet
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -327,8 +358,9 @@ export function IdentityVerificationFlow() {
                       <FileKey className="h-5 w-5 mr-2" aria-hidden="true" />
                       Sign Again
                     </Button>
-                    <Button onClick={handleStartOver} variant="ghost" size="sm" className="w-full">
-                      Start Over with Different Wallet
+                    <Button onClick={handleStartOver} variant="outline" size="sm" className="w-full">
+                      <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+                      Disconnect Wallet
                     </Button>
                   </div>
                 </CardContent>
@@ -338,6 +370,7 @@ export function IdentityVerificationFlow() {
                 nearSignature={nearSignature}
                 onSuccess={handleVerificationSuccess}
                 onError={handleVerificationError}
+                onDisconnect={handleStartOver}
               />
             ) : (
               <Card role="status" aria-labelledby="success-title">
@@ -369,6 +402,11 @@ export function IdentityVerificationFlow() {
                     Your verified identity is now securely linked to your NEAR wallet. You can use this verification for
                     decentralized applications that require identity proof.
                   </p>
+
+                  <Button onClick={handleStartOver} variant="outline" size="sm" className="w-full">
+                    <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Disconnect Wallet
+                  </Button>
                 </CardContent>
               </Card>
             )}

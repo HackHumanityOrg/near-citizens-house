@@ -120,7 +120,7 @@ function CreateProposalContent() {
 
 export default function CreateProposalPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen bg-linear-to-b from-background to-background/80">
       <GovernanceHeader />
       <CreateProposalContent />
     </div>

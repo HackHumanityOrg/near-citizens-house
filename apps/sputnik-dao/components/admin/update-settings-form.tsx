@@ -63,7 +63,7 @@ export function UpdateSettingsForm() {
       }
     }
     fetchInfo()
-  }, [])
+  }, [backendWalletForm, citizenRoleForm])
 
   const handleUpdateBackendWallet = async (data: UpdateBackendWalletData) => {
     clearError()
@@ -161,7 +161,7 @@ export function UpdateSettingsForm() {
             Update Citizen Role
           </CardTitle>
           <CardDescription>
-            Change the role name used for citizens in SputnikDAO. Current role:{" "}
+            Change the role name used for citizens. Current role:{" "}
             <code className="bg-muted px-1 rounded">{info?.citizenRole}</code>
           </CardDescription>
         </CardHeader>

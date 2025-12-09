@@ -49,6 +49,7 @@ export function CreateProposalForm() {
     },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form's watch() is incompatible with React Compiler memoization, this is expected
   const description = watch("description")
   const charCount = description?.length || 0
 
@@ -96,10 +97,7 @@ export function CreateProposalForm() {
           <FileText className="h-5 w-5" />
           Create Vote Proposal
         </CardTitle>
-        <CardDescription>
-          Create a text-only governance proposal for citizens to vote on. This creates a &quot;Vote&quot; type proposal
-          on SputnikDAO.
-        </CardDescription>
+        <CardDescription>Create a text-only governance proposal for citizens to vote on.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

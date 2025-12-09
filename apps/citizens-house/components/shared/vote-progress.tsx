@@ -40,7 +40,7 @@ export function VoteProgress({
               <span className="text-muted-foreground">Quorum Progress</span>
               <span className="font-medium">
                 {quorumVotes} / {quorumRequired} votes
-                {quorumProgress >= 100 && <span className="ml-1 text-green-600">(met)</span>}
+                {quorumProgress >= 100 && <span className="ml-1 text-vote-for">(met)</span>}
               </span>
             </div>
           )}
@@ -68,8 +68,8 @@ export function VoteProgress({
         <div className="flex h-2 overflow-hidden rounded">
           {quorumVotes > 0 ? (
             <>
-              <div className="bg-green-500 transition-all" style={{ width: `${yesPercentage}%` }} />
-              <div className="bg-red-500 transition-all" style={{ width: `${noPercentage}%` }} />
+              <div className="bg-vote-for-bg transition-all" style={{ width: `${yesPercentage}%` }} />
+              <div className="bg-vote-against-bg transition-all" style={{ width: `${noPercentage}%` }} />
             </>
           ) : (
             <div className="bg-muted w-full" />
@@ -77,8 +77,8 @@ export function VoteProgress({
         </div>
         {showLabels && quorumVotes > 0 && (
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span className="text-green-600">Yes: {yesPercentage.toFixed(1)}%</span>
-            <span className="text-red-600">No: {noPercentage.toFixed(1)}%</span>
+            <span className="text-vote-for">Yes: {yesPercentage.toFixed(1)}%</span>
+            <span className="text-vote-against">No: {noPercentage.toFixed(1)}%</span>
           </div>
         )}
         {showLabels && abstainVotes > 0 && (

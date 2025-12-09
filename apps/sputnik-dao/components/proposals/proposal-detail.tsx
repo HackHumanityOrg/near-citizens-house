@@ -1,3 +1,5 @@
+"use client"
+
 import {
   Card,
   CardHeader,
@@ -14,6 +16,7 @@ import {
   type SputnikVote,
   type TransformedPolicy,
   getProposalKindLabel,
+  PROPOSAL_STATUS_LABELS,
 } from "@near-citizens/shared"
 import { ProposalStatusBadge } from "./proposal-status-badge"
 import { VoteProgress } from "./vote-progress"
@@ -28,6 +31,7 @@ interface ProposalDetailProps {
   canVote: boolean
   isConnected: boolean
   onVoteSuccess: () => void
+  serverTime: number
 }
 
 /**
@@ -84,17 +88,17 @@ export function ProposalDetail({
   canVote,
   isConnected,
   onVoteSuccess,
+  serverTime,
 }: ProposalDetailProps) {
   const kindLabel = getProposalKindLabel(proposal.kind)
   const submittedDate = new Date(proposal.submissionTime).toLocaleDateString()
   const isInProgress = proposal.status === "InProgress"
   const isVoteProposal = proposal.kind === "Vote"
 
-  // Calculate expiration time
+  // Calculate expiration time using server time for consistent SSR
   const expirationTime = proposal.submissionTime + policy.proposalPeriodMs
-  const now = Date.now()
-  const isExpired = now > expirationTime
-  const timeRemaining = expirationTime - now
+  const isExpired = serverTime > expirationTime
+  const timeRemaining = expirationTime - serverTime
 
   // Format time remaining
   const formatTimeRemaining = (ms: number) => {
@@ -128,99 +132,47 @@ export function ProposalDetail({
   const canFinalize = proposal.status === "InProgress" && isExpired
 
   return (
-    <div className="space-y-6">
-      {/* Main Proposal Card */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <ProposalStatusBadge status={proposal.status} />
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Hash className="h-3 w-3" />
-                  {proposal.id}
-                </Badge>
-                {!isVoteProposal && <Badge variant="secondary">{kindLabel}</Badge>}
-              </div>
-              <CardTitle className="text-2xl mb-2">{isVoteProposal ? "Vote Proposal" : kindLabel}</CardTitle>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                <span className="flex items-center gap-1">
-                  <User className="h-4 w-4" />
-                  {proposal.proposer}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {submittedDate}
-                </span>
-                {isInProgress && (
-                  <span
-                    className={`flex items-center gap-1 font-medium ${isExpired ? "text-destructive" : timeRemaining < 3600000 ? "text-orange-500" : "text-blue-500"}`}
-                  >
-                    <Timer className="h-4 w-4" />
-                    {formatTimeRemaining(timeRemaining)}
-                  </span>
-                )}
-              </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      {/* Main Proposal Card - 2/3 width on left */}
+      <Card className="lg:col-span-2 h-fit">
+        <CardHeader className="pb-4 space-y-2">
+          {/* Top row: #ID + Title (left), Status badge (right) */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <Badge variant="outline" className="flex items-center gap-1 shrink-0">
+                <Hash className="h-3 w-3" />
+                {proposal.id}
+              </Badge>
+              <CardTitle className="text-xl sm:text-2xl truncate">
+                {isVoteProposal
+                  ? proposal.description.split("\n")[0].trim().slice(0, 100) || "Vote Proposal"
+                  : kindLabel}
+              </CardTitle>
             </div>
-
-            {/* Voting Stats - Right side on desktop */}
-            {votingReqs && (
-              <TooltipProvider>
-                <div className="flex gap-4 items-center">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="text-center cursor-help">
-                        <div className="text-2xl font-bold text-green-600">{proposal.totalApprove}</div>
-                        <div className="text-xs text-muted-foreground">Approvals</div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Number of citizens who voted to approve this proposal</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <div className="text-muted-foreground">/</div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="text-center cursor-help">
-                        <div className="text-2xl font-bold">{votingReqs.effectiveThreshold}</div>
-                        <div className="text-xs text-muted-foreground">Required</div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-left">
-                      <p className="font-medium mb-1">Votes required to pass</p>
-                      <p className="text-xs opacity-90">
-                        Calculated as max(quorum, threshold).
-                        {votingReqs.thresholdRatio && (
-                          <>
-                            {" "}
-                            Threshold is {votingReqs.thresholdRatio[0]}/{votingReqs.thresholdRatio[1]} (
-                            {Math.round((votingReqs.thresholdRatio[0] / votingReqs.thresholdRatio[1]) * 100)}%) of{" "}
-                            {votingReqs.totalMembers} citizens = {votingReqs.thresholdVotes} votes.
-                          </>
-                        )}
-                        {votingReqs.quorum > 0 && (
-                          <>
-                            {" "}
-                            Quorum is {votingReqs.quorum} (7% of {votingReqs.totalMembers} citizens, rounded up).
-                          </>
-                        )}{" "}
-                        The higher value ({votingReqs.effectiveThreshold}) applies.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="text-center pl-2 border-l cursor-help">
-                        <div className="text-2xl font-bold">{votingReqs.totalMembers}</div>
-                        <div className="text-xs text-muted-foreground">Citizens</div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Total verified citizens who can vote on proposals</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TooltipProvider>
+            <div className="flex items-center gap-2 shrink-0">
+              {!isVoteProposal && <Badge variant="secondary">{kindLabel}</Badge>}
+              <ProposalStatusBadge status={proposal.status} />
+            </div>
+          </div>
+          {/* Bottom row: Author + Date (left), Time remaining (right) */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+              <span className="flex items-center gap-1 truncate">
+                <User className="h-4 w-4 shrink-0" />
+                <span className="truncate">{proposal.proposer}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4 shrink-0" />
+                {submittedDate}
+              </span>
+            </div>
+            {isInProgress && (
+              <span
+                className={`flex items-center gap-1 font-medium ${isExpired ? "text-destructive" : timeRemaining < 3600000 ? "text-status-warning" : "text-status-info-text"}`}
+              >
+                <Timer className="h-4 w-4" />
+                {formatTimeRemaining(timeRemaining)}
+              </span>
             )}
           </div>
         </CardHeader>
@@ -266,86 +218,161 @@ export function ProposalDetail({
         </CardContent>
       </Card>
 
-      {/* Voting Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Voting</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Vote Progress */}
-          <VoteProgress
-            totalApprove={proposal.totalApprove}
-            totalReject={proposal.totalReject}
-            totalRemove={proposal.totalRemove}
-            totalVotes={proposal.totalVotes}
-            showLabels={true}
-          />
-
-          {/* Vote Button or Status */}
-          <div className="pt-4 border-t">
-            {!isConnected ? (
-              <p className="text-sm text-muted-foreground">Connect your wallet to vote</p>
-            ) : !isInProgress ? (
-              <p className="text-sm text-muted-foreground">Voting has ended. Final status: {proposal.status}</p>
-            ) : canFinalize ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-orange-500">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span>This proposal has expired and needs to be finalized.</span>
-                </div>
-                <FinalizeButton
-                  proposalId={proposal.id}
-                  proposalKind={proposal.kind}
-                  onFinalizeSuccess={onVoteSuccess}
-                />
-              </div>
-            ) : !canVote && !userVote ? (
-              <p className="text-sm text-muted-foreground">
-                You don&apos;t have permission to vote on this proposal. Only members with the appropriate role can
-                vote.
-              </p>
-            ) : (
-              <VoteButton
-                proposalId={proposal.id}
-                proposalKind={proposal.kind}
-                currentVote={userVote}
-                disabled={!canVote}
-                onVoteSuccess={onVoteSuccess}
-              />
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Vote Details Card */}
-      {proposal.totalVotes > 0 && (
+      {/* Right column - 1/3 width: Voting + Vote Details stacked */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* Voting Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Vote Details</CardTitle>
+            <div className="flex items-start justify-between gap-4">
+              <CardTitle className="text-lg">{isInProgress ? "Cast your Vote" : "Results"}</CardTitle>
+              {/* Voting Stats - top right */}
+              {votingReqs && (
+                <TooltipProvider>
+                  <div className="flex gap-3 items-center">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="text-center cursor-help">
+                          <div className="text-2xl font-bold text-vote-for">{proposal.totalApprove}</div>
+                          <div className="text-xs text-muted-foreground">For</div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Number of citizens who voted for this proposal</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <div className="text-muted-foreground">/</div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="text-center cursor-help">
+                          <div className="text-2xl font-bold">{votingReqs.effectiveThreshold}</div>
+                          <div className="text-xs text-muted-foreground">Quorum</div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-left">
+                        <p className="font-medium mb-1">Votes required to pass</p>
+                        <p className="text-xs opacity-90">
+                          Calculated as max(quorum, threshold).
+                          {votingReqs.thresholdRatio && (
+                            <>
+                              {" "}
+                              Threshold is {votingReqs.thresholdRatio[0]}/{votingReqs.thresholdRatio[1]} (
+                              {Math.round((votingReqs.thresholdRatio[0] / votingReqs.thresholdRatio[1]) * 100)}%) of{" "}
+                              {votingReqs.totalMembers} citizens = {votingReqs.thresholdVotes} votes.
+                            </>
+                          )}
+                          {votingReqs.quorum > 0 && (
+                            <>
+                              {" "}
+                              Quorum is {votingReqs.quorum} (7% of {votingReqs.totalMembers} citizens, rounded up).
+                            </>
+                          )}{" "}
+                          The higher value ({votingReqs.effectiveThreshold}) applies.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="text-center pl-2 border-l cursor-help">
+                          <div className="text-2xl font-bold">{votingReqs.totalMembers}</div>
+                          <div className="text-xs text-muted-foreground">Citizens</div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Total verified citizens who can vote on proposals</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
+              )}
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {Object.entries(proposal.votes).map(([accountId, vote]) => (
-                <div key={accountId} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                  <span className="text-muted-foreground">{accountId}</span>
-                  <Badge
-                    variant="outline"
-                    className={
-                      vote === "Approve"
-                        ? "text-green-600 border-green-600"
-                        : vote === "Reject"
-                          ? "text-red-600 border-red-600"
-                          : "text-orange-600 border-orange-600"
-                    }
-                  >
-                    {vote}
-                  </Badge>
+          <CardContent className="space-y-4">
+            {/* Vote Progress */}
+            <VoteProgress
+              totalApprove={proposal.totalApprove}
+              totalReject={proposal.totalReject}
+              totalRemove={proposal.totalRemove}
+              showLabels={true}
+            />
+
+            {/* Vote Button or Status */}
+            <div className="pt-4 border-t">
+              {!isConnected ? (
+                <p className="text-sm text-muted-foreground text-center">Connect your wallet to vote</p>
+              ) : !isInProgress ? (
+                <p className="text-sm text-muted-foreground text-center">
+                  Voting has ended. Final status: {PROPOSAL_STATUS_LABELS[proposal.status]}
+                </p>
+              ) : canFinalize ? (
+                <div className="space-y-3 text-center">
+                  <div className="flex items-center justify-center gap-2 text-sm text-status-warning">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>This proposal has expired and needs to be finalized.</span>
+                  </div>
+                  <FinalizeButton
+                    proposalId={proposal.id}
+                    proposalKind={proposal.kind}
+                    onFinalizeSuccess={onVoteSuccess}
+                  />
                 </div>
-              ))}
+              ) : !canVote && !userVote ? (
+                <p className="text-sm text-muted-foreground text-center">
+                  Only verified citizens can vote.{" "}
+                  <a
+                    href="https://citizenshouse.vercel.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary font-medium hover:underline"
+                  >
+                    Get verified →
+                  </a>
+                </p>
+              ) : (
+                <VoteButton
+                  proposalId={proposal.id}
+                  proposalKind={proposal.kind}
+                  currentVote={userVote}
+                  disabled={!canVote}
+                  onVoteSuccess={onVoteSuccess}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Votes Card */}
+        {proposal.totalVotes > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Votes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {Object.entries(proposal.votes).map(([accountId, vote]) => (
+                  <div
+                    key={accountId}
+                    className="flex items-center justify-between text-sm py-1 border-b last:border-0"
+                  >
+                    <span className="text-muted-foreground">{accountId}</span>
+                    <Badge
+                      variant="outline"
+                      className={
+                        vote === "Approve"
+                          ? "text-vote-for border-vote-for"
+                          : vote === "Reject"
+                            ? "text-vote-against border-vote-against"
+                            : "text-vote-remove border-vote-remove"
+                      }
+                    >
+                      {vote === "Approve" ? "For" : vote === "Reject" ? "Against" : vote}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

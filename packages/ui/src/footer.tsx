@@ -1,25 +1,45 @@
 export function Footer() {
   return (
     <footer className="sticky bottom-0 bg-background border-t border-border/50 py-2 mt-8">
-      <div className="flex items-center justify-end gap-4 px-6">
+      <div className="flex items-center justify-center sm:justify-end gap-2 sm:gap-4 px-4 sm:px-6">
+        {/* Mobile: shortened text */}
         <a
           href="https://hackhumanity.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap sm:hidden"
+        >
+          HackHumanity
+        </a>
+        {/* Desktop: full text */}
+        <a
+          href="https://hackhumanity.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
         >
           Created by HackHumanity
         </a>
-        <span className="text-muted-foreground mx-1">·</span>
+        <span className="text-muted-foreground text-xs">·</span>
+        {/* Mobile: shortened text */}
         <a
           href="https://self.xyz"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap sm:hidden"
+        >
+          Self.xyz
+        </a>
+        {/* Desktop: full text */}
+        <a
+          href="https://self.xyz"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
         >
           Powered by Self.xyz
         </a>
-        <span className="text-muted-foreground mx-1">·</span>
+        <span className="text-muted-foreground text-xs">·</span>
         <a
           href="https://github.com/HackHumanityOrg/near-citizens-house"
           target="_blank"

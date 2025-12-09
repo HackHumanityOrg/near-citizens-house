@@ -4,17 +4,10 @@ interface VoteProgressProps {
   totalApprove: number
   totalReject: number
   totalRemove: number
-  totalVotes: number
   showLabels?: boolean
 }
 
-export function VoteProgress({
-  totalApprove,
-  totalReject,
-  totalRemove,
-  totalVotes,
-  showLabels = true,
-}: VoteProgressProps) {
+export function VoteProgress({ totalApprove, totalReject, totalRemove, showLabels = true }: VoteProgressProps) {
   // Calculate percentages (only from approve/reject for main bar)
   const approveRejectTotal = totalApprove + totalReject
   const approvePercent = approveRejectTotal > 0 ? (totalApprove / approveRejectTotal) * 100 : 50
@@ -22,35 +15,36 @@ export function VoteProgress({
   return (
     <div className="space-y-2">
       {/* Progress bar showing approve vs reject ratio */}
-      <div className="relative h-3 w-full rounded-full bg-red-200 dark:bg-red-900 overflow-hidden">
-        <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${approvePercent}%` }} />
-      </div>
+      {approveRejectTotal === 0 ? (
+        <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden" />
+      ) : (
+        <div className="relative h-3 w-full rounded-full bg-vote-against-bg-light overflow-hidden">
+          <div className="h-full bg-vote-for-bg transition-all duration-300" style={{ width: `${approvePercent}%` }} />
+        </div>
+      )}
 
       {/* Vote counts */}
       {showLabels && (
         <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-1 text-green-600">
+          <div className="flex items-center gap-1 text-vote-for">
             <ThumbsUp className="h-3 w-3" />
             <span>
-              {totalApprove} Approve
+              {totalApprove} For
               {approveRejectTotal > 0 && ` (${Math.round(approvePercent)}%)`}
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-muted-foreground">
-            {totalRemove > 0 && (
-              <div className="flex items-center gap-1 text-orange-500">
-                <Trash2 className="h-3 w-3" />
-                <span>{totalRemove} Remove</span>
-              </div>
-            )}
-            <span className="text-xs">Total: {totalVotes}</span>
-          </div>
+          {totalRemove > 0 && (
+            <div className="flex items-center gap-1 text-vote-remove">
+              <Trash2 className="h-3 w-3" />
+              <span>{totalRemove} Remove</span>
+            </div>
+          )}
 
-          <div className="flex items-center gap-1 text-red-600">
+          <div className="flex items-center gap-1 text-vote-against">
             <ThumbsDown className="h-3 w-3" />
             <span>
-              {totalReject} Reject
+              {totalReject} Against
               {approveRejectTotal > 0 && ` (${Math.round(100 - approvePercent)}%)`}
             </span>
           </div>

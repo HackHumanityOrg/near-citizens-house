@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { Button } from "@near-citizens/ui"
 import { ArrowLeft } from "lucide-react"
 import { governanceDb, verificationDb } from "@near-citizens/shared"
@@ -12,7 +13,7 @@ interface ProposalPageProps {
   }>
 }
 
-export async function generateMetadata({ params }: ProposalPageProps) {
+export async function generateMetadata({ params }: ProposalPageProps): Promise<Metadata> {
   const { id } = await params
   const proposalId = parseInt(id)
 
@@ -56,8 +57,12 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
   // Calculate quorum (10% of verified citizens)
   const quorumRequired = Math.ceil(totalCitizens * 0.1)
 
+  // Capture server time before rendering for consistent SSR
+  // eslint-disable-next-line react-hooks/purity -- Date.now() is safe in server components (runs once on server)
+  const serverTime = Date.now()
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen bg-linear-to-b from-background to-background/80">
       <GovernanceHeader />
 
       <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -77,6 +82,7 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
           voteCounts={voteCounts}
           quorumRequired={quorumRequired}
           totalCitizens={totalCitizens}
+          serverTime={serverTime}
         />
       </div>
     </div>

@@ -1,11 +1,12 @@
 import { Suspense } from "react"
+import type { Metadata } from "next"
 import { ProposalList } from "@/components/proposals/proposal-list"
 import { ProposalTabs } from "@/components/proposals/proposal-tabs"
 import { Loader2 } from "lucide-react"
 import { GovernanceHeader } from "@/components/shared/governance-header"
 import { type ProposalStatus } from "@near-citizens/shared"
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Proposals | Citizens House",
   description: "View and vote on community proposals",
 }
@@ -18,8 +19,12 @@ export default async function ProposalsPage({ searchParams }: ProposalsPageProps
   const params = await searchParams
   const statusFilter = params.status as ProposalStatus | undefined
 
+  // Capture server time before rendering for consistent SSR
+  // eslint-disable-next-line react-hooks/purity -- Date.now() is safe in server components (runs once on server)
+  const serverTime = Date.now()
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen bg-linear-to-b from-background to-background/80">
       <GovernanceHeader />
 
       <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -39,7 +44,7 @@ export default async function ProposalsPage({ searchParams }: ProposalsPageProps
             </div>
           }
         >
-          <ProposalList key={statusFilter || "all"} statusFilter={statusFilter} />
+          <ProposalList key={statusFilter || "all"} statusFilter={statusFilter} serverTime={serverTime} />
         </Suspense>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useNearWallet } from "@near-citizens/shared"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 
@@ -15,8 +15,15 @@ export interface UseIsAdminResult {
   error: string | null
 }
 
+// Module-level cache for backend wallet (static config, doesn't change)
+let cachedBackendWallet: string | null = null
+let cachePromise: Promise<string> | null = null
+
 /**
  * Hook to check if the current wallet is the admin (backend wallet)
+ *
+ * Caches the backend wallet address at module level to prevent
+ * re-fetching on every navigation (which causes Admin tab flash).
  *
  * Usage:
  * ```tsx
@@ -29,37 +36,45 @@ export interface UseIsAdminResult {
  */
 export function useIsAdmin(): UseIsAdminResult {
   const { accountId } = useNearWallet()
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [backendWallet, setBackendWallet] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [backendWallet, setBackendWallet] = useState<string | null>(cachedBackendWallet)
+  const [loading, setLoading] = useState(cachedBackendWallet === null)
   const [error, setError] = useState<string | null>(null)
+  const fetchedRef = useRef(false)
 
   useEffect(() => {
-    async function checkAdmin() {
-      setLoading(true)
-      setError(null)
+    // If we already have cached data, no need to fetch
+    if (cachedBackendWallet !== null) {
+      setBackendWallet(cachedBackendWallet)
+      setLoading(false)
+      return
+    }
 
+    // Prevent duplicate fetches in strict mode
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+
+    async function fetchBackendWallet() {
       try {
-        const info = await getBridgeInfo()
-        setBackendWallet(info.backendWallet)
-        setIsAdmin(accountId === info.backendWallet)
+        // Reuse existing promise if one is in flight
+        if (!cachePromise) {
+          cachePromise = getBridgeInfo().then((info) => info.backendWallet)
+        }
+        const wallet = await cachePromise
+        cachedBackendWallet = wallet
+        setBackendWallet(wallet)
       } catch (err) {
-        console.error("Error checking admin status:", err)
+        console.error("Error fetching backend wallet:", err)
         setError(err instanceof Error ? err.message : "Failed to check admin status")
-        setIsAdmin(false)
       } finally {
         setLoading(false)
       }
     }
 
-    if (accountId) {
-      checkAdmin()
-    } else {
-      setIsAdmin(false)
-      setBackendWallet(null)
-      setLoading(false)
-    }
-  }, [accountId])
+    fetchBackendWallet()
+  }, [])
+
+  // Compute isAdmin from cached backendWallet and current accountId
+  const isAdmin = backendWallet !== null && accountId === backendWallet
 
   return { isAdmin, backendWallet, loading, error }
 }

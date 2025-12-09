@@ -10,6 +10,7 @@ interface ProposalDetailWrapperProps {
   voteCounts: VoteCounts
   quorumRequired: number
   totalCitizens: number
+  serverTime: number
 }
 
 /**
@@ -21,6 +22,7 @@ export function ProposalDetailWrapper({
   voteCounts: initialVoteCounts,
   quorumRequired,
   totalCitizens,
+  serverTime,
 }: ProposalDetailWrapperProps) {
   const { accountId, isConnected, isLoading: walletLoading } = useNearWallet()
   const [userVote, setUserVote] = useState<Vote | null>(null)
@@ -96,6 +98,7 @@ export function ProposalDetailWrapper({
       userVote={userVote}
       canVote={canVote}
       onVoteSuccess={handleVoteSuccess}
+      serverTime={serverTime}
     />
   )
 }

@@ -169,9 +169,9 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                                       title="View verification details"
                                     >
                                       {isValid ? (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                        <CheckCircle className="h-4 w-4 text-vote-for" />
                                       ) : (
-                                        <XCircle className="h-4 w-4 text-red-500" />
+                                        <XCircle className="h-4 w-4 text-vote-against" />
                                       )}
                                       <span className="ml-1">Details</span>
                                     </Button>

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@near-citizens/ui"
-import { LayoutDashboard, UserPlus, FileText, Settings } from "lucide-react"
+import { LayoutDashboard, UserPlus, FileText, Settings, List } from "lucide-react"
 
 const navItems = [
   {
@@ -21,6 +21,11 @@ const navItems = [
     href: "/admin/proposals",
     label: "Create Proposal",
     icon: FileText,
+  },
+  {
+    href: "/admin/all-proposals",
+    label: "All Proposals",
+    icon: List,
   },
   {
     href: "/admin/settings",

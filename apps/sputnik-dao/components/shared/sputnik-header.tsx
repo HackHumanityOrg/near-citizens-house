@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Button, ThemeToggle } from "@near-citizens/ui"
 import { useNearWallet } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
-import { LogIn, LogOut, Settings, Loader2 } from "lucide-react"
+import { LogIn, LogOut, Loader2 } from "lucide-react"
 
 export function SputnikHeader() {
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
@@ -17,7 +17,7 @@ export function SputnikHeader() {
           {/* Logo & Navigation */}
           <div className="flex items-center gap-8">
             <Link href="/" className="font-bold text-xl">
-              SputnikDAO
+              Citizens House
             </Link>
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/proposals" className="text-sm font-medium hover:text-primary transition-colors">
@@ -42,15 +42,6 @@ export function SputnikHeader() {
               </Button>
             ) : isConnected ? (
               <div className="flex items-center gap-2">
-                {/* Admin indicator */}
-                {!adminLoading && isAdmin && (
-                  <Link href="/admin">
-                    <Button variant="ghost" size="icon" title="Admin Settings">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                )}
-
                 {/* Account ID display */}
                 <span className="text-sm text-muted-foreground hidden sm:inline">{accountId?.split(".")[0]}...</span>
 

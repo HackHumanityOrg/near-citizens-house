@@ -47,14 +47,14 @@ export function VoteButton({
         <div className="flex items-center gap-1 font-medium">
           {currentVote === "Approve" && (
             <>
-              <ThumbsUp className="h-4 w-4 text-green-600" />
-              <span className="text-green-600">Approve</span>
+              <ThumbsUp className="h-4 w-4 text-vote-for" />
+              <span className="text-vote-for">For</span>
             </>
           )}
           {currentVote === "Reject" && (
             <>
-              <ThumbsDown className="h-4 w-4 text-red-600" />
-              <span className="text-red-600">Reject</span>
+              <ThumbsDown className="h-4 w-4 text-vote-against" />
+              <span className="text-vote-against">Against</span>
             </>
           )}
         </div>
@@ -69,10 +69,10 @@ export function VoteButton({
           onClick={() => handleVote("VoteApprove")}
           disabled={disabled || isLoading}
           variant="default"
-          className="flex-1 bg-green-600 hover:bg-green-700"
+          className="flex-1 bg-vote-for-bg hover:bg-vote-for-hover text-black"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
-          Approve
+          For
         </Button>
         <Button
           onClick={() => handleVote("VoteReject")}
@@ -81,7 +81,7 @@ export function VoteButton({
           className="flex-1"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
-          Reject
+          Against
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

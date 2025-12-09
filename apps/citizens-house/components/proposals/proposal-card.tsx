@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@near-citizens/ui"
 import { type Proposal, type VoteCounts } from "@near-citizens/shared"
@@ -13,11 +11,12 @@ interface ProposalCardProps {
   voteCounts?: VoteCounts
   quorumRequired?: number
   totalCitizens?: number
+  serverTime: number
 }
 
-export function ProposalCard({ proposal, voteCounts, quorumRequired, totalCitizens }: ProposalCardProps) {
+export function ProposalCard({ proposal, voteCounts, quorumRequired, totalCitizens, serverTime }: ProposalCardProps) {
   const isActive = proposal.status === "Active"
-  const hasEnded = Date.now() >= proposal.votingEndsAt
+  const hasEnded = serverTime >= proposal.votingEndsAt
 
   return (
     <Link href={`/proposals/${proposal.id}`}>

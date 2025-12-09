@@ -81,8 +81,7 @@ export function AddMemberForm() {
           Add Verified Member
         </CardTitle>
         <CardDescription>
-          Add a verified account to the SputnikDAO as a citizen member. The account must be verified in the
-          verified-accounts contract first.
+          Add a verified account as a citizen member. The account must be verified first.
         </CardDescription>
       </CardHeader>
       <CardContent>

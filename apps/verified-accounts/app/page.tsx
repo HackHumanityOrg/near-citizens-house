@@ -7,7 +7,7 @@ import { IdentityVerificationFlow } from "@/components/home/identity-verificatio
 export default function HomePage() {
   return (
     <Providers>
-      <div className="min-h-screen overflow-clip bg-gradient-to-b from-background to-background/80">
+      <div className="min-h-screen overflow-clip bg-linear-to-b from-background to-background/80">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-7xl mx-auto space-y-4">
             <div className="fixed top-4 right-4 z-50">

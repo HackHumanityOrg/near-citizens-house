@@ -19,7 +19,7 @@ export default async function VerificationsPage({ searchParams }: Props) {
   const page = Math.min(requestedPage, Math.max(0, totalPages - 1))
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen bg-linear-to-b from-background to-background/80">
       <div className="fixed top-4 right-4 z-50">
         <ThemeToggle />
       </div>

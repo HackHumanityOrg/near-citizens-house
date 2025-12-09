@@ -1,12 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG } from "@near-citizens/shared/config"
 import type { NearSignatureData } from "@near-citizens/shared/types"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Alert, AlertDescription } from "@near-citizens/ui"
-import { Loader2, QrCode, CheckCircle2, AlertCircle } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Alert,
+  AlertDescription,
+  Button,
+} from "@near-citizens/ui"
+import { Loader2, QrCode, CheckCircle2, AlertCircle, LogOut } from "lucide-react"
 
 type SelfApp = ReturnType<SelfAppBuilder["build"]>
 
@@ -39,15 +48,28 @@ interface SelfVerificationProps {
   nearSignature: NearSignatureData
   onSuccess: () => void
   onError: (error: string) => void
+  onDisconnect: () => void
 }
 
-export function PassportQrScanner({ nearSignature, onSuccess, onError }: SelfVerificationProps) {
-  const [selfApp, setSelfApp] = useState<SelfApp | null>(null)
+export function PassportQrScanner({ nearSignature, onSuccess, onError, onDisconnect }: SelfVerificationProps) {
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",
   )
 
-  useEffect(() => {
+  // Generate stable session ID using useState with lazy initializer
+  // This runs once on mount and provides a stable ID across re-renders
+  const [sessionId] = useState(() => {
+    if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+      throw new Error(
+        "crypto.randomUUID() is not available. Please use a modern browser (Chrome 92+, Firefox 95+, Safari 15.4+) or Node.js 14.17+",
+      )
+    }
+    return crypto.randomUUID()
+  })
+
+  // Build SelfApp during render using useMemo instead of useEffect + setState
+  // This avoids the synchronous setState in effect anti-pattern
+  const selfApp = useMemo(() => {
     const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
 
     const userDefinedData = JSON.stringify({
@@ -60,14 +82,7 @@ export function PassportQrScanner({ nearSignature, onSuccess, onError }: SelfVer
 
     const endpoint = SELF_CONFIG.endpoint
 
-    if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
-      throw new Error(
-        "crypto.randomUUID() is not available. Please use a modern browser (Chrome 92+, Firefox 95+, Safari 15.4+) or Node.js 14.17+",
-      )
-    }
-    const sessionId = crypto.randomUUID()
-
-    const app = new SelfAppBuilder({
+    return new SelfAppBuilder({
       version: 2,
       appName: SELF_CONFIG.appName,
       scope: SELF_CONFIG.scope,
@@ -79,9 +94,7 @@ export function PassportQrScanner({ nearSignature, onSuccess, onError }: SelfVer
       userDefinedData: userDefinedData,
       disclosures: SELF_CONFIG.disclosures,
     }).build()
-
-    setSelfApp(app)
-  }, [nearSignature])
+  }, [nearSignature, sessionId])
 
   const handleSuccess = () => {
     setVerificationStatus("success")
@@ -91,14 +104,6 @@ export function PassportQrScanner({ nearSignature, onSuccess, onError }: SelfVer
   const handleError = () => {
     setVerificationStatus("error")
     onError("Verification failed. Please try again.")
-  }
-
-  if (!selfApp) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
   }
 
   return (
@@ -144,6 +149,11 @@ export function PassportQrScanner({ nearSignature, onSuccess, onError }: SelfVer
             Your NEAR wallet signature is securely embedded in this verification
           </p>
         </div>
+
+        <Button onClick={onDisconnect} variant="outline" size="sm" className="w-full">
+          <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+          Disconnect Wallet
+        </Button>
       </CardContent>
     </Card>
   )

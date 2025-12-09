@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "NEAR Citizens House - SputnikDAO",
-  description: "SputnikDAO governance for verified NEAR citizens",
+  title: "NEAR Citizens House",
+  description: "Governance for verified NEAR citizens",
 }
 
 export default function RootLayout({

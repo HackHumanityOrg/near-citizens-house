@@ -39,14 +39,14 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
         <div className="flex items-center gap-1 font-medium">
           {currentVote === "Yes" && (
             <>
-              <ThumbsUp className="h-4 w-4 text-green-600" />
-              <span className="text-green-600">Yes</span>
+              <ThumbsUp className="h-4 w-4 text-vote-for" />
+              <span className="text-vote-for">Yes</span>
             </>
           )}
           {currentVote === "No" && (
             <>
-              <ThumbsDown className="h-4 w-4 text-red-600" />
-              <span className="text-red-600">No</span>
+              <ThumbsDown className="h-4 w-4 text-vote-against" />
+              <span className="text-vote-against">No</span>
             </>
           )}
           {currentVote === "Abstain" && (
@@ -67,7 +67,7 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
           onClick={() => handleVote("Yes")}
           disabled={disabled || isLoading}
           variant="default"
-          className="flex-1 bg-green-600 hover:bg-green-700"
+          className="flex-1 bg-vote-for-bg hover:bg-vote-for-hover text-black"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
           Yes

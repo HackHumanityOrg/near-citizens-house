@@ -22,9 +22,10 @@ interface ProposalWithStats {
 interface ProposalListProps {
   initialProposals?: ProposalWithStats[]
   statusFilter?: ProposalStatus
+  serverTime: number
 }
 
-export function ProposalList({ initialProposals = [], statusFilter }: ProposalListProps) {
+export function ProposalList({ initialProposals = [], statusFilter, serverTime }: ProposalListProps) {
   const [proposals, setProposals] = useState<ProposalWithStats[]>(initialProposals)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -127,6 +128,7 @@ export function ProposalList({ initialProposals = [], statusFilter }: ProposalLi
             voteCounts={item.voteCounts}
             quorumRequired={item.quorumRequired}
             totalCitizens={item.totalCitizens}
+            serverTime={serverTime}
           />
         ))}
       </div>

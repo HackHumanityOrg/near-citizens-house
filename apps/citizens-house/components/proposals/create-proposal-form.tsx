@@ -48,6 +48,7 @@ export function CreateProposalForm({
     },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form's watch() is incompatible with React Compiler memoization, this is expected
   const titleLength = watch("title")?.length || 0
   const descriptionLength = watch("description")?.length || 0
   const quorumPercentage = watch("quorumPercentage") || quorumPercentageDefault

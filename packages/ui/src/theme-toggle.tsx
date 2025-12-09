@@ -1,19 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "./button"
 import { Moon, Sun } from "lucide-react"
 
+// Hydration-safe mounting detection using useSyncExternalStore
+const emptySubscribe = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
+
+function useHydrated() {
+  return useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot)
+}
+
 export function ThemeToggle() {
-  const [mounted, setMounted] = useState(false)
+  const hydrated = useHydrated()
   const { resolvedTheme, setTheme } = useTheme()
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
+  if (!hydrated) {
     return (
       <Button variant="ghost" size="sm" aria-label="Toggle theme">
         <Sun className="h-4 w-4" />

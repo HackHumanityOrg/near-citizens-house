@@ -26,6 +26,10 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
     notFound()
   }
 
+  // Capture server time before rendering for consistent SSR
+  // eslint-disable-next-line react-hooks/purity -- Date.now() is safe in server components (runs once on server)
+  const serverTime = Date.now()
+
   return (
     <div className="min-h-screen">
       <SputnikHeader />
@@ -39,7 +43,7 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
           </Button>
         </Link>
 
-        <ProposalDetailWrapper initialProposal={proposal} policy={policy} />
+        <ProposalDetailWrapper initialProposal={proposal} policy={policy} serverTime={serverTime} />
       </main>
     </div>
   )

@@ -16,6 +16,7 @@ interface ProposalDetailProps {
   userVote?: Vote | null
   canVote: boolean
   onVoteSuccess?: () => void
+  serverTime: number
 }
 
 export function ProposalDetail({
@@ -26,9 +27,10 @@ export function ProposalDetail({
   userVote,
   canVote,
   onVoteSuccess,
+  serverTime,
 }: ProposalDetailProps) {
   const isActive = proposal.status === "Active"
-  const hasEnded = Date.now() >= proposal.votingEndsAt
+  const hasEnded = serverTime >= proposal.votingEndsAt
 
   return (
     <div className="space-y-6">
@@ -118,12 +120,12 @@ export function ProposalDetail({
             <div className="pt-4 border-t">
               <h3 className="font-semibold mb-2">Final Results</h3>
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">{voteCounts.yesVotes}</div>
+                <div className="p-4 bg-vote-for-bg-light rounded-lg">
+                  <div className="text-2xl font-bold text-vote-for">{voteCounts.yesVotes}</div>
                   <div className="text-sm text-muted-foreground">Yes</div>
                 </div>
-                <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg">
-                  <div className="text-2xl font-bold text-red-600">{voteCounts.noVotes}</div>
+                <div className="p-4 bg-vote-against-bg-light rounded-lg">
+                  <div className="text-2xl font-bold text-vote-against">{voteCounts.noVotes}</div>
                   <div className="text-sm text-muted-foreground">No</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
