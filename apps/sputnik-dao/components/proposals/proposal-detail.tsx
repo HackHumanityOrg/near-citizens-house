@@ -342,7 +342,7 @@ export function ProposalDetail({
                       href={APP_URLS.verification}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary font-medium hover:underline"
+                      className="text-primary font-medium underline hover:no-underline"
                     >
                       Get verified →
                     </a>
