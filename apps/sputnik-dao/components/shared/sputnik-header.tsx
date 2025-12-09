@@ -1,35 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button, ThemeToggle } from "@near-citizens/ui"
 import { useNearWallet, APP_URLS } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
+import { useVerification } from "@/hooks/verification"
 import { LogIn, LogOut, Loader2, ShieldCheck } from "lucide-react"
-import { checkVerificationStatus } from "@/lib/actions/bridge"
 
 export function SputnikHeader() {
-  const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
+  const { isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
-  const [isVerified, setIsVerified] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    async function checkStatus() {
-      if (!accountId) {
-        setIsVerified(null)
-        return
-      }
-
-      try {
-        const verified = await checkVerificationStatus(accountId)
-        setIsVerified(verified)
-      } catch {
-        setIsVerified(false)
-      }
-    }
-
-    checkStatus()
-  }, [accountId])
+  const { isVerified, loading: verificationLoading } = useVerification()
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -55,7 +36,7 @@ export function SputnikHeader() {
           {/* Right Side: Verification > Wallet > Theme Toggle */}
           <div className="flex items-center gap-4">
             {/* Get Verified button - shown when connected but not verified */}
-            {isConnected && isVerified === false && (
+            {isConnected && !verificationLoading && !isVerified && (
               <a href={APP_URLS.verification} target="_blank" rel="noopener noreferrer">
                 <Button
                   variant="default"

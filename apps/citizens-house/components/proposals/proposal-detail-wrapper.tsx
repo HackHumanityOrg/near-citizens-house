@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { type Proposal, type VoteCounts, type Vote, useNearWallet } from "@near-citizens/shared"
+import { useCallback } from "react"
+import useSWR from "swr"
+import { type Proposal, type VoteCounts, useNearWallet } from "@near-citizens/shared"
 import { ProposalDetail } from "./proposal-detail"
-import { getUserVote, checkVerificationStatus, getProposalWithStats } from "@/lib/actions/governance"
+import { getUserVote, getProposalWithStats } from "@/lib/actions/governance"
+import { useVerification } from "@/hooks/verification"
 
 interface ProposalDetailWrapperProps {
   proposal: Proposal
@@ -15,7 +17,7 @@ interface ProposalDetailWrapperProps {
 
 /**
  * Client-side wrapper for ProposalDetail that handles wallet hydration.
- * Fetches user vote and verification status when wallet is connected.
+ * Uses SWR for caching user vote data across navigation.
  */
 export function ProposalDetailWrapper({
   proposal: initialProposal,
@@ -25,77 +27,41 @@ export function ProposalDetailWrapper({
   serverTime,
 }: ProposalDetailWrapperProps) {
   const { accountId, isConnected, isLoading: walletLoading } = useNearWallet()
-  const [userVote, setUserVote] = useState<Vote | null>(null)
-  const [isVerified, setIsVerified] = useState(false)
-  const [voteCounts, setVoteCounts] = useState(initialVoteCounts)
-  const [loading, setLoading] = useState(false)
+  const { isVerified, loading: verificationLoading } = useVerification()
 
-  // Fetch user vote and verification status when wallet connects
-  useEffect(() => {
-    const abortController = new AbortController()
+  // SWR for user vote - keyed by proposal ID and account
+  const {
+    data: voteData,
+    isLoading: voteLoading,
+    mutate: mutateVote,
+  } = useSWR(accountId ? ["user-vote", initialProposal.id, accountId] : null, () =>
+    getUserVote(initialProposal.id, accountId!),
+  )
 
-    const fetchUserData = async () => {
-      if (!accountId) {
-        setUserVote(null)
-        setIsVerified(false)
-        return
-      }
-
-      setLoading(true)
-      try {
-        const [vote, verified] = await Promise.all([
-          getUserVote(initialProposal.id, accountId),
-          checkVerificationStatus(accountId),
-        ])
-
-        // Only update state if this effect hasn't been cleaned up
-        if (!abortController.signal.aborted) {
-          setUserVote(vote)
-          setIsVerified(verified)
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted) {
-          console.error("Error fetching user data:", error)
-          setUserVote(null)
-          setIsVerified(false)
-        }
-      } finally {
-        if (!abortController.signal.aborted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    if (!walletLoading) {
-      fetchUserData()
-    }
-
-    return () => abortController.abort()
-  }, [accountId, walletLoading, initialProposal.id])
+  // SWR for vote counts - can be revalidated after voting
+  const { data: voteCounts, mutate: mutateVoteCounts } = useSWR(
+    ["vote-counts", initialProposal.id],
+    () =>
+      getProposalWithStats(initialProposal.id, accountId || undefined).then((d) => d?.voteCounts ?? initialVoteCounts),
+    { fallbackData: initialVoteCounts },
+  )
 
   // Callback to refresh vote counts after voting
   const handleVoteSuccess = useCallback(async () => {
-    try {
-      const data = await getProposalWithStats(initialProposal.id, accountId || undefined)
-      if (data) {
-        setVoteCounts(data.voteCounts)
-        setUserVote(data.userVote || null)
-      }
-    } catch (error) {
-      console.error("Error refreshing proposal data:", error)
-    }
-  }, [initialProposal.id, accountId])
+    await Promise.all([mutateVote(), mutateVoteCounts()])
+  }, [mutateVote, mutateVoteCounts])
 
   // Determine if user can vote
+  const loading = walletLoading || verificationLoading || voteLoading
   const canVote = isConnected && isVerified && !loading
 
   return (
     <ProposalDetail
       proposal={initialProposal}
-      voteCounts={voteCounts}
+      voteCounts={voteCounts ?? initialVoteCounts}
       quorumRequired={quorumRequired}
       totalCitizens={totalCitizens}
-      userVote={userVote}
+      userVote={voteData ?? null}
       canVote={canVote}
       onVoteSuccess={handleVoteSuccess}
       serverTime={serverTime}

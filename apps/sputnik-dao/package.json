@@ -20,6 +20,7 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-hook-form": "^7.68.0",
+    "swr": "^2.3.7",
     "zod": "^4.1.13"
   },
   "devDependencies": {

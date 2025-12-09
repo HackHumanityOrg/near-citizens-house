@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import useSWRImmutable from "swr/immutable"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Badge } from "@near-citizens/ui"
-import { type BridgeInfo, type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
+import { type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
 import {
@@ -20,28 +20,15 @@ import {
 } from "lucide-react"
 
 export function BridgeInfoCard() {
-  const [info, setInfo] = useState<BridgeInfo | null>(null)
-  const [policy, setPolicy] = useState<TransformedPolicy | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, error } = useSWRImmutable("bridge-and-policy", async () => {
+    const [bridgeInfo, daoPolicy] = await Promise.all([getBridgeInfo(), getPolicy()])
+    return { info: bridgeInfo, policy: daoPolicy }
+  })
 
-  useEffect(() => {
-    async function fetchInfo() {
-      try {
-        const [bridgeInfo, daoPolicy] = await Promise.all([getBridgeInfo(), getPolicy()])
-        setInfo(bridgeInfo)
-        setPolicy(daoPolicy)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load bridge info")
-      } finally {
-        setLoading(false)
-      }
-    }
+  const info = data?.info ?? null
+  const policy = data?.policy ?? null
 
-    fetchInfo()
-  }, [])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -55,7 +42,7 @@ export function BridgeInfoCard() {
     return (
       <Card>
         <CardContent className="py-6">
-          <p className="text-destructive">{error || "Failed to load bridge info"}</p>
+          <p className="text-destructive">{error instanceof Error ? error.message : "Failed to load bridge info"}</p>
         </CardContent>
       </Card>
     )

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useNearWallet, type SputnikProposal, type SputnikVote, type TransformedPolicy } from "@near-citizens/shared"
+import { useCallback } from "react"
+import useSWR from "swr"
+import { useNearWallet, type SputnikProposal, type TransformedPolicy } from "@near-citizens/shared"
 import { ProposalDetail } from "./proposal-detail"
 import { getUserVote, getProposal } from "@/lib/actions/sputnik-dao"
-import { Loader2 } from "lucide-react"
 
 /** Check if the account is a citizen (member of the citizen role in the DAO policy) */
 function isCitizen(policy: TransformedPolicy, accountId: string | null | undefined): boolean {
@@ -28,59 +28,42 @@ interface ProposalDetailWrapperProps {
 
 export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: ProposalDetailWrapperProps) {
   const { accountId, isConnected } = useNearWallet()
-  const [proposal, setProposal] = useState<SputnikProposal>(initialProposal)
-  const [userVote, setUserVote] = useState<SputnikVote | null>(null)
-  const [isLoadingVote, setIsLoadingVote] = useState(false)
 
-  // Fetch user's vote when wallet connects
-  useEffect(() => {
-    async function fetchUserVote() {
-      if (!accountId || !isConnected) {
-        setUserVote(null)
-        return
-      }
+  // SWR for user vote - keyed by proposal ID and account
+  const {
+    data: userVote,
+    isLoading: isLoadingVote,
+    mutate: mutateVote,
+  } = useSWR(accountId && isConnected ? ["sputnik-user-vote", initialProposal.id, accountId] : null, () =>
+    getUserVote(initialProposal.id, accountId!),
+  )
 
-      setIsLoadingVote(true)
-      try {
-        const vote = await getUserVote(proposal.id, accountId)
-        setUserVote(vote)
-      } catch (error) {
-        console.error("Error fetching user vote:", error)
-      } finally {
-        setIsLoadingVote(false)
-      }
-    }
-
-    fetchUserVote()
-  }, [accountId, isConnected, proposal.id])
+  // SWR for proposal data - can be revalidated after voting
+  const { data: proposal, mutate: mutateProposal } = useSWR(
+    ["sputnik-proposal", initialProposal.id],
+    () => getProposal(initialProposal.id),
+    { fallbackData: initialProposal },
+  )
 
   // Refresh proposal data after voting
   const handleVoteSuccess = useCallback(async () => {
-    try {
-      const [updatedProposal, vote] = await Promise.all([
-        getProposal(proposal.id),
-        accountId ? getUserVote(proposal.id, accountId) : Promise.resolve(null),
-      ])
-
-      if (updatedProposal) {
-        setProposal(updatedProposal)
-      }
-      setUserVote(vote)
-    } catch (error) {
-      console.error("Error refreshing proposal:", error)
-    }
-  }, [proposal.id, accountId])
+    await Promise.all([mutateProposal(), mutateVote()])
+  }, [mutateProposal, mutateVote])
 
   // Check if user can vote: must be connected, a citizen, proposal in progress, and not already voted
   // Disable voting while loading to prevent premature votes
   const canVote =
-    isConnected && !isLoadingVote && isCitizen(policy, accountId) && proposal.status === "InProgress" && !userVote
+    isConnected &&
+    !isLoadingVote &&
+    isCitizen(policy, accountId) &&
+    (proposal ?? initialProposal).status === "InProgress" &&
+    !userVote
 
   return (
     <ProposalDetail
-      proposal={proposal}
+      proposal={proposal ?? initialProposal}
       policy={policy}
-      userVote={userVote}
+      userVote={userVote ?? null}
       canVote={canVote}
       isConnected={isConnected}
       onVoteSuccess={handleVoteSuccess}

@@ -1,61 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import { CreateProposalForm } from "@/components/proposals/create-proposal-form"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@near-citizens/shared"
 import { ArrowLeft, Loader2, Wallet } from "lucide-react"
-import { checkVerificationStatus, getTotalCitizens, getGovernanceParameters } from "@/lib/actions/governance"
 import { GovernanceHeader } from "@/components/shared/governance-header"
-
-interface GovernanceParams {
-  quorumPercentageMin: number
-  quorumPercentageMax: number
-  quorumPercentageDefault: number
-}
+import { useVerification } from "@/hooks/verification"
+import { useGovernanceParams } from "@/hooks/governance-params"
 
 function CreateProposalContent() {
-  const { accountId, isConnected, connect, isLoading: walletLoading } = useNearWallet()
-  const [isVerified, setIsVerified] = useState<boolean | null>(null)
-  const [totalCitizens, setTotalCitizens] = useState<number>(0)
-  const [governanceParams, setGovernanceParams] = useState<GovernanceParams | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { isConnected, connect, isLoading: walletLoading } = useNearWallet()
+  const { isVerified, loading: verificationLoading } = useVerification()
+  const { totalCitizens, governanceParams, loading: paramsLoading } = useGovernanceParams()
 
-  useEffect(() => {
-    const loadData = async () => {
-      // Fetch total citizens and governance parameters for the quorum display
-      try {
-        const [total, params] = await Promise.all([getTotalCitizens(), getGovernanceParameters()])
-        setTotalCitizens(total)
-        setGovernanceParams(params)
-      } catch (error) {
-        console.error("Error fetching data:", error)
-      }
+  const loading = walletLoading || verificationLoading || paramsLoading
 
-      if (!accountId) {
-        setIsVerified(false)
-        setLoading(false)
-        return
-      }
-
-      try {
-        const verified = await checkVerificationStatus(accountId)
-        setIsVerified(verified)
-      } catch (error) {
-        console.error("Error checking verification:", error)
-        setIsVerified(false)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (!walletLoading) {
-      loadData()
-    }
-  }, [accountId, walletLoading])
-
-  if (walletLoading || loading) {
+  if (loading) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-3xl">
         <div className="flex items-center justify-center py-12">
@@ -108,7 +69,7 @@ function CreateProposalContent() {
 
       {/* Form */}
       <CreateProposalForm
-        isVerified={isVerified || false}
+        isVerified={isVerified}
         totalCitizens={totalCitizens}
         quorumPercentageMin={governanceParams?.quorumPercentageMin ?? 1}
         quorumPercentageMax={governanceParams?.quorumPercentageMax ?? 100}
