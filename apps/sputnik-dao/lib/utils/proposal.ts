@@ -18,7 +18,10 @@ export function extractProposalTitle(description: string, maxLength: number = 10
   }
 
   // Fallback: use first non-empty line
-  const firstLine = description.split("\n").find((line) => line.trim())?.trim()
+  const firstLine = description
+    .split("\n")
+    .find((line) => line.trim())
+    ?.trim()
   if (!firstLine) return "Vote Proposal"
 
   if (firstLine.length <= maxLength) return firstLine

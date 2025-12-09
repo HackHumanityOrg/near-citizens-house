@@ -32,6 +32,9 @@ interface ProposalDetailProps {
   userVote: SputnikVote | null
   canVote: boolean
   isConnected: boolean
+  isVerified: boolean
+  isLoadingVerification: boolean
+  isCitizen: boolean
   onVoteSuccess: () => void
   serverTime: number
 }
@@ -89,6 +92,9 @@ export function ProposalDetail({
   userVote,
   canVote,
   isConnected,
+  isVerified,
+  isLoadingVerification,
+  isCitizen,
   onVoteSuccess,
   serverTime,
 }: ProposalDetailProps) {
@@ -315,18 +321,27 @@ export function ProposalDetail({
                     onFinalizeSuccess={onVoteSuccess}
                   />
                 </div>
-              ) : !canVote && !userVote ? (
-                <p className="text-sm text-muted-foreground text-center">
-                  Only verified citizens can vote.{" "}
-                  <a
-                    href={APP_URLS.verification}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary font-medium hover:underline"
-                  >
-                    Get verified →
-                  </a>
-                </p>
+              ) : !isCitizen && !userVote ? (
+                isLoadingVerification ? (
+                  <p className="text-sm text-muted-foreground text-center">Checking verification status...</p>
+                ) : isVerified ? (
+                  <p className="text-sm text-muted-foreground text-center">
+                    You have a verified account, but you are not a citizen yet. Ask an admin to add you to the citizen
+                    list.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Only verified citizens can vote.{" "}
+                    <a
+                      href={APP_URLS.verification}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary font-medium hover:underline"
+                    >
+                      Get verified →
+                    </a>
+                  </p>
+                )
               ) : (
                 <VoteButton
                   proposalId={proposal.id}

@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { useNearWallet, type SputnikProposal, type TransformedPolicy } from "@near-citizens/shared"
 import { ProposalDetail } from "./proposal-detail"
 import { getUserVote, getProposal } from "@/lib/actions/sputnik-dao"
+import { useVerification } from "@/hooks/verification"
 
 /** Check if the account is a citizen (member of the citizen role in the DAO policy) */
 function isCitizen(policy: TransformedPolicy, accountId: string | null | undefined): boolean {
@@ -28,6 +29,7 @@ interface ProposalDetailWrapperProps {
 
 export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: ProposalDetailWrapperProps) {
   const { accountId, isConnected } = useNearWallet()
+  const { isVerified, loading: isLoadingVerification } = useVerification()
 
   // SWR for user vote - keyed by proposal ID and account
   const {
@@ -50,14 +52,11 @@ export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: P
     await Promise.all([mutateProposal(), mutateVote()])
   }, [mutateProposal, mutateVote])
 
-  // Check if user can vote: must be connected, a citizen, proposal in progress, and not already voted
-  // Disable voting while loading to prevent premature votes
+  const userIsCitizen = isCitizen(policy, accountId)
+
+  // canVote focuses on proposal state: in progress, not already voted, and data loaded
   const canVote =
-    isConnected &&
-    !isLoadingVote &&
-    isCitizen(policy, accountId) &&
-    (proposal ?? initialProposal).status === "InProgress" &&
-    !userVote
+    isConnected && !isLoadingVote && userIsCitizen && (proposal ?? initialProposal).status === "InProgress" && !userVote
 
   return (
     <ProposalDetail
@@ -66,6 +65,9 @@ export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: P
       userVote={userVote ?? null}
       canVote={canVote}
       isConnected={isConnected}
+      isVerified={isVerified}
+      isLoadingVerification={isLoadingVerification}
+      isCitizen={userIsCitizen}
       onVoteSuccess={handleVoteSuccess}
       serverTime={serverTime}
     />
