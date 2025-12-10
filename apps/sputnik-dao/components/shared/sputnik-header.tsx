@@ -20,7 +20,7 @@ export function SputnikHeader() {
           {/* Logo & Navigation */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-1 font-bold text-black dark:text-white">
-              <Image src="/near-logo.svg" alt="NEAR" width={90} height={30} />
+              <Image src="/near-logo.svg" alt="NEAR" width={90} height={30} className="dark:invert" />
               <span className="text-lg" style={{ fontFamily: '"FK Grotesk Variable", sans-serif' }}>Citizens House</span>
             </Link>
             <nav className="hidden md:flex items-center gap-6">
