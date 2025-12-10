@@ -10,7 +10,7 @@ import { Account } from "@near-js/accounts"
 import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
 import { KeyPair } from "@near-js/crypto"
-import { JsonRpcProvider } from "@near-js/providers"
+import { JsonRpcProvider, FailoverRpcProvider } from "@near-js/providers"
 import { KeyPairSigner } from "@near-js/signers"
 import { actionCreators } from "@near-js/transactions"
 import {
@@ -44,9 +44,22 @@ interface NearContractSignatureData {
   recipient: string
 }
 
+// Fallback RPC URLs for read operations
+const FALLBACK_RPC_URLS = {
+  mainnet: ["https://free.rpc.fastnear.com", "https://near.lava.build:443", "https://rpc.mainnet.near.org"],
+  testnet: ["https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"],
+}
+
+// Retry options for JsonRpcProvider
+const RPC_RETRY_OPTIONS = {
+  retries: 3, // Number of retries before giving up
+  wait: 500, // Wait 500ms between retries
+  backoff: 2, // Exponential backoff multiplier
+}
+
 export class NearContractDatabase implements IVerificationDatabase {
   private account: Account | null = null
-  private provider: JsonRpcProvider | null = null
+  private provider: FailoverRpcProvider | null = null
   private contractId: string
   private initialized: Promise<void>
 
@@ -61,6 +74,33 @@ export class NearContractDatabase implements IVerificationDatabase {
     this.initialized = this.init()
   }
 
+  // Create a FailoverRpcProvider with multiple RPC endpoints
+  private createFailoverProvider(): FailoverRpcProvider {
+    const fallbacks = FALLBACK_RPC_URLS[this.networkId as keyof typeof FALLBACK_RPC_URLS] || []
+    // Primary URL first, then fallbacks (excluding duplicates)
+    const rpcUrls = [this.rpcUrl, ...fallbacks.filter((url) => url !== this.rpcUrl)]
+
+    const providers = rpcUrls.map((url) => {
+      // Apply API key headers only for fastnear.com URLs
+      const isFastNear = url.includes("fastnear.com")
+      const headers = isFastNear ? NEAR_CONFIG.rpcHeaders : {}
+
+      return new JsonRpcProvider(
+        {
+          url,
+          headers,
+        },
+        RPC_RETRY_OPTIONS,
+      )
+    })
+
+    console.log(`[NearContractDB] Creating FailoverRpcProvider with ${providers.length} endpoints:`, rpcUrls)
+    if (NEAR_CONFIG.rpcApiKey) {
+      console.log(`[NearContractDB] Using FastNear API key for authenticated access`)
+    }
+    return new FailoverRpcProvider(providers)
+  }
+
   private async init() {
     try {
       // KeyPair.fromString expects a string but the type definition is overly strict
@@ -68,11 +108,8 @@ export class NearContractDatabase implements IVerificationDatabase {
       const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
       const signer = new KeyPairSigner(keyPair)
 
-      // Include RPC headers for authenticated access (e.g., FastNear API key)
-      this.provider = new JsonRpcProvider({
-        url: this.rpcUrl,
-        headers: NEAR_CONFIG.rpcHeaders,
-      })
+      // Create FailoverRpcProvider with multiple endpoints and retry logic
+      this.provider = this.createFailoverProvider()
 
       // Account constructor types don't match the actual implementation
       // The provider and signer interfaces are compatible at runtime
@@ -84,7 +121,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 
       console.log(`[NearContractDB] Initialized with account: ${this.backendAccountId}`)
       console.log(`[NearContractDB] Contract ID: ${this.contractId}`)
-      console.log(`[NearContractDB] RPC URL: ${this.rpcUrl}`)
+      console.log(`[NearContractDB] Network: ${this.networkId}`)
     } catch (error) {
       console.error("[NearContractDB] Initialization error:", error)
       throw error
@@ -238,7 +275,7 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  // Get paginated verified accounts
+  // Get paginated verified accounts (uses FailoverRpcProvider for automatic failover)
   async getVerifiedAccounts(
     fromIndex: number = 0,
     limit: number = 50,
