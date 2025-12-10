@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { Button, ThemeToggle } from "@near-citizens/ui"
 import { useNearWallet, APP_URLS } from "@near-citizens/shared"
@@ -18,8 +19,9 @@ export function SputnikHeader() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo & Navigation */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="font-bold text-xl">
-              Citizens House
+            <Link href="/" className="flex items-center gap-1 font-bold text-black dark:text-white">
+              <Image src="/near-logo.svg" alt="NEAR" width={90} height={30} />
+              <span className="text-lg" style={{ fontFamily: '"FK Grotesk Variable", sans-serif' }}>Citizens House</span>
             </Link>
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/proposals" className="text-sm font-medium hover:text-primary transition-colors">
@@ -41,10 +43,10 @@ export function SputnikHeader() {
                 <Button
                   variant="default"
                   size="sm"
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-md"
+                  className="bg-black hover:bg-black/90 text-white border-0 shadow-md"
                 >
                   <ShieldCheck className="mr-2 h-4 w-4" />
-                  Get Verified
+                  Get Verified to Vote
                 </Button>
               </a>
             )}
