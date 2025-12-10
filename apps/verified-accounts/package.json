@@ -17,6 +17,7 @@
     "@near-citizens/ui": "workspace:*",
     "@selfxyz/qrcode": "^1.0.17",
     "@vercel/analytics": "^1.6.1",
+    "@vercel/toolbar": "^0.1.41",
     "autoprefixer": "^10.4.22",
     "date-fns": "^4.1.0",
     "lottie-react": "^2.4.1",

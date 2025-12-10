@@ -148,16 +148,15 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
 /**
  * Cached version of fetchAndVerifyAccounts.
  * Cache is tagged with 'verifications' for on-demand revalidation.
- * Cache duration increased to reduce unnecessary RPC calls while still providing fresh data.
  */
 const getCachedVerifiedAccounts = unstable_cache(fetchAndVerifyAccounts, ["verified-accounts"], {
   tags: ["verifications"],
-  revalidate: 900, // Revalidate every 15 minutes (reduced RPC load while keeping data fresh)
+  revalidate: 60, // Revalidate every 60 seconds (1 minute)
 })
 
 /**
  * Server action to get verified accounts with verification status.
- * Uses unstable_cache for caching with on-demand revalidation via tags.
+ * Uses unstable_cache for caching with 1-minute revalidation.
  * All verification (ZK proof via Celo + NEAR signature) happens server-side.
  */
 export async function getVerifiedAccountsWithStatus(

@@ -200,8 +200,8 @@ export async function POST(request: NextRequest) {
         userContextData,
       } satisfies VerificationDataWithSignature)
 
-      // Revalidate the verifications cache so new verification appears
-      // Using "max" profile for stale-while-revalidate semantics (Next.js 16)
+      // Revalidate the verifications cache so new verification appears immediately
+      // Next.js 16 requires a cacheLife profile as second argument
       revalidateTag("verifications", "max")
     } catch (error) {
       return NextResponse.json(

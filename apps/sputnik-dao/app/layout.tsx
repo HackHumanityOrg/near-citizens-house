@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { VercelToolbar } from "@vercel/toolbar/next"
 import { ThemeProvider, Footer } from "@near-citizens/ui"
 import { Providers } from "./providers"
 import "./globals.css"
@@ -39,6 +40,7 @@ export default function RootLayout({
           </Providers>
         </ThemeProvider>
         <Analytics />
+        <VercelToolbar />
       </body>
     </html>
   )
