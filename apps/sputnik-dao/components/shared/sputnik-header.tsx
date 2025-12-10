@@ -19,9 +19,8 @@ export function SputnikHeader() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo & Navigation */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-1 font-bold text-black dark:text-white">
-              <Image src="/near-logo.svg" alt="NEAR" width={90} height={30} className="dark:invert" />
-              <span className="text-lg" style={{ fontFamily: '"FK Grotesk Variable", sans-serif' }}>Citizens House</span>
+            <Link href="/" className="flex items-center">
+              <Image src="/logo.svg" alt="NEAR Citizens House" width={280} height={33} className="dark:invert" />
             </Link>
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/proposals" className="text-sm font-medium hover:text-primary transition-colors">
