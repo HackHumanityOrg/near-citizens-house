@@ -41,8 +41,9 @@ export function CreateProposalForm() {
     handleSubmit,
     reset,
     watch,
-    formState: { errors },
+    formState: { errors, isValid },
   } = useForm<CreateProposalFormData>({
+    mode: "onChange",
     resolver: zodResolver(createProposalSchema),
     defaultValues: {
       description: "",
@@ -151,7 +152,7 @@ export function CreateProposalForm() {
             </Alert>
           )}
 
-          <Button type="submit" disabled={isLoading} className="w-full">
+          <Button type="submit" disabled={isLoading || !isValid} className="w-full">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
