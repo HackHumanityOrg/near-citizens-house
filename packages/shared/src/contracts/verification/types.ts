@@ -7,15 +7,17 @@
 import { z } from "zod"
 
 // ============================================================================
-// Size Constraints (must match contract constants)
+// Size Constraints
+// MUST match contracts/verified-accounts/src/lib.rs lines 34-42
 // ============================================================================
 export const SIZE_LIMITS = {
-  NULLIFIER: 80, // uint256 max = 77 decimal digits
-  USER_ID: 80, // uint256 max = 77 decimal digits
-  ATTESTATION_ID: 1, // Self.xyz uses "1", "2", "3"
-  USER_CONTEXT_DATA: 4096,
-  PUBLIC_SIGNALS_COUNT: 21, // Passport proofs have 21 signals
-  PROOF_COMPONENT: 80, // BN254 field elements ~77 decimal digits
+  NULLIFIER: 80, // MAX_NULLIFIER_LEN - uint256 max = 77 decimal digits
+  USER_ID: 80, // MAX_USER_ID_LEN - uint256 max = 77 decimal digits
+  ATTESTATION_ID: 1, // MAX_ATTESTATION_ID_LEN - Self.xyz uses "1", "2", "3"
+  USER_CONTEXT_DATA: 4096, // MAX_USER_CONTEXT_DATA_LEN
+  PUBLIC_SIGNALS_COUNT: 21, // MAX_PUBLIC_SIGNALS_COUNT - Passport proofs have 21 signals
+  PROOF_COMPONENT: 80, // MAX_PROOF_COMPONENT_LEN - BN254 field elements ~77 decimal digits
+  MAX_BATCH_SIZE: 100, // MAX_BATCH_SIZE - Maximum accounts per batch query
 } as const
 
 // ============================================================================
@@ -65,7 +67,7 @@ export type NearSignatureData = z.infer<typeof nearSignatureDataSchema>
 
 // API request schema for verification endpoint
 export const verifyRequestSchema = z.object({
-  attestationId: z.union([z.literal("1"), z.literal("2"), z.literal("3"), z.literal(1), z.literal(2), z.literal(3)]),
+  attestationId: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   proof: zkProofSchema,
   publicSignals: z.array(z.string().max(SIZE_LIMITS.PROOF_COMPONENT)).max(SIZE_LIMITS.PUBLIC_SIGNALS_COUNT),
   userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA),
@@ -79,7 +81,7 @@ export const selfVerificationResultSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("success"),
     result: z.literal(true),
-    attestationId: z.string(),
+    attestationId: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     userData: z.object({
       userId: z.string(),
       nearAccountId: z.string(),

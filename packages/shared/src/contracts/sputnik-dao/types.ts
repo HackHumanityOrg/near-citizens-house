@@ -172,7 +172,18 @@ const coerceToNumber = z
   .transform((val) => (typeof val === "string" ? parseInt(val, 10) : val))
 
 /**
+ * ProposalLog schema - tracks block heights of actions on a proposal
+ * Matches contracts/sputnik-dao-contract/sputnikdao2/src/action_log.rs
+ */
+export const proposalLogSchema = z.object({
+  block_height: z.string(), // U64 as string
+})
+
+export type ProposalLog = z.infer<typeof proposalLogSchema>
+
+/**
  * Contract format for proposal (snake_case)
+ * Matches contracts/sputnik-dao-contract/sputnikdao2/src/proposals.rs Proposal struct
  */
 export const contractSputnikProposalSchema = z.object({
   id: z.number(),
@@ -186,6 +197,8 @@ export const contractSputnikProposalSchema = z.object({
   // votes is a map from account ID to vote choice
   votes: z.record(z.string(), sputnikVoteSchema),
   submission_time: z.string(), // U64 as string (nanoseconds)
+  // last_actions_log tracks recent action block heights (VecDeque<ProposalLog>)
+  last_actions_log: z.array(proposalLogSchema),
 })
 
 /**
@@ -213,6 +226,9 @@ export const sputnikProposalSchema = contractSputnikProposalSchema.transform((da
     voteCounts: data.vote_counts,
     votes: data.votes,
     submissionTime: Math.floor(parseInt(data.submission_time) / 1_000_000), // nanoseconds → milliseconds
+    lastActionsLog: data.last_actions_log.map((log) => ({
+      blockHeight: log.block_height,
+    })),
     // Aggregated counts for display
     totalApprove,
     totalReject,

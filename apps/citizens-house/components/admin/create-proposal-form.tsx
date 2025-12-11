@@ -105,7 +105,9 @@ export function CreateProposalForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="description">Proposal Description</Label>
-              <span className={`text-xs ${charCount >= 10000 ? "text-destructive" : charCount >= 9000 ? "text-yellow-600 dark:text-yellow-500" : "text-muted-foreground"}`}>
+              <span
+                className={`text-xs ${charCount >= 10000 ? "text-destructive" : charCount >= 9000 ? "text-yellow-600 dark:text-yellow-500" : "text-muted-foreground"}`}
+              >
                 {charCount} / 10,000
               </span>
             </div>

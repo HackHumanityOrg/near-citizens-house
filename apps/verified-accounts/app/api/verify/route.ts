@@ -71,8 +71,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const verifier = getVerifier()
-      const attestationIdNum = Number(attestationId) as 1 | 2 | 3
-      selfVerificationResult = await verifier.verify(attestationIdNum, proof, publicSignals, userContextData)
+      selfVerificationResult = await verifier.verify(attestationId, proof, publicSignals, userContextData)
     } catch (error) {
       return NextResponse.json(
         {
