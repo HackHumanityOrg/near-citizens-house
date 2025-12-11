@@ -8,7 +8,7 @@ import { z } from "zod"
 export const SIZE_LIMITS = {
   NULLIFIER: 80, // uint256 max = 77 decimal digits
   USER_ID: 80, // uint256 max = 77 decimal digits
-  ATTESTATION_ID: 4, // Self.xyz uses 1-3
+  ATTESTATION_ID: 1, // Self.xyz uses "1", "2", "3"
   USER_CONTEXT_DATA: 4096,
   PUBLIC_SIGNALS_COUNT: 21, // Passport proofs have 21 signals
   PROOF_COMPONENT: 80, // BN254 field elements ~77 decimal digits

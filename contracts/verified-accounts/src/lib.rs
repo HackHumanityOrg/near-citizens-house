@@ -33,7 +33,7 @@ use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault
 /// Maximum length for string inputs
 const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 77 decimal digits
 const MAX_USER_ID_LEN: usize = 80; // uint256 max = 77 decimal digits
-const MAX_ATTESTATION_ID_LEN: usize = 4; // Self.xyz uses 1-3
+const MAX_ATTESTATION_ID_LEN: usize = 1; // Self.xyz uses "1", "2", "3"
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
 const MAX_PUBLIC_SIGNALS_COUNT: usize = 21; // Passport proofs have 21 signals
 const MAX_PROOF_COMPONENT_LEN: usize = 80; // BN254 field elements ~77 decimal digits
@@ -269,25 +269,30 @@ impl Contract {
         // Input length validation
         assert!(
             nullifier.len() <= MAX_NULLIFIER_LEN,
-            "Nullifier exceeds maximum length of 80"
+            "Nullifier exceeds maximum length of {}",
+            MAX_NULLIFIER_LEN
         );
         assert!(
             user_id.len() <= MAX_USER_ID_LEN,
-            "User ID exceeds maximum length of 80"
+            "User ID exceeds maximum length of {}",
+            MAX_USER_ID_LEN
         );
         assert!(
             attestation_id.len() <= MAX_ATTESTATION_ID_LEN,
-            "Attestation ID exceeds maximum length of 4"
+            "Attestation ID exceeds maximum length of {}",
+            MAX_ATTESTATION_ID_LEN
         );
         assert!(
             user_context_data.len() <= MAX_USER_CONTEXT_DATA_LEN,
-            "User context data exceeds maximum length of 4096"
+            "User context data exceeds maximum length of {}",
+            MAX_USER_CONTEXT_DATA_LEN
         );
 
         // ZK Proof validation
         assert!(
             self_proof.public_signals.len() <= MAX_PUBLIC_SIGNALS_COUNT,
-            "Public signals array exceeds maximum length of 21"
+            "Public signals array exceeds maximum length of {}",
+            MAX_PUBLIC_SIGNALS_COUNT
         );
 
         // Validate individual string lengths in proof components
@@ -295,14 +300,16 @@ impl Contract {
         for signal in &self_proof.public_signals {
             assert!(
                 signal.len() <= MAX_PROOF_COMPONENT_LEN,
-                "Public signal string exceeds maximum length of 80"
+                "Public signal string exceeds maximum length of {}",
+                MAX_PROOF_COMPONENT_LEN
             );
         }
 
         for component in &self_proof.proof.a {
             assert!(
                 component.len() <= MAX_PROOF_COMPONENT_LEN,
-                "Proof component 'a' string exceeds maximum length of 80"
+                "Proof component 'a' string exceeds maximum length of {}",
+                MAX_PROOF_COMPONENT_LEN
             );
         }
 
@@ -310,7 +317,8 @@ impl Contract {
             for component in row {
                 assert!(
                     component.len() <= MAX_PROOF_COMPONENT_LEN,
-                    "Proof component 'b' string exceeds maximum length of 80"
+                    "Proof component 'b' string exceeds maximum length of {}",
+                    MAX_PROOF_COMPONENT_LEN
                 );
             }
         }
@@ -318,7 +326,8 @@ impl Contract {
         for component in &self_proof.proof.c {
             assert!(
                 component.len() <= MAX_PROOF_COMPONENT_LEN,
-                "Proof component 'c' string exceeds maximum length of 80"
+                "Proof component 'c' string exceeds maximum length of {}",
+                MAX_PROOF_COMPONENT_LEN
             );
         }
 
@@ -581,7 +590,8 @@ impl Contract {
     pub fn are_accounts_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool> {
         assert!(
             account_ids.len() <= MAX_BATCH_SIZE,
-            "Batch size exceeds maximum of 100 accounts"
+            "Batch size exceeds maximum of {} accounts",
+            MAX_BATCH_SIZE
         );
         account_ids
             .iter()
@@ -598,7 +608,8 @@ impl Contract {
     ) -> Vec<Option<verified_accounts_interface::VerifiedAccountInfo>> {
         assert!(
             account_ids.len() <= MAX_BATCH_SIZE,
-            "Batch size exceeds maximum of 100 accounts"
+            "Batch size exceeds maximum of {} accounts",
+            MAX_BATCH_SIZE
         );
         account_ids
             .iter()
@@ -1223,6 +1234,260 @@ mod tests {
             sig_data,
             test_self_proof(),
             too_long_context,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Attestation ID exceeds maximum length of 1")]
+    fn test_attestation_id_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Attestation ID exceeds the 1 character limit
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "12".to_string(), // Too long - max is 1
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Public signals array exceeds maximum length of 21")]
+    fn test_public_signals_too_many() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create proof with too many public signals (22 instead of max 21)
+        let too_many_signals_proof = SelfProofData {
+            proof: ZkProof {
+                a: ["1".to_string(), "2".to_string()],
+                b: [
+                    ["3".to_string(), "4".to_string()],
+                    ["5".to_string(), "6".to_string()],
+                ],
+                c: ["7".to_string(), "8".to_string()],
+            },
+            public_signals: vec!["0".to_string(); 22],
+        };
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            too_many_signals_proof,
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Public signal string exceeds maximum length of 80")]
+    fn test_public_signal_item_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create proof with one public signal too long
+        let mut signals = vec!["0".to_string(); 20];
+        signals.push("x".repeat(81)); // One signal exceeds 80 chars
+        let bad_signal_proof = SelfProofData {
+            proof: ZkProof {
+                a: ["1".to_string(), "2".to_string()],
+                b: [
+                    ["3".to_string(), "4".to_string()],
+                    ["5".to_string(), "6".to_string()],
+                ],
+                c: ["7".to_string(), "8".to_string()],
+            },
+            public_signals: signals,
+        };
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            bad_signal_proof,
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Proof component 'a' string exceeds maximum length of 80")]
+    fn test_proof_component_a_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create proof with 'a' component too long
+        let bad_proof = SelfProofData {
+            proof: ZkProof {
+                a: ["x".repeat(81), "2".to_string()], // First 'a' component too long
+                b: [
+                    ["3".to_string(), "4".to_string()],
+                    ["5".to_string(), "6".to_string()],
+                ],
+                c: ["7".to_string(), "8".to_string()],
+            },
+            public_signals: vec!["0".to_string(); 21],
+        };
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            bad_proof,
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Proof component 'b' string exceeds maximum length of 80")]
+    fn test_proof_component_b_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create proof with 'b' component too long
+        let bad_proof = SelfProofData {
+            proof: ZkProof {
+                a: ["1".to_string(), "2".to_string()],
+                b: [
+                    ["x".repeat(81), "4".to_string()], // First 'b' component too long
+                    ["5".to_string(), "6".to_string()],
+                ],
+                c: ["7".to_string(), "8".to_string()],
+            },
+            public_signals: vec!["0".to_string(); 21],
+        };
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            bad_proof,
+            "test_user_context_data".to_string(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Proof component 'c' string exceeds maximum length of 80")]
+    fn test_proof_component_c_too_long() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+        let sig_data = NearSignatureData {
+            account_id: user.clone(),
+            signature: vec![0; 64],
+            public_key: public_key_str.parse().unwrap(),
+            challenge: "Identify myself".to_string(),
+            nonce: vec![0; 32],
+            recipient: user.clone(),
+        };
+
+        // Create proof with 'c' component too long
+        let bad_proof = SelfProofData {
+            proof: ZkProof {
+                a: ["1".to_string(), "2".to_string()],
+                b: [
+                    ["3".to_string(), "4".to_string()],
+                    ["5".to_string(), "6".to_string()],
+                ],
+                c: ["x".repeat(81), "8".to_string()], // First 'c' component too long
+            },
+            public_signals: vec!["0".to_string(); 21],
+        };
+
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user,
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            bad_proof,
+            "test_user_context_data".to_string(),
         );
     }
 }

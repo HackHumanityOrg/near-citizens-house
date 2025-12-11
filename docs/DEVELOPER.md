@@ -162,8 +162,11 @@ This is a **pnpm workspace monorepo** with the following structure:
 │       │   └── config.ts
 │       └── package.json
 ├── contracts/
-│   ├── verified-accounts/      # NEAR smart contract (Rust)
-│   └── verified-accounts-interface/
+│   ├── verified-accounts/      # Identity verification contract (Rust)
+│   ├── verified-accounts-interface/  # Interface for cross-contract calls
+│   ├── sputnik-bridge/         # Bridge contract for SputnikDAO integration
+│   ├── sputnik-dao-interface/  # Interface for SputnikDAO v2 cross-contract calls
+│   └── sputnik-dao-contract/   # SputnikDAO v2 (git submodule, pre-built WASM)
 ├── pnpm-workspace.yaml
 ├── package.json
 └── .env
@@ -236,10 +239,14 @@ pnpm lint:verification    # Lint verified-accounts
 pnpm dev:governance       # Start citizens-house dev server (port 3001)
 pnpm build:governance     # Build citizens-house for production
 
-# Smart Contract
-pnpm build:contract       # Build Rust contract with cargo-near
-pnpm lint:contract        # Lint contract with Clippy
-pnpm test:contract        # Run contract tests
+# Smart Contracts
+pnpm build:contracts:all  # Build all Rust contracts
+pnpm lint:contracts:all   # Lint all contracts with Clippy
+pnpm test:contracts:all   # Run all contract tests
+
+# Individual contracts
+pnpm build:contract:verification  # Build verified-accounts contract
+pnpm build:contract:bridge        # Build sputnik-bridge contract
 ```
 
 ---
@@ -435,27 +442,34 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 > - State is preserved as long as data structures are compatible
 > - If you change the contract's data schema, you may need state migration
 
-#### Governance Contract Deployment
+#### Bridge Contract Deployment
 
-The governance contract follows the same pattern:
+The sputnik-bridge contract connects verified accounts to SputnikDAO. For detailed deployment instructions including DAO setup and policy configuration, see [SPUTNIK_BRIDGE_DEPLOYMENT.md](SPUTNIK_BRIDGE_DEPLOYMENT.md).
+
+**Quick Reference:**
 
 ```bash
-# From the governance contract directory
-cd contracts/governance
+# From the bridge contract directory
+cd contracts/sputnik-bridge
 
 # Build and deploy
-cargo near deploy build-non-reproducible-wasm governance-v1.YOUR_ACCOUNT.testnet \
+cargo near deploy build-non-reproducible-wasm sputnik-bridge-v1.YOUR_ACCOUNT.testnet \
   without-init-call \
   network-config testnet sign-with-keychain send
 ```
 
-For fresh deployment, initialize with the verified-accounts contract reference:
+Initialize with required contract references:
 
 ```bash
-near contract call-function as-transaction governance-v1.YOUR_ACCOUNT.testnet new \
-  json-args '{"verified_accounts_contract":"verification-v1.YOUR_ACCOUNT.testnet"}' \
-  prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' \
-  sign-as governance-v1.YOUR_ACCOUNT.testnet \
+near contract call-function as-transaction sputnik-bridge-v1.YOUR_ACCOUNT.testnet new \
+  json-args '{
+    "backend_wallet":"YOUR_BACKEND.testnet",
+    "sputnik_dao":"sputnik-dao-v1.YOUR_ACCOUNT.testnet",
+    "verified_accounts_contract":"verification-v1.YOUR_ACCOUNT.testnet",
+    "citizen_role":"citizen"
+  }' \
+  prepaid-gas '30 Tgas' attached-deposit '0 NEAR' \
+  sign-as sputnik-bridge-v1.YOUR_ACCOUNT.testnet \
   network-config testnet sign-with-keychain send
 ```
 
@@ -658,6 +672,7 @@ cargo test
 
 **Test Coverage:**
 
+**verified-accounts contract:**
 - Contract initialization
 - Access control (only backend can write)
 - Invalid signature handling
@@ -665,8 +680,20 @@ cargo test
 - Nullifier uniqueness enforcement
 - Read function correctness
 - Pagination limits
+- Input validation (size constraints)
 
-**All 8 tests pass ✅**
+**sputnik-bridge contract:**
+- Member addition flow
+- Proposal creation
+- Dynamic quorum updates
+- Access control and backend wallet rotation
+- Event emission
+- Cross-contract call handling
+
+Run all contract tests:
+```bash
+pnpm test:contracts:all  # 48 unit + 23 integration (verified-accounts), 58 (sputnik-bridge)
+```
 
 ### Frontend Testing
 
@@ -787,11 +814,11 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
   get_verified_count json-args {} network-config testnet now
 ```
 
-**Quick Reference - Governance Contract Upgrade:**
+**Quick Reference - Bridge Contract Upgrade:**
 
 ```bash
-cd contracts/governance
-cargo near deploy build-non-reproducible-wasm governance-v1.YOUR_ACCOUNT.testnet \
+cd contracts/sputnik-bridge
+cargo near deploy build-non-reproducible-wasm sputnik-bridge-v1.YOUR_ACCOUNT.testnet \
   without-init-call \
   network-config testnet sign-with-keychain send
 ```
@@ -868,28 +895,44 @@ near-citizens-house/
 │   │
 │   └── shared/                          # Shared utilities and integrations
 │       ├── src/
-│       │   ├── database.ts              # Database abstraction layer
-│       │   ├── near-contract-db.ts      # NEAR contract client
-│       │   ├── near-signature-verification.ts
-│       │   ├── self-verifier.ts
 │       │   ├── config.ts                # App configuration
-│       │   └── types.ts                 # Shared TypeScript types
+│       │   ├── types.ts                 # Shared TypeScript types
+│       │   ├── verification.ts          # Verification logic
+│       │   ├── verification-contract.ts # Verified accounts contract client
+│       │   ├── bridge-contract.ts       # Sputnik bridge contract client
+│       │   ├── sputnik-dao-contract.ts  # SputnikDAO contract client
+│       │   ├── sputnik-dao-types.ts     # DAO type definitions
+│       │   ├── self-verifier.ts         # Self.xyz verifier
+│       │   └── zk-verify.ts             # ZK proof verification
 │       ├── package.json
 │       └── tsconfig.json
 │
 ├── contracts/
-│   ├── verified-accounts/               # NEAR smart contract (Rust)
+│   ├── verified-accounts/               # Identity verification contract
 │   │   ├── src/lib.rs                   # Contract implementation
-│   │   ├── Cargo.toml                   # Rust dependencies
+│   │   ├── tests/integration.rs         # Integration tests
+│   │   ├── Cargo.toml
 │   │   └── target/near/                 # Compiled WASM output
-│   └── verified-accounts-interface/     # Interface crate for cross-contract calls
+│   ├── verified-accounts-interface/     # Interface for cross-contract calls
+│   ├── sputnik-bridge/                  # Bridge to SputnikDAO
+│   │   ├── src/lib.rs                   # Bridge implementation
+│   │   ├── tests/                       # Test files
+│   │   ├── dao-policy.json              # Example DAO policy
+│   │   └── target/near/
+│   ├── sputnik-dao-interface/           # SputnikDAO v2 interface
+│   └── sputnik-dao-contract/            # Pre-built SputnikDAO (submodule)
+│       └── sputnikdao2/res/sputnikdao2.wasm
+│
+├── docs/                                # Documentation
+│   ├── DEVELOPER.md                     # Developer guide (this file)
+│   ├── SPUTNIK_BRIDGE_DEPLOYMENT.md     # Bridge deployment playbook
+│   └── ...                              # Other docs
 │
 ├── pnpm-workspace.yaml                  # pnpm workspace config
 ├── package.json                         # Root package.json with scripts
 ├── .env                                 # Environment variables (gitignored)
 ├── .env.example                         # Example environment file
 ├── CLAUDE.md                            # AI assistant guidance
-├── DEVELOPER.md                         # Developer documentation (you are here)
 ├── LICENSE                              # MIT License
 └── README.md                            # User-facing documentation
 ```

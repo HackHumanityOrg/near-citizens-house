@@ -2,6 +2,8 @@
 
 This document provides step-by-step instructions for deploying the complete SputnikDAO bridge infrastructure on NEAR testnet and mainnet.
 
+> **See also:** [DEVELOPER.md](DEVELOPER.md) for general development setup and the verified-accounts contract deployment.
+
 ## Architecture Overview
 
 ```
