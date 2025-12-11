@@ -1,6 +1,15 @@
 "use server"
 
-import { bridgeContract, verificationDb, nearAccountIdSchema, type BridgeInfo } from "@near-citizens/shared"
+import { z } from "zod"
+import { bridgeContract, verificationDb, type BridgeInfo } from "@near-citizens/shared"
+
+// NEAR account ID: 2-64 chars, lowercase alphanumeric + separators (._-), cannot start/end with separator
+const nearAccountIdSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/)
+  .refine((s) => !/[._-]{2}/.test(s), "Cannot have consecutive separators")
 
 /**
  * Get bridge contract configuration
@@ -43,7 +52,7 @@ export async function getCitizenRole(): Promise<string> {
 export async function checkVerificationStatus(accountId: string): Promise<boolean> {
   const parsed = nearAccountIdSchema.safeParse(accountId)
   if (!parsed.success) {
-    console.error("[Server Action] Invalid account ID:", parsed.error.format())
+    console.error("[Server Action] Invalid account ID:", z.treeifyError(parsed.error))
     return false
   }
 

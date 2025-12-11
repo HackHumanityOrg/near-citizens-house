@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import { z } from "zod"
 import { SputnikHeader } from "@/components/shared/sputnik-header"
 import { ProposalDetailWrapper } from "@/components/proposals/proposal-detail-wrapper"
 import { getProposal, getPolicy } from "@/lib/actions/sputnik-dao"
@@ -8,17 +9,21 @@ import { ArrowLeft } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
+const proposalIdSchema = z.coerce.number().int().min(0)
+
 interface ProposalPageProps {
   params: Promise<{ id: string }>
 }
 
 export default async function ProposalPage({ params }: ProposalPageProps) {
   const { id } = await params
-  const proposalId = parseInt(id, 10)
+  const parsed = proposalIdSchema.safeParse(id)
 
-  if (isNaN(proposalId)) {
+  if (!parsed.success) {
     notFound()
   }
+
+  const proposalId = parsed.data
 
   const [proposal, policy] = await Promise.all([getProposal(proposalId), getPolicy()])
 

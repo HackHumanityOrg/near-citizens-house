@@ -26,10 +26,18 @@ export const sputnikProposalStatusSchema = z.enum([
 export type SputnikProposalStatus = z.infer<typeof sputnikProposalStatusSchema>
 
 /**
- * Vote/Action types for SputnikDAO
- * Used when calling act_proposal
+ * Action types for SputnikDAO
+ * Matches contracts/sputnik-dao-contract/sputnikdao2/src/types.rs Action enum
  */
-export const sputnikActionSchema = z.enum(["VoteApprove", "VoteReject", "VoteRemove", "Finalize", "MoveToHub"])
+export const sputnikActionSchema = z.enum([
+  "AddProposal",
+  "RemoveProposal",
+  "VoteApprove",
+  "VoteReject",
+  "VoteRemove",
+  "Finalize",
+  "MoveToHub",
+])
 export type SputnikAction = z.infer<typeof sputnikActionSchema>
 
 /**
@@ -104,10 +112,11 @@ export type SputnikPolicy = z.infer<typeof sputnikPolicySchema>
 
 // ============================================================================
 // Proposal Kind Types
+// Matches contracts/sputnik-dao-contract/sputnikdao2/src/proposals.rs ProposalKind enum
 // ============================================================================
 
 /**
- * Vote proposal kind (text-only governance)
+ * Vote proposal kind (text-only governance / signaling vote)
  * SputnikDAO returns just "Vote" as a string for this kind
  */
 export const sputnikProposalKindVoteSchema = z.literal("Vote")
@@ -134,9 +143,8 @@ export const sputnikProposalKindRemoveMemberSchema = z.object({
 
 /**
  * Change policy / add or update role proposal kind
- * Used by the bridge for dynamic quorum updates
  */
-export const sputnikProposalKindChangePolicySchema = z.object({
+export const sputnikProposalKindChangePolicyAddOrUpdateRoleSchema = z.object({
   ChangePolicyAddOrUpdateRole: z.object({
     role: z.object({
       name: z.string(),
@@ -148,15 +156,167 @@ export const sputnikProposalKindChangePolicySchema = z.object({
 })
 
 /**
- * All supported proposal kinds
- * Note: SputnikDAO has more kinds (Transfer, FunctionCall, etc.)
- * but we only support the safe ones through the bridge
+ * Change policy / remove role proposal kind
+ */
+export const sputnikProposalKindChangePolicyRemoveRoleSchema = z.object({
+  ChangePolicyRemoveRole: z.object({
+    role: z.string(),
+  }),
+})
+
+/**
+ * Change policy / update default vote policy proposal kind
+ */
+export const sputnikProposalKindChangePolicyUpdateDefaultVotePolicySchema = z.object({
+  ChangePolicyUpdateDefaultVotePolicy: z.object({
+    vote_policy: votePolicySchema,
+  }),
+})
+
+/**
+ * Change policy / update parameters proposal kind
+ */
+export const sputnikProposalKindChangePolicyUpdateParametersSchema = z.object({
+  ChangePolicyUpdateParameters: z.object({
+    parameters: z.object({
+      proposal_bond: z.string().optional(),
+      proposal_period: z.string().optional(),
+      bounty_bond: z.string().optional(),
+      bounty_forgiveness_period: z.string().optional(),
+    }),
+  }),
+})
+
+/**
+ * Transfer proposal kind
+ */
+export const sputnikProposalKindTransferSchema = z.object({
+  Transfer: z.object({
+    token_id: z.string(), // "" for NEAR, or FT account ID
+    receiver_id: z.string(),
+    amount: z.string(), // U128
+    msg: z.string().optional().nullable(),
+  }),
+})
+
+/**
+ * Function call proposal kind
+ */
+export const sputnikProposalKindFunctionCallSchema = z.object({
+  FunctionCall: z.object({
+    receiver_id: z.string(),
+    actions: z.array(
+      z.object({
+        method_name: z.string(),
+        args: z.string(), // Base64VecU8
+        deposit: z.string(), // U128
+        gas: z.string(), // U64
+      }),
+    ),
+  }),
+})
+
+/**
+ * ChangeConfig proposal kind
+ */
+export const sputnikProposalKindChangeConfigSchema = z.object({
+  ChangeConfig: z.object({
+    config: z.object({
+      name: z.string(),
+      purpose: z.string(),
+      metadata: z.string(), // Base64VecU8
+    }),
+  }),
+})
+
+/**
+ * ChangePolicy proposal kind (full policy replacement)
+ */
+export const sputnikProposalKindChangePolicySchema = z.object({
+  ChangePolicy: z.object({
+    policy: z.unknown(), // VersionedPolicy - complex nested type
+  }),
+})
+
+/**
+ * UpgradeSelf proposal kind
+ */
+export const sputnikProposalKindUpgradeSelfSchema = z.object({
+  UpgradeSelf: z.object({
+    hash: z.string(), // Base58CryptoHash
+  }),
+})
+
+/**
+ * UpgradeRemote proposal kind
+ */
+export const sputnikProposalKindUpgradeRemoteSchema = z.object({
+  UpgradeRemote: z.object({
+    receiver_id: z.string(),
+    method_name: z.string(),
+    hash: z.string(), // Base58CryptoHash
+  }),
+})
+
+/**
+ * SetStakingContract proposal kind
+ */
+export const sputnikProposalKindSetStakingContractSchema = z.object({
+  SetStakingContract: z.object({
+    staking_id: z.string(),
+  }),
+})
+
+/**
+ * AddBounty proposal kind
+ */
+export const sputnikProposalKindAddBountySchema = z.object({
+  AddBounty: z.object({
+    bounty: z.unknown(), // Bounty struct
+  }),
+})
+
+/**
+ * BountyDone proposal kind
+ */
+export const sputnikProposalKindBountyDoneSchema = z.object({
+  BountyDone: z.object({
+    bounty_id: z.number(),
+    receiver_id: z.string(),
+  }),
+})
+
+/**
+ * FactoryInfoUpdate proposal kind
+ */
+export const sputnikProposalKindFactoryInfoUpdateSchema = z.object({
+  FactoryInfoUpdate: z.object({
+    factory_info: z.unknown(), // FactoryInfo struct
+  }),
+})
+
+/**
+ * All proposal kinds from SputnikDAO v2
+ * Matches contracts/sputnik-dao-contract/sputnikdao2/src/proposals.rs ProposalKind enum
  */
 export const sputnikProposalKindSchema = z.union([
   sputnikProposalKindVoteSchema,
   sputnikProposalKindAddMemberSchema,
   sputnikProposalKindRemoveMemberSchema,
+  sputnikProposalKindChangePolicyAddOrUpdateRoleSchema,
+  sputnikProposalKindChangePolicyRemoveRoleSchema,
+  sputnikProposalKindChangePolicyUpdateDefaultVotePolicySchema,
+  sputnikProposalKindChangePolicyUpdateParametersSchema,
+  sputnikProposalKindTransferSchema,
+  sputnikProposalKindFunctionCallSchema,
+  sputnikProposalKindChangeConfigSchema,
   sputnikProposalKindChangePolicySchema,
+  sputnikProposalKindUpgradeSelfSchema,
+  sputnikProposalKindUpgradeRemoteSchema,
+  sputnikProposalKindSetStakingContractSchema,
+  sputnikProposalKindAddBountySchema,
+  sputnikProposalKindBountyDoneSchema,
+  sputnikProposalKindFactoryInfoUpdateSchema,
 ])
 export type SputnikProposalKind = z.infer<typeof sputnikProposalKindSchema>
 
@@ -314,11 +474,18 @@ export function getProposalCategory(kind: SputnikProposalKind): ProposalCategory
     if ("AddMemberToRole" in kind || "RemoveMemberFromRole" in kind) {
       return "membership"
     }
-    if ("ChangePolicyAddOrUpdateRole" in kind) {
+    if (
+      "ChangePolicyAddOrUpdateRole" in kind ||
+      "ChangePolicyRemoveRole" in kind ||
+      "ChangePolicyUpdateDefaultVotePolicy" in kind ||
+      "ChangePolicyUpdateParameters" in kind ||
+      "ChangePolicy" in kind ||
+      "ChangeConfig" in kind
+    ) {
       return "policy"
     }
   }
-  return "vote" // fallback
+  return "vote" // fallback for Transfer, FunctionCall, etc.
 }
 
 /**
@@ -349,6 +516,27 @@ export function getProposalKindLabel(kind: SputnikProposalKind): string {
     }
     if ("ChangePolicyAddOrUpdateRole" in kind) {
       return `Update ${kind.ChangePolicyAddOrUpdateRole.role.name} role policy`
+    }
+    if ("ChangePolicyRemoveRole" in kind) {
+      return `Remove ${kind.ChangePolicyRemoveRole.role} role`
+    }
+    if ("ChangePolicyUpdateDefaultVotePolicy" in kind) {
+      return "Update default vote policy"
+    }
+    if ("ChangePolicyUpdateParameters" in kind) {
+      return "Update policy parameters"
+    }
+    if ("Transfer" in kind) {
+      return `Transfer ${kind.Transfer.amount} to ${kind.Transfer.receiver_id}`
+    }
+    if ("FunctionCall" in kind) {
+      return `Call ${kind.FunctionCall.receiver_id}`
+    }
+    if ("ChangeConfig" in kind) {
+      return "Change DAO config"
+    }
+    if ("ChangePolicy" in kind) {
+      return "Change DAO policy"
     }
   }
   return "Unknown"

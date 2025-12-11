@@ -45,6 +45,21 @@ export const selfProofDataSchema = z.object({
 export type SelfProofData = z.infer<typeof selfProofDataSchema>
 
 // ============================================================================
+// NEP-413 Schemas
+// ============================================================================
+
+// NEP-413 payload structure for NEAR message signing
+// Used for validation and type inference; Borsh schema is used for serialization
+export const nep413PayloadSchema = z.object({
+  message: z.string(),
+  nonce: z.instanceof(Uint8Array).or(z.array(z.number()).length(32)), // 32-byte nonce
+  recipient: z.string(),
+  callbackUrl: z.string().nullable().optional(),
+})
+
+export type Nep413Payload = z.infer<typeof nep413PayloadSchema>
+
+// ============================================================================
 // NEAR Signature Schemas
 // ============================================================================
 
@@ -75,6 +90,69 @@ export const verifyRequestSchema = z.object({
 
 export type VerifyRequest = z.infer<typeof verifyRequestSchema>
 
+// ============================================================================
+// Verification Error Types
+// ============================================================================
+
+// All possible verification error codes
+export const verificationErrorCodeSchema = z.enum([
+  "MISSING_FIELDS",
+  "VERIFICATION_FAILED",
+  "MINIMUM_AGE_NOT_MET",
+  "OFAC_CHECK_FAILED",
+  "NULLIFIER_MISSING",
+  "NEAR_SIGNATURE_INVALID",
+  "NEAR_SIGNATURE_MISSING",
+  "SIGNATURE_EXPIRED",
+  "SIGNATURE_TIMESTAMP_INVALID",
+  "DUPLICATE_PASSPORT",
+  "STORAGE_FAILED",
+  "INTERNAL_ERROR",
+])
+
+export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
+
+// Error messages mapped to codes
+export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
+  MISSING_FIELDS: "Missing required fields",
+  VERIFICATION_FAILED: "Verification failed",
+  MINIMUM_AGE_NOT_MET: "Minimum age requirement not met (must be 18+)",
+  OFAC_CHECK_FAILED: "OFAC verification failed",
+  NULLIFIER_MISSING: "Nullifier missing from proof",
+  NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
+  NEAR_SIGNATURE_MISSING: "Invalid or missing NEAR signature data",
+  SIGNATURE_EXPIRED: "Signature expired",
+  SIGNATURE_TIMESTAMP_INVALID: "Invalid signature timestamp",
+  DUPLICATE_PASSPORT: "This passport has already been registered",
+  STORAGE_FAILED: "Failed to store verification",
+  INTERNAL_ERROR: "Internal server error",
+} as const
+
+// Verification error response schema
+export const verificationErrorSchema = z.object({
+  status: z.literal("error"),
+  result: z.literal(false),
+  code: verificationErrorCodeSchema,
+  reason: z.string(),
+})
+
+export type VerificationError = z.infer<typeof verificationErrorSchema>
+
+// Helper to create typed error responses
+export function createVerificationError(code: VerificationErrorCode, details?: string): VerificationError {
+  const baseMessage = VERIFICATION_ERROR_MESSAGES[code]
+  return {
+    status: "error",
+    result: false,
+    code,
+    reason: details ? `${baseMessage}: ${details}` : baseMessage,
+  }
+}
+
+// ============================================================================
+// Verification Result Schema
+// ============================================================================
+
 // Self.xyz verification result (API response) - discriminated union for type safety
 export const selfVerificationResultSchema = z.discriminatedUnion("status", [
   // Success case - attestationId and userData are required
@@ -94,12 +172,8 @@ export const selfVerificationResultSchema = z.discriminatedUnion("status", [
       .catchall(z.unknown()) // Allow other fields from Self.xyz
       .optional(),
   }),
-  // Error case - reason is required
-  z.object({
-    status: z.literal("error"),
-    result: z.literal(false),
-    reason: z.string(),
-  }),
+  // Error case - code and reason are required
+  verificationErrorSchema,
 ])
 
 export type SelfVerificationResult = z.infer<typeof selfVerificationResultSchema>

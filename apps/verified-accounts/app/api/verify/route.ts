@@ -3,10 +3,10 @@ import { revalidateTag } from "next/cache"
 import {
   SELF_CONFIG,
   CONSTANTS,
-  ERROR_MESSAGES,
   verificationDb,
   getVerifier,
   verifyRequestSchema,
+  createVerificationError,
   type SelfVerificationResult,
   type NearSignatureData,
   type VerificationDataWithSignature,
@@ -55,12 +55,9 @@ export async function POST(request: NextRequest) {
 
     const parseResult = verifyRequestSchema.safeParse(body)
     if (!parseResult.success) {
+      const missingFields = parseResult.error.issues.map((i) => i.path.join(".")).join(", ")
       return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason: `${ERROR_MESSAGES.MISSING_FIELDS}: ${parseResult.error.issues.map((i) => i.path.join(".")).join(", ")}`,
-        } as SelfVerificationResult,
+        createVerificationError("MISSING_FIELDS", missingFields) satisfies SelfVerificationResult,
         { status: 400 },
       )
     }
@@ -74,11 +71,10 @@ export async function POST(request: NextRequest) {
       selfVerificationResult = await verifier.verify(attestationId, proof, publicSignals, userContextData)
     } catch (error) {
       return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason: `Self verification failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        } as SelfVerificationResult,
+        createVerificationError(
+          "VERIFICATION_FAILED",
+          error instanceof Error ? error.message : "Unknown error",
+        ) satisfies SelfVerificationResult,
         { status: 400 },
       )
     }
@@ -89,93 +85,115 @@ export async function POST(request: NextRequest) {
     const ofacCheckFailed = ofacEnabled && isOfacValid === false
 
     if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
-      let reason = ERROR_MESSAGES.VERIFICATION_FAILED
-      if (!isMinimumAgeValid) reason = "Minimum age requirement not met (must be 18+)"
-      if (ofacCheckFailed) reason = "OFAC verification failed - user may be on sanctions list"
+      const errorCode = !isMinimumAgeValid
+        ? "MINIMUM_AGE_NOT_MET"
+        : ofacCheckFailed
+          ? "OFAC_CHECK_FAILED"
+          : "VERIFICATION_FAILED"
 
-      return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason,
-        } as SelfVerificationResult,
-        { status: 400 },
-      )
+      return NextResponse.json(createVerificationError(errorCode) satisfies SelfVerificationResult, { status: 400 })
     }
 
     const nullifier = selfVerificationResult.discloseOutput?.nullifier
 
     if (!nullifier) {
+      return NextResponse.json(createVerificationError("NULLIFIER_MISSING") satisfies SelfVerificationResult, {
+        status: 400,
+      })
+    }
+
+    // Parse NEAR signature from userDefinedData
+    const userDefinedDataRaw = selfVerificationResult.userData?.userDefinedData
+    const jsonString = parseUserDefinedData(userDefinedDataRaw)
+
+    if (!jsonString) {
       return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason: ERROR_MESSAGES.NULLIFIER_MISSING,
-        } as SelfVerificationResult,
+        createVerificationError(
+          "NEAR_SIGNATURE_MISSING",
+          "Could not extract JSON from userDefinedData",
+        ) satisfies SelfVerificationResult,
         { status: 400 },
       )
     }
 
-    let nearSignature: NearSignatureData
-
+    let data: Record<string, unknown>
     try {
-      const userDefinedDataRaw = selfVerificationResult.userData?.userDefinedData
-      const jsonString = parseUserDefinedData(userDefinedDataRaw)
-
-      if (!jsonString) {
-        throw new Error("Could not extract JSON from userDefinedData")
-      }
-
-      const data = JSON.parse(jsonString)
-
-      if (!data.accountId || !data.signature || !data.publicKey || !data.nonce) {
-        throw new Error(
-          `Missing required NEP-413 fields: ${["accountId", "signature", "publicKey", "nonce"].filter((f) => !data[f]).join(", ")}`,
-        )
-      }
-
-      let nonce = data.nonce
-      if (typeof nonce === "string") {
-        nonce = Array.from(Buffer.from(nonce, "base64"))
-      }
-      if (!Array.isArray(nonce) || nonce.length !== 32) {
-        throw new Error(`Invalid nonce: expected 32-byte array, got ${typeof nonce}`)
-      }
-
-      // Validate signature timestamp freshness
-      const signatureTimestamp = typeof data.timestamp === "number" ? data.timestamp : 0
-      const now = Date.now()
-      const signatureAge = now - signatureTimestamp
-
-      if (signatureTimestamp === 0) {
-        throw new Error("Signature timestamp is required for security")
-      } else if (signatureAge > MAX_SIGNATURE_AGE_MS) {
-        throw new Error(
-          `Signature expired: signed ${Math.round(signatureAge / 1000)}s ago (max ${MAX_SIGNATURE_AGE_MS / 1000}s)`,
-        )
-      } else if (signatureAge < 0) {
-        // Future timestamp - possible clock skew or manipulation
-        throw new Error("Invalid signature timestamp: future date detected")
-      }
-
-      nearSignature = {
-        accountId: data.accountId,
-        signature: data.signature,
-        publicKey: data.publicKey,
-        challenge: CONSTANTS.SIGNING_MESSAGE,
-        timestamp: signatureTimestamp || now,
-        nonce: nonce,
-        recipient: data.accountId,
-      }
-    } catch (e) {
+      data = JSON.parse(jsonString)
+    } catch {
       return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason: `${ERROR_MESSAGES.NEAR_SIGNATURE_MISSING}: ${e instanceof Error ? e.message : "Parse error"}`,
-        } as SelfVerificationResult,
+        createVerificationError(
+          "NEAR_SIGNATURE_MISSING",
+          "Invalid JSON in userDefinedData",
+        ) satisfies SelfVerificationResult,
         { status: 400 },
       )
+    }
+
+    if (!data.accountId || !data.signature || !data.publicKey || !data.nonce) {
+      const missingFields = ["accountId", "signature", "publicKey", "nonce"].filter((f) => !data[f]).join(", ")
+      return NextResponse.json(
+        createVerificationError(
+          "NEAR_SIGNATURE_MISSING",
+          `Missing NEP-413 fields: ${missingFields}`,
+        ) satisfies SelfVerificationResult,
+        { status: 400 },
+      )
+    }
+
+    let nonce = data.nonce
+    if (typeof nonce === "string") {
+      nonce = Array.from(Buffer.from(nonce, "base64"))
+    }
+    if (!Array.isArray(nonce) || nonce.length !== 32) {
+      return NextResponse.json(
+        createVerificationError(
+          "NEAR_SIGNATURE_INVALID",
+          `Invalid nonce: expected 32-byte array`,
+        ) satisfies SelfVerificationResult,
+        { status: 400 },
+      )
+    }
+
+    // Validate signature timestamp freshness
+    const signatureTimestamp = typeof data.timestamp === "number" ? data.timestamp : 0
+    const now = Date.now()
+    const signatureAge = now - signatureTimestamp
+
+    if (signatureTimestamp === 0) {
+      return NextResponse.json(
+        createVerificationError(
+          "SIGNATURE_TIMESTAMP_INVALID",
+          "Timestamp is required",
+        ) satisfies SelfVerificationResult,
+        { status: 400 },
+      )
+    }
+
+    if (signatureAge > MAX_SIGNATURE_AGE_MS) {
+      return NextResponse.json(
+        createVerificationError(
+          "SIGNATURE_EXPIRED",
+          `Signed ${Math.round(signatureAge / 1000)}s ago (max ${MAX_SIGNATURE_AGE_MS / 1000}s)`,
+        ) satisfies SelfVerificationResult,
+        { status: 400 },
+      )
+    }
+
+    if (signatureAge < 0) {
+      return NextResponse.json(
+        createVerificationError("SIGNATURE_TIMESTAMP_INVALID", "Future date detected") satisfies SelfVerificationResult,
+        { status: 400 },
+      )
+    }
+
+    const nearSignature: NearSignatureData = {
+      accountId: data.accountId as string,
+      signature: data.signature as string,
+      publicKey: data.publicKey as string,
+      challenge: CONSTANTS.SIGNING_MESSAGE,
+      timestamp: signatureTimestamp,
+      nonce: nonce as number[],
+      recipient: data.accountId as string,
     }
 
     // Note: NEAR signature verification is performed by the smart contract (single source of truth)
@@ -209,12 +227,15 @@ export async function POST(request: NextRequest) {
       // Next.js 16 requires a cacheLife profile as second argument
       revalidateTag("verifications", "max")
     } catch (error) {
+      // Check for duplicate passport error from contract
+      const errorMessage = error instanceof Error ? error.message : ""
+      const errorCode = errorMessage.includes("already been registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
+
       return NextResponse.json(
-        {
-          status: "error",
-          result: false,
-          reason: error instanceof Error ? error.message : "Failed to store verification",
-        } as SelfVerificationResult,
+        createVerificationError(
+          errorCode,
+          error instanceof Error ? error.message : undefined,
+        ) satisfies SelfVerificationResult,
         { status: 500 },
       )
     }
@@ -230,16 +251,15 @@ export async function POST(request: NextRequest) {
           nearSignature: nearSignature.signature,
         },
         discloseOutput: selfVerificationResult.discloseOutput,
-      } as SelfVerificationResult,
+      } satisfies SelfVerificationResult,
       { status: 200 },
     )
   } catch (error) {
     return NextResponse.json(
-      {
-        status: "error",
-        result: false,
-        reason: error instanceof Error ? error.message : "Internal server error",
-      } as SelfVerificationResult,
+      createVerificationError(
+        "INTERNAL_ERROR",
+        error instanceof Error ? error.message : undefined,
+      ) satisfies SelfVerificationResult,
       { status: 500 },
     )
   }

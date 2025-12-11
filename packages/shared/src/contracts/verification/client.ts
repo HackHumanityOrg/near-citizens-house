@@ -10,7 +10,7 @@ import { Account } from "@near-js/accounts"
 import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
 import { KeyPair } from "@near-js/crypto"
-import { JsonRpcProvider, FailoverRpcProvider } from "@near-js/providers"
+import type { FailoverRpcProvider } from "@near-js/providers"
 import { KeyPairSigner } from "@near-js/signers"
 import { actionCreators } from "@near-js/transactions"
 import {
@@ -23,21 +23,9 @@ import {
   type VerifiedAccount,
 } from "./types"
 import { NEAR_CONFIG } from "../../config"
+import { createFailoverProvider } from "../../rpc"
 
 export type { IVerificationDatabase, VerificationDataWithSignature, VerifiedAccount }
-
-// Fallback RPC URLs for read operations
-const FALLBACK_RPC_URLS = {
-  mainnet: ["https://free.rpc.fastnear.com", "https://near.lava.build:443", "https://rpc.mainnet.near.org"],
-  testnet: ["https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"],
-}
-
-// Retry options for JsonRpcProvider
-const RPC_RETRY_OPTIONS = {
-  retries: 3, // Number of retries before giving up
-  wait: 500, // Wait 500ms between retries
-  backoff: 2, // Exponential backoff multiplier
-}
 
 export class NearContractDatabase implements IVerificationDatabase {
   private account: Account | null = null
@@ -49,38 +37,9 @@ export class NearContractDatabase implements IVerificationDatabase {
     private backendAccountId: string,
     private backendPrivateKey: string,
     contractId: string,
-    private networkId: string,
-    private rpcUrl: string,
   ) {
     this.contractId = contractId
     this.initialized = this.init()
-  }
-
-  // Create a FailoverRpcProvider with multiple RPC endpoints
-  private createFailoverProvider(): FailoverRpcProvider {
-    const fallbacks = FALLBACK_RPC_URLS[this.networkId as keyof typeof FALLBACK_RPC_URLS] || []
-    // Primary URL first, then fallbacks (excluding duplicates)
-    const rpcUrls = [this.rpcUrl, ...fallbacks.filter((url) => url !== this.rpcUrl)]
-
-    const providers = rpcUrls.map((url) => {
-      // Apply API key headers only for fastnear.com URLs
-      const isFastNear = url.includes("fastnear.com")
-      const headers = isFastNear ? NEAR_CONFIG.rpcHeaders : {}
-
-      return new JsonRpcProvider(
-        {
-          url,
-          headers,
-        },
-        RPC_RETRY_OPTIONS,
-      )
-    })
-
-    console.log(`[NearContractDB] Creating FailoverRpcProvider with ${providers.length} endpoints:`, rpcUrls)
-    if (NEAR_CONFIG.rpcApiKey) {
-      console.log(`[NearContractDB] Using FastNear API key for authenticated access`)
-    }
-    return new FailoverRpcProvider(providers)
   }
 
   private async init() {
@@ -91,7 +50,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       const signer = new KeyPairSigner(keyPair)
 
       // Create FailoverRpcProvider with multiple endpoints and retry logic
-      this.provider = this.createFailoverProvider()
+      this.provider = createFailoverProvider()
 
       // Account constructor types don't match the actual implementation
       // The provider and signer interfaces are compatible at runtime
@@ -103,7 +62,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 
       console.log(`[NearContractDB] Initialized with account: ${this.backendAccountId}`)
       console.log(`[NearContractDB] Contract ID: ${this.contractId}`)
-      console.log(`[NearContractDB] Network: ${this.networkId}`)
+      console.log(`[NearContractDB] Network: ${NEAR_CONFIG.networkId}`)
     } catch (error) {
       console.error("[NearContractDB] Initialization error:", error)
       throw error
@@ -291,7 +250,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 let dbInstance: IVerificationDatabase | null = null
 
 function createVerificationContract(): IVerificationDatabase {
-  const { verificationContractId, backendAccountId, backendPrivateKey, networkId, rpcUrl } = NEAR_CONFIG
+  const { verificationContractId, backendAccountId, backendPrivateKey } = NEAR_CONFIG
 
   if (!verificationContractId || !backendAccountId || !backendPrivateKey) {
     throw new Error(
@@ -305,9 +264,9 @@ function createVerificationContract(): IVerificationDatabase {
 
   console.log("[VerificationContract] Using NEAR smart contract")
   console.log(`[VerificationContract] Contract: ${verificationContractId}`)
-  console.log(`[VerificationContract] Network: ${networkId}`)
+  console.log(`[VerificationContract] Network: ${NEAR_CONFIG.networkId}`)
 
-  return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId, networkId, rpcUrl)
+  return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId)
 }
 
 // Lazy singleton - only initialize when first accessed (not during build)

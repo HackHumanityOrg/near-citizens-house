@@ -5,7 +5,8 @@ import { NearConnector } from "@hot-labs/near-connect"
 import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from "@hot-labs/near-connect"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
-import { NEAR_CONFIG, CONSTANTS, ERROR_MESSAGES } from "./config"
+import { NEAR_CONFIG, CONSTANTS } from "./config"
+import { RPC_ENDPOINTS } from "./rpc"
 import type { NearSignatureData } from "./contracts/verification"
 
 interface NearWalletContextType {
@@ -30,7 +31,10 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
       try {
         const connector = new NearConnector({
           network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
-          providers: NEAR_CONFIG.publicRpcUrls,
+          providers: {
+            mainnet: [...RPC_ENDPOINTS.mainnet],
+            testnet: [...RPC_ENDPOINTS.testnet],
+          },
           autoConnect: true,
           logger: process.env.NODE_ENV === "development" ? console : undefined,
         })
@@ -85,13 +89,15 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   const signMessage = useCallback(
     async (_message: string): Promise<NearSignatureData> => {
       if (!nearConnector || !accountId) {
-        throw new Error(ERROR_MESSAGES.WALLET_NOT_CONNECTED)
+        throw new Error("Wallet not connected")
       }
 
       const wallet = await nearConnector.wallet()
 
       if (!wallet || !("signMessage" in wallet)) {
-        throw new Error(ERROR_MESSAGES.SIGNING_NOT_SUPPORTED)
+        throw new Error(
+          "This wallet does not support message signing. Please use Meteor Wallet or another compatible wallet.",
+        )
       }
 
       const messageToSign = CONSTANTS.SIGNING_MESSAGE
@@ -126,7 +132,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   const signAndSendTransaction = useCallback(
     async (params: SignAndSendTransactionParams): Promise<FinalExecutionOutcome> => {
       if (!nearConnector || !accountId) {
-        throw new Error(ERROR_MESSAGES.WALLET_NOT_CONNECTED)
+        throw new Error("Wallet not connected")
       }
 
       const wallet = await nearConnector.wallet()

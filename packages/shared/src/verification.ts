@@ -7,12 +7,20 @@ import { PublicKey } from "@near-js/crypto"
 import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
-import type { ParsedSignatureData, ProofData } from "./contracts/verification"
+import type { ParsedSignatureData, ProofData, Nep413Payload } from "./contracts/verification"
 
-export type { ParsedSignatureData, ProofData }
+export type { ParsedSignatureData, ProofData, Nep413Payload }
 
-// NEP-413 payload schema for Borsh serialization
-const Nep413PayloadSchema = {
+/**
+ * NEP-413 payload schema for Borsh binary serialization.
+ *
+ * Note: This is a Borsh schema (not Zod) required by the `borsh` library's serialize() function.
+ * For type validation and TypeScript types, see `nep413PayloadSchema` in contracts/verification/types.ts.
+ * The two schemas define the same structure but serve different purposes:
+ * - Borsh schema: Binary serialization for cryptographic operations
+ * - Zod schema: Runtime validation and TypeScript type inference
+ */
+const Nep413BorshSchema = {
   struct: {
     message: "string",
     nonce: { array: { type: "u8", len: 32 } },
@@ -47,7 +55,7 @@ export function computeNep413Hash(message: string, nonce: number[], recipient: s
     callbackUrl: null,
   }
 
-  const payloadBytes = serialize(Nep413PayloadSchema, payload)
+  const payloadBytes = serialize(Nep413BorshSchema, payload)
   const fullMessage = Buffer.concat([tagBuffer, Buffer.from(payloadBytes)])
   const hash = createHash("sha256").update(fullMessage).digest()
 
@@ -150,7 +158,7 @@ export function verifyNearSignature(
     }
 
     // Borsh serialize the payload
-    const payloadBytes = serialize(Nep413PayloadSchema, payload)
+    const payloadBytes = serialize(Nep413BorshSchema, payload)
 
     // Step 3: Concatenate tag + payload
     const fullMessage = Buffer.concat([tagBuffer, Buffer.from(payloadBytes)])

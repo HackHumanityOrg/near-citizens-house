@@ -9,35 +9,39 @@ import {
   parseUserContextData,
   verifyNearSignature,
   buildProofData,
-  paginationSchema,
-  nearAccountIdSchema,
-  verifiedAccountSchema,
-  proofDataSchema,
+  type VerifiedAccount,
+  type ProofData,
 } from "@near-citizens/shared"
 
-// Zod schemas for action results
-const verificationResultSchema = z.object({
-  zkValid: z.boolean(),
-  signatureValid: z.boolean(),
-  error: z.string().optional(),
+// NEAR account ID: 2-64 chars, lowercase alphanumeric + separators (._-), cannot start/end with separator
+const nearAccountIdSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/)
+  .refine((s) => !/[._-]{2}/.test(s), "Cannot have consecutive separators")
+
+const paginationSchema = z.object({
+  page: z.number().int().min(0).max(100000),
+  pageSize: z.number().int().min(1).max(100),
 })
 
-export type VerificationResult = z.infer<typeof verificationResultSchema>
+export type VerificationResult = {
+  zkValid: boolean
+  signatureValid: boolean
+  error?: string
+}
 
-const verifiedAccountWithStatusSchema = z.object({
-  account: verifiedAccountSchema,
-  verification: verificationResultSchema,
-  proofData: proofDataSchema.nullable(),
-})
+export type VerifiedAccountWithStatus = {
+  account: VerifiedAccount
+  verification: VerificationResult
+  proofData: ProofData | null
+}
 
-export type VerifiedAccountWithStatus = z.infer<typeof verifiedAccountWithStatusSchema>
-
-const getVerifiedAccountsResultSchema = z.object({
-  accounts: z.array(verifiedAccountWithStatusSchema),
-  total: z.number(),
-})
-
-export type GetVerifiedAccountsResult = z.infer<typeof getVerifiedAccountsResultSchema>
+export type GetVerifiedAccountsResult = {
+  accounts: VerifiedAccountWithStatus[]
+  total: number
+}
 
 /**
  * Core data fetching logic - separated for caching.
@@ -174,7 +178,7 @@ export async function getVerifiedAccountsWithStatus(
   // Validate input parameters with safeParse
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
-    console.error("[Actions] Invalid pagination:", params.error.format())
+    console.error("[Actions] Invalid pagination:", z.treeifyError(params.error))
     return { accounts: [], total: 0 }
   }
 
@@ -189,7 +193,7 @@ export async function isAccountVerified(nearAccountId: string): Promise<boolean>
   // Validate account ID format
   const parsed = nearAccountIdSchema.safeParse(nearAccountId)
   if (!parsed.success) {
-    console.error("[Actions] Invalid account ID:", parsed.error.format())
+    console.error("[Actions] Invalid account ID:", z.treeifyError(parsed.error))
     return false
   }
 

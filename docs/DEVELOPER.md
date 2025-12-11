@@ -673,6 +673,7 @@ cargo test
 **Test Coverage:**
 
 **verified-accounts contract:**
+
 - Contract initialization
 - Access control (only backend can write)
 - Invalid signature handling
@@ -683,6 +684,7 @@ cargo test
 - Input validation (size constraints)
 
 **sputnik-bridge contract:**
+
 - Member addition flow
 - Proposal creation
 - Dynamic quorum updates
@@ -691,6 +693,7 @@ cargo test
 - Cross-contract call handling
 
 Run all contract tests:
+
 ```bash
 pnpm test:contracts:all  # 48 unit + 23 integration (verified-accounts), 58 (sputnik-bridge)
 ```

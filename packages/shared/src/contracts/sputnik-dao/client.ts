@@ -4,7 +4,7 @@
  * Provides database abstraction layer for reading from SputnikDAO v2 contracts.
  * Write operations (voting) are handled client-side via useSputnikDao hook.
  */
-import { JsonRpcProvider } from "@near-js/providers"
+import type { FailoverRpcProvider } from "@near-js/providers"
 import {
   sputnikProposalSchema,
   transformedPolicySchema,
@@ -15,52 +15,32 @@ import {
   type SputnikPolicy,
 } from "./types"
 import { NEAR_CONFIG } from "../../config"
+import { createFailoverProvider } from "../../rpc"
 
 export type { ISputnikDaoContract, SputnikProposal, TransformedPolicy }
 
 /**
  * Read-only SputnikDAO v2 contract client.
+ * Uses FailoverRpcProvider for automatic failover between RPC endpoints.
  * Write operations should be performed via useSputnikDao hook (client-side wallet signing).
  */
 export class SputnikDaoContract implements ISputnikDaoContract {
-  private provider: JsonRpcProvider | null = null
+  private provider: FailoverRpcProvider
   private contractId: string
-  private initialized: Promise<void>
 
-  constructor(contractId: string, rpcUrl: string) {
+  constructor(contractId: string) {
     this.contractId = contractId
-    this.initialized = this.init(rpcUrl)
-  }
+    this.provider = createFailoverProvider()
 
-  private async init(rpcUrl: string) {
-    try {
-      this.provider = new JsonRpcProvider({
-        url: rpcUrl,
-        headers: NEAR_CONFIG.rpcHeaders,
-      })
-      console.log(`[SputnikDaoContract] Initialized read-only client`)
-      console.log(`[SputnikDaoContract] Contract ID: ${this.contractId}`)
-      console.log(`[SputnikDaoContract] RPC URL: ${rpcUrl}`)
-    } catch (error) {
-      console.error("[SputnikDaoContract] Initialization error:", error)
-      throw error
-    }
-  }
-
-  private async ensureInitialized() {
-    await this.initialized
-    if (!this.provider) {
-      throw new Error("NEAR provider not initialized")
-    }
+    console.log(`[SputnikDaoContract] Initialized read-only client`)
+    console.log(`[SputnikDaoContract] Contract ID: ${this.contractId}`)
   }
 
   // ==================== READ METHODS ====================
 
   async getProposal(id: number): Promise<SputnikProposal | null> {
-    await this.ensureInitialized()
-
     try {
-      const result = await this.provider!.callFunction<ContractSputnikProposal>(this.contractId, "get_proposal", { id })
+      const result = await this.provider.callFunction<ContractSputnikProposal>(this.contractId, "get_proposal", { id })
 
       if (!result) {
         return null
@@ -75,10 +55,8 @@ export class SputnikDaoContract implements ISputnikDaoContract {
   }
 
   async getProposals(fromIndex: number, limit: number): Promise<SputnikProposal[]> {
-    await this.ensureInitialized()
-
     try {
-      const result = await this.provider!.callFunction<ContractSputnikProposal[]>(this.contractId, "get_proposals", {
+      const result = await this.provider.callFunction<ContractSputnikProposal[]>(this.contractId, "get_proposals", {
         from_index: fromIndex,
         limit,
       })
@@ -96,10 +74,8 @@ export class SputnikDaoContract implements ISputnikDaoContract {
   }
 
   async getLastProposalId(): Promise<number> {
-    await this.ensureInitialized()
-
     try {
-      const result = await this.provider!.callFunction<number>(this.contractId, "get_last_proposal_id", {})
+      const result = await this.provider.callFunction<number>(this.contractId, "get_last_proposal_id", {})
 
       return result ?? 0
     } catch (error) {
@@ -109,10 +85,8 @@ export class SputnikDaoContract implements ISputnikDaoContract {
   }
 
   async getPolicy(): Promise<TransformedPolicy> {
-    await this.ensureInitialized()
-
     try {
-      const result = await this.provider!.callFunction<SputnikPolicy>(this.contractId, "get_policy", {})
+      const result = await this.provider.callFunction<SputnikPolicy>(this.contractId, "get_policy", {})
 
       if (!result) {
         throw new Error("Failed to get DAO policy")
@@ -146,7 +120,7 @@ export class SputnikDaoContract implements ISputnikDaoContract {
 let dbInstance: ISputnikDaoContract | null = null
 
 function createSputnikDaoContract(): ISputnikDaoContract {
-  const { sputnikDaoContractId, rpcUrl, networkId } = NEAR_CONFIG
+  const { sputnikDaoContractId } = NEAR_CONFIG
 
   if (!sputnikDaoContractId) {
     throw new Error(
@@ -158,9 +132,9 @@ function createSputnikDaoContract(): ISputnikDaoContract {
 
   console.log("[SputnikDaoContract] Using SputnikDAO v2 smart contract (read-only)")
   console.log(`[SputnikDaoContract] Contract: ${sputnikDaoContractId}`)
-  console.log(`[SputnikDaoContract] Network: ${networkId}`)
+  console.log(`[SputnikDaoContract] Network: ${NEAR_CONFIG.networkId}`)
 
-  return new SputnikDaoContract(sputnikDaoContractId, rpcUrl)
+  return new SputnikDaoContract(sputnikDaoContractId)
 }
 
 // Lazy singleton - only initialize when first accessed (not during build)

@@ -1,16 +1,22 @@
 "use server"
 
 import { z } from "zod"
-import {
-  sputnikDaoDb,
-  paginationSchema,
-  nearAccountIdSchema,
-  type SputnikProposal,
-  type TransformedPolicy,
-} from "@near-citizens/shared"
+import { sputnikDaoDb, type SputnikProposal, type TransformedPolicy } from "@near-citizens/shared"
 
-// Local schema - only used in this file
-const proposalIdSchema = z.number().int("Proposal ID must be an integer").min(0, "Proposal ID must be non-negative")
+// NEAR account ID: 2-64 chars, lowercase alphanumeric + separators (._-), cannot start/end with separator
+const nearAccountIdSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/)
+  .refine((s) => !/[._-]{2}/.test(s), "Cannot have consecutive separators")
+
+const paginationSchema = z.object({
+  page: z.number().int().min(0).max(100000),
+  pageSize: z.number().int().min(1).max(100),
+})
+
+const proposalIdSchema = z.number().int().min(0)
 
 /**
  * Get a single proposal by ID
@@ -18,7 +24,7 @@ const proposalIdSchema = z.number().int("Proposal ID must be an integer").min(0,
 export async function getProposal(id: number): Promise<SputnikProposal | null> {
   const parsed = proposalIdSchema.safeParse(id)
   if (!parsed.success) {
-    console.error("[SputnikDAO] Invalid proposal ID:", parsed.error.format())
+    console.error("[SputnikDAO] Invalid proposal ID:", z.treeifyError(parsed.error))
     return null
   }
   return sputnikDaoDb.getProposal(parsed.data)
@@ -32,7 +38,7 @@ export async function getProposal(id: number): Promise<SputnikProposal | null> {
 export async function getProposals(fromIndex: number = 0, limit: number = 20): Promise<SputnikProposal[]> {
   const params = paginationSchema.safeParse({ page: fromIndex, pageSize: limit })
   if (!params.success) {
-    console.error("[SputnikDAO] Invalid pagination:", params.error.format())
+    console.error("[SputnikDAO] Invalid pagination:", z.treeifyError(params.error))
     return []
   }
   return sputnikDaoDb.getProposals(params.data.page, params.data.pageSize)
@@ -64,7 +70,7 @@ export async function getProposalsReversed(
 ): Promise<{ proposals: SputnikProposal[]; hasMore: boolean; total: number }> {
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
-    console.error("[SputnikDAO] Invalid pagination:", params.error.format())
+    console.error("[SputnikDAO] Invalid pagination:", z.treeifyError(params.error))
     return { proposals: [], hasMore: false, total: 0 }
   }
 
@@ -105,8 +111,8 @@ export async function hasVoted(proposalId: number, accountId: string): Promise<b
 
   if (!idResult.success || !accountResult.success) {
     console.error("[SputnikDAO] Invalid params:", {
-      proposalId: idResult.error?.format(),
-      accountId: accountResult.error?.format(),
+      proposalId: idResult.error ? z.treeifyError(idResult.error) : undefined,
+      accountId: accountResult.error ? z.treeifyError(accountResult.error) : undefined,
     })
     return false
   }
@@ -129,8 +135,8 @@ export async function getUserVote(
 
   if (!idResult.success || !accountResult.success) {
     console.error("[SputnikDAO] Invalid params:", {
-      proposalId: idResult.error?.format(),
-      accountId: accountResult.error?.format(),
+      proposalId: idResult.error ? z.treeifyError(idResult.error) : undefined,
+      accountId: accountResult.error ? z.treeifyError(accountResult.error) : undefined,
     })
     return null
   }

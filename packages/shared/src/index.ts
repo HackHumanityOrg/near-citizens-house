@@ -1,8 +1,8 @@
 // Configuration
 export * from "./config"
 
-// Validation schemas (shared across apps)
-export * from "./validation"
+// RPC Provider
+export * from "./rpc"
 
 // Contracts
 export * from "./contracts/verification"

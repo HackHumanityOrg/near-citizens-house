@@ -16,7 +16,7 @@ import { PassportQrScanner } from "./passport-qr-scanner"
 import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, LogOut } from "lucide-react"
 import type { NearSignatureData } from "@near-citizens/shared"
 import type { VerificationStep } from "@/types/ui"
-import { CONSTANTS, ERROR_MESSAGES } from "@near-citizens/shared"
+import { CONSTANTS } from "@near-citizens/shared"
 import { isAccountVerified } from "@/app/verified-accounts/actions"
 
 export function IdentityVerificationFlow() {
@@ -140,7 +140,7 @@ export function IdentityVerificationFlow() {
       setCurrentStep(3)
     } catch (error) {
       console.error("Error signing message:", error)
-      setSignError(error instanceof Error ? error.message : ERROR_MESSAGES.SIGNING_FAILED)
+      setSignError(error instanceof Error ? error.message : "Failed to sign message")
     } finally {
       setIsSigningMessage(false)
     }

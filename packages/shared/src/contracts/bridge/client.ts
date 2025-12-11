@@ -5,8 +5,9 @@
  * All write operations (addMember, createProposal, etc.) are performed client-side
  * through the wallet connection, not server-side.
  */
-import { JsonRpcProvider } from "@near-js/providers"
+import type { FailoverRpcProvider } from "@near-js/providers"
 import { NEAR_CONFIG } from "../../config"
+import { createFailoverProvider } from "../../rpc"
 import { bridgeInfoSchema, type BridgeInfo, type IBridgeContractReader } from "./types"
 
 export type { IBridgeContractReader, BridgeInfo }
@@ -17,22 +18,18 @@ export type { IBridgeContractReader, BridgeInfo }
 
 /**
  * Read-only client for the bridge contract.
- * Does not require any credentials - only needs the contract ID and RPC URL.
+ * Uses FailoverRpcProvider for automatic failover between RPC endpoints.
  */
 export class BridgeContractReader implements IBridgeContractReader {
-  private provider: JsonRpcProvider
+  private provider: FailoverRpcProvider
   private contractId: string
 
-  constructor(contractId: string, rpcUrl: string) {
+  constructor(contractId: string) {
     this.contractId = contractId
-    this.provider = new JsonRpcProvider({
-      url: rpcUrl,
-      headers: NEAR_CONFIG.rpcHeaders,
-    })
+    this.provider = createFailoverProvider()
 
     console.log(`[BridgeContract] Initialized read-only client`)
     console.log(`[BridgeContract] Contract ID: ${this.contractId}`)
-    console.log(`[BridgeContract] RPC URL: ${rpcUrl}`)
   }
 
   // ==================== View Methods ====================
@@ -76,7 +73,7 @@ export class BridgeContractReader implements IBridgeContractReader {
 let bridgeInstance: IBridgeContractReader | null = null
 
 function createBridgeContractReader(): IBridgeContractReader {
-  const { bridgeContractId, rpcUrl } = NEAR_CONFIG
+  const { bridgeContractId } = NEAR_CONFIG
 
   if (!bridgeContractId) {
     throw new Error("Missing NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT configuration. Please set the bridge contract address.")
@@ -85,7 +82,7 @@ function createBridgeContractReader(): IBridgeContractReader {
   console.log("[BridgeContract] Creating read-only bridge contract client")
   console.log(`[BridgeContract] Contract: ${bridgeContractId}`)
 
-  return new BridgeContractReader(bridgeContractId, rpcUrl)
+  return new BridgeContractReader(bridgeContractId)
 }
 
 // Lazy singleton - only initialize when first accessed

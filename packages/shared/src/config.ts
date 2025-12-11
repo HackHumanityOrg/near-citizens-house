@@ -57,22 +57,10 @@ const defaultRpcUrl = networkId === "mainnet" ? "https://rpc.mainnet.fastnear.co
 
 export const NEAR_CONFIG = {
   networkId,
+  // Primary RPC URL (can be overridden via env var)
   rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || defaultRpcUrl,
   // Optional API key for authenticated RPC access (FastNear paid plans)
   rpcApiKey: process.env.NEAR_RPC_API_KEY || "",
-  // RPC headers for authenticated requests
-  get rpcHeaders(): Record<string, string> {
-    if (this.rpcApiKey) {
-      return { "x-api-key": this.rpcApiKey }
-    }
-    return {}
-  },
-  // Public RPC URLs for frontend wallet transactions (no API key needed)
-  // Used by @hot-labs/near-connect for transaction signing with automatic failover
-  publicRpcUrls: {
-    mainnet: ["https://free.rpc.fastnear.com", "https://near.lava.build:443", "https://rpc.shitzuapes.xyz"],
-    testnet: ["https://rpc.testnet.fastnear.com", "https://test.rpc.fastnear.com", "https://near-testnet.drpc.org"],
-  },
   // Contract addresses
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
   governanceContractId: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT || "",
@@ -127,18 +115,4 @@ export const CELO_CONFIG = {
 // Application Constants
 export const CONSTANTS = {
   SIGNING_MESSAGE: "Identify myself",
-}
-
-// Error Messages
-export const ERROR_MESSAGES = {
-  WALLET_NOT_CONNECTED: "Wallet not connected",
-  SIGNING_NOT_SUPPORTED:
-    "This wallet does not support message signing. Please use Meteor Wallet or another compatible wallet.",
-  SIGNING_FAILED: "Failed to sign message",
-  VERIFICATION_FAILED: "Verification failed. Please try again.",
-  MISSING_FIELDS: "Missing required fields: proof, publicSignals, attestationId, and userContextData are required",
-  NULLIFIER_MISSING: "Nullifier missing from proof - verification incomplete",
-  DUPLICATE_PASSPORT: "This passport has already been registered. Each passport can only be used once.",
-  NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
-  NEAR_SIGNATURE_MISSING: "Invalid or missing NEAR signature data in proof",
 }

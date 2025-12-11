@@ -28,6 +28,15 @@ const eslintConfig = [
   // See: https://react.dev/reference/eslint-plugin-react-hooks
   reactHooksPlugin.configs.flat.recommended,
   {
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
     files: ["**/*.{js,mjs,ts,tsx}"],
     plugins: {
       "@next/next": nextPlugin,
@@ -40,9 +49,15 @@ const eslintConfig = [
       "prettier/prettier": "warn",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-deprecated": "error", // Disallow deprecated functions/APIs
       "react/no-unescaped-entities": "off",
       "@next/next/no-html-link-for-pages": "off", // Disable for packages without pages directory
     },
+  },
+  // Disable type-checked rules for JavaScript files
+  {
+    files: ["**/*.{js,mjs}"],
+    ...tseslint.configs.disableTypeChecked,
   },
 ]
 
