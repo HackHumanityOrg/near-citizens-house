@@ -1,42 +1,28 @@
 import { Suspense } from "react"
-import type { Metadata } from "next"
+import { SputnikHeader } from "@/components/shared/sputnik-header"
 import { ProposalList } from "@/components/proposals/proposal-list"
-import { ProposalTabs } from "@/components/proposals/proposal-tabs"
+import { getProposalsReversed } from "@/lib/actions/sputnik-dao"
 import { Loader2 } from "lucide-react"
-import { GovernanceHeader } from "@/components/shared/governance-header"
-import { type ProposalStatus } from "@near-citizens/shared"
 
-export const metadata: Metadata = {
-  title: "Proposals | Citizens House",
-  description: "View and vote on community proposals",
+export const dynamic = "force-dynamic"
+
+async function ProposalListLoader() {
+  const { proposals, hasMore } = await getProposalsReversed(0, 10)
+
+  return <ProposalList initialProposals={proposals} initialHasMore={hasMore} />
 }
 
-interface ProposalsPageProps {
-  searchParams: Promise<{ status?: string }>
-}
-
-export default async function ProposalsPage({ searchParams }: ProposalsPageProps) {
-  const params = await searchParams
-  const statusFilter = params.status as ProposalStatus | undefined
-
-  // Capture server time before rendering for consistent SSR
-  // eslint-disable-next-line react-hooks/purity -- Date.now() is safe in server components (runs once on server)
-  const serverTime = Date.now()
-
+export default function ProposalsPage() {
   return (
-    <div className="min-h-screen bg-linear-to-b from-background to-background/80">
-      <GovernanceHeader />
+    <div className="min-h-screen">
+      <SputnikHeader />
 
-      <div className="container mx-auto py-8 px-4 max-w-7xl">
-        {/* Page Description */}
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
-          <p className="text-lg text-muted-foreground">Community proposals for the Citizens House DAO</p>
+          <h1 className="text-3xl font-bold mb-2">Proposals</h1>
+          <p className="text-muted-foreground">View and vote on community proposals</p>
         </div>
 
-        {/* Filter Tabs */}
-        <ProposalTabs currentStatus={statusFilter} />
-
-        {/* Proposals List */}
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-12">
@@ -44,9 +30,9 @@ export default async function ProposalsPage({ searchParams }: ProposalsPageProps
             </div>
           }
         >
-          <ProposalList key={statusFilter || "all"} statusFilter={statusFilter} serverTime={serverTime} />
+          <ProposalListLoader />
         </Suspense>
-      </div>
+      </main>
     </div>
   )
 }

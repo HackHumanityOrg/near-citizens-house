@@ -1,74 +1,51 @@
 import Link from "next/link"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@near-citizens/ui"
-import { type Proposal, type VoteCounts } from "@near-citizens/shared"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge } from "@near-citizens/ui"
+import { type SputnikProposal, getProposalKindLabel } from "@near-citizens/shared"
 import { ProposalStatusBadge } from "./proposal-status-badge"
-import { CountdownTimer } from "../shared/countdown-timer"
-import { VoteProgress } from "../shared/vote-progress"
-import { ExternalLink } from "lucide-react"
+import { VoteProgress } from "./vote-progress"
+import { User, Hash } from "lucide-react"
+import { extractProposalTitle } from "@/lib/utils/proposal"
 
 interface ProposalCardProps {
-  proposal: Proposal
-  voteCounts?: VoteCounts
-  quorumRequired?: number
-  totalCitizens?: number
-  serverTime: number
+  proposal: SputnikProposal
 }
 
-export function ProposalCard({ proposal, voteCounts, quorumRequired, totalCitizens, serverTime }: ProposalCardProps) {
-  const isActive = proposal.status === "Active"
-  const hasEnded = serverTime >= proposal.votingEndsAt
+export function ProposalCard({ proposal }: ProposalCardProps) {
+  const kindLabel = getProposalKindLabel(proposal.kind)
+  const isVoteProposal = proposal.kind === "Vote"
 
   return (
     <Link href={`/proposals/${proposal.id}`}>
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <ProposalStatusBadge status={proposal.status} />
-                {isActive && !hasEnded && <CountdownTimer endTime={proposal.votingEndsAt} />}
-              </div>
-              <CardTitle className="text-xl line-clamp-2">{proposal.title}</CardTitle>
-              <CardDescription className="mt-1">Proposed by {proposal.proposer.split(".")[0]}</CardDescription>
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+        <CardHeader className="space-y-1">
+          {/* Top row: #ID + Title (left), Status badge (right) */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge variant="outline" className="flex items-center gap-1 shrink-0">
+                <Hash className="h-3 w-3" />
+                {proposal.id}
+              </Badge>
+              <CardTitle className="text-lg line-clamp-2">
+                {isVoteProposal ? extractProposalTitle(proposal.description) : kindLabel}
+              </CardTitle>
             </div>
+            <ProposalStatusBadge status={proposal.status} />
           </div>
+          {/* Author */}
+          <CardDescription className="flex items-center gap-1">
+            <User className="h-3 w-3" />
+            {proposal.proposer.split(".")[0]}
+          </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {/* Description Preview */}
-          <p className="text-sm text-muted-foreground line-clamp-3">{proposal.description}</p>
-
+        <CardContent>
           {/* Vote Progress */}
-          {voteCounts && (
-            <VoteProgress
-              voteCounts={voteCounts}
-              quorumRequired={quorumRequired}
-              totalCitizens={totalCitizens}
-              quorumPercentage={proposal.quorumPercentage}
-              showLabels={true}
-            />
-          )}
-
-          {/* Discourse Link */}
-          {proposal.discourseUrl && (
-            <div className="pt-2 border-t">
-              <a
-                href={proposal.discourseUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ExternalLink className="h-3 w-3" />
-                View Discussion
-              </a>
-            </div>
-          )}
-
-          {/* Metadata */}
-          <div className="text-xs text-muted-foreground pt-2 border-t">
-            Created {new Date(proposal.createdAt).toLocaleDateString()}
-          </div>
+          <VoteProgress
+            totalApprove={proposal.totalApprove}
+            totalReject={proposal.totalReject}
+            totalRemove={proposal.totalRemove}
+            showLabels={true}
+          />
         </CardContent>
       </Card>
     </Link>

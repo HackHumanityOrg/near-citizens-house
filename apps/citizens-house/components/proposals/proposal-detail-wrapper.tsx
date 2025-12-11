@@ -2,67 +2,73 @@
 
 import { useCallback } from "react"
 import useSWR from "swr"
-import { type Proposal, type VoteCounts, useNearWallet } from "@near-citizens/shared"
+import { useNearWallet, type SputnikProposal, type TransformedPolicy } from "@near-citizens/shared"
 import { ProposalDetail } from "./proposal-detail"
-import { getUserVote, getProposalWithStats } from "@/lib/actions/governance"
+import { getUserVote, getProposal } from "@/lib/actions/sputnik-dao"
 import { useVerification } from "@/hooks/verification"
 
+/** Check if the account is a citizen (member of the citizen role in the DAO policy) */
+function isCitizen(policy: TransformedPolicy, accountId: string | null | undefined): boolean {
+  if (!accountId) return false
+
+  const citizenRole = policy.roles.find((r) => r.name === "citizen")
+  if (!citizenRole) return false
+
+  if (typeof citizenRole.kind === "object" && "Group" in citizenRole.kind) {
+    return citizenRole.kind.Group.includes(accountId)
+  }
+
+  return false
+}
+
 interface ProposalDetailWrapperProps {
-  proposal: Proposal
-  voteCounts: VoteCounts
-  quorumRequired: number
-  totalCitizens: number
+  initialProposal: SputnikProposal
+  policy: TransformedPolicy
   serverTime: number
 }
 
-/**
- * Client-side wrapper for ProposalDetail that handles wallet hydration.
- * Uses SWR for caching user vote data across navigation.
- */
-export function ProposalDetailWrapper({
-  proposal: initialProposal,
-  voteCounts: initialVoteCounts,
-  quorumRequired,
-  totalCitizens,
-  serverTime,
-}: ProposalDetailWrapperProps) {
-  const { accountId, isConnected, isLoading: walletLoading } = useNearWallet()
-  const { isVerified, loading: verificationLoading } = useVerification()
+export function ProposalDetailWrapper({ initialProposal, policy, serverTime }: ProposalDetailWrapperProps) {
+  const { accountId, isConnected, connect } = useNearWallet()
+  const { isVerified, loading: isLoadingVerification } = useVerification()
 
   // SWR for user vote - keyed by proposal ID and account
   const {
-    data: voteData,
-    isLoading: voteLoading,
+    data: userVote,
+    isLoading: isLoadingVote,
     mutate: mutateVote,
-  } = useSWR(accountId ? ["user-vote", initialProposal.id, accountId] : null, () =>
+  } = useSWR(accountId && isConnected ? ["sputnik-user-vote", initialProposal.id, accountId] : null, () =>
     getUserVote(initialProposal.id, accountId!),
   )
 
-  // SWR for vote counts - can be revalidated after voting
-  const { data: voteCounts, mutate: mutateVoteCounts } = useSWR(
-    ["vote-counts", initialProposal.id],
-    () =>
-      getProposalWithStats(initialProposal.id, accountId || undefined).then((d) => d?.voteCounts ?? initialVoteCounts),
-    { fallbackData: initialVoteCounts },
+  // SWR for proposal data - can be revalidated after voting
+  const { data: proposal, mutate: mutateProposal } = useSWR(
+    ["sputnik-proposal", initialProposal.id],
+    () => getProposal(initialProposal.id),
+    { fallbackData: initialProposal },
   )
 
-  // Callback to refresh vote counts after voting
+  // Refresh proposal data after voting
   const handleVoteSuccess = useCallback(async () => {
-    await Promise.all([mutateVote(), mutateVoteCounts()])
-  }, [mutateVote, mutateVoteCounts])
+    await Promise.all([mutateProposal(), mutateVote()])
+  }, [mutateProposal, mutateVote])
 
-  // Determine if user can vote
-  const loading = walletLoading || verificationLoading || voteLoading
-  const canVote = isConnected && isVerified && !loading
+  const userIsCitizen = isCitizen(policy, accountId)
+
+  // canVote focuses on proposal state: in progress, not already voted, and data loaded
+  const canVote =
+    isConnected && !isLoadingVote && userIsCitizen && (proposal ?? initialProposal).status === "InProgress" && !userVote
 
   return (
     <ProposalDetail
-      proposal={initialProposal}
-      voteCounts={voteCounts ?? initialVoteCounts}
-      quorumRequired={quorumRequired}
-      totalCitizens={totalCitizens}
-      userVote={voteData ?? null}
+      proposal={proposal ?? initialProposal}
+      policy={policy}
+      userVote={userVote ?? null}
       canVote={canVote}
+      isConnected={isConnected}
+      connect={connect}
+      isVerified={isVerified}
+      isLoadingVerification={isLoadingVerification}
+      isCitizen={userIsCitizen}
       onVoteSuccess={handleVoteSuccess}
       serverTime={serverTime}
     />

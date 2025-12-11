@@ -1,22 +1,29 @@
 "use client"
 
 import { Button } from "@near-citizens/ui"
-import { type Vote, useNearWallet } from "@near-citizens/shared"
-import { ThumbsUp, ThumbsDown, Minus, Loader2 } from "lucide-react"
-import { useGovernance } from "@/hooks/governance"
+import { type SputnikAction, type SputnikProposalKind, type SputnikVote, useNearWallet } from "@near-citizens/shared"
+import { ThumbsUp, ThumbsDown, Loader2 } from "lucide-react"
+import { useSputnikDao } from "@/hooks/sputnik-dao"
 
 interface VoteButtonProps {
   proposalId: number
-  currentVote?: Vote | null
+  proposalKind: SputnikProposalKind
+  currentVote?: SputnikVote | null
   disabled?: boolean
   onVoteSuccess?: () => void
 }
 
-export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSuccess }: VoteButtonProps) {
-  const { vote, isLoading, error, clearError } = useGovernance()
+export function VoteButton({
+  proposalId,
+  proposalKind,
+  currentVote,
+  disabled = false,
+  onVoteSuccess,
+}: VoteButtonProps) {
+  const { vote, isLoading, error, clearError } = useSputnikDao()
   const { isConnected, connect } = useNearWallet()
 
-  const handleVote = async (voteChoice: Vote) => {
+  const handleVote = async (action: SputnikAction) => {
     if (!isConnected) {
       await connect()
       return
@@ -25,34 +32,29 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
     clearError()
 
     try {
-      await vote(proposalId, voteChoice)
+      await vote(proposalId, action, proposalKind)
       onVoteSuccess?.()
     } catch {
       // Error is already set by the hook
     }
   }
 
+  // Show current vote if already voted
   if (currentVote) {
     return (
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">You voted:</span>
         <div className="flex items-center gap-1 font-medium">
-          {currentVote === "Yes" && (
+          {currentVote === "Approve" && (
             <>
               <ThumbsUp className="h-4 w-4 text-vote-for" />
-              <span className="text-vote-for">Yes</span>
+              <span className="text-vote-for">For</span>
             </>
           )}
-          {currentVote === "No" && (
+          {currentVote === "Reject" && (
             <>
               <ThumbsDown className="h-4 w-4 text-vote-against" />
-              <span className="text-vote-against">No</span>
-            </>
-          )}
-          {currentVote === "Abstain" && (
-            <>
-              <Minus className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Abstain</span>
+              <span className="text-vote-against">Against</span>
             </>
           )}
         </div>
@@ -64,31 +66,22 @@ export function VoteButton({ proposalId, currentVote, disabled = false, onVoteSu
     <div className="space-y-2">
       <div className="flex gap-2">
         <Button
-          onClick={() => handleVote("Yes")}
+          onClick={() => handleVote("VoteApprove")}
           disabled={disabled || isLoading}
           variant="default"
           className="flex-1 bg-vote-for-bg hover:bg-vote-for-hover text-white dark:text-black"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
-          Yes
+          For
         </Button>
         <Button
-          onClick={() => handleVote("No")}
+          onClick={() => handleVote("VoteReject")}
           disabled={disabled || isLoading}
           variant="default"
           className="flex-1 bg-vote-against-bg hover:bg-vote-against text-white dark:text-black"
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
-          No
-        </Button>
-        <Button
-          onClick={() => handleVote("Abstain")}
-          disabled={disabled || isLoading}
-          variant="outline"
-          className="flex-1"
-        >
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Minus className="mr-2 h-4 w-4" />}
-          Abstain
+          Against
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

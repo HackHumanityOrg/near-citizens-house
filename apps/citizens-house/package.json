@@ -14,6 +14,7 @@
     "@near-citizens/shared": "workspace:*",
     "@near-citizens/ui": "workspace:*",
     "@vercel/analytics": "^1.6.1",
+    "@vercel/toolbar": "^0.1.41",
     "autoprefixer": "^10.4.22",
     "lucide-react": "^0.556.0",
     "next": "^16.0.8",

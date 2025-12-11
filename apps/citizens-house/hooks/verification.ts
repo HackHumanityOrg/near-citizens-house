@@ -2,7 +2,7 @@
 
 import useSWRImmutable from "swr/immutable"
 import { useNearWallet } from "@near-citizens/shared"
-import { checkVerificationStatus } from "@/lib/actions/governance"
+import { checkVerificationStatus } from "@/lib/actions/bridge"
 
 export interface UseVerificationResult {
   /** Whether the connected wallet is verified */
