@@ -178,9 +178,9 @@ async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Res
 
     let events = parse_events(&logs);
     let member_added = events.iter().find(|e| e.event == "member_added").expect("member_added event missing");
-    assert_eq!(member_added.data["member_id"], json!(user.id().to_string()));
-    assert_eq!(member_added.data["role"], json!("voter"));
-    assert_eq!(member_added.data["proposal_id"].as_u64(), Some(add_member_proposal_id));
+    assert_eq!(member_added.data.get("member_id"), Some(&json!(user.id().to_string())));
+    assert_eq!(member_added.data.get("role"), Some(&json!("voter")));
+    assert_eq!(member_added.data.get("proposal_id").and_then(|v| v.as_u64()), Some(add_member_proposal_id));
 
     Ok(())
 }
@@ -205,9 +205,9 @@ async fn test_member_added_event_emitted() -> anyhow::Result<()> {
     // The last proposal is the quorum_update, so the add_member proposal is last - 2
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?;
     let add_member_proposal_id = if proposal_id >= 2 { proposal_id - 2 } else { 0 };
-    assert_eq!(member_added.data["member_id"], json!(user.id().to_string()));
-    assert_eq!(member_added.data["role"], json!("citizen"));
-    assert_eq!(member_added.data["proposal_id"].as_u64(), Some(add_member_proposal_id));
+    assert_eq!(member_added.data.get("member_id"), Some(&json!(user.id().to_string())));
+    assert_eq!(member_added.data.get("role"), Some(&json!("citizen")));
+    assert_eq!(member_added.data.get("proposal_id").and_then(|v| v.as_u64()), Some(add_member_proposal_id));
 
     Ok(())
 }
@@ -227,8 +227,8 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
     let proposal_created =
         events.iter().find(|e| e.event == "proposal_created").expect("proposal_created event missing");
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
-    assert_eq!(proposal_created.data["proposal_id"].as_u64(), Some(proposal_id));
-    assert_eq!(proposal_created.data["description"], json!("Event test"));
+    assert_eq!(proposal_created.data.get("proposal_id").and_then(|v| v.as_u64()), Some(proposal_id));
+    assert_eq!(proposal_created.data.get("description"), Some(&json!("Event test")));
 
     Ok(())
 }

@@ -3,14 +3,29 @@
 import { z } from "zod"
 
 // ============================================================================
+// Size Constraints (must match contract constants)
+// ============================================================================
+export const SIZE_LIMITS = {
+  NULLIFIER: 80, // uint256 max = 77 decimal digits
+  USER_ID: 80, // uint256 max = 77 decimal digits
+  ATTESTATION_ID: 4, // Self.xyz uses 1-3
+  USER_CONTEXT_DATA: 4096,
+  PUBLIC_SIGNALS_COUNT: 21, // Passport proofs have 21 signals
+  PROOF_COMPONENT: 80, // BN254 field elements ~77 decimal digits
+} as const
+
+// ============================================================================
 // ZK Proof Schemas
 // ============================================================================
 
 // Groth16 ZK proof structure (a, b, c points)
 export const zkProofSchema = z.object({
-  a: z.tuple([z.string(), z.string()]),
-  b: z.tuple([z.tuple([z.string(), z.string()]), z.tuple([z.string(), z.string()])]),
-  c: z.tuple([z.string(), z.string()]),
+  a: z.tuple([z.string().max(SIZE_LIMITS.PROOF_COMPONENT), z.string().max(SIZE_LIMITS.PROOF_COMPONENT)]),
+  b: z.tuple([
+    z.tuple([z.string().max(SIZE_LIMITS.PROOF_COMPONENT), z.string().max(SIZE_LIMITS.PROOF_COMPONENT)]),
+    z.tuple([z.string().max(SIZE_LIMITS.PROOF_COMPONENT), z.string().max(SIZE_LIMITS.PROOF_COMPONENT)]),
+  ]),
+  c: z.tuple([z.string().max(SIZE_LIMITS.PROOF_COMPONENT), z.string().max(SIZE_LIMITS.PROOF_COMPONENT)]),
 })
 
 export type ZkProof = z.infer<typeof zkProofSchema>
@@ -18,7 +33,7 @@ export type ZkProof = z.infer<typeof zkProofSchema>
 // Self.xyz proof data for async verification
 export const selfProofDataSchema = z.object({
   proof: zkProofSchema,
-  publicSignals: z.array(z.string()),
+  publicSignals: z.array(z.string().max(SIZE_LIMITS.PROOF_COMPONENT)).max(SIZE_LIMITS.PUBLIC_SIGNALS_COUNT),
 })
 
 export type SelfProofData = z.infer<typeof selfProofDataSchema>
@@ -48,8 +63,8 @@ export type NearSignatureData = z.infer<typeof nearSignatureDataSchema>
 export const verifyRequestSchema = z.object({
   attestationId: z.union([z.literal("1"), z.literal("2"), z.literal("3"), z.literal(1), z.literal(2), z.literal(3)]),
   proof: zkProofSchema,
-  publicSignals: z.array(z.string()),
-  userContextData: z.string(),
+  publicSignals: z.array(z.string().max(SIZE_LIMITS.PROOF_COMPONENT)).max(SIZE_LIMITS.PUBLIC_SIGNALS_COUNT),
+  userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA),
 })
 
 export type VerifyRequest = z.infer<typeof verifyRequestSchema>
@@ -89,10 +104,10 @@ export type SelfVerificationResult = z.infer<typeof selfVerificationResultSchema
 
 // Base verification data
 export const verificationDataSchema = z.object({
-  nullifier: z.string(),
+  nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
   nearAccountId: z.string(),
-  userId: z.string(),
-  attestationId: z.string(),
+  userId: z.string().max(SIZE_LIMITS.USER_ID),
+  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
 })
 
 export type VerificationData = z.infer<typeof verificationDataSchema>
@@ -101,20 +116,20 @@ export type VerificationData = z.infer<typeof verificationDataSchema>
 export const verificationDataWithSignatureSchema = verificationDataSchema.extend({
   signatureData: nearSignatureDataSchema,
   selfProofData: selfProofDataSchema,
-  userContextData: z.string(), // Original hex-encoded userContextData
+  userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA), // Original hex-encoded userContextData
 })
 
 export type VerificationDataWithSignature = z.infer<typeof verificationDataWithSignatureSchema>
 
 // Verified account record (stored in database/contract)
 export const verifiedAccountSchema = z.object({
-  nullifier: z.string(), // Unique passport identifier (prevents duplicate registrations)
+  nullifier: z.string().max(SIZE_LIMITS.NULLIFIER), // Unique passport identifier (prevents duplicate registrations)
   nearAccountId: z.string(), // Associated NEAR wallet
-  userId: z.string(),
-  attestationId: z.string(),
+  userId: z.string().max(SIZE_LIMITS.USER_ID),
+  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
   verifiedAt: z.number(),
   selfProof: selfProofDataSchema, // Self.xyz ZK proof for async verification
-  userContextData: z.string(), // Original hex-encoded userContextData for Self.xyz re-verification
+  userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA), // Original hex-encoded userContextData for Self.xyz re-verification
 })
 
 export type VerifiedAccount = z.infer<typeof verifiedAccountSchema>
@@ -135,12 +150,12 @@ export type ParsedSignatureData = z.infer<typeof parsedSignatureDataSchema>
 
 // Proof data for verification (combines nullifier, user info, and ZK proof)
 export const proofDataSchema = z.object({
-  nullifier: z.string(),
-  userId: z.string(),
-  attestationId: z.string(),
+  nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
+  userId: z.string().max(SIZE_LIMITS.USER_ID),
+  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
   verifiedAt: z.number(),
   zkProof: zkProofSchema,
-  publicSignals: z.array(z.string()),
+  publicSignals: z.array(z.string().max(SIZE_LIMITS.PROOF_COMPONENT)).max(SIZE_LIMITS.PUBLIC_SIGNALS_COUNT),
   signature: z.object({
     accountId: z.string(),
     publicKey: z.string(),
@@ -149,7 +164,7 @@ export const proofDataSchema = z.object({
     challenge: z.string(),
     recipient: z.string(),
   }),
-  userContextData: z.string(), // raw hex-encoded data
+  userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA), // raw hex-encoded data
   nearSignatureVerification: z.object({
     nep413Hash: z.string(), // SHA-256 hash of NEP-413 formatted message (hex)
     publicKeyHex: z.string(), // Raw Ed25519 public key (hex)
@@ -168,7 +183,7 @@ export type ProofData = z.infer<typeof proofDataSchema>
 export const contractSelfProofDataSchema = z
   .object({
     proof: zkProofSchema, // ZkProof fields don't have underscores
-    public_signals: z.array(z.string()),
+    public_signals: z.array(z.string().max(SIZE_LIMITS.PROOF_COMPONENT)).max(SIZE_LIMITS.PUBLIC_SIGNALS_COUNT),
   })
   .transform((data) => ({
     proof: data.proof,
@@ -178,16 +193,16 @@ export const contractSelfProofDataSchema = z
 // Contract format for VerifiedAccount (with transform to app format)
 export const contractVerifiedAccountSchema = z
   .object({
-    nullifier: z.string(),
+    nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
     near_account_id: z.string(),
-    user_id: z.string(),
-    attestation_id: z.string(),
+    user_id: z.string().max(SIZE_LIMITS.USER_ID),
+    attestation_id: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
     verified_at: z.number(), // nanoseconds
     self_proof: z.object({
       proof: zkProofSchema,
-      public_signals: z.array(z.string()),
+      public_signals: z.array(z.string().max(SIZE_LIMITS.PROOF_COMPONENT)).max(SIZE_LIMITS.PUBLIC_SIGNALS_COUNT),
     }),
-    user_context_data: z.string(),
+    user_context_data: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA),
   })
   .transform((data) => ({
     nullifier: data.nullifier,

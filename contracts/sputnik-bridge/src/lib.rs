@@ -339,7 +339,7 @@ impl SputnikBridge {
         let new_quorum = if citizen_count == 0 {
             0
         } else {
-            (citizen_count * QUORUM_PERCENT + 99) / 100 // Ceiling division
+            (citizen_count * QUORUM_PERCENT).div_ceil(100)
         };
 
         // Build the updated citizen role with new quorum for Vote proposals

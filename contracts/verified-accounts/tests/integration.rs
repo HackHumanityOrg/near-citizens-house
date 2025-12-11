@@ -744,7 +744,7 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
             "nullifier": "data_test_nullifier",
             "near_account_id": user.id(),
             "user_id": "test_user_id",
-            "attestation_id": "test_attestation",
+            "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -775,7 +775,7 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
 
     // Verify the returned data
     assert_eq!(account_data.get("user_id"), Some(&serde_json::json!("test_user_id")));
-    assert_eq!(account_data.get("attestation_id"), Some(&serde_json::json!("test_attestation")));
+    assert_eq!(account_data.get("attestation_id"), Some(&serde_json::json!("1")));
     assert_eq!(account_data.get("user_context_data"), Some(&serde_json::json!("custom_context_data")));
     assert!(account_data.get("verified_at").is_some_and(|v| v.is_number()));
 

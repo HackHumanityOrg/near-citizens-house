@@ -31,10 +31,12 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
 
 /// Maximum length for string inputs
-const MAX_NULLIFIER_LEN: usize = 256;
-const MAX_USER_ID_LEN: usize = 256;
-const MAX_ATTESTATION_ID_LEN: usize = 256;
+const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 77 decimal digits
+const MAX_USER_ID_LEN: usize = 80; // uint256 max = 77 decimal digits
+const MAX_ATTESTATION_ID_LEN: usize = 4; // Self.xyz uses 1-3
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
+const MAX_PUBLIC_SIGNALS_COUNT: usize = 21; // Passport proofs have 21 signals
+const MAX_PROOF_COMPONENT_LEN: usize = 80; // BN254 field elements ~77 decimal digits
 
 /// Maximum accounts per batch query
 const MAX_BATCH_SIZE: usize = 100;
@@ -267,15 +269,15 @@ impl Contract {
         // Input length validation
         assert!(
             nullifier.len() <= MAX_NULLIFIER_LEN,
-            "Nullifier exceeds maximum length of 256"
+            "Nullifier exceeds maximum length of 80"
         );
         assert!(
             user_id.len() <= MAX_USER_ID_LEN,
-            "User ID exceeds maximum length of 256"
+            "User ID exceeds maximum length of 80"
         );
         assert!(
             attestation_id.len() <= MAX_ATTESTATION_ID_LEN,
-            "Attestation ID exceeds maximum length of 256"
+            "Attestation ID exceeds maximum length of 4"
         );
         assert!(
             user_context_data.len() <= MAX_USER_CONTEXT_DATA_LEN,
@@ -283,41 +285,40 @@ impl Contract {
         );
 
         // ZK Proof validation
-        // Self.xyz proofs typically have 21 public signals, cap at 30 for safety
         assert!(
-            self_proof.public_signals.len() <= 30,
-            "Public signals array exceeds maximum length of 30"
+            self_proof.public_signals.len() <= MAX_PUBLIC_SIGNALS_COUNT,
+            "Public signals array exceeds maximum length of 21"
         );
 
         // Validate individual string lengths in proof components
-        // Field elements are ~32 bytes = 64 hex chars, 256 is very generous
+        // BN254 field elements are ~77 decimal digits, 80 chars gives margin
         for signal in &self_proof.public_signals {
             assert!(
-                signal.len() <= 256,
-                "Public signal string exceeds maximum length of 256"
+                signal.len() <= MAX_PROOF_COMPONENT_LEN,
+                "Public signal string exceeds maximum length of 80"
             );
         }
 
         for component in &self_proof.proof.a {
             assert!(
-                component.len() <= 256,
-                "Proof component 'a' string exceeds maximum length of 256"
+                component.len() <= MAX_PROOF_COMPONENT_LEN,
+                "Proof component 'a' string exceeds maximum length of 80"
             );
         }
 
         for row in &self_proof.proof.b {
             for component in row {
                 assert!(
-                    component.len() <= 256,
-                    "Proof component 'b' string exceeds maximum length of 256"
+                    component.len() <= MAX_PROOF_COMPONENT_LEN,
+                    "Proof component 'b' string exceeds maximum length of 80"
                 );
             }
         }
 
         for component in &self_proof.proof.c {
             assert!(
-                component.len() <= 256,
-                "Proof component 'c' string exceeds maximum length of 256"
+                component.len() <= MAX_PROOF_COMPONENT_LEN,
+                "Proof component 'c' string exceeds maximum length of 80"
             );
         }
 
@@ -1124,7 +1125,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Nullifier exceeds maximum length of 256")]
+    #[should_panic(expected = "Nullifier exceeds maximum length of 80")]
     fn test_nullifier_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1143,8 +1144,8 @@ mod tests {
             recipient: user.clone(),
         };
 
-        // Create a nullifier that exceeds the 256 character limit
-        let too_long_nullifier = "x".repeat(257);
+        // Create a nullifier that exceeds the 80 character limit
+        let too_long_nullifier = "x".repeat(81);
 
         contract.store_verification(
             too_long_nullifier,
@@ -1158,7 +1159,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "User ID exceeds maximum length of 256")]
+    #[should_panic(expected = "User ID exceeds maximum length of 80")]
     fn test_user_id_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1177,8 +1178,8 @@ mod tests {
             recipient: user.clone(),
         };
 
-        // Create a user_id that exceeds the 256 character limit
-        let too_long_user_id = "x".repeat(257);
+        // Create a user_id that exceeds the 80 character limit
+        let too_long_user_id = "x".repeat(81);
 
         contract.store_verification(
             "test_nullifier".to_string(),

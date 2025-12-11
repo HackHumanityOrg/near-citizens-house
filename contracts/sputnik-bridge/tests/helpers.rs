@@ -608,8 +608,8 @@ pub async fn get_vote_threshold(dao: &Contract, role_name: &str) -> anyhow::Resu
                             // Threshold can be a ratio [num, denom] or a fixed weight
                             if let Some(arr) = threshold.as_array() {
                                 if arr.len() == 2 {
-                                    let num = arr[0].as_u64().unwrap_or(0);
-                                    let denom = arr[1].as_u64().unwrap_or(1);
+                                    let num = arr.first().and_then(|v| v.as_u64()).unwrap_or(0);
+                                    let denom = arr.get(1).and_then(|v| v.as_u64()).unwrap_or(1);
                                     return Ok((num, denom));
                                 }
                             }
