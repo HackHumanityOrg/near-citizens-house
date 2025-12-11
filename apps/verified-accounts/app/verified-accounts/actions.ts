@@ -1,35 +1,43 @@
 "use server"
 
+import { z } from "zod"
 import { unstable_cache } from "next/cache"
 import {
   verificationDb,
-  type VerifiedAccount,
-  type NearContractDatabase,
-} from "@near-citizens/shared/verification-contract"
-import { verifyStoredProofWithDetails } from "@near-citizens/shared/zk-verify"
-import {
+  NearContractDatabase,
+  verifyStoredProofWithDetails,
   parseUserContextData,
   verifyNearSignature,
   buildProofData,
-  type ProofData,
-} from "@near-citizens/shared/verification"
+  paginationSchema,
+  nearAccountIdSchema,
+  verifiedAccountSchema,
+  proofDataSchema,
+} from "@near-citizens/shared"
 
-export interface VerificationResult {
-  zkValid: boolean
-  signatureValid: boolean
-  error?: string
-}
+// Zod schemas for action results
+const verificationResultSchema = z.object({
+  zkValid: z.boolean(),
+  signatureValid: z.boolean(),
+  error: z.string().optional(),
+})
 
-export interface VerifiedAccountWithStatus {
-  account: VerifiedAccount
-  verification: VerificationResult
-  proofData: ProofData | null
-}
+export type VerificationResult = z.infer<typeof verificationResultSchema>
 
-export interface GetVerifiedAccountsResult {
-  accounts: VerifiedAccountWithStatus[]
-  total: number
-}
+const verifiedAccountWithStatusSchema = z.object({
+  account: verifiedAccountSchema,
+  verification: verificationResultSchema,
+  proofData: proofDataSchema.nullable(),
+})
+
+export type VerifiedAccountWithStatus = z.infer<typeof verifiedAccountWithStatusSchema>
+
+const getVerifiedAccountsResultSchema = z.object({
+  accounts: z.array(verifiedAccountWithStatusSchema),
+  total: z.number(),
+})
+
+export type GetVerifiedAccountsResult = z.infer<typeof getVerifiedAccountsResultSchema>
 
 /**
  * Core data fetching logic - separated for caching.
@@ -163,7 +171,14 @@ export async function getVerifiedAccountsWithStatus(
   page: number,
   pageSize: number,
 ): Promise<GetVerifiedAccountsResult> {
-  return getCachedVerifiedAccounts(page * pageSize, pageSize)
+  // Validate input parameters with safeParse
+  const params = paginationSchema.safeParse({ page, pageSize })
+  if (!params.success) {
+    console.error("[Actions] Invalid pagination:", params.error.format())
+    return { accounts: [], total: 0 }
+  }
+
+  return getCachedVerifiedAccounts(params.data.page * params.data.pageSize, params.data.pageSize)
 }
 
 /**
@@ -171,8 +186,15 @@ export async function getVerifiedAccountsWithStatus(
  * Used by the UI to skip verification steps for already-verified accounts.
  */
 export async function isAccountVerified(nearAccountId: string): Promise<boolean> {
+  // Validate account ID format
+  const parsed = nearAccountIdSchema.safeParse(nearAccountId)
+  if (!parsed.success) {
+    console.error("[Actions] Invalid account ID:", parsed.error.format())
+    return false
+  }
+
   try {
-    return await verificationDb.isAccountVerified(nearAccountId)
+    return await verificationDb.isAccountVerified(parsed.data)
   } catch (error) {
     console.error("Error checking account verification:", error)
     return false

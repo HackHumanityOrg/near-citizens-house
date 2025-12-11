@@ -1,7 +1,33 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { useNearWallet, NEAR_CONFIG } from "@near-citizens/shared"
+import { useNearWallet, NEAR_CONFIG, nearAccountIdSchema } from "@near-citizens/shared"
+import { z } from "zod"
+
+// Local schema - only used in this file
+const yoctoNearSchema = z
+  .string()
+  .regex(/^\d+$/, "Must be a valid yoctoNEAR amount (digits only)")
+  .min(1, "Amount required")
+
+// Input validation schemas for admin actions
+const addMemberInputSchema = z.object({
+  accountId: nearAccountIdSchema,
+  proposalBondYocto: yoctoNearSchema,
+})
+
+const createProposalInputSchema = z.object({
+  description: z.string().min(1, "Description required").max(10000, "Description too long"),
+  proposalBondYocto: yoctoNearSchema,
+})
+
+const updateBackendWalletInputSchema = z.object({
+  newWallet: nearAccountIdSchema,
+})
+
+const updateCitizenRoleInputSchema = z.object({
+  newRole: z.string().min(1, "Role name required").max(100, "Role name too long"),
+})
 
 // Gas constants (as strings for wallet compatibility)
 // add_member creates 2 proposals (member + quorum update) with 7 cross-contract calls
@@ -96,6 +122,13 @@ export function useAdminActions(): UseAdminActionsResult {
 
   const addMember = useCallback(
     async (accountId: string, proposalBondYocto: string): Promise<string> => {
+      // Validate inputs with safeParse
+      const result = addMemberInputSchema.safeParse({ accountId, proposalBondYocto })
+      if (!result.success) {
+        const firstError = result.error.issues[0]
+        throw new Error(`Invalid input: ${firstError?.path.join(".")} - ${firstError?.message}`)
+      }
+
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
@@ -108,10 +141,10 @@ export function useAdminActions(): UseAdminActionsResult {
       setError(null)
 
       try {
-        // Use yoctoNEAR directly to avoid floating point precision issues
-        console.log(`[AdminActions] addMember deposit: ${proposalBondYocto} yoctoNEAR`)
+        const { accountId: validAccountId, proposalBondYocto: validBond } = result.data
+        console.log(`[AdminActions] addMember deposit: ${validBond} yoctoNEAR`)
 
-        const result = await signAndSendTransaction({
+        const txResult = await signAndSendTransaction({
           receiverId: NEAR_CONFIG.bridgeContractId,
           actions: [
             {
@@ -119,17 +152,17 @@ export function useAdminActions(): UseAdminActionsResult {
               params: {
                 methodName: "add_member",
                 args: {
-                  near_account_id: accountId,
+                  near_account_id: validAccountId,
                 },
                 gas: ADD_MEMBER_GAS,
-                deposit: proposalBondYocto,
+                deposit: validBond,
               },
             },
           ],
         })
 
         // Return transaction hash
-        return (result as { transaction: { hash: string } }).transaction?.hash ?? ""
+        return (txResult as { transaction: { hash: string } }).transaction?.hash ?? ""
       } catch (err) {
         const errorMsg = parseContractError(err)
         setError(errorMsg)
@@ -143,6 +176,13 @@ export function useAdminActions(): UseAdminActionsResult {
 
   const createProposal = useCallback(
     async (description: string, proposalBondYocto: string): Promise<number> => {
+      // Validate inputs with safeParse
+      const result = createProposalInputSchema.safeParse({ description, proposalBondYocto })
+      if (!result.success) {
+        const firstError = result.error.issues[0]
+        throw new Error(`Invalid input: ${firstError?.path.join(".")} - ${firstError?.message}`)
+      }
+
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
@@ -155,10 +195,10 @@ export function useAdminActions(): UseAdminActionsResult {
       setError(null)
 
       try {
-        // Use yoctoNEAR directly to avoid floating point precision issues
-        console.log(`[AdminActions] createProposal deposit: ${proposalBondYocto} yoctoNEAR`)
+        const { description: validDesc, proposalBondYocto: validBond } = result.data
+        console.log(`[AdminActions] createProposal deposit: ${validBond} yoctoNEAR`)
 
-        const result = await signAndSendTransaction({
+        const txResult = await signAndSendTransaction({
           receiverId: NEAR_CONFIG.bridgeContractId,
           actions: [
             {
@@ -166,17 +206,17 @@ export function useAdminActions(): UseAdminActionsResult {
               params: {
                 methodName: "create_proposal",
                 args: {
-                  description,
+                  description: validDesc,
                 },
                 gas: CREATE_PROPOSAL_GAS,
-                deposit: proposalBondYocto,
+                deposit: validBond,
               },
             },
           ],
         })
 
         // Parse proposal ID from return value
-        const proposalId = extractReturnValue<number>(result as unknown as TransactionResult)
+        const proposalId = extractReturnValue<number>(txResult as unknown as TransactionResult)
         if (proposalId === null) {
           console.warn("Failed to get proposal ID from contract response")
           return -1
@@ -196,6 +236,13 @@ export function useAdminActions(): UseAdminActionsResult {
 
   const updateBackendWallet = useCallback(
     async (newWallet: string): Promise<void> => {
+      // Validate inputs with safeParse
+      const result = updateBackendWalletInputSchema.safeParse({ newWallet })
+      if (!result.success) {
+        const firstError = result.error.issues[0]
+        throw new Error(`Invalid wallet address: ${firstError?.message}`)
+      }
+
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
@@ -208,6 +255,7 @@ export function useAdminActions(): UseAdminActionsResult {
       setError(null)
 
       try {
+        const { newWallet: validWallet } = result.data
         await signAndSendTransaction({
           receiverId: NEAR_CONFIG.bridgeContractId,
           actions: [
@@ -216,7 +264,7 @@ export function useAdminActions(): UseAdminActionsResult {
               params: {
                 methodName: "update_backend_wallet",
                 args: {
-                  new_backend_wallet: newWallet,
+                  new_backend_wallet: validWallet,
                 },
                 gas: UPDATE_GAS,
                 deposit: ONE_YOCTO,
@@ -237,6 +285,13 @@ export function useAdminActions(): UseAdminActionsResult {
 
   const updateCitizenRole = useCallback(
     async (newRole: string): Promise<void> => {
+      // Validate inputs with safeParse
+      const result = updateCitizenRoleInputSchema.safeParse({ newRole })
+      if (!result.success) {
+        const firstError = result.error.issues[0]
+        throw new Error(`Invalid role name: ${firstError?.message}`)
+      }
+
       if (!isConnected) {
         throw new Error("Wallet not connected")
       }
@@ -249,6 +304,7 @@ export function useAdminActions(): UseAdminActionsResult {
       setError(null)
 
       try {
+        const { newRole: validRole } = result.data
         await signAndSendTransaction({
           receiverId: NEAR_CONFIG.bridgeContractId,
           actions: [
@@ -257,7 +313,7 @@ export function useAdminActions(): UseAdminActionsResult {
               params: {
                 methodName: "update_citizen_role",
                 args: {
-                  new_role: newRole,
+                  new_role: validRole,
                 },
                 gas: UPDATE_GAS,
                 deposit: ONE_YOCTO,

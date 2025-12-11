@@ -3,8 +3,7 @@
 import { useState, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
-import { SELF_CONFIG } from "@near-citizens/shared/config"
-import type { NearSignatureData } from "@near-citizens/shared/types"
+import { SELF_CONFIG, type NearSignatureData } from "@near-citizens/shared"
 import {
   Card,
   CardContent,

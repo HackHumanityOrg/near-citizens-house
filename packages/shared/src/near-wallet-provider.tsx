@@ -6,7 +6,7 @@ import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS, ERROR_MESSAGES } from "./config"
-import type { NearSignatureData } from "./types"
+import type { NearSignatureData } from "./contracts/verification"
 
 interface NearWalletContextType {
   accountId: string | null

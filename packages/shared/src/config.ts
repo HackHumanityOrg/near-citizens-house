@@ -5,6 +5,50 @@
 // Do NOT use process.env directly elsewhere in the codebase.
 // ==============================================================================
 
+import { z } from "zod"
+
+// ==============================================================================
+// ENVIRONMENT VALIDATION
+// ==============================================================================
+// Validates environment variables at startup for faster feedback on misconfigurations.
+// Server-side variables are optional (not available on client).
+// ==============================================================================
+
+const envSchema = z.object({
+  // Required for all environments (client & server)
+  NEXT_PUBLIC_NEAR_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
+
+  // Contract addresses (required for functionality, but may be empty during setup)
+  NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: z.string().optional(),
+  NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT: z.string().optional(),
+  NEXT_PUBLIC_SPUTNIK_DAO_CONTRACT: z.string().optional(),
+
+  // Server-side only (not available on client)
+  NEAR_ACCOUNT_ID: z.string().optional(),
+  NEAR_PRIVATE_KEY: z.string().optional(),
+})
+
+// Validate environment at module load time
+const envResult = envSchema.safeParse(process.env)
+if (!envResult.success) {
+  const issues = envResult.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ")
+  console.warn(`[Config] Environment validation warnings: ${issues}`)
+}
+
+// Log configuration status on server-side for debugging
+if (typeof window === "undefined") {
+  const hasBackendWallet = !!(process.env.NEAR_ACCOUNT_ID && process.env.NEAR_PRIVATE_KEY)
+  const hasContracts = !!(
+    process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || process.env.NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT
+  )
+  if (!hasBackendWallet) {
+    console.warn("[Config] Backend wallet credentials not configured - write operations will fail")
+  }
+  if (!hasContracts) {
+    console.warn("[Config] No contract addresses configured - contract operations will fail")
+  }
+}
+
 // NEAR Network Configuration
 const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet"
 
@@ -56,7 +100,7 @@ export const APP_URLS = {
 const DISCLOSURE_CONFIG = {
   minimumAge: 18,
   excludedCountries: [] as const,
-  ofac: false,
+  ofac: true,
 }
 
 export const SELF_CONFIG = {

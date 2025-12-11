@@ -13,11 +13,10 @@ import {
   type SputnikProposal,
   type TransformedPolicy,
   type SputnikPolicy,
-} from "./sputnik-dao-types"
-import { NEAR_CONFIG } from "./config"
+} from "./types"
+import { NEAR_CONFIG } from "../../config"
 
 export type { ISputnikDaoContract, SputnikProposal, TransformedPolicy }
-export * from "./sputnik-dao-types"
 
 /**
  * Read-only SputnikDAO v2 contract client.

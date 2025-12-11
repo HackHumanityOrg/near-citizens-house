@@ -1,10 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
-import { SELF_CONFIG, CONSTANTS, ERROR_MESSAGES } from "@near-citizens/shared/config"
-import type { SelfVerificationResult, NearSignatureData } from "@near-citizens/shared/types"
-import { verifyRequestSchema } from "@near-citizens/shared/types"
-import { verificationDb, type VerificationDataWithSignature } from "@near-citizens/shared/verification-contract"
-import { getVerifier } from "@near-citizens/shared/self-verifier"
+import {
+  SELF_CONFIG,
+  CONSTANTS,
+  ERROR_MESSAGES,
+  verificationDb,
+  getVerifier,
+  verifyRequestSchema,
+  type SelfVerificationResult,
+  type NearSignatureData,
+  type VerificationDataWithSignature,
+} from "@near-citizens/shared"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process

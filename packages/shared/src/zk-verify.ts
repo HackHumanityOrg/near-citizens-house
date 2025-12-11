@@ -10,7 +10,7 @@
  * the SDK's business logic validation.
  */
 import { ethers } from "ethers"
-import type { SelfProofData } from "./types"
+import type { SelfProofData } from "./contracts/verification"
 import { SELF_CONFIG, CELO_CONFIG } from "./config"
 
 export type { SelfProofData as StoredProofData }

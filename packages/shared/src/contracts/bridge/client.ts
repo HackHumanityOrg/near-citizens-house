@@ -6,61 +6,10 @@
  * through the wallet connection, not server-side.
  */
 import { JsonRpcProvider } from "@near-js/providers"
-import { NEAR_CONFIG } from "./config"
+import { NEAR_CONFIG } from "../../config"
+import { bridgeInfoSchema, type BridgeInfo, type IBridgeContractReader } from "./types"
 
-// ============================================================================
-// Types
-// ============================================================================
-
-/**
- * Bridge contract configuration
- */
-export interface BridgeInfo {
-  backendWallet: string
-  sputnikDao: string
-  verifiedAccountsContract: string
-  citizenRole: string
-}
-
-/**
- * Contract response format (snake_case)
- */
-interface ContractBridgeInfo {
-  backend_wallet: string
-  sputnik_dao: string
-  verified_accounts_contract: string
-  citizen_role: string
-}
-
-/**
- * Interface for bridge contract read operations
- */
-export interface IBridgeContractReader {
-  /**
-   * Get bridge contract info
-   */
-  getInfo(): Promise<BridgeInfo>
-
-  /**
-   * Get the backend wallet address
-   */
-  getBackendWallet(): Promise<string>
-
-  /**
-   * Get the SputnikDAO contract address
-   */
-  getSputnikDao(): Promise<string>
-
-  /**
-   * Get the verified accounts contract address
-   */
-  getVerifiedAccountsContract(): Promise<string>
-
-  /**
-   * Get the citizen role name
-   */
-  getCitizenRole(): Promise<string>
-}
+export type { IBridgeContractReader, BridgeInfo }
 
 // ============================================================================
 // Implementation
@@ -89,18 +38,14 @@ export class BridgeContractReader implements IBridgeContractReader {
   // ==================== View Methods ====================
 
   async getInfo(): Promise<BridgeInfo> {
-    const result = await this.provider.callFunction<ContractBridgeInfo>(this.contractId, "get_info", {})
+    const result = await this.provider.callFunction<Record<string, string>>(this.contractId, "get_info", {})
 
     if (!result) {
       throw new Error("Failed to get bridge info")
     }
 
-    return {
-      backendWallet: result.backend_wallet,
-      sputnikDao: result.sputnik_dao,
-      verifiedAccountsContract: result.verified_accounts_contract,
-      citizenRole: result.citizen_role,
-    }
+    // Validate and transform using Zod schema (strictObject catches unexpected fields)
+    return bridgeInfoSchema.parse(result)
   }
 
   async getBackendWallet(): Promise<string> {

@@ -7,7 +7,7 @@ import { PublicKey } from "@near-js/crypto"
 import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
-import type { ParsedSignatureData, ProofData } from "./types"
+import type { ParsedSignatureData, ProofData } from "./contracts/verification"
 
 export type { ParsedSignatureData, ProofData }
 

@@ -14,9 +14,9 @@ import {
 } from "@near-citizens/ui"
 import { PassportQrScanner } from "./passport-qr-scanner"
 import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, LogOut } from "lucide-react"
-import type { NearSignatureData } from "@near-citizens/shared/types"
+import type { NearSignatureData } from "@near-citizens/shared"
 import type { VerificationStep } from "@/types/ui"
-import { CONSTANTS, ERROR_MESSAGES } from "@near-citizens/shared/config"
+import { CONSTANTS, ERROR_MESSAGES } from "@near-citizens/shared"
 import { isAccountVerified } from "@/app/verified-accounts/actions"
 
 export function IdentityVerificationFlow() {

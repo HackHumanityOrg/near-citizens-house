@@ -1,12 +1,27 @@
 "use server"
 
-import { sputnikDaoDb, type SputnikProposal, type TransformedPolicy } from "@near-citizens/shared"
+import { z } from "zod"
+import {
+  sputnikDaoDb,
+  paginationSchema,
+  nearAccountIdSchema,
+  type SputnikProposal,
+  type TransformedPolicy,
+} from "@near-citizens/shared"
+
+// Local schema - only used in this file
+const proposalIdSchema = z.number().int("Proposal ID must be an integer").min(0, "Proposal ID must be non-negative")
 
 /**
  * Get a single proposal by ID
  */
 export async function getProposal(id: number): Promise<SputnikProposal | null> {
-  return sputnikDaoDb.getProposal(id)
+  const parsed = proposalIdSchema.safeParse(id)
+  if (!parsed.success) {
+    console.error("[SputnikDAO] Invalid proposal ID:", parsed.error.format())
+    return null
+  }
+  return sputnikDaoDb.getProposal(parsed.data)
 }
 
 /**
@@ -15,7 +30,12 @@ export async function getProposal(id: number): Promise<SputnikProposal | null> {
  * @param limit Maximum number of proposals to return
  */
 export async function getProposals(fromIndex: number = 0, limit: number = 20): Promise<SputnikProposal[]> {
-  return sputnikDaoDb.getProposals(fromIndex, limit)
+  const params = paginationSchema.safeParse({ page: fromIndex, pageSize: limit })
+  if (!params.success) {
+    console.error("[SputnikDAO] Invalid pagination:", params.error.format())
+    return []
+  }
+  return sputnikDaoDb.getProposals(params.data.page, params.data.pageSize)
 }
 
 /**
@@ -42,6 +62,12 @@ export async function getProposalsReversed(
   page: number = 0,
   pageSize: number = 10,
 ): Promise<{ proposals: SputnikProposal[]; hasMore: boolean; total: number }> {
+  const params = paginationSchema.safeParse({ page, pageSize })
+  if (!params.success) {
+    console.error("[SputnikDAO] Invalid pagination:", params.error.format())
+    return { proposals: [], hasMore: false, total: 0 }
+  }
+
   // get_last_proposal_id returns the next proposal ID to be used, which equals total count
   const total = await sputnikDaoDb.getLastProposalId()
 
@@ -51,10 +77,10 @@ export async function getProposalsReversed(
 
   const lastExistingId = total - 1
 
-  // Calculate starting index for this page (from end)
-  const startFromEnd = page * pageSize
+  // Calculate starting index for this page (from end) using validated params
+  const startFromEnd = params.data.page * params.data.pageSize
   const endIndex = lastExistingId - startFromEnd
-  const startIndex = Math.max(0, endIndex - pageSize + 1)
+  const startIndex = Math.max(0, endIndex - params.data.pageSize + 1)
   const count = endIndex - startIndex + 1
 
   if (endIndex < 0) {
@@ -74,10 +100,21 @@ export async function getProposalsReversed(
  * Check if an account has voted on a proposal
  */
 export async function hasVoted(proposalId: number, accountId: string): Promise<boolean> {
-  const proposal = await sputnikDaoDb.getProposal(proposalId)
+  const idResult = proposalIdSchema.safeParse(proposalId)
+  const accountResult = nearAccountIdSchema.safeParse(accountId)
+
+  if (!idResult.success || !accountResult.success) {
+    console.error("[SputnikDAO] Invalid params:", {
+      proposalId: idResult.error?.format(),
+      accountId: accountResult.error?.format(),
+    })
+    return false
+  }
+
+  const proposal = await sputnikDaoDb.getProposal(idResult.data)
   if (!proposal) return false
 
-  return accountId in proposal.votes
+  return accountResult.data in proposal.votes
 }
 
 /**
@@ -87,8 +124,19 @@ export async function getUserVote(
   proposalId: number,
   accountId: string,
 ): Promise<"Approve" | "Reject" | "Remove" | null> {
-  const proposal = await sputnikDaoDb.getProposal(proposalId)
+  const idResult = proposalIdSchema.safeParse(proposalId)
+  const accountResult = nearAccountIdSchema.safeParse(accountId)
+
+  if (!idResult.success || !accountResult.success) {
+    console.error("[SputnikDAO] Invalid params:", {
+      proposalId: idResult.error?.format(),
+      accountId: accountResult.error?.format(),
+    })
+    return null
+  }
+
+  const proposal = await sputnikDaoDb.getProposal(idResult.data)
   if (!proposal) return null
 
-  return proposal.votes[accountId] ?? null
+  return proposal.votes[accountResult.data] ?? null
 }

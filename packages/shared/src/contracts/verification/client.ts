@@ -16,33 +16,15 @@ import { actionCreators } from "@near-js/transactions"
 import {
   contractVerifiedAccountSchema,
   type ContractVerifiedAccount,
+  type ContractSelfProofInput,
+  type ContractSignatureInput,
   type IVerificationDatabase,
   type VerificationDataWithSignature,
   type VerifiedAccount,
 } from "./types"
-import { NEAR_CONFIG } from "./config"
+import { NEAR_CONFIG } from "../../config"
 
 export type { IVerificationDatabase, VerificationDataWithSignature, VerifiedAccount }
-
-// Contract format for Self proof data (snake_case)
-interface ContractSelfProofData {
-  proof: {
-    a: [string, string]
-    b: [[string, string], [string, string]]
-    c: [string, string]
-  }
-  public_signals: string[]
-}
-
-// NEAR signature data format for contract call (matches Rust struct with snake_case)
-interface NearContractSignatureData {
-  account_id: string
-  signature: number[] // Vec<u8> in Rust
-  public_key: string
-  challenge: string
-  nonce: number[] // Vec<u8> - 32 bytes
-  recipient: string
-}
 
 // Fallback RPC URLs for read operations
 const FALLBACK_RPC_URLS = {
@@ -158,7 +140,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       const { signatureData, selfProofData, userContextData, ...verificationData } = data
 
       // Convert signature data to contract format
-      const nearSigData: NearContractSignatureData = {
+      const nearSigData: ContractSignatureInput = {
         account_id: signatureData.accountId,
         signature: Array.from(Buffer.from(signatureData.signature, "base64")),
         public_key: signatureData.publicKey,
@@ -168,7 +150,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       }
 
       // Convert Self proof data to contract format
-      const selfProof: ContractSelfProofData = {
+      const selfProof: ContractSelfProofInput = {
         proof: selfProofData.proof,
         public_signals: selfProofData.publicSignals,
       }

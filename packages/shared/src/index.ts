@@ -1,20 +1,13 @@
 // Configuration
 export * from "./config"
 
-// Types
-export * from "./types"
+// Validation schemas (shared across apps)
+export * from "./validation"
 
-// Verification Contract
-export * from "./verification-contract"
-
-// Governance Contract
-export * from "./governance-contract"
-
-// Bridge Contract
-export * from "./bridge-contract"
-
-// SputnikDAO Contract
-export * from "./sputnik-dao-contract"
+// Contracts
+export * from "./contracts/verification"
+export * from "./contracts/sputnik-dao"
+export * from "./contracts/bridge"
 
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"

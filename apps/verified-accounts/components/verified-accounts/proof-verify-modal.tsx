@@ -3,7 +3,7 @@
 import { useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from "@near-citizens/ui"
 import { Download, ExternalLink } from "lucide-react"
-import type { ZkProof } from "@near-citizens/shared/types"
+import type { ZkProof } from "@near-citizens/shared"
 
 // Props specific to this modal - combines proof with metadata
 interface ZkProofData {
