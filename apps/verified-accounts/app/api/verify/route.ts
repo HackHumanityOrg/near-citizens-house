@@ -11,6 +11,7 @@ import {
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
+import { updateSession } from "@/lib/session-store"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
@@ -64,6 +65,8 @@ export async function POST(request: NextRequest) {
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
 
+    console.log(`[Verify] Starting verification for attestation ${attestationId}`)
+
     let selfVerificationResult
 
     try {
@@ -80,6 +83,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
+
+    console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
 
     // Note: isOfacValid === true means user IS on OFAC list
     const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
@@ -227,10 +232,33 @@ export async function POST(request: NextRequest) {
       // Revalidate the verifications cache so new verification appears immediately
       // Next.js 16 requires a cacheLife profile as second argument
       revalidateTag("verifications", "max")
+
+      console.log(`[Verify] Stored verification for account ${nearSignature.accountId}`)
+
+      // Update session status for deep link callback
+      // The userId from Self.xyz is used as the sessionId in our deep link flow
+      const sessionId = selfVerificationResult.userData?.userIdentifier
+      if (sessionId) {
+        await updateSession(sessionId, {
+          status: "success",
+          accountId: nearSignature.accountId,
+        })
+        console.log(`[Verify] Updated session ${sessionId} with status: success`)
+      }
     } catch (error) {
       // Check for duplicate passport error from contract
       const errorMessage = error instanceof Error ? error.message : ""
       const errorCode = errorMessage.includes("already been registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
+
+      // Update session status for deep link callback
+      const sessionId = selfVerificationResult.userData?.userIdentifier
+      if (sessionId) {
+        await updateSession(sessionId, {
+          status: "error",
+          error: errorCode,
+        })
+        console.log(`[Verify] Updated session ${sessionId} with status: error (${errorCode})`)
+      }
 
       return NextResponse.json(
         createVerificationError(
