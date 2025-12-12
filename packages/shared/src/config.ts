@@ -100,7 +100,7 @@ export const APP_URLS = {
 // Self.xyz Configuration
 const DISCLOSURE_CONFIG = {
   minimumAge: 18,
-  excludedCountries: [] as const,
+  excludedCountries: ["IRN", "IRQ", "PRK", "RUS", "SYR", "VEN"] as const,
   ofac: true,
 }
 
