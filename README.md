@@ -1,5 +1,8 @@
 # NEAR Citizens House
 
+[![Tests](https://img.shields.io/endpoint?url=https://hackhumanityorg.github.io/near-citizens-house/test-results.json)](https://github.com/HackHumanityOrg/near-citizens-house/actions)
+[![Allure Report](https://img.shields.io/badge/Allure_Report-View-blueviolet)](https://hackhumanityorg.github.io/near-citizens-house/)
+
 A pnpm workspace monorepo for NEAR governance and identity verification.
 
 ## Project Structure
