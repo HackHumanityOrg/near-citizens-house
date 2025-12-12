@@ -47,10 +47,23 @@ if (typeof window === "undefined") {
   if (!hasContracts) {
     console.warn("[Config] No contract addresses configured - contract operations will fail")
   }
+
+  // Log network configuration
+  const nearNetwork = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
+  const selfNetwork = process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet"
+  console.log(`[Config] NEAR network: ${nearNetwork}`)
+  console.log(`[Config] Self.xyz network: ${selfNetwork}`)
+  if (nearNetwork !== selfNetwork) {
+    console.log(`[Config] Running in mixed-network mode (NEAR ${nearNetwork} + Self ${selfNetwork})`)
+  }
 }
 
 // NEAR Network Configuration
 const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet"
+
+// Self.xyz Network Configuration (independent from NEAR network)
+// This allows using NEAR testnet with Self.xyz mainnet for real passport verification with OFAC checks
+const selfNetworkId = (process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet") as "testnet" | "mainnet"
 
 // Default RPC URLs for FastNear
 const defaultRpcUrl = networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
@@ -94,12 +107,20 @@ const DISCLOSURE_CONFIG = {
 export const SELF_CONFIG = {
   appName: "NEAR Citizens House",
   scope: "near-citizens-house",
+  // Self.xyz network (independent from NEAR network)
+  // "mainnet" = Real passports with OFAC checks
+  // "testnet" = Mock passports for testing (no OFAC)
+  networkId: selfNetworkId,
   get endpoint() {
     return `${APP_URLS.verification}/api/verify`
   },
   endpointType: "https" as const,
   logoBase64: "/self-logo.png",
-  useMockPassport: process.env.SELF_USE_MOCK_PASSPORT === "true",
+  // useMockPassport is derived from networkId
+  // testnet = mock passports, mainnet = real passports
+  get useMockPassport() {
+    return this.networkId === "testnet"
+  },
   disclosures: {
     minimumAge: DISCLOSURE_CONFIG.minimumAge,
     ofac: DISCLOSURE_CONFIG.ofac,

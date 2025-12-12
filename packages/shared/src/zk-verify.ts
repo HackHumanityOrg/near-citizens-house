@@ -30,14 +30,15 @@ const CELO_RPC_URLS_MAINNET = [
 
 const CELO_RPC_URLS_TESTNET = ["https://alfajores-forno.celo-testnet.org"]
 
-// Use config values for RPC URLs and mock passport setting
+// Use config values for RPC URLs and Self.xyz network setting
+// Self.xyz network is independent from NEAR network, allowing NEAR testnet + Self mainnet
 const CELO_RPC_URLS = CELO_CONFIG.rpcUrls
   ? CELO_CONFIG.rpcUrls.map((url) => url.trim()).filter(Boolean)
-  : SELF_CONFIG.useMockPassport
+  : SELF_CONFIG.networkId === "testnet"
     ? CELO_RPC_URLS_TESTNET
     : CELO_RPC_URLS_MAINNET
 
-const IDENTITY_VERIFICATION_HUB_ADDRESS = SELF_CONFIG.useMockPassport
+const IDENTITY_VERIFICATION_HUB_ADDRESS = SELF_CONFIG.networkId === "testnet"
   ? IDENTITY_VERIFICATION_HUB_TESTNET
   : IDENTITY_VERIFICATION_HUB_MAINNET
 
