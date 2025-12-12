@@ -81,8 +81,9 @@ export async function POST(request: NextRequest) {
 
     const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
 
+    // Note: isOfacValid === true means user IS on OFAC list
     const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
-    const ofacCheckFailed = ofacEnabled && isOfacValid === false
+    const ofacCheckFailed = ofacEnabled && isOfacValid === true
 
     if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
       const errorCode = !isMinimumAgeValid
