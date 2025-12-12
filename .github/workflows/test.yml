@@ -97,6 +97,11 @@ jobs:
           allure_report: allure-report
           keep_reports: 20
 
+      # Clean up .git directory from allure-history to avoid permission issues
+      - name: Clean up allure-history
+        if: always()
+        run: rm -rf allure-history/.git
+
       # Publish report to GitHub Pages
       - name: Publish to GitHub Pages
         if: always()
