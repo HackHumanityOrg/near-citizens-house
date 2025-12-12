@@ -76,3 +76,8 @@ neardev/
 CLAUDE.md
 .claude_docs
 AGENTS.md
+
+# Allure test reports
+allure-results/
+allure-report/
+allure-history/

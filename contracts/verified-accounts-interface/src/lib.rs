@@ -208,9 +208,11 @@ pub trait VerifiedAccounts {
 }
 
 #[cfg(test)]
+#[allure_rust::allure_suite("Verified Accounts Interface")]
 mod tests {
     use super::*;
 
+    #[allure_rust::allure_test]
     #[test]
     fn test_verified_account_info_serialization() {
         let info = VerifiedAccountInfo {
@@ -233,6 +235,7 @@ mod tests {
         assert_eq!(decoded.nullifier, info.nullifier);
     }
 
+    #[allure_rust::allure_test]
     #[test]
     fn test_verified_account_serialization() {
         let account = VerifiedAccount {
@@ -261,5 +264,177 @@ mod tests {
         assert_eq!(decoded.near_account_id, account.near_account_id);
         assert_eq!(decoded.nullifier, account.nullifier);
         assert_eq!(decoded.self_proof.public_signals.len(), 2);
+    }
+
+    // ==================== ADDITIONAL TYPE SERIALIZATION TESTS (Phase 3) ====================
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_zk_proof_json_roundtrip() {
+        let proof = ZkProof {
+            a: ["12345678901234567890".to_string(), "98765432109876543210".to_string()],
+            b: [
+                ["11111111111111111111".to_string(), "22222222222222222222".to_string()],
+                ["33333333333333333333".to_string(), "44444444444444444444".to_string()],
+            ],
+            c: ["55555555555555555555".to_string(), "66666666666666666666".to_string()],
+        };
+
+        // Test JSON roundtrip
+        let json = near_sdk::serde_json::to_string(&proof).unwrap();
+        let decoded: ZkProof = near_sdk::serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.a, proof.a);
+        assert_eq!(decoded.b, proof.b);
+        assert_eq!(decoded.c, proof.c);
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_zk_proof_borsh_roundtrip() {
+        let proof = ZkProof {
+            a: ["a_point_x".to_string(), "a_point_y".to_string()],
+            b: [
+                ["b0_x".to_string(), "b0_y".to_string()],
+                ["b1_x".to_string(), "b1_y".to_string()],
+            ],
+            c: ["c_point_x".to_string(), "c_point_y".to_string()],
+        };
+
+        let borsh = near_sdk::borsh::to_vec(&proof).unwrap();
+        let decoded: ZkProof = near_sdk::borsh::from_slice(&borsh).unwrap();
+        assert_eq!(decoded.a, proof.a);
+        assert_eq!(decoded.b, proof.b);
+        assert_eq!(decoded.c, proof.c);
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_self_proof_data_json_roundtrip() {
+        let proof_data = SelfProofData {
+            proof: ZkProof {
+                a: ["1".to_string(), "2".to_string()],
+                b: [
+                    ["3".to_string(), "4".to_string()],
+                    ["5".to_string(), "6".to_string()],
+                ],
+                c: ["7".to_string(), "8".to_string()],
+            },
+            public_signals: vec![
+                "nullifier".to_string(),
+                "merkle_root".to_string(),
+                "scope".to_string(),
+            ],
+        };
+
+        let json = near_sdk::serde_json::to_string(&proof_data).unwrap();
+        let decoded: SelfProofData = near_sdk::serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.public_signals.len(), 3);
+        assert_eq!(decoded.public_signals[0], "nullifier");
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_verified_account_info_json_roundtrip() {
+        let info = VerifiedAccountInfo {
+            nullifier: "123456789012345678901234567890".to_string(),
+            near_account_id: "alice.testnet".parse().unwrap(),
+            user_id: "user_abc".to_string(),
+            attestation_id: "1".to_string(),
+            verified_at: 1700000000000000000, // Realistic nanosecond timestamp
+        };
+
+        let json = near_sdk::serde_json::to_string(&info).unwrap();
+        let decoded: VerifiedAccountInfo = near_sdk::serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.nullifier, info.nullifier);
+        assert_eq!(decoded.near_account_id, info.near_account_id);
+        assert_eq!(decoded.verified_at, info.verified_at);
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_verified_account_with_21_signals() {
+        // Test with realistic 21 public signals (passport proofs)
+        let account = VerifiedAccount {
+            nullifier: "nullifier".to_string(),
+            near_account_id: "user.near".parse().unwrap(),
+            user_id: "user_id".to_string(),
+            attestation_id: "1".to_string(),
+            verified_at: 0,
+            self_proof: SelfProofData {
+                proof: ZkProof {
+                    a: ["1".to_string(), "2".to_string()],
+                    b: [
+                        ["3".to_string(), "4".to_string()],
+                        ["5".to_string(), "6".to_string()],
+                    ],
+                    c: ["7".to_string(), "8".to_string()],
+                },
+                public_signals: (0..21).map(|i| format!("signal_{}", i)).collect(),
+            },
+            user_context_data: "".to_string(),
+        };
+
+        // Verify serialization works with full 21 signals
+        let borsh = near_sdk::borsh::to_vec(&account).unwrap();
+        let decoded: VerifiedAccount = near_sdk::borsh::from_slice(&borsh).unwrap();
+        assert_eq!(decoded.self_proof.public_signals.len(), 21);
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_empty_public_signals() {
+        let proof_data = SelfProofData {
+            proof: ZkProof {
+                a: ["0".to_string(), "0".to_string()],
+                b: [
+                    ["0".to_string(), "0".to_string()],
+                    ["0".to_string(), "0".to_string()],
+                ],
+                c: ["0".to_string(), "0".to_string()],
+            },
+            public_signals: vec![], // Empty signals
+        };
+
+        let json = near_sdk::serde_json::to_string(&proof_data).unwrap();
+        let decoded: SelfProofData = near_sdk::serde_json::from_str(&json).unwrap();
+        assert!(decoded.public_signals.is_empty());
+    }
+
+    // ==================== NEGATIVE DESERIALIZATION TESTS ====================
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_verified_account_info_json_missing_nullifier_fails() {
+        // JSON without required "nullifier" field should fail deserialization
+        let json = r#"{"near_account_id":"test.near","user_id":"u","attestation_id":"1","verified_at":0}"#;
+        let result: Result<VerifiedAccountInfo, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail when nullifier is missing");
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_zk_proof_json_invalid_a_array_length_fails() {
+        // 'a' should have exactly 2 elements, not 1
+        let json = r#"{"a":["1"],"b":[["1","2"],["3","4"]],"c":["1","2"]}"#;
+        let result: Result<ZkProof, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail when 'a' has wrong array length");
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_self_proof_data_invalid_proof_type_fails() {
+        // 'proof' should be an object, not a string
+        let json = r#"{"proof":"not_an_object","public_signals":[]}"#;
+        let result: Result<SelfProofData, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail when 'proof' is not an object");
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_zk_proof_json_missing_b_field_fails() {
+        // Missing 'b' field should fail
+        let json = r#"{"a":["1","2"],"c":["1","2"]}"#;
+        let result: Result<ZkProof, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail when 'b' field is missing");
     }
 }

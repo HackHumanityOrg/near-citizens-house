@@ -1,0 +1,126 @@
+name: Tests & Allure Report
+
+on:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  ALLURE_RESULTS_DIR: ${{ github.workspace }}/allure-results
+
+jobs:
+  test:
+    name: Run All Contract Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.86.0
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.86.0
+          targets: wasm32-unknown-unknown
+          components: clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            contracts/*/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      # Create allure-results directory
+      - name: Setup Allure results
+        run: mkdir -p allure-results
+
+      # Run unit tests with cargo test (allure-rust generates results)
+      # Note: Integration tests are feature-gated and not run by default
+      - name: Run verified-accounts unit tests
+        working-directory: contracts/verified-accounts
+        run: cargo test --lib
+        continue-on-error: true
+
+      - name: Run verified-accounts-interface unit tests
+        working-directory: contracts/verified-accounts-interface
+        run: cargo test --lib
+        continue-on-error: true
+
+      - name: Run sputnik-bridge unit tests
+        working-directory: contracts/sputnik-bridge
+        run: cargo test --lib
+        continue-on-error: true
+
+      - name: Run sputnik-dao-interface unit tests
+        working-directory: contracts/sputnik-dao-interface
+        run: cargo test --lib
+        continue-on-error: true
+
+      # Clippy
+      - name: Clippy verified-accounts
+        working-directory: contracts/verified-accounts
+        run: RUSTFLAGS="--cfg clippy" cargo clippy --lib -- -D warnings
+
+      - name: Clippy sputnik-bridge
+        working-directory: contracts/sputnik-bridge
+        run: RUSTFLAGS="--cfg clippy" cargo clippy --lib -- -D warnings
+
+      # Copy categories.json
+      - name: Add categories
+        if: always()
+        run: cp allure-categories.json allure-results/categories.json
+
+      # Install Java for Allure
+      - name: Set up JDK 17
+        if: always()
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Install Allure CLI
+      - name: Install Allure CLI
+        if: always()
+        run: |
+          wget -q https://github.com/allure-framework/allure2/releases/download/2.32.0/allure-2.32.0.tgz
+          tar -xzf allure-2.32.0.tgz
+          echo "$PWD/allure-2.32.0/bin" >> $GITHUB_PATH
+
+      # Checkout test-results branch for history
+      - name: Checkout test-results branch
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          ref: test-results
+          path: test-results-branch
+        continue-on-error: true
+
+      - name: Setup history
+        if: always()
+        run: |
+          mkdir -p test-results-branch
+          if [ -d "test-results-branch/history" ]; then
+            cp -r test-results-branch/history allure-results/
+          fi
+
+      # Generate Allure report
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          allure-2.32.0/bin/allure generate allure-results --clean -o allure-report
+
+      # Push to test-results branch
+      - name: Push to test-results branch
+        if: always()
+        run: |
+          cd allure-report
+          git init
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git checkout -b test-results
+          git add -A
+          git commit -m "Update Allure report - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          git push -f https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git test-results

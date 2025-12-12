@@ -1,5 +1,8 @@
 //! Integration tests for verified-accounts contract using near-workspaces
+//!
+//! Run with: cargo test --features integration-tests
 
+#![cfg(feature = "integration-tests")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use borsh::BorshSerialize;

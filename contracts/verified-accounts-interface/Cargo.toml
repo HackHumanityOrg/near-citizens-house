@@ -9,5 +9,9 @@ repository = "https://github.com/HackHumanityOrg/alpha-venear-unlock"
 [dependencies]
 near-sdk = { version = "5.20", features = ["legacy"] }
 
+[dev-dependencies]
+near-sdk = { version = "5.20", features = ["legacy", "unit-testing"] }
+allure-rust = "0.0.1"
+
 [lib]
 crate-type = ["rlib"]

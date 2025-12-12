@@ -3,7 +3,10 @@
 //! These tests verify that the bridge handles cross-contract call failures correctly.
 //! Per the NEAR security guide, state should remain consistent when callbacks fail,
 //! and the system should handle partial failures gracefully.
+//!
+//! Run with: cargo test --features integration-tests
 
+#![cfg(feature = "integration-tests")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod helpers;

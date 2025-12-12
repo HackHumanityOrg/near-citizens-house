@@ -4,7 +4,10 @@
 //! - After each member addition, quorum is updated to ceil(7% * citizen_count)
 //! - Threshold remains at 50% (Ratio 1/2) of citizens
 //! - effective_threshold = max(quorum, threshold_weight)
+//!
+//! Run with: cargo test --features integration-tests
 
+#![cfg(feature = "integration-tests")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod helpers;

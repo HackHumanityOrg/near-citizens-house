@@ -4,6 +4,10 @@ version = "1.0.0"
 edition = "2021"
 description = "Bridge contract connecting verified accounts to SputnikDAO"
 
+[features]
+default = []
+integration-tests = []
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -23,6 +27,7 @@ anyhow = "1.0"
 near-crypto = "0.34"
 sha2 = "0.10"
 borsh = "1.6"
+allure-rust = "0.0.1"
 
 [lints.clippy]
 # Security-focused lints for smart contracts

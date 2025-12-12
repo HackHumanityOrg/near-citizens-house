@@ -217,9 +217,11 @@ pub trait SputnikDao {
 }
 
 #[cfg(test)]
+#[allure_rust::allure_suite("Sputnik DAO Interface")]
 mod tests {
     use super::*;
 
+    #[allure_rust::allure_test]
     #[test]
     fn test_proposal_input_serialization() {
         let input = ProposalInput {
@@ -237,6 +239,7 @@ mod tests {
         assert_eq!(decoded.description, input.description);
     }
 
+    #[allure_rust::allure_test]
     #[test]
     fn test_add_member_to_role_serialization() {
         let input = ProposalInput {
@@ -253,6 +256,7 @@ mod tests {
         assert!(json.contains("AddMemberToRole"));
     }
 
+    #[allure_rust::allure_test]
     #[test]
     fn test_action_serialization() {
         let action = Action::VoteApprove;
@@ -260,6 +264,7 @@ mod tests {
         assert!(json.contains("VoteApprove"));
     }
 
+    #[allure_rust::allure_test]
     #[test]
     fn test_change_policy_add_or_update_role_serialization() {
         use std::collections::HashMap;
@@ -294,5 +299,199 @@ mod tests {
         // Verify it can be deserialized
         let decoded: ProposalInput = near_sdk::serde_json::from_str(&json).unwrap();
         assert_eq!(decoded.description, input.description);
+    }
+
+    // ==================== ADDITIONAL TYPE SERIALIZATION TESTS (Phase 3) ====================
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_all_action_variants_serialization() {
+        // Test all Action variants serialize correctly
+        let actions = vec![
+            (Action::VoteApprove, "VoteApprove"),
+            (Action::VoteReject, "VoteReject"),
+            (Action::VoteRemove, "VoteRemove"),
+            (Action::Finalize, "Finalize"),
+            (Action::MoveToHub, "MoveToHub"),
+        ];
+
+        for (action, expected_str) in actions {
+            let json = near_sdk::serde_json::to_string(&action).unwrap();
+            assert!(
+                json.contains(expected_str),
+                "Action {:?} should serialize to contain '{}'",
+                action,
+                expected_str
+            );
+        }
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_remove_member_from_role_serialization() {
+        let kind = ProposalKind::RemoveMemberFromRole {
+            member_id: "bob.near".parse().unwrap(),
+            role: "council".to_string(),
+        };
+
+        let json = near_sdk::serde_json::to_string(&kind).unwrap();
+        assert!(json.contains("RemoveMemberFromRole"));
+        assert!(json.contains("bob.near"));
+        assert!(json.contains("council"));
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_role_kind_everyone_serialization() {
+        let kind = RoleKind::Everyone;
+        let json = near_sdk::serde_json::to_string(&kind).unwrap();
+        assert!(json.contains("Everyone"));
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_role_kind_group_serialization() {
+        let kind = RoleKind::Group(vec![
+            "alice.near".parse().unwrap(),
+            "bob.near".parse().unwrap(),
+            "carol.near".parse().unwrap(),
+        ]);
+
+        let json = near_sdk::serde_json::to_string(&kind).unwrap();
+        assert!(json.contains("alice.near"));
+        assert!(json.contains("bob.near"));
+        assert!(json.contains("carol.near"));
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_weight_kind_serialization() {
+        let role_weight = WeightKind::RoleWeight;
+        let token_weight = WeightKind::TokenWeight;
+
+        let json1 = near_sdk::serde_json::to_string(&role_weight).unwrap();
+        let json2 = near_sdk::serde_json::to_string(&token_weight).unwrap();
+
+        assert!(json1.contains("RoleWeight"));
+        assert!(json2.contains("TokenWeight"));
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_weight_or_ratio_weight_serialization() {
+        let weight = WeightOrRatio::Weight(U128(1000));
+        let json = near_sdk::serde_json::to_string(&weight).unwrap();
+        assert!(json.contains("1000"));
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_weight_or_ratio_ratio_serialization() {
+        let ratio = WeightOrRatio::Ratio(1, 2);
+        let json = near_sdk::serde_json::to_string(&ratio).unwrap();
+        // Ratio serializes as [1,2] due to #[serde(untagged)]
+        assert!(json.contains("1"));
+        assert!(json.contains("2"));
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_vote_policy_serialization() {
+        let policy = VotePolicy {
+            weight_kind: WeightKind::RoleWeight,
+            quorum: U128(7),
+            threshold: WeightOrRatio::Ratio(1, 2),
+        };
+
+        let json = near_sdk::serde_json::to_string(&policy).unwrap();
+        assert!(json.contains("RoleWeight"));
+        assert!(json.contains("\"7\"")); // U128 serializes as string
+
+        // Test roundtrip
+        let decoded: VotePolicy = near_sdk::serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.quorum.0, 7);
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_proposal_input_borsh_roundtrip() {
+        let input = ProposalInput {
+            description: "Test proposal for Borsh".to_string(),
+            kind: ProposalKind::Vote,
+        };
+
+        let borsh = near_sdk::borsh::to_vec(&input).unwrap();
+        let decoded: ProposalInput = near_sdk::borsh::from_slice(&borsh).unwrap();
+        assert_eq!(decoded.description, input.description);
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_role_permission_borsh_roundtrip() {
+        use std::collections::HashMap;
+
+        let role = RolePermission {
+            name: "citizen".to_string(),
+            kind: RoleKind::Group(vec!["alice.near".parse().unwrap()]),
+            permissions: vec!["vote:VoteApprove".to_string(), "vote:VoteReject".to_string()],
+            vote_policy: HashMap::new(),
+        };
+
+        let borsh = near_sdk::borsh::to_vec(&role).unwrap();
+        let decoded: RolePermission = near_sdk::borsh::from_slice(&borsh).unwrap();
+        assert_eq!(decoded.name, role.name);
+        assert_eq!(decoded.permissions.len(), 2);
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_empty_group_serialization() {
+        let kind = RoleKind::Group(vec![]);
+        let json = near_sdk::serde_json::to_string(&kind).unwrap();
+
+        let decoded: RoleKind = near_sdk::serde_json::from_str(&json).unwrap();
+        if let RoleKind::Group(members) = decoded {
+            assert!(members.is_empty());
+        } else {
+            panic!("Expected Group variant");
+        }
+    }
+
+    // ==================== NEGATIVE DESERIALIZATION TESTS ====================
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_proposal_kind_unknown_variant_deserialization_fails() {
+        // Unknown enum variant should fail deserialization
+        let json = r#"{"UnknownVariant":{}}"#;
+        let result: Result<ProposalKind, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail for unknown ProposalKind variant");
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_action_invalid_string_deserialization_fails() {
+        // Invalid Action variant should fail deserialization
+        let json = r#""InvalidAction""#;
+        let result: Result<Action, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail for invalid Action string");
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_weight_or_ratio_empty_array_fails() {
+        // WeightOrRatio with empty array should fail
+        let json = r#"[]"#;
+        let result: Result<WeightOrRatio, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail for empty WeightOrRatio array");
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_role_permission_missing_name_fails() {
+        // RolePermission without required 'name' field should fail
+        let json = r#"{"kind":"Everyone","permissions":[],"vote_policy":{}}"#;
+        let result: Result<RolePermission, _> = near_sdk::serde_json::from_str(json);
+        assert!(result.is_err(), "Deserialization should fail when 'name' is missing");
     }
 }

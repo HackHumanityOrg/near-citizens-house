@@ -1,0 +1,11 @@
+[
+  {
+    "name": "Integration Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*integration.*"
+  },
+  {
+    "name": "Unit Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"]
+  }
+]

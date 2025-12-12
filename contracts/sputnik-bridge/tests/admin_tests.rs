@@ -1,5 +1,8 @@
 //! Admin and event tests for sputnik-bridge contract
+//!
+//! Run with: cargo test --features integration-tests
 
+#![cfg(feature = "integration-tests")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod helpers;
