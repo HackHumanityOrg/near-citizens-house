@@ -27,6 +27,9 @@ const envSchema = z.object({
   // Server-side only (not available on client)
   NEAR_ACCOUNT_ID: z.string().optional(),
   NEAR_PRIVATE_KEY: z.string().optional(),
+
+  // Redis for session storage (server-side only)
+  REDIS_URL: z.string().optional(),
 })
 
 // Validate environment at module load time
@@ -47,6 +50,9 @@ if (typeof window === "undefined") {
   }
   if (!hasContracts) {
     console.warn("[Config] No contract addresses configured - contract operations will fail")
+  }
+  if (!process.env.REDIS_URL) {
+    console.warn("[Config] REDIS_URL not configured - session storage will fail")
   }
 
   // Log network configuration

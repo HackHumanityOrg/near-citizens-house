@@ -3,14 +3,7 @@
 import { useMemo, useEffect } from "react"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-citizens/shared"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Button,
-} from "@near-citizens/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@near-citizens/ui"
 import { Smartphone, LogOut } from "lucide-react"
 
 interface PassportDeepLinkProps {
@@ -50,11 +43,14 @@ export function PassportDeepLink({ nearSignature, sessionId, onDisconnect }: Pas
 
   // Store session ID in localStorage so the callback page can check status
   useEffect(() => {
-    localStorage.setItem(`self-session-${sessionId}`, JSON.stringify({
-      status: "pending",
-      accountId: nearSignature.accountId,
-      timestamp: Date.now(),
-    }))
+    localStorage.setItem(
+      `self-session-${sessionId}`,
+      JSON.stringify({
+        status: "pending",
+        accountId: nearSignature.accountId,
+        timestamp: Date.now(),
+      }),
+    )
   }, [sessionId, nearSignature.accountId])
 
   const handleOpenSelfApp = () => {
@@ -68,9 +64,7 @@ export function PassportDeepLink({ nearSignature, sessionId, onDisconnect }: Pas
           <Smartphone className="h-5 w-5 text-primary" />
           <CardTitle>Verify with Self App</CardTitle>
         </div>
-        <CardDescription>
-          Open the Self app to scan your passport and verify your identity
-        </CardDescription>
+        <CardDescription>Open the Self app to scan your passport and verify your identity</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="p-4 bg-muted rounded-lg text-center">

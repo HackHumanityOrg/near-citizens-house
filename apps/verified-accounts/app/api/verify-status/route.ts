@@ -5,24 +5,23 @@ export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("sessionId")
 
   if (!sessionId) {
-    return NextResponse.json(
-      { status: "error", error: "Missing sessionId parameter" },
-      { status: 400 }
-    )
+    return NextResponse.json({ status: "error", error: "Missing sessionId parameter" }, { status: 400 })
   }
 
-  const session = getSession(sessionId)
+  try {
+    const session = await getSession(sessionId)
 
-  if (!session) {
-    return NextResponse.json(
-      { status: "expired", error: "Session not found or expired" },
-      { status: 404 }
-    )
+    if (!session) {
+      return NextResponse.json({ status: "expired", error: "Session not found or expired" }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      status: session.status,
+      accountId: session.accountId,
+      error: session.error,
+    })
+  } catch (error) {
+    console.error("[VerifyStatus] Error fetching session:", error)
+    return NextResponse.json({ status: "error", error: "Failed to fetch session status" }, { status: 500 })
   }
-
-  return NextResponse.json({
-    status: session.status,
-    accountId: session.accountId,
-    error: session.error,
-  })
 }

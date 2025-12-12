@@ -51,7 +51,13 @@ interface PassportQrScannerProps {
   onDisconnect: () => void
 }
 
-export function PassportQrScanner({ nearSignature, sessionId, onSuccess, onError, onDisconnect }: PassportQrScannerProps) {
+export function PassportQrScanner({
+  nearSignature,
+  sessionId,
+  onSuccess,
+  onError,
+  onDisconnect,
+}: PassportQrScannerProps) {
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",
   )

@@ -14,6 +14,16 @@ import {
 } from "@near-citizens/ui"
 import { Loader2, CheckCircle2, AlertCircle, Home } from "lucide-react"
 import Link from "next/link"
+import { VERIFICATION_ERROR_MESSAGES, type VerificationErrorCode } from "@near-citizens/shared"
+
+function getErrorMessage(errorCode: string | null): string {
+  if (!errorCode) return "An unexpected error occurred. Please try again."
+  // Check if it's a known error code
+  if (errorCode in VERIFICATION_ERROR_MESSAGES) {
+    return VERIFICATION_ERROR_MESSAGES[errorCode as VerificationErrorCode]
+  }
+  return errorCode
+}
 
 type VerificationStatus = "checking" | "success" | "error" | "expired"
 
@@ -43,7 +53,7 @@ function VerifyCallbackContent() {
         return true
       } else if (data.status === "error") {
         setStatus("error")
-        setErrorMessage(data.error || "Verification failed")
+        setErrorMessage(getErrorMessage(data.error))
         return true
       } else if (data.status === "expired") {
         setStatus("expired")
@@ -97,9 +107,7 @@ function VerifyCallbackContent() {
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <CardTitle>Verifying...</CardTitle>
               </div>
-              <CardDescription>
-                Please wait while we complete your verification
-              </CardDescription>
+              <CardDescription>Please wait while we complete your verification</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center gap-4 py-8">
@@ -119,9 +127,7 @@ function VerifyCallbackContent() {
                 <CheckCircle2 className="h-5 w-5 text-primary" />
                 <CardTitle>Verification Complete!</CardTitle>
               </div>
-              <CardDescription>
-                Your identity has been successfully verified
-              </CardDescription>
+              <CardDescription>Your identity has been successfully verified</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
@@ -148,16 +154,12 @@ function VerifyCallbackContent() {
                 <AlertCircle className="h-5 w-5 text-destructive" />
                 <CardTitle>Verification Failed</CardTitle>
               </div>
-              <CardDescription>
-                There was an issue with your verification
-              </CardDescription>
+              <CardDescription>There was an issue with your verification</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {errorMessage || "An unexpected error occurred"}
-                </AlertDescription>
+                <AlertDescription>{errorMessage || "An unexpected error occurred"}</AlertDescription>
               </Alert>
 
               <Link href="/" className="block">
