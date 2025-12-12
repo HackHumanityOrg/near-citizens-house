@@ -16,3 +16,6 @@ export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"
 export * from "./verification"
 export * from "./self-verifier"
 export * from "./zk-verify"
+
+// Self.xyz deep link utilities
+export { getUniversalLink } from "@selfxyz/core"

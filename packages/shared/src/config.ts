@@ -122,6 +122,9 @@ export const SELF_CONFIG = {
   get endpoint() {
     return `${APP_URLS.verification}/api/verify`
   },
+  get deeplinkCallback() {
+    return `${APP_URLS.verification}/verify-callback`
+  },
   endpointType: "https" as const,
   logoBase64: "/self-logo.png",
   // useMockPassport is derived from networkId

@@ -43,28 +43,18 @@ const SelfQRcodeWrapper = dynamic<SelfQRcodeProps>(
   },
 )
 
-interface SelfVerificationProps {
+interface PassportQrScannerProps {
   nearSignature: NearSignatureData
+  sessionId: string
   onSuccess: () => void
   onError: (error: string) => void
   onDisconnect: () => void
 }
 
-export function PassportQrScanner({ nearSignature, onSuccess, onError, onDisconnect }: SelfVerificationProps) {
+export function PassportQrScanner({ nearSignature, sessionId, onSuccess, onError, onDisconnect }: PassportQrScannerProps) {
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",
   )
-
-  // Generate stable session ID using useState with lazy initializer
-  // This runs once on mount and provides a stable ID across re-renders
-  const [sessionId] = useState(() => {
-    if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
-      throw new Error(
-        "crypto.randomUUID() is not available. Please use a modern browser (Chrome 92+, Firefox 95+, Safari 15.4+) or Node.js 14.17+",
-      )
-    }
-    return crypto.randomUUID()
-  })
 
   // Build SelfApp during render using useMemo instead of useEffect + setState
   // This avoids the synchronous setState in effect anti-pattern

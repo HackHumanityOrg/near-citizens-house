@@ -13,6 +13,7 @@ import {
   AlertDescription,
 } from "@near-citizens/ui"
 import { PassportQrScanner } from "./passport-qr-scanner"
+import { PassportDeepLink } from "./passport-deep-link"
 import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, LogOut } from "lucide-react"
 import type { NearSignatureData } from "@near-citizens/shared"
 import type { VerificationStep } from "@/types/ui"
@@ -28,6 +29,15 @@ export function IdentityVerificationFlow() {
   const [verificationError, setVerificationError] = useState<string | null>(null)
   const [selfVerificationComplete, setSelfVerificationComplete] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
+
+  // Generate stable session ID for Self.xyz verification
+  const [sessionId] = useState(() => {
+    if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+      // Fallback for older environments
+      return Math.random().toString(36).substring(2) + Date.now().toString(36)
+    }
+    return crypto.randomUUID()
+  })
 
   // Check if wallet is already verified when connected
   useEffect(() => {
@@ -366,12 +376,26 @@ export function IdentityVerificationFlow() {
                 </CardContent>
               </Card>
             ) : !selfVerificationComplete ? (
-              <PassportQrScanner
-                nearSignature={nearSignature}
-                onSuccess={handleVerificationSuccess}
-                onError={handleVerificationError}
-                onDisconnect={handleStartOver}
-              />
+              <>
+                {/* Desktop: Show QR code scanner */}
+                <div className="hidden md:block">
+                  <PassportQrScanner
+                    nearSignature={nearSignature}
+                    sessionId={sessionId}
+                    onSuccess={handleVerificationSuccess}
+                    onError={handleVerificationError}
+                    onDisconnect={handleStartOver}
+                  />
+                </div>
+                {/* Mobile: Show deep link button */}
+                <div className="md:hidden">
+                  <PassportDeepLink
+                    nearSignature={nearSignature}
+                    sessionId={sessionId}
+                    onDisconnect={handleStartOver}
+                  />
+                </div>
+              </>
             ) : (
               <Card role="status" aria-labelledby="success-title">
                 <CardHeader>

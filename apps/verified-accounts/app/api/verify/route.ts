@@ -11,6 +11,7 @@ import {
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
+import { updateSession } from "@/lib/session-store"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
@@ -227,10 +228,29 @@ export async function POST(request: NextRequest) {
       // Revalidate the verifications cache so new verification appears immediately
       // Next.js 16 requires a cacheLife profile as second argument
       revalidateTag("verifications", "max")
+
+      // Update session status for deep link callback
+      // The userId from Self.xyz is used as the sessionId in our deep link flow
+      const sessionId = selfVerificationResult.userData?.userIdentifier
+      if (sessionId) {
+        updateSession(sessionId, {
+          status: "success",
+          accountId: nearSignature.accountId,
+        })
+      }
     } catch (error) {
       // Check for duplicate passport error from contract
       const errorMessage = error instanceof Error ? error.message : ""
       const errorCode = errorMessage.includes("already been registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
+
+      // Update session status for deep link callback
+      const sessionId = selfVerificationResult.userData?.userIdentifier
+      if (sessionId) {
+        updateSession(sessionId, {
+          status: "error",
+          error: errorCode,
+        })
+      }
 
       return NextResponse.json(
         createVerificationError(
