@@ -631,6 +631,7 @@ mod tests {
     use super::*;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::testing_env;
+    use near_sdk::test_utils::get_logs;
     use near_sdk::NearToken;
 
     fn get_context(predecessor: AccountId) -> VMContextBuilder {
@@ -852,6 +853,11 @@ mod tests {
         testing_env!(context.build());
         contract.pause();
         assert!(contract.is_paused());
+        
+        let logs = get_logs();
+        assert!(!logs.is_empty(), "Expected pause event");
+        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
+        assert!(logs[0].contains("contract_paused"), "Expected contract_paused event");
 
         // Unpause (requires 1 yocto)
         let mut context = get_context(backend);
@@ -859,6 +865,11 @@ mod tests {
         testing_env!(context.build());
         contract.unpause();
         assert!(!contract.is_paused());
+
+        let logs = get_logs();
+        assert!(!logs.is_empty(), "Expected unpause event");
+        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
+        assert!(logs[0].contains("contract_unpaused"), "Expected contract_unpaused event");
     }
 
     #[allure_rust::allure_test]
@@ -959,6 +970,11 @@ mod tests {
         testing_env!(context.build());
         contract.update_backend_wallet(new_backend.clone());
         assert_eq!(contract.get_backend_wallet(), new_backend);
+
+        let logs = get_logs();
+        assert!(!logs.is_empty(), "Expected backend wallet update event");
+        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
+        assert!(logs[0].contains("backend_wallet_updated"), "Expected backend_wallet_updated event");
     }
 
     #[allure_rust::allure_test]
@@ -2822,5 +2838,109 @@ mod tests {
         let json = near_sdk::serde_json::to_string(&proof).unwrap();
         let decoded: SelfProofData = near_sdk::serde_json::from_str(&json).unwrap();
         assert_eq!(decoded.public_signals.len(), 21);
+    }
+
+    // ==================== HAPPY PATH TEST (Phase 3) ====================
+    
+    use near_crypto::{KeyType, SecretKey, Signer, InMemorySigner};
+
+    /// Helper to create a valid signature for a given message
+    fn create_valid_signature(
+        signer: &Signer, 
+        signer_id: &AccountId,
+        challenge: &str, 
+        nonce: &[u8], 
+        recipient: &AccountId
+    ) -> NearSignatureData {
+        // Step 1: Serialize the NEP-413 prefix tag (2^31 + 413)
+        let tag: u32 = 2147484061;
+        let tag_bytes = tag.to_le_bytes().to_vec();
+
+        // Step 2: Create valid NEP-413 payload
+        let mut nonce_array = [0u8; 32];
+        nonce_array.copy_from_slice(nonce);
+
+        let payload = Nep413Payload {
+            message: challenge.to_string(),
+            nonce: nonce_array,
+            recipient: recipient.to_string(),
+            callback_url: None,
+        };
+
+        let payload_bytes = near_sdk::borsh::to_vec(&payload).unwrap();
+
+        // Step 3: Concatenate tag + payload
+        let mut full_message = tag_bytes;
+        full_message.extend_from_slice(&payload_bytes);
+
+        // Step 4: SHA-256 hash
+        let message_hash = env::sha256(&full_message);
+
+        // Step 5: Sign the hash
+        let signature = signer.sign(&message_hash);
+        
+        // Extract bytes from signature enum using Borsh (skip 1 byte tag)
+        // Signature::ED25519 is 0 + 64 bytes
+        let signature_borsh = near_sdk::borsh::to_vec(&signature).unwrap();
+        let signature_bytes = signature_borsh[1..].to_vec();
+        assert_eq!(signature_bytes.len(), 64, "Signature must be 64 bytes");
+
+        // Convert to our data structure
+        let public_key_str = signer.public_key().to_string();
+        
+        NearSignatureData {
+            account_id: signer_id.clone(),
+            signature: signature_bytes,
+            public_key: public_key_str.parse().unwrap(),
+            challenge: challenge.to_string(),
+            nonce: nonce.to_vec(),
+            recipient: recipient.clone(),
+        }
+    }
+
+    #[allure_rust::allure_test]
+    #[test]
+    fn test_happy_path_store_verification() {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+
+        let mut contract = Contract::new(backend);
+
+        // create a signer for the user (using near-crypto)
+        let signer = InMemorySigner::from_secret_key(
+            user.clone(),
+            SecretKey::from_random(KeyType::ED25519),
+        );
+
+        let challenge = "Identify myself";
+        let nonce = vec![0u8; 32];
+        let sig_data = create_valid_signature(&signer, &user, challenge, &nonce, &user);
+
+        // Should succeed without panic
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user.clone(),
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
+
+        // Verify state changes
+        assert!(contract.is_account_verified(user.clone()));
+        assert_eq!(contract.get_verified_count(), 1);
+
+        // Verify events
+        let logs = get_logs();
+        assert!(!logs.is_empty(), "Expected verification event");
+        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
+        assert!(logs[0].contains("verification_stored"), "Expected verification_stored event");
+        
+        let account = contract.get_account(user.clone()).unwrap();
+        assert_eq!(account.near_account_id, user);
+        assert_eq!(account.nullifier, "test_nullifier");
     }
 }
