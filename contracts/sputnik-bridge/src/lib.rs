@@ -627,6 +627,31 @@ mod tests {
         builder
     }
 
+    /// Helper function to assert that a closure panics with the expected message.
+    /// This allows panic tests to work with allure_test annotations.
+    fn assert_panic_with<F: FnOnce()>(f: F, expected: &str) {
+        use std::panic::{catch_unwind, AssertUnwindSafe};
+        let result = catch_unwind(AssertUnwindSafe(f));
+        match result {
+            Ok(_) => panic!("Expected panic with '{}' but no panic occurred", expected),
+            Err(err) => {
+                let msg = if let Some(s) = err.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    format!("{:?}", err)
+                };
+                assert!(
+                    msg.contains(expected),
+                    "Panic message '{}' does not contain expected '{}'",
+                    msg,
+                    expected
+                );
+            }
+        }
+    }
+
     #[allure_rust::allure_test]
     #[test]
     fn test_initialization() {
@@ -683,8 +708,8 @@ mod tests {
         assert_eq!(contract.get_backend_wallet(), accounts(3));
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only backend wallet can call this function")]
     fn test_update_backend_wallet_unauthorized() {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
@@ -700,7 +725,10 @@ mod tests {
         context.predecessor_account_id(accounts(4));
         testing_env!(context.build());
 
-        contract.update_backend_wallet(accounts(3));
+        assert_panic_with(
+            || contract.update_backend_wallet(accounts(3)),
+            "Only backend wallet can call this function",
+        );
     }
 
     #[allure_rust::allure_test]
@@ -720,8 +748,8 @@ mod tests {
         assert_eq!(contract.get_citizen_role(), "voter");
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only backend wallet can call this function")]
     fn test_update_citizen_role_unauthorized() {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
@@ -737,7 +765,10 @@ mod tests {
         context.predecessor_account_id(accounts(4));
         testing_env!(context.build());
 
-        contract.update_citizen_role("voter".to_string());
+        assert_panic_with(
+            || contract.update_citizen_role("voter".to_string()),
+            "Only backend wallet can call this function",
+        );
     }
 
     // ==================== QUORUM CALCULATION TESTS (Phase 2.2) ====================
@@ -932,8 +963,8 @@ mod tests {
     // Note: create_proposal method initiates cross-contract call, so we test validation
     // by checking that the method panics before the cross-contract call for invalid input
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Description cannot be empty")]
     fn test_create_proposal_empty_description_fails() {
         let context = get_context(accounts(0));
         testing_env!(context.build());
@@ -946,11 +977,16 @@ mod tests {
         );
 
         // Empty description should fail before cross-contract call
-        let _ = contract.create_proposal("".to_string());
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal("".to_string());
+            },
+            "Description cannot be empty",
+        );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Description cannot be empty")]
     fn test_create_proposal_whitespace_only_description_fails() {
         let context = get_context(accounts(0));
         testing_env!(context.build());
@@ -963,7 +999,12 @@ mod tests {
         );
 
         // Whitespace-only description should fail (trimmed to empty)
-        let _ = contract.create_proposal("   \t\n  ".to_string());
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal("   \t\n  ".to_string());
+            },
+            "Description cannot be empty",
+        );
     }
 
     // ==================== DESCRIPTION LENGTH BOUNDARY TESTS ====================
@@ -1008,8 +1049,8 @@ mod tests {
         let _ = contract.create_proposal(description);
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Description exceeds maximum length")]
     fn test_description_boundary_limit_plus_1_fails() {
         // 10,001 characters - just over the 10,000 limit
         let context = get_context(accounts(0));
@@ -1024,7 +1065,12 @@ mod tests {
 
         let too_long = "x".repeat(10001);
         assert_eq!(too_long.len(), 10001);
-        let _ = contract.create_proposal(too_long);
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal(too_long);
+            },
+            "Description exceeds maximum length",
+        );
     }
 
     #[allure_rust::allure_test]
@@ -1045,8 +1091,8 @@ mod tests {
         let _ = contract.create_proposal("x".to_string());
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Description exceeds maximum length")]
     fn test_create_proposal_description_over_max_fails() {
         let context = get_context(accounts(0));
         testing_env!(context.build());
@@ -1060,11 +1106,16 @@ mod tests {
 
         // 10001 characters exceeds the 10000 char limit
         let too_long = "x".repeat(10001);
-        let _ = contract.create_proposal(too_long);
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal(too_long);
+            },
+            "Description exceeds maximum length",
+        );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only backend wallet can call this function")]
     fn test_create_proposal_unauthorized_fails() {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
@@ -1080,11 +1131,16 @@ mod tests {
         context.predecessor_account_id(accounts(4));
         testing_env!(context.build());
 
-        let _ = contract.create_proposal("Valid proposal".to_string());
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal("Valid proposal".to_string());
+            },
+            "Only backend wallet can call this function",
+        );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only backend wallet can call this function")]
     fn test_add_member_unauthorized_fails() {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
@@ -1100,7 +1156,12 @@ mod tests {
         context.predecessor_account_id(accounts(4));
         testing_env!(context.build());
 
-        let _ = contract.add_member(accounts(5));
+        assert_panic_with(
+            || {
+                let _ = contract.add_member(accounts(5));
+            },
+            "Only backend wallet can call this function",
+        );
     }
 
     // ==================== EVENT STRUCTURE TESTS (Phase 2.4) ====================

@@ -639,6 +639,31 @@ mod tests {
         builder
     }
 
+    /// Helper function to assert that a closure panics with an expected message.
+    /// This allows using #[allure_rust::allure_test] with panic tests.
+    fn assert_panic_with<F: FnOnce()>(f: F, expected: &str) {
+        use std::panic::{catch_unwind, AssertUnwindSafe};
+        let result = catch_unwind(AssertUnwindSafe(f));
+        match result {
+            Ok(_) => panic!("Expected panic with '{}' but no panic occurred", expected),
+            Err(err) => {
+                let msg = if let Some(s) = err.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    format!("{:?}", err)
+                };
+                assert!(
+                    msg.contains(expected),
+                    "Panic message '{}' does not contain expected '{}'",
+                    msg,
+                    expected
+                );
+            }
+        }
+    }
+
     /// Create test Self proof data
     fn test_self_proof() -> SelfProofData {
         SelfProofData {
@@ -665,37 +690,42 @@ mod tests {
         assert_eq!(contract.get_verified_count(), 0);
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only backend wallet can store verifications")]
     fn test_unauthorized_write() {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
         let mut contract = Contract::new(accounts(1));
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: accounts(2),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "test".to_string(),
-            nonce: vec![0; 32],
-            recipient: accounts(2),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: accounts(2),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "test".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: accounts(2),
+                };
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            accounts(2),
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    accounts(2),
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Only backend wallet can store verifications",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature - NEP-413 verification failed")]
     fn test_invalid_signature() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -704,29 +734,34 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Invalid NEAR signature - NEP-413 verification failed",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Nonce must be exactly 32 bytes")]
     fn test_invalid_nonce_length() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -735,29 +770,34 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "test".to_string(),
-            nonce: vec![0; 16],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "test".to_string(),
+                    nonce: vec![0; 16],
+                    recipient: user.clone(),
+                };
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Nonce must be exactly 32 bytes",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Signature must be 64 bytes")]
     fn test_invalid_signature_length() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -766,24 +806,29 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 32],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "test".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 32],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "test".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Signature must be 64 bytes",
         );
     }
 
@@ -816,8 +861,8 @@ mod tests {
         assert!(!contract.is_paused());
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only backend wallet can pause contract")]
     fn test_unauthorized_pause() {
         let backend = accounts(1);
         let unauthorized = accounts(0);
@@ -826,11 +871,11 @@ mod tests {
         testing_env!(context.build());
 
         let mut contract = Contract::new(backend);
-        contract.pause();
+        assert_panic_with(|| contract.pause(), "Only backend wallet can pause contract");
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only backend wallet can unpause contract")]
     fn test_unauthorized_unpause() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -849,11 +894,11 @@ mod tests {
         unauthorized_context.attached_deposit(NearToken::from_yoctonear(1));
         testing_env!(unauthorized_context.build());
 
-        contract.unpause();
+        assert_panic_with(|| contract.unpause(), "Only backend wallet can unpause contract");
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Contract is paused - no new verifications allowed")]
     fn test_store_verification_when_paused() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -868,25 +913,30 @@ mod tests {
         testing_env!(context.build());
         contract.pause();
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Should panic because contract is paused (before signature verification)
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                // Should panic because contract is paused (before signature verification)
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Contract is paused - no new verifications allowed",
         );
     }
 
@@ -911,8 +961,8 @@ mod tests {
         assert_eq!(contract.get_backend_wallet(), new_backend);
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Only current backend wallet can update backend wallet")]
     fn test_unauthorized_update_backend_wallet() {
         let backend = accounts(1);
         let unauthorized = accounts(0);
@@ -921,13 +971,16 @@ mod tests {
         testing_env!(context.build());
 
         let mut contract = Contract::new(backend);
-        contract.update_backend_wallet(accounts(3));
+        assert_panic_with(
+            || contract.update_backend_wallet(accounts(3)),
+            "Only current backend wallet can update backend wallet",
+        );
     }
 
     // ==================== INPUT VALIDATION TESTS ====================
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Signature account ID must match near_account_id")]
     fn test_account_id_mismatch() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -937,29 +990,34 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: different_user, // Mismatch: signature is for accounts(3)
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: different_user, // Mismatch: signature is for accounts(3)
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user, // But we're trying to verify accounts(2)
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user, // But we're trying to verify accounts(2)
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Signature account ID must match near_account_id",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Signature recipient must match near_account_id")]
     fn test_recipient_mismatch() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -969,24 +1027,29 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: different_recipient, // Mismatch: recipient is accounts(3)
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: different_recipient, // Mismatch: recipient is accounts(3)
+                };
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user, // But we're trying to verify accounts(2)
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user, // But we're trying to verify accounts(2)
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Signature recipient must match near_account_id",
         );
     }
 
@@ -1110,8 +1173,8 @@ mod tests {
 
     // ==================== INPUT VALIDATION TESTS (NEW) ====================
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Batch size exceeds maximum of 100 accounts")]
     fn test_batch_size_exceeded_are_accounts_verified() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -1124,12 +1187,16 @@ mod tests {
             .map(|i| format!("account{}.near", i).parse().unwrap())
             .collect();
 
-        // Should panic due to batch size limit
-        contract.are_accounts_verified(too_many_accounts);
+        assert_panic_with(
+            || {
+                contract.are_accounts_verified(too_many_accounts);
+            },
+            "Batch size exceeds maximum of 100 accounts",
+        );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Batch size exceeds maximum of 100 accounts")]
     fn test_batch_size_exceeded_get_accounts() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -1142,12 +1209,16 @@ mod tests {
             .map(|i| format!("account{}.near", i).parse().unwrap())
             .collect();
 
-        // Should panic due to batch size limit
-        contract.get_accounts(too_many_accounts);
+        assert_panic_with(
+            || {
+                contract.get_accounts(too_many_accounts);
+            },
+            "Batch size exceeds maximum of 100 accounts",
+        );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Nullifier exceeds maximum length of 80")]
     fn test_nullifier_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1156,32 +1227,37 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create a nullifier that exceeds the 80 character limit
-        let too_long_nullifier = "x".repeat(81);
+                // Create a nullifier that exceeds the 80 character limit
+                let too_long_nullifier = "x".repeat(81);
 
-        contract.store_verification(
-            too_long_nullifier,
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    too_long_nullifier,
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Nullifier exceeds maximum length of 80",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "User ID exceeds maximum length of 80")]
     fn test_user_id_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1190,32 +1266,37 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create a user_id that exceeds the 80 character limit
-        let too_long_user_id = "x".repeat(81);
+                // Create a user_id that exceeds the 80 character limit
+                let too_long_user_id = "x".repeat(81);
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            too_long_user_id,
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    too_long_user_id,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "User ID exceeds maximum length of 80",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "User context data exceeds maximum length of 4096")]
     fn test_user_context_data_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1224,32 +1305,37 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create user_context_data that exceeds the 4096 character limit
-        let too_long_context = "x".repeat(4097);
+                // Create user_context_data that exceeds the 4096 character limit
+                let too_long_context = "x".repeat(4097);
 
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            too_long_context,
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    too_long_context,
+                );
+            },
+            "User context data exceeds maximum length of 4096",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Attestation ID exceeds maximum length of 1")]
     fn test_attestation_id_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1258,30 +1344,35 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Attestation ID exceeds the 1 character limit
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "12".to_string(), // Too long - max is 1
-            sig_data,
-            test_self_proof(),
-            "test_user_context_data".to_string(),
+                // Attestation ID exceeds the 1 character limit
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "12".to_string(), // Too long - max is 1
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Attestation ID exceeds maximum length of 1",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Public signals array exceeds maximum length of 21")]
     fn test_public_signals_too_many() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1290,42 +1381,47 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create proof with too many public signals (22 instead of max 21)
-        let too_many_signals_proof = SelfProofData {
-            proof: ZkProof {
-                a: ["1".to_string(), "2".to_string()],
-                b: [
-                    ["3".to_string(), "4".to_string()],
-                    ["5".to_string(), "6".to_string()],
-                ],
-                c: ["7".to_string(), "8".to_string()],
+                // Create proof with too many public signals (22 instead of max 21)
+                let too_many_signals_proof = SelfProofData {
+                    proof: ZkProof {
+                        a: ["1".to_string(), "2".to_string()],
+                        b: [
+                            ["3".to_string(), "4".to_string()],
+                            ["5".to_string(), "6".to_string()],
+                        ],
+                        c: ["7".to_string(), "8".to_string()],
+                    },
+                    public_signals: vec!["0".to_string(); 22],
+                };
+
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    too_many_signals_proof,
+                    "test_user_context_data".to_string(),
+                );
             },
-            public_signals: vec!["0".to_string(); 22],
-        };
-
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            too_many_signals_proof,
-            "test_user_context_data".to_string(),
+            "Public signals array exceeds maximum length of 21",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Public signal string exceeds maximum length of 80")]
     fn test_public_signal_item_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1334,44 +1430,49 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create proof with one public signal too long
-        let mut signals = vec!["0".to_string(); 20];
-        signals.push("x".repeat(81)); // One signal exceeds 80 chars
-        let bad_signal_proof = SelfProofData {
-            proof: ZkProof {
-                a: ["1".to_string(), "2".to_string()],
-                b: [
-                    ["3".to_string(), "4".to_string()],
-                    ["5".to_string(), "6".to_string()],
-                ],
-                c: ["7".to_string(), "8".to_string()],
+                // Create proof with one public signal too long
+                let mut signals = vec!["0".to_string(); 20];
+                signals.push("x".repeat(81)); // One signal exceeds 80 chars
+                let bad_signal_proof = SelfProofData {
+                    proof: ZkProof {
+                        a: ["1".to_string(), "2".to_string()],
+                        b: [
+                            ["3".to_string(), "4".to_string()],
+                            ["5".to_string(), "6".to_string()],
+                        ],
+                        c: ["7".to_string(), "8".to_string()],
+                    },
+                    public_signals: signals,
+                };
+
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    bad_signal_proof,
+                    "test_user_context_data".to_string(),
+                );
             },
-            public_signals: signals,
-        };
-
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            bad_signal_proof,
-            "test_user_context_data".to_string(),
+            "Public signal string exceeds maximum length of 80",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Proof component 'a' string exceeds maximum length of 80")]
     fn test_proof_component_a_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1380,42 +1481,47 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create proof with 'a' component too long
-        let bad_proof = SelfProofData {
-            proof: ZkProof {
-                a: ["x".repeat(81), "2".to_string()], // First 'a' component too long
-                b: [
-                    ["3".to_string(), "4".to_string()],
-                    ["5".to_string(), "6".to_string()],
-                ],
-                c: ["7".to_string(), "8".to_string()],
+                // Create proof with 'a' component too long
+                let bad_proof = SelfProofData {
+                    proof: ZkProof {
+                        a: ["x".repeat(81), "2".to_string()], // First 'a' component too long
+                        b: [
+                            ["3".to_string(), "4".to_string()],
+                            ["5".to_string(), "6".to_string()],
+                        ],
+                        c: ["7".to_string(), "8".to_string()],
+                    },
+                    public_signals: vec!["0".to_string(); 21],
+                };
+
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    bad_proof,
+                    "test_user_context_data".to_string(),
+                );
             },
-            public_signals: vec!["0".to_string(); 21],
-        };
-
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            bad_proof,
-            "test_user_context_data".to_string(),
+            "Proof component 'a' string exceeds maximum length of 80",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Proof component 'b' string exceeds maximum length of 80")]
     fn test_proof_component_b_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1424,42 +1530,47 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create proof with 'b' component too long
-        let bad_proof = SelfProofData {
-            proof: ZkProof {
-                a: ["1".to_string(), "2".to_string()],
-                b: [
-                    ["x".repeat(81), "4".to_string()], // First 'b' component too long
-                    ["5".to_string(), "6".to_string()],
-                ],
-                c: ["7".to_string(), "8".to_string()],
+                // Create proof with 'b' component too long
+                let bad_proof = SelfProofData {
+                    proof: ZkProof {
+                        a: ["1".to_string(), "2".to_string()],
+                        b: [
+                            ["x".repeat(81), "4".to_string()], // First 'b' component too long
+                            ["5".to_string(), "6".to_string()],
+                        ],
+                        c: ["7".to_string(), "8".to_string()],
+                    },
+                    public_signals: vec!["0".to_string(); 21],
+                };
+
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    bad_proof,
+                    "test_user_context_data".to_string(),
+                );
             },
-            public_signals: vec!["0".to_string(); 21],
-        };
-
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            bad_proof,
-            "test_user_context_data".to_string(),
+            "Proof component 'b' string exceeds maximum length of 80",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Proof component 'c' string exceeds maximum length of 80")]
     fn test_proof_component_c_too_long() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1468,37 +1579,42 @@ mod tests {
 
         let mut contract = Contract::new(backend);
 
-        let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-        let sig_data = NearSignatureData {
-            account_id: user.clone(),
-            signature: vec![0; 64],
-            public_key: public_key_str.parse().unwrap(),
-            challenge: "Identify myself".to_string(),
-            nonce: vec![0; 32],
-            recipient: user.clone(),
-        };
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-        // Create proof with 'c' component too long
-        let bad_proof = SelfProofData {
-            proof: ZkProof {
-                a: ["1".to_string(), "2".to_string()],
-                b: [
-                    ["3".to_string(), "4".to_string()],
-                    ["5".to_string(), "6".to_string()],
-                ],
-                c: ["x".repeat(81), "8".to_string()], // First 'c' component too long
+                // Create proof with 'c' component too long
+                let bad_proof = SelfProofData {
+                    proof: ZkProof {
+                        a: ["1".to_string(), "2".to_string()],
+                        b: [
+                            ["3".to_string(), "4".to_string()],
+                            ["5".to_string(), "6".to_string()],
+                        ],
+                        c: ["x".repeat(81), "8".to_string()], // First 'c' component too long
+                    },
+                    public_signals: vec!["0".to_string(); 21],
+                };
+
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    bad_proof,
+                    "test_user_context_data".to_string(),
+                );
             },
-            public_signals: vec!["0".to_string(); 21],
-        };
-
-        contract.store_verification(
-            "test_nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            bad_proof,
-            "test_user_context_data".to_string(),
+            "Proof component 'c' string exceeds maximum length of 80",
         );
     }
 
@@ -1533,8 +1649,8 @@ mod tests {
         }
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_nullifier_at_max_length_80_reaches_signature_check() {
         // If nullifier at exactly 80 chars passes validation, it should reach signature check
         let backend = accounts(1);
@@ -1549,19 +1665,24 @@ mod tests {
         let nullifier_80 = "x".repeat(80);
         assert_eq!(nullifier_80.len(), 80);
 
-        contract.store_verification(
-            nullifier_80,
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    nullifier_80,
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_user_id_at_max_length_80_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1575,19 +1696,24 @@ mod tests {
         let user_id_80 = "y".repeat(80);
         assert_eq!(user_id_80.len(), 80);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            user_id_80,
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    user_id_80,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_attestation_id_at_max_length_1_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1598,19 +1724,24 @@ mod tests {
         let sig_data = create_test_sig_data(user.clone());
 
         // Exactly 1 character - should pass length validation
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "9".to_string(), // Single char - max allowed
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "9".to_string(), // Single char - max allowed
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_user_context_data_at_max_length_4096_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1624,19 +1755,24 @@ mod tests {
         let context_4096 = "z".repeat(4096);
         assert_eq!(context_4096.len(), 4096);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            context_4096,
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    context_4096,
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_public_signals_at_max_21_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1650,19 +1786,24 @@ mod tests {
         let proof = test_self_proof_with_signals(vec!["0".to_string(); 21]);
         assert_eq!(proof.public_signals.len(), 21);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_public_signal_item_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1677,19 +1818,24 @@ mod tests {
         signals.push("x".repeat(80));
         let proof = test_self_proof_with_signals(signals);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_proof_component_a_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1712,19 +1858,24 @@ mod tests {
             public_signals: vec!["0".to_string(); 21],
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_proof_component_b_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1747,19 +1898,24 @@ mod tests {
             public_signals: vec!["0".to_string(); 21],
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_proof_component_c_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1782,21 +1938,26 @@ mod tests {
             public_signals: vec!["0".to_string(); 21],
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
     // ==================== EMPTY STRING EDGE CASE TESTS (Phase 1.2) ====================
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_empty_nullifier_passes_validation() {
         // Empty nullifier is allowed (no minimum length requirement)
         let backend = accounts(1);
@@ -1807,19 +1968,24 @@ mod tests {
         let mut contract = Contract::new(backend);
         let sig_data = create_test_sig_data(user.clone());
 
-        contract.store_verification(
-            "".to_string(), // Empty nullifier
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "".to_string(), // Empty nullifier
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_empty_user_id_passes_validation() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1829,19 +1995,24 @@ mod tests {
         let mut contract = Contract::new(backend);
         let sig_data = create_test_sig_data(user.clone());
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "".to_string(), // Empty user_id
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "".to_string(), // Empty user_id
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_empty_attestation_id_passes_validation() {
         // Empty attestation_id has length 0, which is <= 1, so it passes validation
         // This test documents that empty attestation_id IS allowed by the contract
@@ -1853,19 +2024,24 @@ mod tests {
         let mut contract = Contract::new(backend);
         let sig_data = create_test_sig_data(user.clone());
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "".to_string(), // Empty attestation_id - passes validation (0 <= 1)
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "".to_string(), // Empty attestation_id - passes validation (0 <= 1)
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_empty_user_context_data_passes_validation() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1875,19 +2051,24 @@ mod tests {
         let mut contract = Contract::new(backend);
         let sig_data = create_test_sig_data(user.clone());
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "".to_string(), // Empty user_context_data
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "".to_string(), // Empty user_context_data
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_empty_public_signals_array_passes_validation() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1899,21 +2080,26 @@ mod tests {
 
         let proof = test_self_proof_with_signals(vec![]); // Empty signals array
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
     // ==================== NEP-413 SIGNATURE COMPONENT TESTS (Phase 1.5) ====================
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Nonce must be exactly 32 bytes")]
     fn test_nonce_31_bytes_fails() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1932,19 +2118,24 @@ mod tests {
             recipient: user.clone(),
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Nonce must be exactly 32 bytes",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Nonce must be exactly 32 bytes")]
     fn test_nonce_33_bytes_fails() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1963,19 +2154,24 @@ mod tests {
             recipient: user.clone(),
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Nonce must be exactly 32 bytes",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Signature must be 64 bytes")]
     fn test_signature_63_bytes_fails() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -1994,19 +2190,24 @@ mod tests {
             recipient: user.clone(),
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Signature must be 64 bytes",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Signature must be 64 bytes")]
     fn test_signature_65_bytes_fails() {
         let backend = accounts(1);
         let user = accounts(2);
@@ -2025,21 +2226,26 @@ mod tests {
             recipient: user.clone(),
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Signature must be 64 bytes",
         );
     }
 
     // ==================== UNICODE/MULTIBYTE TESTS (Phase 1.4) ====================
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_nullifier_with_unicode_counted_by_bytes() {
         // Unicode characters take multiple bytes - test boundary behavior
         // The contract uses .len() which counts bytes, not chars
@@ -2057,19 +2263,24 @@ mod tests {
         let emoji_nullifier = "🔥".repeat(20);
         assert_eq!(emoji_nullifier.len(), 80); // 80 bytes
 
-        contract.store_verification(
-            emoji_nullifier,
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    emoji_nullifier,
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Nullifier exceeds maximum length of 80")]
     fn test_nullifier_with_unicode_exceeds_byte_limit() {
         // 21 emojis = 84 bytes, exceeds 80 byte limit
         let backend = accounts(1);
@@ -2083,19 +2294,24 @@ mod tests {
         let emoji_nullifier = "🔥".repeat(21);
         assert_eq!(emoji_nullifier.len(), 84); // 84 bytes > 80
 
-        contract.store_verification(
-            emoji_nullifier,
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    emoji_nullifier,
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Nullifier exceeds maximum length of 80",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_user_context_data_with_unicode_at_boundary() {
         // Test user_context_data at exactly 4096 bytes with multibyte chars
         let backend = accounts(1);
@@ -2110,19 +2326,24 @@ mod tests {
         let unicode_context = "🎉".repeat(1024);
         assert_eq!(unicode_context.len(), 4096);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            unicode_context,
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    unicode_context,
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "User context data exceeds maximum length of 4096")]
     fn test_user_context_data_with_unicode_exceeds_limit() {
         // 1025 emojis = 4100 bytes, exceeds limit
         let backend = accounts(1);
@@ -2136,14 +2357,19 @@ mod tests {
         let unicode_context = "🎉".repeat(1025);
         assert_eq!(unicode_context.len(), 4100);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            unicode_context,
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    unicode_context,
+                );
+            },
+            "User context data exceeds maximum length of 4096",
         );
     }
 
@@ -2151,8 +2377,8 @@ mod tests {
     // Per ISTQB best practices: test at limit-1, limit, and limit+1
     // limit and limit+1 tests already exist above; these add limit-1 tests
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_nullifier_boundary_limit_minus_1_passes() {
         // 79 chars - one below the 80 char limit
         let backend = accounts(1);
@@ -2166,19 +2392,24 @@ mod tests {
         let nullifier_79 = "x".repeat(79);
         assert_eq!(nullifier_79.len(), 79);
 
-        contract.store_verification(
-            nullifier_79,
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    nullifier_79,
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_user_id_boundary_limit_minus_1_passes() {
         // 79 chars - one below the 80 char limit
         let backend = accounts(1);
@@ -2192,19 +2423,24 @@ mod tests {
         let user_id_79 = "y".repeat(79);
         assert_eq!(user_id_79.len(), 79);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            user_id_79,
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    user_id_79,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_user_context_data_boundary_limit_minus_1_passes() {
         // 4095 chars - one below the 4096 char limit
         let backend = accounts(1);
@@ -2218,19 +2454,24 @@ mod tests {
         let context_4095 = "z".repeat(4095);
         assert_eq!(context_4095.len(), 4095);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            context_4095,
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    context_4095,
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_public_signals_boundary_limit_minus_1_passes() {
         // 20 signals - one below the 21 signal limit
         let backend = accounts(1);
@@ -2244,19 +2485,24 @@ mod tests {
         let proof = test_self_proof_with_signals(vec!["0".to_string(); 20]);
         assert_eq!(proof.public_signals.len(), 20);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_public_signal_item_boundary_limit_minus_1_passes() {
         // 79 char signal string - one below the 80 char limit
         let backend = accounts(1);
@@ -2271,19 +2517,24 @@ mod tests {
         signals.push("x".repeat(79));
         let proof = test_self_proof_with_signals(signals);
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_proof_component_a_boundary_limit_minus_1_passes() {
         // 79 char proof component - one below the 80 char limit
         let backend = accounts(1);
@@ -2306,19 +2557,24 @@ mod tests {
             public_signals: vec!["0".to_string(); 21],
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_proof_component_b_boundary_limit_minus_1_passes() {
         // 79 char proof component - one below the 80 char limit
         let backend = accounts(1);
@@ -2341,19 +2597,24 @@ mod tests {
             public_signals: vec!["0".to_string(); 21],
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
+    #[allure_rust::allure_test]
     #[test]
-    #[should_panic(expected = "Invalid NEAR signature")]
     fn test_proof_component_c_boundary_limit_minus_1_passes() {
         // 79 char proof component - one below the 80 char limit
         let backend = accounts(1);
@@ -2376,14 +2637,19 @@ mod tests {
             public_signals: vec!["0".to_string(); 21],
         };
 
-        contract.store_verification(
-            "nullifier".to_string(),
-            user,
-            "user1".to_string(),
-            "1".to_string(),
-            sig_data,
-            proof,
-            "test".to_string(),
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier".to_string(),
+                    user,
+                    "user1".to_string(),
+                    "1".to_string(),
+                    sig_data,
+                    proof,
+                    "test".to_string(),
+                );
+            },
+            "Invalid NEAR signature",
         );
     }
 
