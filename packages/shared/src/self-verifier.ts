@@ -30,7 +30,7 @@ let selfBackendVerifier: SelfBackendVerifier | null = null
 export function getVerifier() {
   if (!selfBackendVerifier) {
     // Cast to VerificationConfig to handle readonly vs mutable array type
-    const backendConfig = SELF_CONFIG.backendConfig as unknown as VerificationConfig
+    const backendConfig = SELF_CONFIG.disclosures as unknown as VerificationConfig
 
     selfBackendVerifier = new SelfBackendVerifier(
       SELF_CONFIG.scope,

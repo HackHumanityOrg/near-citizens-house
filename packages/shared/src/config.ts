@@ -6,6 +6,7 @@
 // ==============================================================================
 
 import { z } from "zod"
+import { countries } from "@selfxyz/core"
 
 // ==============================================================================
 // ENVIRONMENT VALIDATION
@@ -100,7 +101,14 @@ export const APP_URLS = {
 // Self.xyz Configuration
 const DISCLOSURE_CONFIG = {
   minimumAge: 18,
-  excludedCountries: ["IRN", "IRQ", "PRK", "RUS", "SYR", "VEN"],
+  excludedCountries: [
+    countries.IRAN,
+    countries.IRAQ,
+    countries.NORTH_KOREA,
+    countries.RUSSIA,
+    countries.SYRIAN_ARAB_REPUBLIC,
+    countries.VENEZUELA,
+  ],
   ofac: true,
 }
 
@@ -121,12 +129,9 @@ export const SELF_CONFIG = {
   get useMockPassport() {
     return this.networkId === "testnet"
   },
-  disclosures: {
-    minimumAge: DISCLOSURE_CONFIG.minimumAge,
-    excludedCountries: DISCLOSURE_CONFIG.excludedCountries,
-    ofac: DISCLOSURE_CONFIG.ofac,
-  },
-  backendConfig: DISCLOSURE_CONFIG,
+  // Single source of truth for both frontend and backend
+  // Must match exactly for Self.xyz verification to work
+  disclosures: DISCLOSURE_CONFIG,
 }
 
 // Celo RPC Configuration (for ZK proof verification)
