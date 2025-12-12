@@ -197,7 +197,7 @@ jobs:
       # Copy badge JSON to allure-history for gh-pages hosting
       - name: Add badge to gh-pages
         if: always()
-        run: cp badge/test-results.json allure-history/
+        run: sudo cp badge/test-results.json allure-history/
 
       # Publish report to GitHub Pages
       - name: Publish to GitHub Pages
