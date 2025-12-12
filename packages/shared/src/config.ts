@@ -123,6 +123,7 @@ export const SELF_CONFIG = {
   },
   disclosures: {
     minimumAge: DISCLOSURE_CONFIG.minimumAge,
+    excludedCountries: DISCLOSURE_CONFIG.excludedCountries,
     ofac: DISCLOSURE_CONFIG.ofac,
   },
   backendConfig: DISCLOSURE_CONFIG,
