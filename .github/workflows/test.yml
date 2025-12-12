@@ -98,9 +98,10 @@ jobs:
           keep_reports: 20
 
       # Clean up .git directory from allure-history to avoid permission issues
+      # Need sudo because Docker container creates files with different ownership
       - name: Clean up allure-history
         if: always()
-        run: rm -rf allure-history/.git
+        run: sudo rm -rf allure-history/.git
 
       # Publish report to GitHub Pages
       - name: Publish to GitHub Pages
