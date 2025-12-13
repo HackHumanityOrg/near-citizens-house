@@ -15,11 +15,37 @@ env:
 
 jobs:
   test:
-    name: Run All Contract Tests
+    name: Run All Tests
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
+      # Node.js setup for TypeScript tests
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Install Rust 1.86.0
         uses: dtolnay/rust-toolchain@master
@@ -100,6 +126,20 @@ jobs:
           echo "ignored=$IGNORED" >> $GITHUB_OUTPUT
         continue-on-error: true
 
+      # Run TypeScript unit tests (Allure reporter outputs to allure-results)
+      - name: Run TypeScript unit tests
+        id: test_typescript
+        run: |
+          pnpm test 2>&1 | tee ts_test_output.txt
+          # Extract test summary from vitest output
+          # Vitest outputs: "Tests  X passed | Y failed (Z)"
+          PASSED=$(grep -oP 'Tests\s+\K\d+(?=\s+passed)' ts_test_output.txt || echo "0")
+          FAILED=$(grep -oP '\d+(?=\s+failed)' ts_test_output.txt || echo "0")
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "ignored=0" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
       # Calculate total test results
       - name: Calculate total test results
         id: test_totals
@@ -108,19 +148,22 @@ jobs:
             ${{ steps.test_verified_accounts.outputs.passed || 0 }} +
             ${{ steps.test_verified_accounts_interface.outputs.passed || 0 }} +
             ${{ steps.test_sputnik_bridge.outputs.passed || 0 }} +
-            ${{ steps.test_sputnik_dao_interface.outputs.passed || 0 }}
+            ${{ steps.test_sputnik_dao_interface.outputs.passed || 0 }} +
+            ${{ steps.test_typescript.outputs.passed || 0 }}
           ))
           TOTAL_FAILED=$((
             ${{ steps.test_verified_accounts.outputs.failed || 0 }} +
             ${{ steps.test_verified_accounts_interface.outputs.failed || 0 }} +
             ${{ steps.test_sputnik_bridge.outputs.failed || 0 }} +
-            ${{ steps.test_sputnik_dao_interface.outputs.failed || 0 }}
+            ${{ steps.test_sputnik_dao_interface.outputs.failed || 0 }} +
+            ${{ steps.test_typescript.outputs.failed || 0 }}
           ))
           TOTAL_IGNORED=$((
             ${{ steps.test_verified_accounts.outputs.ignored || 0 }} +
             ${{ steps.test_verified_accounts_interface.outputs.ignored || 0 }} +
             ${{ steps.test_sputnik_bridge.outputs.ignored || 0 }} +
-            ${{ steps.test_sputnik_dao_interface.outputs.ignored || 0 }}
+            ${{ steps.test_sputnik_dao_interface.outputs.ignored || 0 }} +
+            ${{ steps.test_typescript.outputs.ignored || 0 }}
           ))
           echo "passed=$TOTAL_PASSED" >> $GITHUB_OUTPUT
           echo "failed=$TOTAL_FAILED" >> $GITHUB_OUTPUT

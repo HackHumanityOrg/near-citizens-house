@@ -5,7 +5,12 @@
     "messageRegex": ".*integration.*"
   },
   {
-    "name": "Unit Tests",
+    "name": "TypeScript Unit Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*verification.*|.*zk-verify.*|.*rpc.*|.*config.*"
+  },
+  {
+    "name": "Rust Unit Tests",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"]
   }
 ]

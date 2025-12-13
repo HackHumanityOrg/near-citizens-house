@@ -35,13 +35,15 @@ This document provides step-by-step instructions for deploying the complete Sput
 
 ## Voting Model
 
-The Citizens House uses a dynamic quorum system for Vote proposals:
+The Citizens House uses SputnikDAO's voting system with dynamic quorum.
 
-| Parameter               | Value                                  | Description                                         |
-| ----------------------- | -------------------------------------- | --------------------------------------------------- |
-| **Threshold**           | 50%                                    | Majority of participating voters must vote YES      |
-| **Quorum**              | 7%                                     | Minimum percentage of citizens who must participate |
-| **Effective Threshold** | `max(quorum, (citizen_count / 2) + 1)` | Actual votes needed to pass                         |
+**SputnikDAO v2 Limitation:** Threshold is calculated as a percentage of **total citizens**, not votes cast.
+
+| Parameter               | Value                                  | Description                             |
+| ----------------------- | -------------------------------------- | --------------------------------------- |
+| **Threshold**           | 50%                                    | 50% of total citizens must vote YES     |
+| **Quorum**              | 7%                                     | Minimum participation floor             |
+| **Effective Threshold** | `max(quorum, (citizen_count / 2) + 1)` | Actual YES votes needed to pass         |
 
 ### How It Works
 
@@ -50,13 +52,10 @@ The Citizens House uses a dynamic quorum system for Vote proposals:
    - `ChangePolicyAddOrUpdateRole` proposal to update quorum (auto-approved by bridge)
 
 2. **Dynamic Quorum**: After each member addition, the bridge automatically updates the citizen role's vote policy:
-   - `quorum = ceil(citizen_count * 7 / 100)` (minimum participation)
-   - `threshold = [1, 2]` (50% of voters must approve)
+   - `quorum = ceil(citizen_count * 7 / 100)`
+   - `threshold = [1, 2]` (50% of total citizens)
 
-3. **Voting**: For a Vote proposal to pass:
-   - At least `quorum` citizens must vote
-   - At least 50% of those votes must be YES
-   - Example with 100 citizens: need 7+ votes, with 4+ being YES
+3. **Voting**: For a Vote proposal to pass with 100 citizens, you need 51 YES votes regardless of turnout.
 
 ### Bridge Permissions
 
@@ -634,15 +633,15 @@ npx near-cli-rs config show-connections
 
 ### Voting Requirements
 
-| Citizens | Quorum (7%) | Threshold (50%) | Effective Votes Needed |
-| -------- | ----------- | --------------- | ---------------------- |
-| 1        | 1           | 1               | 1 YES                  |
-| 10       | 1           | 6               | 6 YES                  |
-| 50       | 4           | 26              | 26 YES                 |
-| 100      | 7           | 51              | 51 YES                 |
-| 1000     | 70          | 501             | 501 YES                |
+| Citizens | Quorum (7%) | Threshold (50%) | Votes Needed to Pass |
+| -------- | ----------- | --------------- | -------------------- |
+| 1        | 1           | 1               | 1                    |
+| 10       | 1           | 6               | 6                    |
+| 50       | 4           | 26              | 26                   |
+| 100      | 7           | 51              | 51                   |
+| 1000     | 70          | 501             | 501                  |
 
-_Effective threshold = max(quorum, (citizen_count / 2) + 1)_
+_Threshold is based on total citizens, not votes cast._
 
 ---
 
