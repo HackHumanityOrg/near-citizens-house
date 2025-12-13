@@ -122,53 +122,45 @@ sequenceDiagram
     Bridge-->>BW: Member added
 ```
 
-### Dynamic Quorum
+### Voting Requirements
 
 SputnikDAO uses two parameters to determine when a proposal passes: **quorum** and **threshold**.
 
-- **Quorum** is the minimum number of votes required for a proposal to be valid, regardless of the outcome. If quorum isn't met, the proposal cannot pass or fail—it remains in limbo.
-- **Threshold** is the percentage of "yes" votes needed to approve a proposal (e.g., 50% means more than half of votes must be "yes").
+- **Quorum** is the minimum number of votes required for a proposal to be valid.
+- **Threshold** is the number of "yes" votes needed to approve a proposal.
 
-In practice, SputnikDAO calculates an **effective threshold** as the maximum of these two values:
+**SputnikDAO v2 Limitation:** Threshold is calculated as a percentage of **total citizens**, not votes cast. This means with 100 citizens you need 51 YES votes to pass, regardless of how many people vote.
+
+SputnikDAO calculates an **effective threshold** as:
 
 ```
 effective_threshold = max(quorum, threshold_weight)
 ```
 
-Where `threshold_weight` for a 50% (1/2) ratio is calculated as:
+Where `threshold_weight` for a 50% (1/2) ratio is:
 
 ```
 threshold_weight = (citizen_count / 2) + 1
 ```
 
-This means if you have 10 citizens with a 50% threshold, you need 6 "yes" votes to pass (not 5), because SputnikDAO uses `(10/2)+1 = 6`.
+**Our Configuration**
 
-**Why Dynamic Quorum?**
-
-A static quorum becomes problematic as membership grows. With 10 citizens and a quorum of 1, a single voter could pass proposals. With 1000 citizens and a quorum of 10, only 1% participation would be needed. Dynamic quorum scales with membership to maintain meaningful participation requirements.
-
-**Our Implementation**
-
-The Sputnik Bridge automatically updates the quorum after every member addition using this formula:
+The Sputnik Bridge automatically updates the quorum after every member addition:
 
 ```
 quorum = ceil(citizen_count × 7 / 100)
 ```
 
-This means 7% of citizens must participate for a vote to be valid:
+| Citizens | Quorum (7%) | Threshold (50%) | Votes Needed to Pass |
+| -------- | ----------- | --------------- | -------------------- |
+| 1        | 1           | 1               | 1                    |
+| 10       | 1           | 6               | 6                    |
+| 15       | 2           | 8               | 8                    |
+| 50       | 4           | 26              | 26                   |
+| 100      | 7           | 51              | 51                   |
+| 1000     | 70          | 501             | 501                  |
 
-| Citizens | Quorum | Threshold (50%) | Effective Threshold |
-| -------- | ------ | --------------- | ------------------- |
-| 1        | 1      | 1               | 1                   |
-| 10       | 1      | 6               | 6                   |
-| 15       | 2      | 8               | 8                   |
-| 50       | 4      | 26              | 26                  |
-| 100      | 7      | 51              | 51                  |
-| 1000     | 70     | 501             | 501                 |
-
-With small DAOs, the 50% threshold dominates—you need majority support regardless of quorum. With very large DAOs, the quorum provides a participation floor while threshold still requires majority of those who vote.
-
-**Note:** Because `effective_threshold = max(quorum, threshold_weight)`, it's impossible for a proposal to fail quorum while passing threshold. If enough people vote "yes" to reach the threshold, they've necessarily met the quorum floor.
+The 50% threshold dominates in practice—you need majority support from total citizens. The 7% quorum provides a floor for edge cases with very few citizens.
 
 **How the Update Works**
 
