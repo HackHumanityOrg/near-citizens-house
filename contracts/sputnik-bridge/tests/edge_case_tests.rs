@@ -32,7 +32,10 @@ async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
         .await?;
 
     // Should fail due to insufficient proposal bond
-    assert!(result.is_failure(), "Add member with insufficient deposit should fail");
+    assert!(
+        result.is_failure(),
+        "Add member with insufficient deposit should fail"
+    );
 
     // Verify error message mentions insufficient deposit/bond
     let has_deposit_error = contains_error(&result, "Not enough deposit")
@@ -66,7 +69,10 @@ async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
         .await?;
 
     // Should fail due to zero deposit
-    assert!(result.is_failure(), "Add member with zero deposit should fail");
+    assert!(
+        result.is_failure(),
+        "Add member with zero deposit should fail"
+    );
 
     Ok(())
 }
@@ -96,7 +102,8 @@ async fn test_concurrent_member_additions() -> anyhow::Result<()> {
 
     // Verify all users are citizens
     for user in &env.users {
-        let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+        let is_citizen =
+            is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
         assert!(is_citizen, "User {} should be in citizen role", user.id());
     }
 
@@ -119,20 +126,27 @@ async fn test_concurrent_proposal_voting() -> anyhow::Result<()> {
     // Setup: Verify and add all users as citizens
     for (i, user) in env.users.iter().enumerate() {
         verify_user(&env.backend, &env.verified_accounts, user, i).await?;
-        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
     }
 
     // Create a Vote proposal
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Concurrent voting test").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Concurrent voting test")
+        .await?
+        .into_result()?;
     let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
-    let proposal_id = last_id.checked_sub(1).expect("expected last proposal id > 0");
+    let proposal_id = last_id
+        .checked_sub(1)
+        .expect("expected last proposal id > 0");
 
     // All citizens vote in rapid succession
     // First 3 vote approve, last 2 vote reject
     let mut vote_results = Vec::new();
     for (i, user) in env.users.iter().enumerate() {
         let action = if i < 3 { "VoteApprove" } else { "VoteReject" };
-        let result = vote_on_proposal(user, &env.sputnik_dao, proposal_id, action, json!("Vote")).await?;
+        let result =
+            vote_on_proposal(user, &env.sputnik_dao, proposal_id, action, json!("Vote")).await?;
         vote_results.push((user.id().to_string(), action, result.is_success()));
     }
 

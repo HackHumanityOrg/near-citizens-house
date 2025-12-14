@@ -90,8 +90,8 @@ fn generate_nep413_signature(
 ) -> (Vec<u8>, String) {
     // Get the secret key from the account
     let secret_key_str = account.secret_key().to_string();
-    let secret_key = near_crypto::SecretKey::from_str(&secret_key_str)
-        .expect("Failed to parse secret key");
+    let secret_key =
+        near_crypto::SecretKey::from_str(&secret_key_str).expect("Failed to parse secret key");
 
     // Get the public key
     let public_key = secret_key.public_key();
@@ -107,11 +107,15 @@ fn generate_nep413_signature(
 
     // Borsh serialize the tag
     let mut tag_bytes = Vec::new();
-    NEP413_TAG.serialize(&mut tag_bytes).expect("Failed to serialize tag");
+    NEP413_TAG
+        .serialize(&mut tag_bytes)
+        .expect("Failed to serialize tag");
 
     // Borsh serialize the payload
     let mut payload_bytes = Vec::new();
-    payload.serialize(&mut payload_bytes).expect("Failed to serialize payload");
+    payload
+        .serialize(&mut payload_bytes)
+        .expect("Failed to serialize payload");
 
     // Concatenate tag + payload
     let mut data_to_hash = tag_bytes;
@@ -139,10 +143,7 @@ async fn test_contract_initialization() -> anyhow::Result<()> {
     let (_worker, contract, backend) = init().await?;
 
     // Verify backend wallet is set correctly
-    let result: AccountId = contract
-        .view("get_backend_wallet")
-        .await?
-        .json()?;
+    let result: AccountId = contract.view("get_backend_wallet").await?.json()?;
     assert_eq!(result, *backend.id());
 
     // Verify initial count is 0
@@ -262,7 +263,11 @@ async fn test_authorized_pause_unpause() -> anyhow::Result<()> {
         .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
         .transact()
         .await?;
-    assert!(result.is_success(), "Unpause failed: {:?}", result.failures());
+    assert!(
+        result.is_success(),
+        "Unpause failed: {:?}",
+        result.failures()
+    );
 
     // Verify it's unpaused
     let is_paused: bool = contract.view("is_paused").await?.json()?;
@@ -283,7 +288,11 @@ async fn test_update_backend_wallet() -> anyhow::Result<()> {
         .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
         .transact()
         .await?;
-    assert!(result.is_success(), "Update backend wallet failed: {:?}", result.failures());
+    assert!(
+        result.is_success(),
+        "Update backend wallet failed: {:?}",
+        result.failures()
+    );
 
     // Verify new backend wallet
     let current_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
@@ -303,7 +312,11 @@ async fn test_update_backend_wallet() -> anyhow::Result<()> {
         .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
         .transact()
         .await?;
-    assert!(result.is_success(), "New backend pause failed: {:?}", result.failures());
+    assert!(
+        result.is_success(),
+        "New backend pause failed: {:?}",
+        result.failures()
+    );
 
     Ok(())
 }
@@ -666,8 +679,10 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
     let challenge = "Identify myself";
     let recipient = user.id().to_string();
 
-    let (signature1, public_key1) = generate_nep413_signature(&user, challenge, &nonce1, &recipient);
-    let (signature2, public_key2) = generate_nep413_signature(&user, challenge, &nonce2, &recipient);
+    let (signature1, public_key1) =
+        generate_nep413_signature(&user, challenge, &nonce1, &recipient);
+    let (signature2, public_key2) =
+        generate_nep413_signature(&user, challenge, &nonce2, &recipient);
 
     // First verification should succeed
     let result = backend
@@ -777,10 +792,21 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
         .json()?;
 
     // Verify the returned data
-    assert_eq!(account_data.get("user_id"), Some(&serde_json::json!("test_user_id")));
-    assert_eq!(account_data.get("attestation_id"), Some(&serde_json::json!("1")));
-    assert_eq!(account_data.get("user_context_data"), Some(&serde_json::json!("custom_context_data")));
-    assert!(account_data.get("verified_at").is_some_and(|v| v.is_number()));
+    assert_eq!(
+        account_data.get("user_id"),
+        Some(&serde_json::json!("test_user_id"))
+    );
+    assert_eq!(
+        account_data.get("attestation_id"),
+        Some(&serde_json::json!("1"))
+    );
+    assert_eq!(
+        account_data.get("user_context_data"),
+        Some(&serde_json::json!("custom_context_data"))
+    );
+    assert!(account_data
+        .get("verified_at")
+        .is_some_and(|v| v.is_number()));
 
     Ok(())
 }
@@ -995,9 +1021,8 @@ async fn test_batch_size_limit_enforced() -> anyhow::Result<()> {
     let (_worker, contract, _backend) = init().await?;
 
     // Create more than 100 account IDs
-    let too_many_accounts: Vec<String> = (0..101)
-        .map(|i| format!("account{}.testnet", i))
-        .collect();
+    let too_many_accounts: Vec<String> =
+        (0..101).map(|i| format!("account{}.testnet", i)).collect();
 
     // Call are_accounts_verified with too many accounts - should fail
     let result = contract
@@ -1006,10 +1031,7 @@ async fn test_batch_size_limit_enforced() -> anyhow::Result<()> {
         .await;
 
     // View call should fail due to assertion
-    assert!(
-        result.is_err(),
-        "Expected batch size limit to be enforced"
-    );
+    assert!(result.is_err(), "Expected batch size limit to be enforced");
 
     Ok(())
 }

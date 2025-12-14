@@ -149,7 +149,10 @@ export const CELO_CONFIG = {
   rpcUrls: (() => {
     const envValue = process.env.CELO_RPC_URLS?.trim()
     if (!envValue) return null // empty or undefined = use defaults
-    const urls = envValue.split(",").map((url) => url.trim()).filter((url) => url.length > 0)
+    const urls = envValue
+      .split(",")
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0)
     return urls.length > 0 ? urls : null
   })(),
 }

@@ -38,7 +38,8 @@ async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
     let env = setup().await?;
 
     // Verify DAO policy has bridge in bridge role (matches production dao-policy.json)
-    let is_in_bridge_role = is_account_in_role(&env.sputnik_dao, env.bridge.id().as_str(), "bridge").await?;
+    let is_in_bridge_role =
+        is_account_in_role(&env.sputnik_dao, env.bridge.id().as_str(), "bridge").await?;
     assert!(is_in_bridge_role, "Bridge should be in bridge role");
 
     Ok(())
@@ -59,7 +60,9 @@ async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
 
     // Verify citizen role exists
     let roles = policy.get("roles").and_then(|r| r.as_array()).unwrap();
-    let citizen_role = roles.iter().find(|r| r.get("name").and_then(|n| n.as_str()) == Some("citizen"));
+    let citizen_role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("citizen"));
     assert!(citizen_role.is_some(), "Citizen role should exist");
 
     Ok(())
@@ -73,7 +76,10 @@ async fn test_get_info() -> anyhow::Result<()> {
 
     assert_eq!(info.backend_wallet, env.backend.id().to_string());
     assert_eq!(info.sputnik_dao, env.sputnik_dao.id().to_string());
-    assert_eq!(info.verified_accounts_contract, env.verified_accounts.id().to_string());
+    assert_eq!(
+        info.verified_accounts_contract,
+        env.verified_accounts.id().to_string()
+    );
     assert_eq!(info.citizen_role, "citizen");
 
     Ok(())

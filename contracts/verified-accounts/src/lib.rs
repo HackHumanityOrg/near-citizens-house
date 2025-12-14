@@ -630,9 +630,9 @@ impl Contract {
 mod tests {
     use super::*;
     use allure_rs::prelude::*;
+    use near_sdk::test_utils::get_logs;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::testing_env;
-    use near_sdk::test_utils::get_logs;
     use near_sdk::NearToken;
 
     fn get_context(predecessor: AccountId) -> VMContextBuilder {
@@ -884,11 +884,14 @@ mod tests {
         testing_env!(context.build());
         contract.pause();
         assert!(contract.is_paused());
-        
+
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected pause event");
         assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(logs[0].contains("contract_paused"), "Expected contract_paused event");
+        assert!(
+            logs[0].contains("contract_paused"),
+            "Expected contract_paused event"
+        );
 
         // Unpause (requires 1 yocto)
         let mut context = get_context(backend);
@@ -900,7 +903,10 @@ mod tests {
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected unpause event");
         assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(logs[0].contains("contract_unpaused"), "Expected contract_unpaused event");
+        assert!(
+            logs[0].contains("contract_unpaused"),
+            "Expected contract_unpaused event"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -918,7 +924,10 @@ mod tests {
         testing_env!(context.build());
 
         let mut contract = Contract::new(backend);
-        assert_panic_with(|| contract.pause(), "Only backend wallet can pause contract");
+        assert_panic_with(
+            || contract.pause(),
+            "Only backend wallet can pause contract",
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -946,7 +955,10 @@ mod tests {
         unauthorized_context.attached_deposit(NearToken::from_yoctonear(1));
         testing_env!(unauthorized_context.build());
 
-        assert_panic_with(|| contract.unpause(), "Only backend wallet can unpause contract");
+        assert_panic_with(
+            || contract.unpause(),
+            "Only backend wallet can unpause contract",
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1025,7 +1037,10 @@ mod tests {
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected backend wallet update event");
         assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(logs[0].contains("backend_wallet_updated"), "Expected backend_wallet_updated event");
+        assert!(
+            logs[0].contains("backend_wallet_updated"),
+            "Expected backend_wallet_updated event"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -3187,16 +3202,16 @@ mod tests {
     }
 
     // ==================== HAPPY PATH TEST (Phase 3) ====================
-    
-    use near_crypto::{KeyType, SecretKey, Signer, InMemorySigner};
+
+    use near_crypto::{InMemorySigner, KeyType, SecretKey, Signer};
 
     /// Helper to create a valid signature for a given message
     fn create_valid_signature(
-        signer: &Signer, 
+        signer: &Signer,
         signer_id: &AccountId,
-        challenge: &str, 
-        nonce: &[u8], 
-        recipient: &AccountId
+        challenge: &str,
+        nonce: &[u8],
+        recipient: &AccountId,
     ) -> NearSignatureData {
         // Step 1: Serialize the NEP-413 prefix tag (2^31 + 413)
         let tag: u32 = 2147484061;
@@ -3224,7 +3239,7 @@ mod tests {
 
         // Step 5: Sign the hash
         let signature = signer.sign(&message_hash);
-        
+
         // Extract bytes from signature enum using Borsh (skip 1 byte tag)
         // Signature::ED25519 is 0 + 64 bytes
         let signature_borsh = near_sdk::borsh::to_vec(&signature).unwrap();
@@ -3233,7 +3248,7 @@ mod tests {
 
         // Convert to our data structure
         let public_key_str = signer.public_key().to_string();
-        
+
         NearSignatureData {
             account_id: signer_id.clone(),
             signature: signature_bytes,
@@ -3260,10 +3275,8 @@ mod tests {
         let mut contract = Contract::new(backend);
 
         // create a signer for the user (using near-crypto)
-        let signer = InMemorySigner::from_secret_key(
-            user.clone(),
-            SecretKey::from_random(KeyType::ED25519),
-        );
+        let signer =
+            InMemorySigner::from_secret_key(user.clone(), SecretKey::from_random(KeyType::ED25519));
 
         let challenge = "Identify myself";
         let nonce = vec![0u8; 32];
@@ -3288,8 +3301,11 @@ mod tests {
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected verification event");
         assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(logs[0].contains("verification_stored"), "Expected verification_stored event");
-        
+        assert!(
+            logs[0].contains("verification_stored"),
+            "Expected verification_stored event"
+        );
+
         let account = contract.get_account(user.clone()).unwrap();
         assert_eq!(account.near_account_id, user);
         assert_eq!(account.nullifier, "test_nullifier");

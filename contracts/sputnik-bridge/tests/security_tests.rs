@@ -25,7 +25,10 @@ async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(result.is_failure(), "Unauthorized user should not be able to update backend wallet");
+    assert!(
+        result.is_failure(),
+        "Unauthorized user should not be able to update backend wallet"
+    );
     assert!(contains_error(&result, "Only backend wallet"));
 
     Ok(())
@@ -43,7 +46,10 @@ async fn test_update_citizen_role_unauthorized() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(result.is_failure(), "Unauthorized user should not be able to update citizen role");
+    assert!(
+        result.is_failure(),
+        "Unauthorized user should not be able to update citizen role"
+    );
     assert!(contains_error(&result, "Only backend wallet"));
 
     Ok(())
@@ -56,7 +62,9 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
 
     // Verify and add user as citizen
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
-    add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
 
     // Verify user is a citizen
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
@@ -77,7 +85,10 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
         .await?;
 
     // Should fail because citizens don't have AddProposal permission in production policy
-    assert!(result.is_failure(), "Citizen should not be able to add proposals directly to DAO");
+    assert!(
+        result.is_failure(),
+        "Citizen should not be able to add proposals directly to DAO"
+    );
 
     Ok(())
 }
@@ -102,7 +113,10 @@ async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> 
         .await?;
 
     // Should fail because only bridge role can add proposals
-    assert!(result.is_failure(), "Random account should not be able to add proposals to DAO");
+    assert!(
+        result.is_failure(),
+        "Random account should not be able to add proposals to DAO"
+    );
 
     Ok(())
 }
@@ -114,17 +128,31 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
 
     // Verify and add user as citizen
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
-    add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
 
     // Create a Vote proposal
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal")
+        .await?
+        .into_result()?;
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
 
     // Citizen tries to VoteRemove (which they don't have permission for)
-    let result = vote_on_proposal(user, &env.sputnik_dao, proposal_id, "VoteRemove", json!("Vote")).await?;
+    let result = vote_on_proposal(
+        user,
+        &env.sputnik_dao,
+        proposal_id,
+        "VoteRemove",
+        json!("Vote"),
+    )
+    .await?;
 
     // Should fail because citizens only have VoteApprove and VoteReject
-    assert!(result.is_failure(), "Citizen should not be able to VoteRemove");
+    assert!(
+        result.is_failure(),
+        "Citizen should not be able to VoteRemove"
+    );
 
     Ok(())
 }
@@ -135,7 +163,9 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
     let random_account = env.user(0);
 
     // Create a Vote proposal (will be InProgress initially)
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Finalize test").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Finalize test")
+        .await?
+        .into_result()?;
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
 
     // Verify proposal is InProgress before finalization
@@ -196,7 +226,10 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
         .transact()
         .await?;
 
-    assert!(result.is_failure(), "External call to callback_add_member should fail");
+    assert!(
+        result.is_failure(),
+        "External call to callback_add_member should fail"
+    );
 
     // Verify it fails due to #[private] macro protection (predecessor != current_account)
     let error_indicates_private = contains_error(&result, "predecessor")
@@ -223,7 +256,10 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
         .transact()
         .await?;
 
-    assert!(result.is_failure(), "External call to callback_proposal_created should fail");
+    assert!(
+        result.is_failure(),
+        "External call to callback_proposal_created should fail"
+    );
 
     // Verify it fails due to #[private] macro protection
     let error_indicates_private = contains_error(&result, "predecessor")
@@ -253,7 +289,10 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
         .transact()
         .await?;
 
-    assert!(result.is_failure(), "External call to callback_member_added should fail");
+    assert!(
+        result.is_failure(),
+        "External call to callback_member_added should fail"
+    );
 
     // Verify it fails due to #[private] macro protection
     let error_indicates_private = contains_error(&result, "predecessor")
@@ -280,7 +319,10 @@ async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> an
         .transact()
         .await?;
 
-    assert!(result.is_failure(), "External call to callback_vote_proposal_created should fail");
+    assert!(
+        result.is_failure(),
+        "External call to callback_vote_proposal_created should fail"
+    );
 
     // Verify it fails due to #[private] macro protection
     let error_indicates_private = contains_error(&result, "predecessor")

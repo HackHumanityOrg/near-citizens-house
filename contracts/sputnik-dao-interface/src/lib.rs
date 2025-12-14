@@ -204,7 +204,13 @@ pub trait SputnikDao {
     ///
     /// **Important**: The `proposal` parameter must match the stored proposal's kind,
     /// otherwise the call will fail with "ERR_WRONG_KIND".
-    fn act_proposal(&mut self, id: u64, action: Action, proposal: ProposalKind, memo: Option<String>);
+    fn act_proposal(
+        &mut self,
+        id: u64,
+        action: Action,
+        proposal: ProposalKind,
+        memo: Option<String>,
+    );
 
     /// Get the current DAO policy.
     fn get_policy(&self) -> serde_json::Value;
@@ -504,7 +510,10 @@ mod tests {
         let role = RolePermission {
             name: "citizen".to_string(),
             kind: RoleKind::Group(vec!["alice.near".parse().unwrap()]),
-            permissions: vec!["vote:VoteApprove".to_string(), "vote:VoteReject".to_string()],
+            permissions: vec![
+                "vote:VoteApprove".to_string(),
+                "vote:VoteReject".to_string(),
+            ],
             vote_policy: HashMap::new(),
         };
 
@@ -546,7 +555,10 @@ mod tests {
         // Unknown enum variant should fail deserialization
         let json = r#"{"UnknownVariant":{}}"#;
         let result: Result<ProposalKind, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail for unknown ProposalKind variant");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for unknown ProposalKind variant"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -560,7 +572,10 @@ mod tests {
         // Invalid Action variant should fail deserialization
         let json = r#""InvalidAction""#;
         let result: Result<Action, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail for invalid Action string");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for invalid Action string"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -574,7 +589,10 @@ mod tests {
         // WeightOrRatio with empty array should fail
         let json = r#"[]"#;
         let result: Result<WeightOrRatio, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail for empty WeightOrRatio array");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for empty WeightOrRatio array"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -588,6 +606,9 @@ mod tests {
         // RolePermission without required 'name' field should fail
         let json = r#"{"kind":"Everyone","permissions":[],"vote_policy":{}}"#;
         let result: Result<RolePermission, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail when 'name' is missing");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail when 'name' is missing"
+        );
     }
 }

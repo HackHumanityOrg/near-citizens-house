@@ -74,7 +74,7 @@ export const nearAccountIdSchema = z.string().refine(
   {
     message:
       "Invalid NEAR account ID (named: 2-64 chars a-z0-9._-, implicit: 64 hex chars, or ETH-implicit: 0x + 40 hex chars)",
-  }
+  },
 )
 
 /**

@@ -288,12 +288,24 @@ mod tests {
     #[test]
     fn test_zk_proof_json_roundtrip() {
         let proof = ZkProof {
-            a: ["12345678901234567890".to_string(), "98765432109876543210".to_string()],
-            b: [
-                ["11111111111111111111".to_string(), "22222222222222222222".to_string()],
-                ["33333333333333333333".to_string(), "44444444444444444444".to_string()],
+            a: [
+                "12345678901234567890".to_string(),
+                "98765432109876543210".to_string(),
             ],
-            c: ["55555555555555555555".to_string(), "66666666666666666666".to_string()],
+            b: [
+                [
+                    "11111111111111111111".to_string(),
+                    "22222222222222222222".to_string(),
+                ],
+                [
+                    "33333333333333333333".to_string(),
+                    "44444444444444444444".to_string(),
+                ],
+            ],
+            c: [
+                "55555555555555555555".to_string(),
+                "66666666666666666666".to_string(),
+            ],
         };
 
         // Test JSON roundtrip
@@ -386,7 +398,9 @@ mod tests {
     #[allure_story("SelfProofData Type")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "serialization", "passport")]
-    #[allure_description("Tests serialization with realistic 21 public signals from passport proofs")]
+    #[allure_description(
+        "Tests serialization with realistic 21 public signals from passport proofs"
+    )]
     #[allure_test]
     #[test]
     fn test_verified_account_with_21_signals() {
@@ -453,9 +467,13 @@ mod tests {
     #[test]
     fn test_verified_account_info_json_missing_nullifier_fails() {
         // JSON without required "nullifier" field should fail deserialization
-        let json = r#"{"near_account_id":"test.near","user_id":"u","attestation_id":"1","verified_at":0}"#;
+        let json =
+            r#"{"near_account_id":"test.near","user_id":"u","attestation_id":"1","verified_at":0}"#;
         let result: Result<VerifiedAccountInfo, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail when nullifier is missing");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail when nullifier is missing"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -469,7 +487,10 @@ mod tests {
         // 'a' should have exactly 2 elements, not 1
         let json = r#"{"a":["1"],"b":[["1","2"],["3","4"]],"c":["1","2"]}"#;
         let result: Result<ZkProof, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail when 'a' has wrong array length");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail when 'a' has wrong array length"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -483,7 +504,10 @@ mod tests {
         // 'proof' should be an object, not a string
         let json = r#"{"proof":"not_an_object","public_signals":[]}"#;
         let result: Result<SelfProofData, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail when 'proof' is not an object");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail when 'proof' is not an object"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -497,6 +521,9 @@ mod tests {
         // Missing 'b' field should fail
         let json = r#"{"a":["1","2"],"c":["1","2"]}"#;
         let result: Result<ZkProof, _> = near_sdk::serde_json::from_str(json);
-        assert!(result.is_err(), "Deserialization should fail when 'b' field is missing");
+        assert!(
+            result.is_err(),
+            "Deserialization should fail when 'b' field is missing"
+        );
     }
 }
