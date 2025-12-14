@@ -19,6 +19,10 @@ const envSchema = z.object({
   // Required for all environments (client & server)
   NEXT_PUBLIC_NEAR_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
 
+  // Self.xyz network (independent from NEAR network)
+  // "mainnet" = Real passports with OFAC checks, "testnet" = Mock passports
+  NEXT_PUBLIC_SELF_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
+
   // Contract addresses (required for functionality, but may be empty during setup)
   NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: z.string().optional(),
   NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT: z.string().optional(),
@@ -30,6 +34,9 @@ const envSchema = z.object({
 
   // Redis for session storage (server-side only)
   REDIS_URL: z.string().optional(),
+
+  // Celo RPC URLs for ZK proof verification (comma-separated, server-side only)
+  CELO_RPC_URLS: z.string().optional(),
 })
 
 // Validate environment at module load time

@@ -122,7 +122,7 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test quorum failure")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Only 2 citizens vote YES (less than effective_threshold of 6)
     for i in 0..2 {
@@ -186,7 +186,7 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test threshold failure")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // 5 citizens vote YES, 5 vote NO
     // Total participation: 10 (50%) > quorum (2) - quorum passes
@@ -301,7 +301,7 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test both pass")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Have exactly effective_threshold citizens vote YES
     // effective_threshold = 6 for 10 citizens
@@ -367,7 +367,7 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test rejection")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Have effective_threshold citizens vote NO
     let votes_needed = effective_threshold as usize;

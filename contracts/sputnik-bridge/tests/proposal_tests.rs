@@ -170,7 +170,7 @@ async fn test_create_proposal_unicode_description() -> anyhow::Result<()> {
     );
 
     // Verify the proposal was created with correct description
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
     assert!(
         proposal.description.contains("🗳️") && proposal.description.contains("提案"),

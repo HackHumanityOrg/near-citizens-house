@@ -189,10 +189,17 @@ async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Res
     );
 
     let events = parse_events(&logs);
-    let member_added = events
+    let member_added_events: Vec<_> = events
         .iter()
-        .find(|e| e.event == "member_added")
-        .expect("member_added event missing");
+        .filter(|e| e.event == "member_added")
+        .collect();
+    assert_eq!(
+        member_added_events.len(),
+        1,
+        "Expected exactly one member_added event, found {}",
+        member_added_events.len()
+    );
+    let member_added = member_added_events[0];
     assert_eq!(
         member_added.data.get("member_id"),
         Some(&json!(user.id().to_string()))
@@ -225,10 +232,17 @@ async fn test_member_added_event_emitted() -> anyhow::Result<()> {
 
     let events = parse_events(&logs);
 
-    let member_added = events
+    let member_added_events: Vec<_> = events
         .iter()
-        .find(|e| e.event == "member_added")
-        .expect("member_added event missing");
+        .filter(|e| e.event == "member_added")
+        .collect();
+    assert_eq!(
+        member_added_events.len(),
+        1,
+        "Expected exactly one member_added event, found {}",
+        member_added_events.len()
+    );
+    let member_added = member_added_events[0];
     // The last proposal is the quorum_update, so the add_member proposal is last - 2
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?;
     let add_member_proposal_id = proposal_id
@@ -262,10 +276,17 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
 
     let events = parse_events(&logs);
 
-    let proposal_created = events
+    let proposal_created_events: Vec<_> = events
         .iter()
-        .find(|e| e.event == "proposal_created")
-        .expect("proposal_created event missing");
+        .filter(|e| e.event == "proposal_created")
+        .collect();
+    assert_eq!(
+        proposal_created_events.len(),
+        1,
+        "Expected exactly one proposal_created event, found {}",
+        proposal_created_events.len()
+    );
+    let proposal_created = proposal_created_events[0];
 
     // Verify event contains required fields with valid values
     let emitted_proposal_id = proposal_created
