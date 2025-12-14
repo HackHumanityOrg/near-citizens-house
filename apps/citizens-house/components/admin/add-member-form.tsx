@@ -15,30 +15,13 @@ import {
   Label,
   Alert,
 } from "@near-citizens/ui"
-import { type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
+import { type TransformedPolicy, formatProposalBond, nearAccountIdSchema } from "@near-citizens/shared"
 import { useAdminActions } from "@/hooks/admin-actions"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
 import { Loader2, UserPlus, CheckCircle, AlertCircle } from "lucide-react"
 
-// NEAR account ID validation: supports both named accounts (2-64 chars with dots) and implicit accounts (64 hex chars)
-const NEAR_NAMED_ACCOUNT_REGEX = /^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/
-const NEAR_IMPLICIT_ACCOUNT_REGEX = /^[0-9a-f]{64}$/
-
 const addMemberSchema = z.object({
-  accountId: z
-    .string()
-    .min(1, "Account ID is required")
-    .max(64, "Account ID must be at most 64 characters")
-    .refine(
-      (val) => {
-        // Check if it's an implicit account (64 hex chars)
-        if (NEAR_IMPLICIT_ACCOUNT_REGEX.test(val)) return true
-        // Check if it's a valid named account (2-64 chars)
-        if (val.length >= 2 && val.length <= 64 && NEAR_NAMED_ACCOUNT_REGEX.test(val)) return true
-        return false
-      },
-      { message: "Invalid NEAR account ID format (named: 2-64 chars with a-z0-9_-., or implicit: 64 hex chars)" }
-    ),
+  accountId: nearAccountIdSchema,
 })
 
 type AddMemberFormData = z.infer<typeof addMemberSchema>

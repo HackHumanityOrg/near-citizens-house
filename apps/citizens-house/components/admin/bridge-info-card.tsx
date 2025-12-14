@@ -19,6 +19,26 @@ import {
   Link as LinkIcon,
 } from "lucide-react"
 
+type ThresholdValue = [number, number] | { Weight: string }
+
+/**
+ * Formats a vote threshold for display.
+ * Handles both ratio thresholds [numerator, denominator] and fixed weight thresholds.
+ * @param threshold - The threshold value from the policy
+ * @param suffix - Optional suffix to append (e.g., " approval required")
+ * @param fallback - Fallback text when threshold is invalid (default: "N/A")
+ */
+function formatThreshold(threshold: ThresholdValue, suffix = "", fallback = "N/A"): string {
+  if (Array.isArray(threshold)) {
+    const [numerator, denominator] = threshold
+    if (Number.isFinite(denominator) && denominator > 0) {
+      return `>${Math.round((numerator / denominator) * 100)}%${suffix}`
+    }
+    return fallback
+  }
+  return `${threshold.Weight} votes${suffix ? " required" : ""}`
+}
+
 export function BridgeInfoCard() {
   const { data, isLoading, error } = useSWRImmutable("bridge-and-policy", async () => {
     const [bridgeInfo, daoPolicy] = await Promise.all([getBridgeInfo(), getPolicy()])
@@ -39,11 +59,15 @@ export function BridgeInfoCard() {
   }
 
   if (error || !info || !info.backendWallet) {
+    // Log actual error for debugging, but don't expose to UI
+    if (error) {
+      console.error("[BridgeInfoCard] Failed to load bridge info:", error)
+    }
     return (
       <Card>
         <CardContent className="py-6">
           <p className="text-destructive">
-            {error instanceof Error ? error.message : !info ? "Failed to load bridge info" : "Missing bridge data"}
+            {error ? "Failed to load bridge info." : !info ? "Failed to load bridge info." : "Missing bridge data."}
           </p>
         </CardContent>
       </Card>
@@ -102,13 +126,7 @@ export function BridgeInfoCard() {
                 <Vote className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {Array.isArray(policy.defaultVotePolicy.threshold)
-                    ? policy.defaultVotePolicy.threshold[1] !== 0
-                      ? `>${Math.round((policy.defaultVotePolicy.threshold[0] / policy.defaultVotePolicy.threshold[1]) * 100)}%`
-                      : "N/A"
-                    : `${policy.defaultVotePolicy.threshold.Weight}`}
-                </p>
+                <p className="text-2xl font-bold">{formatThreshold(policy.defaultVotePolicy.threshold)}</p>
                 <p className="text-sm text-muted-foreground">Pass Threshold</p>
               </div>
             </CardContent>
@@ -163,13 +181,7 @@ export function BridgeInfoCard() {
             <CardContent className="space-y-3">
               <PolicyItem
                 label="Threshold"
-                value={
-                  Array.isArray(policy.defaultVotePolicy.threshold)
-                    ? policy.defaultVotePolicy.threshold[1] !== 0
-                      ? `>${Math.round((policy.defaultVotePolicy.threshold[0] / policy.defaultVotePolicy.threshold[1]) * 100)}% approval required`
-                      : "Threshold unknown"
-                    : `${policy.defaultVotePolicy.threshold.Weight} votes required`
-                }
+                value={formatThreshold(policy.defaultVotePolicy.threshold, " approval required", "Threshold unknown")}
               />
               <PolicyItem label="Quorum" value={`${policy.defaultVotePolicy.quorum} minimum votes`} />
               <PolicyItem label="Weight Kind" value={policy.defaultVotePolicy.weightKind} />
@@ -277,19 +289,12 @@ function RoleCard({ role }: { role: TransformedPolicy["roles"][0] }) {
         {votePolicies.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Vote Policy</p>
-            {votePolicies.map(([proposalType, vp]) => {
-              const threshold = Array.isArray(vp.threshold)
-                ? vp.threshold[1] !== 0
-                  ? `>${Math.round((vp.threshold[0] / vp.threshold[1]) * 100)}%`
-                  : "N/A"
-                : `${vp.threshold.Weight} votes`
-              return (
-                <div key={proposalType} className="bg-muted/50 p-2 rounded text-xs">
-                  <span className="font-medium">{proposalType}:</span> {threshold}
-                  <span className="text-muted-foreground"> (quorum: {vp.quorum})</span>
-                </div>
-              )
-            })}
+            {votePolicies.map(([proposalType, vp]) => (
+              <div key={proposalType} className="bg-muted/50 p-2 rounded text-xs">
+                <span className="font-medium">{proposalType}:</span> {formatThreshold(vp.threshold)}
+                <span className="text-muted-foreground"> (quorum: {vp.quorum})</span>
+              </div>
+            ))}
           </div>
         )}
 

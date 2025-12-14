@@ -8,10 +8,11 @@ import { getSession } from "@/lib/session-store"
  * 1. UUID v4: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx (standard crypto.randomUUID output)
  * 2. Legacy fallback: alphanumeric string from Math.random().toString(36).substring(2) + Date.now().toString(36)
  *    - Produced by older browsers without crypto.randomUUID support
- *    - Format: lowercase alphanumeric (a-z, 0-9), typically 18-22 characters, no dashes
+ *    - Format: lowercase alphanumeric (a-z, 0-9), 18-22 characters, no dashes
+ *    - Math.random base36 produces ~11 chars, Date.now base36 produces ~8 chars = ~19-20 total
  */
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const LEGACY_SESSION_ID_REGEX = /^[0-9a-z]{16,24}$/
+const LEGACY_SESSION_ID_REGEX = /^[0-9a-z]{18,22}$/
 
 function isValidSessionId(sessionId: string): boolean {
   return UUID_V4_REGEX.test(sessionId) || LEGACY_SESSION_ID_REGEX.test(sessionId)
