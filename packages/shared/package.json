@@ -18,7 +18,7 @@
     "react-dom": "^19.2.0"
   },
   "dependencies": {
-    "@hot-labs/near-connect": "^0.6.11",
+    "@hot-labs/near-connect": "^0.8.1",
     "@near-js/accounts": "^2.5.1",
     "@near-js/crypto": "^2.5.1",
     "@near-js/keystores": "^2.5.1",
@@ -40,7 +40,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@types/node": "^24",
+    "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5",

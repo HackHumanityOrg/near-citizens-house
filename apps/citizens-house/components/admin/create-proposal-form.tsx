@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -35,6 +35,16 @@ export function CreateProposalForm() {
   const { createProposal, isLoading, error, clearError } = useAdminActions()
   const [policy, setPolicy] = useState<TransformedPolicy | null>(null)
   const [success, setSuccess] = useState<{ proposalId: number } | null>(null)
+  const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup navigation timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const {
     register,
@@ -56,15 +66,23 @@ export function CreateProposalForm() {
 
   // Fetch policy to get proposal bond
   useEffect(() => {
+    let isMounted = true
+
     async function fetchPolicy() {
       try {
         const daoPolicy = await getPolicy()
-        setPolicy(daoPolicy)
+        if (isMounted) {
+          setPolicy(daoPolicy)
+        }
       } catch (err) {
         console.error("Error fetching policy:", err)
       }
     }
     fetchPolicy()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const onSubmit = async (data: CreateProposalFormData) => {
@@ -82,7 +100,7 @@ export function CreateProposalForm() {
 
       // Navigate to proposal after short delay
       if (proposalId >= 0) {
-        setTimeout(() => {
+        navigationTimeoutRef.current = setTimeout(() => {
           router.push(`/proposals/${proposalId}`)
         }, 2000)
       }

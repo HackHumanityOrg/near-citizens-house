@@ -38,16 +38,17 @@ export function SputnikHeader() {
           <div className="flex items-center gap-4">
             {/* Get Verified button - shown when connected but not verified */}
             {isConnected && !verificationLoading && !isVerified && (
-              <a href={APP_URLS.verification} target="_blank" rel="noopener noreferrer">
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="bg-black hover:bg-black/90 text-white border-0 shadow-md"
-                >
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-black hover:bg-black/90 text-white border-0 shadow-md"
+                asChild
+              >
+                <a href={APP_URLS.verification} target="_blank" rel="noopener noreferrer">
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   Get Verified to Vote
-                </Button>
-              </a>
+                </a>
+              </Button>
             )}
 
             {isLoading ? (

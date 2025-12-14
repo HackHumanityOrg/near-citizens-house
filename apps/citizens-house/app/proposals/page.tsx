@@ -25,8 +25,9 @@ export default function ProposalsPage() {
 
         <Suspense
           fallback={
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Loading proposals...</span>
             </div>
           }
         >

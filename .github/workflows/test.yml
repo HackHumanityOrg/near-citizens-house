@@ -206,6 +206,20 @@ jobs:
         working-directory: contracts/sputnik-bridge
         run: RUSTFLAGS="--cfg clippy" cargo clippy --lib -- -D warnings
 
+      # Collect allure results from all contract directories
+      # allure-rs outputs to ./allure-results relative to working directory,
+      # so we need to copy results from each contract dir to the root
+      - name: Collect allure results from all contracts
+        if: always()
+        run: |
+          for dir in contracts/*/allure-results; do
+            if [ -d "$dir" ]; then
+              cp -r "$dir"/* allure-results/ 2>/dev/null || true
+            fi
+          done
+          echo "Collected allure results:"
+          ls -la allure-results/ || echo "No results collected"
+
       # Copy categories.json
       - name: Add categories
         if: always()

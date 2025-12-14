@@ -3,6 +3,7 @@
 //! Provides helpers for deploying contracts, creating verified users,
 //! generating NEP-413 signatures, and manipulating test time.
 
+#![cfg(feature = "integration-tests")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![allow(dead_code)] // Shared helpers - not all functions used by every test file
 

@@ -217,11 +217,17 @@ pub trait SputnikDao {
 }
 
 #[cfg(test)]
-#[allure_rust::allure_suite("Sputnik DAO Interface")]
+#[allure_rs::allure_suite("Sputnik DAO Interface")]
 mod tests {
     use super::*;
+    use allure_rs::prelude::*;
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("ProposalInput Type")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "serialization", "proposals")]
+    #[allure_test]
     #[test]
     fn test_proposal_input_serialization() {
         let input = ProposalInput {
@@ -239,7 +245,12 @@ mod tests {
         assert_eq!(decoded.description, input.description);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("ProposalKind Type")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "serialization", "membership")]
+    #[allure_test]
     #[test]
     fn test_add_member_to_role_serialization() {
         let input = ProposalInput {
@@ -256,7 +267,12 @@ mod tests {
         assert!(json.contains("AddMemberToRole"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("Action Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "voting")]
+    #[allure_test]
     #[test]
     fn test_action_serialization() {
         let action = Action::VoteApprove;
@@ -264,7 +280,12 @@ mod tests {
         assert!(json.contains("VoteApprove"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("ProposalKind Type")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "serialization", "policy")]
+    #[allure_test]
     #[test]
     fn test_change_policy_add_or_update_role_serialization() {
         use std::collections::HashMap;
@@ -303,7 +324,12 @@ mod tests {
 
     // ==================== ADDITIONAL TYPE SERIALIZATION TESTS (Phase 3) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("Action Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "voting")]
+    #[allure_test]
     #[test]
     fn test_all_action_variants_serialization() {
         // Test all Action variants serialize correctly
@@ -326,7 +352,12 @@ mod tests {
         }
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("ProposalKind Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "membership")]
+    #[allure_test]
     #[test]
     fn test_remove_member_from_role_serialization() {
         let kind = ProposalKind::RemoveMemberFromRole {
@@ -340,7 +371,12 @@ mod tests {
         assert!(json.contains("council"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("RoleKind Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "roles")]
+    #[allure_test]
     #[test]
     fn test_role_kind_everyone_serialization() {
         let kind = RoleKind::Everyone;
@@ -348,7 +384,12 @@ mod tests {
         assert!(json.contains("Everyone"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("RoleKind Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "roles")]
+    #[allure_test]
     #[test]
     fn test_role_kind_group_serialization() {
         let kind = RoleKind::Group(vec![
@@ -363,7 +404,12 @@ mod tests {
         assert!(json.contains("carol.near"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("VotePolicy Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "voting")]
+    #[allure_test]
     #[test]
     fn test_weight_kind_serialization() {
         let role_weight = WeightKind::RoleWeight;
@@ -376,7 +422,12 @@ mod tests {
         assert!(json2.contains("TokenWeight"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("VotePolicy Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "voting")]
+    #[allure_test]
     #[test]
     fn test_weight_or_ratio_weight_serialization() {
         let weight = WeightOrRatio::Weight(U128(1000));
@@ -384,7 +435,12 @@ mod tests {
         assert!(json.contains("1000"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("VotePolicy Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "voting")]
+    #[allure_test]
     #[test]
     fn test_weight_or_ratio_ratio_serialization() {
         let ratio = WeightOrRatio::Ratio(1, 2);
@@ -394,7 +450,12 @@ mod tests {
         assert!(json.contains("2"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("VotePolicy Type")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "serialization", "voting")]
+    #[allure_test]
     #[test]
     fn test_vote_policy_serialization() {
         let policy = VotePolicy {
@@ -412,7 +473,12 @@ mod tests {
         assert_eq!(decoded.quorum.0, 7);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("ProposalInput Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "borsh")]
+    #[allure_test]
     #[test]
     fn test_proposal_input_borsh_roundtrip() {
         let input = ProposalInput {
@@ -425,7 +491,12 @@ mod tests {
         assert_eq!(decoded.description, input.description);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("RolePermission Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "borsh")]
+    #[allure_test]
     #[test]
     fn test_role_permission_borsh_roundtrip() {
         use std::collections::HashMap;
@@ -443,7 +514,12 @@ mod tests {
         assert_eq!(decoded.permissions.len(), 2);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("RoleKind Type")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "serialization", "edge-case")]
+    #[allure_test]
     #[test]
     fn test_empty_group_serialization() {
         let kind = RoleKind::Group(vec![]);
@@ -459,7 +535,12 @@ mod tests {
 
     // ==================== NEGATIVE DESERIALIZATION TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_proposal_kind_unknown_variant_deserialization_fails() {
         // Unknown enum variant should fail deserialization
@@ -468,7 +549,12 @@ mod tests {
         assert!(result.is_err(), "Deserialization should fail for unknown ProposalKind variant");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_action_invalid_string_deserialization_fails() {
         // Invalid Action variant should fail deserialization
@@ -477,7 +563,12 @@ mod tests {
         assert!(result.is_err(), "Deserialization should fail for invalid Action string");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_weight_or_ratio_empty_array_fails() {
         // WeightOrRatio with empty array should fail
@@ -486,7 +577,12 @@ mod tests {
         assert!(result.is_err(), "Deserialization should fail for empty WeightOrRatio array");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik DAO Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_role_permission_missing_name_fails() {
         // RolePermission without required 'name' field should fail

@@ -45,7 +45,7 @@ function VerifyCallbackContent() {
     }
 
     try {
-      const response = await fetch(`/api/verify-status?sessionId=${sessionId}`)
+      const response = await fetch(`/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`)
       const data = await response.json()
 
       if (data.status === "success") {
@@ -95,30 +95,46 @@ function VerifyCallbackContent() {
       return
     }
 
+    // Track mounted state and timeout for cleanup
+    let isMounted = true
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
     // Poll for verification status
     let pollCount = 0
     const maxPolls = 60 // 60 * 2s = 2 minutes max
 
     const poll = async () => {
+      if (!isMounted) return
+
       const done = await checkVerificationStatus()
-      if (done) return
+      if (!isMounted || done) return
 
       pollCount++
       if (pollCount >= maxPolls) {
-        setStatus("expired")
-        setErrorMessage("Verification timed out. Please try again.")
+        if (isMounted) {
+          setStatus("expired")
+          setErrorMessage("Verification timed out. Please try again.")
+        }
         return
       }
 
       // Continue polling
-      setTimeout(poll, 2000)
+      timeoutId = setTimeout(poll, 2000)
     }
 
     poll()
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
   }, [sessionId, checkVerificationStatus])
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-background to-background/80">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-background/80">
       <Card className="max-w-md w-full">
         {status === "checking" && (
           <>
@@ -198,7 +214,7 @@ function VerifyCallbackContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-background to-background/80">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-background/80">
       <Card className="max-w-md w-full">
         <CardHeader>
           <div className="flex items-center gap-2">

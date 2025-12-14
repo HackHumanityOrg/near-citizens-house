@@ -38,11 +38,13 @@ export function BridgeInfoCard() {
     )
   }
 
-  if (error || !info) {
+  if (error || !info || !info.backendWallet) {
     return (
       <Card>
         <CardContent className="py-6">
-          <p className="text-destructive">{error instanceof Error ? error.message : "Failed to load bridge info"}</p>
+          <p className="text-destructive">
+            {error instanceof Error ? error.message : !info ? "Failed to load bridge info" : "Missing bridge data"}
+          </p>
         </CardContent>
       </Card>
     )
@@ -102,7 +104,9 @@ export function BridgeInfoCard() {
               <div>
                 <p className="text-2xl font-bold">
                   {Array.isArray(policy.defaultVotePolicy.threshold)
-                    ? `>${Math.round((policy.defaultVotePolicy.threshold[0] / policy.defaultVotePolicy.threshold[1]) * 100)}%`
+                    ? policy.defaultVotePolicy.threshold[1] !== 0
+                      ? `>${Math.round((policy.defaultVotePolicy.threshold[0] / policy.defaultVotePolicy.threshold[1]) * 100)}%`
+                      : "N/A"
                     : `${policy.defaultVotePolicy.threshold.Weight}`}
                 </p>
                 <p className="text-sm text-muted-foreground">Pass Threshold</p>
@@ -161,7 +165,9 @@ export function BridgeInfoCard() {
                 label="Threshold"
                 value={
                   Array.isArray(policy.defaultVotePolicy.threshold)
-                    ? `>${Math.round((policy.defaultVotePolicy.threshold[0] / policy.defaultVotePolicy.threshold[1]) * 100)}% approval required`
+                    ? policy.defaultVotePolicy.threshold[1] !== 0
+                      ? `>${Math.round((policy.defaultVotePolicy.threshold[0] / policy.defaultVotePolicy.threshold[1]) * 100)}% approval required`
+                      : "Threshold unknown"
                     : `${policy.defaultVotePolicy.threshold.Weight} votes required`
                 }
               />
@@ -190,7 +196,7 @@ export function BridgeInfoCard() {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4">
               {policy.roles.map((role) => (
-                <RoleCard key={role.name} role={role} defaultVotePolicy={policy.defaultVotePolicy} />
+                <RoleCard key={role.name} role={role} />
               ))}
             </div>
           </CardContent>
@@ -225,12 +231,7 @@ function PolicyItem({ label, value, description }: { label: string; value: strin
   )
 }
 
-function RoleCard({
-  role,
-}: {
-  role: TransformedPolicy["roles"][0]
-  defaultVotePolicy: TransformedPolicy["defaultVotePolicy"]
-}) {
+function RoleCard({ role }: { role: TransformedPolicy["roles"][0] }) {
   const getRoleKindInfo = () => {
     if (role.kind === "Everyone") {
       return { icon: <Globe className="h-4 w-4" />, label: "Everyone" }
@@ -278,7 +279,9 @@ function RoleCard({
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Vote Policy</p>
             {votePolicies.map(([proposalType, vp]) => {
               const threshold = Array.isArray(vp.threshold)
-                ? `>${Math.round((vp.threshold[0] / vp.threshold[1]) * 100)}%`
+                ? vp.threshold[1] !== 0
+                  ? `>${Math.round((vp.threshold[0] / vp.threshold[1]) * 100)}%`
+                  : "N/A"
                 : `${vp.threshold.Weight} votes`
               return (
                 <div key={proposalType} className="bg-muted/50 p-2 rounded text-xs">
