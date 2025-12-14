@@ -29,14 +29,15 @@ import {
 function formatThreshold(threshold: WeightOrRatio, suffix = "", fallback = "N/A"): string {
   if (Array.isArray(threshold)) {
     const [numerator, denominator] = threshold
-    if (Number.isFinite(denominator) && denominator > 0) {
+    // Guard both numerator and denominator to prevent NaN%
+    if (Number.isFinite(numerator) && Number.isFinite(denominator) && denominator > 0) {
       return `>${Math.round((numerator / denominator) * 100)}%${suffix}`
     }
     return fallback
   }
   // Type guard for Weight property (U128 serializes as string from NEAR contract)
   if (typeof threshold === "object" && threshold !== null && "Weight" in threshold) {
-    return `${threshold.Weight} votes${suffix}`
+    return `${String(threshold.Weight)} votes${suffix}`
   }
   return fallback
 }
@@ -61,9 +62,13 @@ export function BridgeInfoCard() {
   }
 
   if (error || !info || !info.backendWallet) {
-    // Log actual error for debugging, but don't expose to UI
+    // Log diagnostic info for debugging, but don't expose details to UI
     if (error) {
       console.error("[BridgeInfoCard] Failed to load bridge info:", error)
+    } else if (!info) {
+      console.warn("[BridgeInfoCard] Bridge info missing (info is null/undefined)")
+    } else if (!info.backendWallet) {
+      console.warn("[BridgeInfoCard] Bridge info missing backendWallet", { info })
     }
     return (
       <Card>
@@ -259,8 +264,10 @@ function RoleCard({ role }: { role: TransformedPolicy["roles"][0] }) {
 
   const kindInfo = getRoleKindInfo()
 
-  // Get vote policy details
-  const votePolicies = role.votePolicy ? Object.entries(role.votePolicy) : []
+  // Get vote policy details (sorted for stable rendering order)
+  const votePolicies = role.votePolicy
+    ? Object.entries(role.votePolicy).sort(([a], [b]) => a.localeCompare(b))
+    : []
 
   return (
     <div className="p-4 rounded-lg border bg-card h-full flex flex-col">
@@ -293,7 +300,8 @@ function RoleCard({ role }: { role: TransformedPolicy["roles"][0] }) {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Vote Policy</p>
             {votePolicies.map(([proposalType, vp]) => (
               <div key={proposalType} className="bg-muted/50 p-2 rounded text-xs">
-                <span className="font-medium">{proposalType}:</span> {formatThreshold(vp.threshold)}
+                <span className="font-medium">{proposalType}:</span>{" "}
+                {formatThreshold(vp.threshold, "", "Threshold unknown")}
                 <span className="text-muted-foreground"> (quorum: {vp.quorum})</span>
               </div>
             ))}
