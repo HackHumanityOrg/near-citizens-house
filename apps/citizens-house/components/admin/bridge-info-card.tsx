@@ -2,7 +2,7 @@
 
 import useSWRImmutable from "swr/immutable"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Badge } from "@near-citizens/ui"
-import { type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
+import { type TransformedPolicy, type WeightOrRatio, formatProposalBond } from "@near-citizens/shared"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
 import {
@@ -19,16 +19,14 @@ import {
   Link as LinkIcon,
 } from "lucide-react"
 
-type ThresholdValue = [number, number] | { Weight: string }
-
 /**
  * Formats a vote threshold for display.
  * Handles both ratio thresholds [numerator, denominator] and fixed weight thresholds.
- * @param threshold - The threshold value from the policy
+ * @param threshold - The threshold value from the policy (WeightOrRatio from SputnikDAO contract)
  * @param suffix - Optional suffix to append (e.g., " approval required")
  * @param fallback - Fallback text when threshold is invalid (default: "N/A")
  */
-function formatThreshold(threshold: ThresholdValue, suffix = "", fallback = "N/A"): string {
+function formatThreshold(threshold: WeightOrRatio, suffix = "", fallback = "N/A"): string {
   if (Array.isArray(threshold)) {
     const [numerator, denominator] = threshold
     if (Number.isFinite(denominator) && denominator > 0) {
@@ -36,12 +34,9 @@ function formatThreshold(threshold: ThresholdValue, suffix = "", fallback = "N/A
     }
     return fallback
   }
-  // Type guard for Weight property
+  // Type guard for Weight property (U128 serializes as string from NEAR contract)
   if (typeof threshold === "object" && threshold !== null && "Weight" in threshold) {
-    const weight = threshold.Weight
-    if (typeof weight === "string" || typeof weight === "number") {
-      return `${weight} votes${suffix}`
-    }
+    return `${threshold.Weight} votes${suffix}`
   }
   return fallback
 }

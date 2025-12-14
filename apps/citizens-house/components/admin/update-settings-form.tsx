@@ -50,9 +50,11 @@ export function UpdateSettingsForm() {
     async function fetchInfo() {
       try {
         const bridgeInfo = await getBridgeInfo()
-        setInfo(bridgeInfo)
-        backendWalletForm.setValue("newBackendWallet", bridgeInfo.backendWallet)
-        citizenRoleForm.setValue("newRole", bridgeInfo.citizenRole)
+        if (bridgeInfo) {
+          setInfo(bridgeInfo)
+          backendWalletForm.setValue("newBackendWallet", bridgeInfo.backendWallet)
+          citizenRoleForm.setValue("newRole", bridgeInfo.citizenRole)
+        }
       } catch (err) {
         console.error("Error fetching bridge info:", err)
       } finally {
