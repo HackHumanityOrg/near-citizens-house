@@ -42,7 +42,13 @@ async fn test_create_proposal_returns_id() -> anyhow::Result<()> {
     assert!(new_id > initial_id, "Proposal ID should increase");
 
     // Verify proposal exists and is a Vote type
-    let proposal = get_proposal(&env.sputnik_dao, new_id - 1).await?;
+    let proposal = get_proposal(
+        &env.sputnik_dao,
+        new_id
+            .checked_sub(1)
+            .expect("new_id should be >= 1 after assertion"),
+    )
+    .await?;
     assert!(
         proposal.kind.as_str() == Some("Vote") || proposal.kind.get("Vote").is_some(),
         "Proposal should be Vote type. Kind: {:?}",
