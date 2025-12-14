@@ -460,7 +460,8 @@ NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT=verification-v1.widefile4023.testnet
 
 # Backend wallet (for signing transactions)
 NEAR_ACCOUNT_ID=widefile4023.testnet
-NEAR_PRIVATE_KEY=ed25519:YOUR_PRIVATE_KEY
+# IMPORTANT: Never store private keys in .env files for production!
+# Use keychain signing (sign-with-keychain) as shown in deployment steps above.
 ```
 
 ---

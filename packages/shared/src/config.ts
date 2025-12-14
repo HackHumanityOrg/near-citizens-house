@@ -145,7 +145,13 @@ export const SELF_CONFIG = {
 
 // Celo RPC Configuration (for ZK proof verification)
 export const CELO_CONFIG = {
-  rpcUrls: process.env.CELO_RPC_URLS ? process.env.CELO_RPC_URLS.split(",") : null, // null means use built-in defaults
+  // Parse CELO_RPC_URLS: null means use built-in defaults, empty string treated as unset
+  rpcUrls: (() => {
+    const envValue = process.env.CELO_RPC_URLS?.trim()
+    if (!envValue) return null // empty or undefined = use defaults
+    const urls = envValue.split(",").map((url) => url.trim()).filter((url) => url.length > 0)
+    return urls.length > 0 ? urls : null
+  })(),
 }
 
 // Application Constants

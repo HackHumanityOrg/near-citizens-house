@@ -66,7 +66,9 @@ async fn test_add_member_auto_approves() -> anyhow::Result<()> {
     add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
 
     // Get the proposal that was created
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    // Using checked_sub to safely handle potential underflow
+    let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
+    let proposal_id = last_id.checked_sub(1).expect("expected last proposal id > 0");
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
 
     // Bridge should have auto-approved, so proposal should be Approved

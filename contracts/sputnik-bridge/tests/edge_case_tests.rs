@@ -124,7 +124,8 @@ async fn test_concurrent_proposal_voting() -> anyhow::Result<()> {
 
     // Create a Vote proposal
     create_proposal_via_bridge(&env.backend, &env.bridge, "Concurrent voting test").await?.into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
+    let proposal_id = last_id.checked_sub(1).expect("expected last proposal id > 0");
 
     // All citizens vote in rapid succession
     // First 3 vote approve, last 2 vote reject

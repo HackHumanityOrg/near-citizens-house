@@ -82,13 +82,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
+    // Note: Self.xyz's isOfacValid is confusingly named - true means user IS on OFAC list (i.e., blocked)
+    // Renaming for clarity: isOnOfacList = true means the user matched the OFAC sanctions list
+    const { isValid, isMinimumAgeValid, isOfacValid: isOnOfacList } = selfVerificationResult.isValidDetails || {}
 
-    console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
+    console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOnOfacList })
 
-    // Note: isOfacValid === true means user IS on OFAC list
     const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
-    const ofacCheckFailed = ofacEnabled && isOfacValid === true
+    const ofacCheckFailed = ofacEnabled && isOnOfacList === true
 
     if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
       const errorCode = !isMinimumAgeValid
@@ -247,8 +248,11 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       // Check for duplicate passport error from contract
+      // Note: This relies on the contract's error message format - if the contract changes its error messages,
+      // this detection may break. Ideally, the contract would return structured errors.
       const errorMessage = error instanceof Error ? error.message : ""
-      const errorCode = errorMessage.includes("already been registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
+      const DUPLICATE_PASSPORT_ERROR_PATTERN = "already registered"
+      const errorCode = errorMessage.includes(DUPLICATE_PASSPORT_ERROR_PATTERN) ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
 
       // Update session status for deep link callback
       const sessionId = selfVerificationResult.userData?.userIdentifier

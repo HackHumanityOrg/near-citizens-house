@@ -75,7 +75,7 @@ We recommend working through these test cases sequentially and documenting your 
 
 We use Vercel's built-in toolbar for collecting feedback during alpha testing.
 
-We will need to add your email address on an allow list for you to be able to use it, please reach out to any HackHumanity team member to do that.
+We will need to add your email address to an allow list for you to be able to use the Vercel toolbar feedback feature. Please reach out to any Hack Humanity team member to request access.
 
 ### Using the Vercel Toolbar
 
@@ -126,7 +126,7 @@ We will need to add your email address on an allow list for you to be able to us
 If you encounter issues not covered here:
 
 1. Use the Vercel toolbar to report the issue with details
-2. Contact a member of Hack Humanity
+2. Contact a Hack Humanity team member
 
 ---
 

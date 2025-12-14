@@ -25,7 +25,8 @@ tokio = { version = "1.48", features = ["full"] }
 serde_json = "1.0"
 anyhow = "1.0"
 sha2 = "0.10"
-allure-rust = "0.0.1"
+allure-rs = "0.1"
+allure-core = "0.1"
 
 [lints.clippy]
 # Security-focused lints for smart contracts
