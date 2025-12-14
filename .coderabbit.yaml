@@ -1,0 +1,166 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+early_access: true  # Enable beta features for Pro
+enable_free_tier: false  # Pro tier
+
+# Review settings
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  review_status: true
+  commit_status: true
+  fail_commit_status: false
+  abort_on_close: true
+  collapse_walkthrough: false
+  sequence_diagrams: true
+  changed_files_summary: true
+  poem: false  # Skip the poem
+
+  # Pro: Linked issues & PRs
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+
+  # Pro: Auto-suggest labels and reviewers
+  suggested_labels: true
+  auto_apply_labels: false
+  suggested_reviewers: true
+  auto_assign_reviewers: false
+
+  # Label instructions for auto-categorization
+  labeling_instructions:
+    - label: "contracts"
+      instructions: "Apply when PR modifies smart contract code in contracts/"
+    - label: "security"
+      instructions: "Apply when PR touches authentication, authorization, or cryptographic code"
+    - label: "typescript"
+      instructions: "Apply when PR modifies TypeScript files"
+
+  # Auto-format PR titles (conventional commits)
+  auto_title_instructions: |
+    Format: "<category>: <title>"
+    Category must be one of: feat, fix, docs, style, refactor, perf, test, build, ci, chore
+    Title should be concise (<= 80 chars), lowercase, no period at end
+
+  # Path-specific review instructions aligned with testing philosophy
+  path_instructions:
+    - path: "contracts/**/*.rs"
+      instructions: |
+        CRITICAL: Smart contracts are security-critical and immutable once deployed.
+        Focus on:
+        - Reentrancy vulnerabilities and cross-contract call safety
+        - Access control with require!/assert! - who can call what
+        - Storage patterns, key collisions, and state management
+        - Gas optimization - avoid unbounded iterations
+        - Edge cases that could lead to fund loss
+        - Economic attack vectors and logic flaws
+        Suggest unit tests for edge cases. If edge cases multiply, suggest fuzzing.
+        Recommend sandbox testing with local forking when applicable.
+    - path: "**/*.ts"
+      instructions: |
+        Focus on real bugs, not coverage metrics:
+        - Strict typing - avoid 'any', use proper types
+        - Prefer Zod schema validation over integration tests
+        - NEAR SDK usage patterns and async/await error handling
+        - Don't suggest unit tests for UI components or glue code
+        - Suggest tests only for: parsing functions, data transformers, auth logic, calculations
+        - Favor type safety and schema validation over writing more tests
+    - path: "**/*.md"
+      instructions: "Check for clarity and accuracy. Don't be pedantic about formatting."
+    - path: "**/*.test.ts"
+      instructions: |
+        Tests should provide genuine value, not chase coverage metrics.
+        Flag tests that:
+        - Just duplicate the implementation
+        - Test simple glue code
+        - Would be better handled by type safety or schema validation
+        Good tests: smart contracts, parsing, auth, calculations, pure functions.
+
+  # Auto-review settings
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - main
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+      - "[skip ci]"
+
+  # Pro: Docstring generation
+  finishing_touches:
+    docstrings:
+      enabled: true
+
+  # Tool integrations (nested under reviews)
+  tools:
+    # AST-based pattern matching
+    ast-grep:
+      enabled: true
+      essential_rules: true
+
+    # Rust
+    clippy:
+      enabled: true
+
+    # TypeScript/JavaScript
+    eslint:
+      enabled: true
+    biome:
+      enabled: true
+    oxlint:
+      enabled: true
+
+    # Shell scripts
+    shellcheck:
+      enabled: true
+
+    # Markdown
+    markdownlint:
+      enabled: true
+
+    # YAML validation
+    yamllint:
+      enabled: true
+
+    # Security tools
+    gitleaks:
+      enabled: true
+    semgrep:
+      enabled: true
+    checkov:
+      enabled: true
+
+    # Language/grammar
+    languagetool:
+      enabled: true
+      level: "default"
+
+# Chat/interaction settings
+chat:
+  auto_reply: true
+
+# Knowledge base - learn from codebase patterns
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: "auto"
+  issues:
+    scope: "auto"
+  pull_requests:
+    scope: "auto"
+  web_search:
+    enabled: true
+
+# Pro: Docstring generation settings
+code_generation:
+  docstrings:
+    language: "en-US"
+    path_instructions:
+      - path: "contracts/**/*.rs"
+        instructions: "Use Rust doc comments (///) with # Examples section for public functions"
+      - path: "**/*.ts"
+        instructions: "Use TSDoc format with @param, @returns tags. Keep concise."
