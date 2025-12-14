@@ -109,10 +109,9 @@ function VerifyCallbackContent() {
       abortController = new AbortController()
 
       try {
-        const response = await fetch(
-          `/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`,
-          { signal: abortController.signal }
-        )
+        const response = await fetch(`/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`, {
+          signal: abortController.signal,
+        })
 
         // Check mounted before processing response
         if (!isMounted) return false

@@ -71,12 +71,8 @@ function parseContractError(error: unknown): string {
 function extractReturnValue<T>(result: TransactionResult): T | null {
   if (result.status.SuccessValue) {
     try {
-      // Browser-compatible base64 decode
       const binaryString = atob(result.status.SuccessValue)
-      const bytes = new Uint8Array(binaryString.length)
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i)
-      }
+      const bytes = Uint8Array.from(binaryString, (c) => c.charCodeAt(0))
       const decoded = new TextDecoder().decode(bytes)
       return JSON.parse(decoded) as T
     } catch {

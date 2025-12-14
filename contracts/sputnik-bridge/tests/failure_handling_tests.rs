@@ -43,7 +43,10 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
 
     // Verify user is NOT in citizen role
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(!is_citizen, "User should not be added when verification fails");
+    assert!(
+        !is_citizen,
+        "User should not be added when verification fails"
+    );
 
     Ok(())
 }
@@ -57,7 +60,10 @@ async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
 
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
-    assert!(result.is_failure(), "Auto-approve should fail without permission");
+    assert!(
+        result.is_failure(),
+        "Auto-approve should fail without permission"
+    );
 
     let logs = extract_event_logs(&result);
     let events = parse_events(&logs);
@@ -67,7 +73,10 @@ async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
     );
 
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(!is_citizen, "User should not be added when auto-approve fails");
+    assert!(
+        !is_citizen,
+        "User should not be added when auto-approve fails"
+    );
 
     Ok(())
 }
@@ -79,7 +88,10 @@ async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
     let user = env.user(0);
 
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
-    assert!(result.is_failure(), "Verification promise failure should abort flow");
+    assert!(
+        result.is_failure(),
+        "Verification promise failure should abort flow"
+    );
 
     let logs = extract_event_logs(&result);
     let events = parse_events(&logs);
@@ -89,10 +101,16 @@ async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
     );
 
     let proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
-    assert_eq!(proposal_count, 0, "No proposals should be created after promise failure");
+    assert_eq!(
+        proposal_count, 0,
+        "No proposals should be created after promise failure"
+    );
 
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(!is_citizen, "User must not be added when verification promise fails");
+    assert!(
+        !is_citizen,
+        "User must not be added when verification promise fails"
+    );
 
     Ok(())
 }
@@ -160,7 +178,10 @@ async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
 
     // Verify user was NOT added to citizen role
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(!is_citizen, "User should not be added when DAO rejects proposal");
+    assert!(
+        !is_citizen,
+        "User should not be added when DAO rejects proposal"
+    );
 
     Ok(())
 }
@@ -207,7 +228,8 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
     );
 
     // Verify the successful user is a citizen
-    let is_citizen = is_account_in_role(&env.sputnik_dao, env.user(2).id().as_str(), "citizen").await?;
+    let is_citizen =
+        is_account_in_role(&env.sputnik_dao, env.user(2).id().as_str(), "citizen").await?;
     assert!(is_citizen, "Successfully added user should be a citizen");
 
     Ok(())
@@ -275,8 +297,10 @@ async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()>
     );
 
     // Verify user2 is a citizen but user1 is not
-    let is_user1_citizen = is_account_in_role(&env.sputnik_dao, user1.id().as_str(), "citizen").await?;
-    let is_user2_citizen = is_account_in_role(&env.sputnik_dao, user2.id().as_str(), "citizen").await?;
+    let is_user1_citizen =
+        is_account_in_role(&env.sputnik_dao, user1.id().as_str(), "citizen").await?;
+    let is_user2_citizen =
+        is_account_in_role(&env.sputnik_dao, user2.id().as_str(), "citizen").await?;
 
     assert!(!is_user1_citizen, "User1 should NOT be a citizen (failed)");
     assert!(is_user2_citizen, "User2 should be a citizen (succeeded)");

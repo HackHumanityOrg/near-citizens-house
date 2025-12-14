@@ -36,7 +36,7 @@ function formatThreshold(threshold: ThresholdValue, suffix = "", fallback = "N/A
     }
     return fallback
   }
-  return `${threshold.Weight} votes${suffix ? " required" : ""}`
+  return `${threshold.Weight} votes${suffix}`
 }
 
 export function BridgeInfoCard() {

@@ -128,7 +128,7 @@ We will need to add your email address to an allow list for you to be able to us
 If you encounter issues not covered here:
 
 1. Use the Vercel toolbar to report the issue with details
-2. Contact a Hack Humanity team member
+2. Contact a Hack Humanity team member on Telegram
 
 ---
 

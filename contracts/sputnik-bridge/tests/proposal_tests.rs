@@ -17,7 +17,8 @@ use serde_json::json;
 async fn test_create_vote_proposal_success() -> anyhow::Result<()> {
     let env = setup().await?;
 
-    let result = create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal description").await?;
+    let result =
+        create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal description").await?;
     assert!(
         result.is_success(),
         "Create proposal should succeed. Failures: {:?}",
@@ -33,7 +34,9 @@ async fn test_create_proposal_returns_id() -> anyhow::Result<()> {
 
     let initial_id = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
 
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal")
+        .await?
+        .into_result()?;
 
     let new_id = get_last_proposal_id(&env.sputnik_dao).await?;
     assert!(new_id > initial_id, "Proposal ID should increase");
@@ -137,7 +140,10 @@ async fn test_create_proposal_whitespace_only_description() -> anyhow::Result<()
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, "   \t\n   ").await?;
 
     // Contract should reject whitespace-only descriptions as effectively empty
-    assert!(result.is_failure(), "Whitespace-only description should be rejected");
+    assert!(
+        result.is_failure(),
+        "Whitespace-only description should be rejected"
+    );
     assert!(
         contains_error(&result, "cannot be empty"),
         "Should fail with 'cannot be empty' error. Actual failures: {:?}",
@@ -189,7 +195,10 @@ async fn test_create_proposal_insufficient_deposit() -> anyhow::Result<()> {
         .await?;
 
     // Should fail due to insufficient proposal bond
-    assert!(result.is_failure(), "Create proposal with insufficient deposit should fail");
+    assert!(
+        result.is_failure(),
+        "Create proposal with insufficient deposit should fail"
+    );
 
     // Verify error message mentions insufficient deposit/bond
     let has_deposit_error = contains_error(&result, "Not enough deposit")

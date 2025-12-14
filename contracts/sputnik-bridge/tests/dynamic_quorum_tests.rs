@@ -26,17 +26,20 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
     // Initial state: no citizens, quorum should be 0
     let initial_quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
     let initial_threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
-    println!("Initial: quorum={}, threshold={:?}", initial_quorum, initial_threshold);
+    println!(
+        "Initial: quorum={}, threshold={:?}",
+        initial_quorum, initial_threshold
+    );
     assert_eq!(initial_quorum, 0, "Initial quorum should be 0");
     assert_eq!(initial_threshold, (1, 2), "Threshold should be 50% (1/2)");
 
     // Add citizens and verify quorum updates
     // Expected quorum = ceil(citizen_count * 7 / 100)
     let expected_quorums = [
-        (1, 1),   // ceil(1 * 0.07) = 1
-        (5, 1),   // ceil(5 * 0.07) = 1
-        (10, 1),  // ceil(10 * 0.07) = 1
-        (15, 2),  // ceil(15 * 0.07) = 2
+        (1, 1),  // ceil(1 * 0.07) = 1
+        (5, 1),  // ceil(5 * 0.07) = 1
+        (10, 1), // ceil(10 * 0.07) = 1
+        (15, 2), // ceil(15 * 0.07) = 2
     ];
 
     let mut added_count = 0usize;
@@ -57,7 +60,11 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
 
         // Verify citizen count
         let citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
-        assert_eq!(citizen_count, target_count, "Should have {} citizens", target_count);
+        assert_eq!(
+            citizen_count, target_count,
+            "Should have {} citizens",
+            target_count
+        );
 
         // Verify quorum was updated
         let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
@@ -86,7 +93,9 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
     for i in 0..10 {
         let user = env.user(i);
         verify_user(&env.backend, &env.verified_accounts, user, i).await?;
-        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
     }
 
     // Verify setup
@@ -95,22 +104,37 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
 
     let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
     let threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
-    println!("Setup: {} citizens, quorum={}, threshold={:?}", citizen_count, quorum, threshold);
+    println!(
+        "Setup: {} citizens, quorum={}, threshold={:?}",
+        citizen_count, quorum, threshold
+    );
 
     // Calculate effective threshold: max(quorum, ceil(10 * 1 / 2)) = max(1, 6) = 6
-    let effective_threshold = calculate_effective_threshold(quorum, threshold, citizen_count as u64);
+    let effective_threshold =
+        calculate_effective_threshold(quorum, threshold, citizen_count as u64);
     println!("Effective threshold: {}", effective_threshold);
-    assert_eq!(effective_threshold, 6, "Effective threshold should be 6 (50% of 10 + 1)");
+    assert_eq!(
+        effective_threshold, 6,
+        "Effective threshold should be 6 (50% of 10 + 1)"
+    );
 
     // Create a Vote proposal
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Test quorum failure").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Test quorum failure")
+        .await?
+        .into_result()?;
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
 
     // Only 2 citizens vote YES (less than effective_threshold of 6)
     for i in 0..2 {
-        vote_on_proposal(env.user(i), &env.sputnik_dao, proposal_id, "VoteApprove", json!("Vote"))
-            .await?
-            .into_result()?;
+        vote_on_proposal(
+            env.user(i),
+            &env.sputnik_dao,
+            proposal_id,
+            "VoteApprove",
+            json!("Vote"),
+        )
+        .await?
+        .into_result()?;
     }
 
     // Proposal should still be InProgress (not enough votes)
@@ -135,7 +159,9 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
     for i in 0..20 {
         let user = env.user(i);
         verify_user(&env.backend, &env.verified_accounts, user, i).await?;
-        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
     }
 
     // Verify setup
@@ -144,16 +170,22 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
 
     let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
     let threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
-    println!("Setup: {} citizens, quorum={}, threshold={:?}", citizen_count, quorum, threshold);
+    println!(
+        "Setup: {} citizens, quorum={}, threshold={:?}",
+        citizen_count, quorum, threshold
+    );
 
     // quorum = ceil(20 * 7 / 100) = 2
     // threshold_weight = ceil(20 * 1 / 2) = 11 (actually (20/2)+1 = 11 per SputnikDAO)
     // effective_threshold = max(2, 11) = 11
-    let effective_threshold = calculate_effective_threshold(quorum, threshold, citizen_count as u64);
+    let effective_threshold =
+        calculate_effective_threshold(quorum, threshold, citizen_count as u64);
     println!("Effective threshold: {}", effective_threshold);
 
     // Create a Vote proposal
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Test threshold failure").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Test threshold failure")
+        .await?
+        .into_result()?;
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
 
     // 5 citizens vote YES, 5 vote NO
@@ -161,14 +193,26 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
     // YES votes: 5 < effective_threshold (11) - threshold fails
     // NO votes: 5 < effective_threshold (11) - rejection threshold also not met
     for i in 0..5 {
-        vote_on_proposal(env.user(i), &env.sputnik_dao, proposal_id, "VoteApprove", json!("Vote"))
-            .await?
-            .into_result()?;
+        vote_on_proposal(
+            env.user(i),
+            &env.sputnik_dao,
+            proposal_id,
+            "VoteApprove",
+            json!("Vote"),
+        )
+        .await?
+        .into_result()?;
     }
     for i in 5..10 {
-        vote_on_proposal(env.user(i), &env.sputnik_dao, proposal_id, "VoteReject", json!("Vote"))
-            .await?
-            .into_result()?;
+        vote_on_proposal(
+            env.user(i),
+            &env.sputnik_dao,
+            proposal_id,
+            "VoteReject",
+            json!("Vote"),
+        )
+        .await?
+        .into_result()?;
     }
 
     // Proposal should be InProgress (neither YES nor NO reached threshold)
@@ -201,13 +245,18 @@ async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow
     for i in 0..10 {
         let user = env.user(i);
         verify_user(&env.backend, &env.verified_accounts, user, i).await?;
-        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
     }
 
     let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
     let threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
     let effective_threshold = calculate_effective_threshold(quorum, threshold, 10);
-    println!("With 10 citizens: quorum={}, threshold={:?}, effective={}", quorum, threshold, effective_threshold);
+    println!(
+        "With 10 citizens: quorum={}, threshold={:?}, effective={}",
+        quorum, threshold, effective_threshold
+    );
 
     // quorum = ceil(10 * 7 / 100) = 1
     // threshold_weight = (10 * 1 / 2) + 1 = 6
@@ -235,16 +284,23 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
     for i in 0..10 {
         let user = env.user(i);
         verify_user(&env.backend, &env.verified_accounts, user, i).await?;
-        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
     }
 
     let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
     let threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
     let effective_threshold = calculate_effective_threshold(quorum, threshold, 10);
-    println!("Effective threshold: {} (quorum={}, threshold={:?})", effective_threshold, quorum, threshold);
+    println!(
+        "Effective threshold: {} (quorum={}, threshold={:?})",
+        effective_threshold, quorum, threshold
+    );
 
     // Create a Vote proposal
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Test both pass").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Test both pass")
+        .await?
+        .into_result()?;
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
 
     // Have exactly effective_threshold citizens vote YES
@@ -253,7 +309,14 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
     println!("Casting {} YES votes", votes_needed);
 
     for i in 0..votes_needed {
-        let result = vote_on_proposal(env.user(i), &env.sputnik_dao, proposal_id, "VoteApprove", json!("Vote")).await?;
+        let result = vote_on_proposal(
+            env.user(i),
+            &env.sputnik_dao,
+            proposal_id,
+            "VoteApprove",
+            json!("Vote"),
+        )
+        .await?;
 
         if i < votes_needed - 1 {
             // Before reaching threshold, proposal should be InProgress
@@ -291,7 +354,9 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
     for i in 0..10 {
         let user = env.user(i);
         verify_user(&env.backend, &env.verified_accounts, user, i).await?;
-        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
     }
 
     let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
@@ -299,17 +364,28 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
     let effective_threshold = calculate_effective_threshold(quorum, threshold, 10);
 
     // Create a Vote proposal
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Test rejection").await?.into_result()?;
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Test rejection")
+        .await?
+        .into_result()?;
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
 
     // Have effective_threshold citizens vote NO
     let votes_needed = effective_threshold as usize;
-    println!("Casting {} NO votes (effective_threshold={})", votes_needed, effective_threshold);
+    println!(
+        "Casting {} NO votes (effective_threshold={})",
+        votes_needed, effective_threshold
+    );
 
     for i in 0..votes_needed {
-        vote_on_proposal(env.user(i), &env.sputnik_dao, proposal_id, "VoteReject", json!("Vote"))
-            .await?
-            .into_result()?;
+        vote_on_proposal(
+            env.user(i),
+            &env.sputnik_dao,
+            proposal_id,
+            "VoteReject",
+            json!("Vote"),
+        )
+        .await?
+        .into_result()?;
     }
 
     // Proposal should be Rejected

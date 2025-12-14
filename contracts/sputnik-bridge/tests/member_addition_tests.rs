@@ -48,7 +48,9 @@ async fn test_add_member_creates_proposal() -> anyhow::Result<()> {
     let initial_id = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
 
     // Add member via bridge
-    add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
 
     // Verify proposal was created
     let new_id = get_last_proposal_id(&env.sputnik_dao).await?;
@@ -63,12 +65,16 @@ async fn test_add_member_auto_approves() -> anyhow::Result<()> {
     let user = env.user(0);
 
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
-    add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
 
     // Get the proposal that was created
     // Using checked_sub to safely handle potential underflow
     let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
-    let proposal_id = last_id.checked_sub(1).expect("expected last proposal id > 0");
+    let proposal_id = last_id
+        .checked_sub(1)
+        .expect("expected last proposal id > 0");
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
 
     // Bridge should have auto-approved, so proposal should be Approved
@@ -88,11 +94,16 @@ async fn test_member_appears_in_citizen_role() -> anyhow::Result<()> {
     let user = env.user(0);
 
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
-    add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
 
     // Verify user is now in citizen role
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(is_citizen, "User should be in citizen role after being added");
+    assert!(
+        is_citizen,
+        "User should be in citizen role after being added"
+    );
 
     Ok(())
 }
@@ -146,12 +157,15 @@ async fn test_add_multiple_members() -> anyhow::Result<()> {
     // Verify and add all users
     for (i, user) in env.users.iter().enumerate() {
         verify_user(&env.backend, &env.verified_accounts, user, i).await?;
-        add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
     }
 
     // Verify all users are in citizen role
     for user in &env.users {
-        let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+        let is_citizen =
+            is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
         assert!(is_citizen, "User {} should be in citizen role", user.id());
     }
 
@@ -165,7 +179,9 @@ async fn test_add_member_already_citizen() -> anyhow::Result<()> {
 
     // Verify and add user as citizen
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
-    add_member_via_bridge(&env.backend, &env.bridge, user).await?.into_result()?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
 
     // Verify user is a citizen
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
@@ -195,8 +211,12 @@ async fn test_add_member_already_citizen() -> anyhow::Result<()> {
     );
 
     // User should still be a citizen (no state corruption)
-    let is_still_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(is_still_citizen, "User should still be a citizen after duplicate add");
+    let is_still_citizen =
+        is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+    assert!(
+        is_still_citizen,
+        "User should still be a citizen after duplicate add"
+    );
 
     Ok(())
 }

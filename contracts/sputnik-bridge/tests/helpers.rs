@@ -261,10 +261,7 @@ pub fn create_policy_without_autoapprove(bridge_account_id: &str) -> serde_json:
         for role in roles.iter_mut() {
             if role.get("name").and_then(|n| n.as_str()) == Some("bridge") {
                 // Replace permissions with limited set (no VoteApprove)
-                role["permissions"] = json!([
-                    "add_member_to_role:AddProposal",
-                    "vote:AddProposal"
-                ]);
+                role["permissions"] = json!(["add_member_to_role:AddProposal", "vote:AddProposal"]);
             }
         }
     }
@@ -310,7 +307,8 @@ where
     let backend = worker.dev_create_account().await?;
 
     // Deploy verified-accounts contract (optionally uninitialized)
-    let verified_accounts = deploy_verified_accounts(&worker, &backend, initialize_verified).await?;
+    let verified_accounts =
+        deploy_verified_accounts(&worker, &backend, initialize_verified).await?;
 
     // Deploy bridge contract first (we need its ID for DAO policy)
     let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
@@ -632,7 +630,11 @@ pub async fn get_vote_threshold(dao: &Contract, role_name: &str) -> anyhow::Resu
 /// Calculate the effective threshold for a proposal
 /// effective_threshold = max(quorum, (num * citizen_count / denom) + 1)
 /// Note: SputnikDAO uses (num * weight / denom) + 1, NOT ceiling division
-pub fn calculate_effective_threshold(quorum: u64, threshold: (u64, u64), citizen_count: u64) -> u64 {
+pub fn calculate_effective_threshold(
+    quorum: u64,
+    threshold: (u64, u64),
+    citizen_count: u64,
+) -> u64 {
     let threshold_weight = if threshold.1 == 0 {
         // Fixed weight
         threshold.0

@@ -74,8 +74,12 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
         .await?;
     assert!(add_result.is_success(), "New backend should be authorized");
 
-    let is_citizen = is_account_in_role(&env.sputnik_dao, new_backend.id().as_str(), "citizen").await?;
-    assert!(is_citizen, "Rotated backend should successfully add members");
+    let is_citizen =
+        is_account_in_role(&env.sputnik_dao, new_backend.id().as_str(), "citizen").await?;
+    assert!(
+        is_citizen,
+        "Rotated backend should successfully add members"
+    );
 
     Ok(())
 }
@@ -179,13 +183,28 @@ async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Res
         .expect("expected at least 2 proposals (member + quorum)");
 
     let is_voter = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "voter").await?;
-    assert!(is_voter, "User should be placed into the updated citizen role");
+    assert!(
+        is_voter,
+        "User should be placed into the updated citizen role"
+    );
 
     let events = parse_events(&logs);
-    let member_added = events.iter().find(|e| e.event == "member_added").expect("member_added event missing");
-    assert_eq!(member_added.data.get("member_id"), Some(&json!(user.id().to_string())));
+    let member_added = events
+        .iter()
+        .find(|e| e.event == "member_added")
+        .expect("member_added event missing");
+    assert_eq!(
+        member_added.data.get("member_id"),
+        Some(&json!(user.id().to_string()))
+    );
     assert_eq!(member_added.data.get("role"), Some(&json!("voter")));
-    assert_eq!(member_added.data.get("proposal_id").and_then(|v| v.as_u64()), Some(add_member_proposal_id));
+    assert_eq!(
+        member_added
+            .data
+            .get("proposal_id")
+            .and_then(|v| v.as_u64()),
+        Some(add_member_proposal_id)
+    );
 
     Ok(())
 }
@@ -206,15 +225,27 @@ async fn test_member_added_event_emitted() -> anyhow::Result<()> {
 
     let events = parse_events(&logs);
 
-    let member_added = events.iter().find(|e| e.event == "member_added").expect("member_added event missing");
+    let member_added = events
+        .iter()
+        .find(|e| e.event == "member_added")
+        .expect("member_added event missing");
     // The last proposal is the quorum_update, so the add_member proposal is last - 2
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?;
     let add_member_proposal_id = proposal_id
         .checked_sub(2)
         .expect("expected at least 2 proposals (member + quorum)");
-    assert_eq!(member_added.data.get("member_id"), Some(&json!(user.id().to_string())));
+    assert_eq!(
+        member_added.data.get("member_id"),
+        Some(&json!(user.id().to_string()))
+    );
     assert_eq!(member_added.data.get("role"), Some(&json!("citizen")));
-    assert_eq!(member_added.data.get("proposal_id").and_then(|v| v.as_u64()), Some(add_member_proposal_id));
+    assert_eq!(
+        member_added
+            .data
+            .get("proposal_id")
+            .and_then(|v| v.as_u64()),
+        Some(add_member_proposal_id)
+    );
 
     Ok(())
 }
@@ -231,12 +262,28 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
 
     let events = parse_events(&logs);
 
-    let proposal_created =
-        events.iter().find(|e| e.event == "proposal_created").expect("proposal_created event missing");
-    let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
-    let proposal_id = last_id.checked_sub(1).expect("expected last proposal id > 0");
-    assert_eq!(proposal_created.data.get("proposal_id").and_then(|v| v.as_u64()), Some(proposal_id));
-    assert_eq!(proposal_created.data.get("description"), Some(&json!("Event test")));
+    let proposal_created = events
+        .iter()
+        .find(|e| e.event == "proposal_created")
+        .expect("proposal_created event missing");
+
+    // Verify event contains required fields with valid values
+    let emitted_proposal_id = proposal_created
+        .data
+        .get("proposal_id")
+        .and_then(|v| v.as_u64())
+        .expect("proposal_created event should have proposal_id");
+    assert_eq!(
+        proposal_created.data.get("description"),
+        Some(&json!("Event test"))
+    );
+
+    // Verify the emitted proposal_id corresponds to a real proposal in the DAO
+    let proposal = get_proposal(&env.sputnik_dao, emitted_proposal_id).await?;
+    assert_eq!(
+        proposal.description, "Event test",
+        "Proposal description should match"
+    );
 
     Ok(())
 }

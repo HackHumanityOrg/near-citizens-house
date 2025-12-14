@@ -107,7 +107,10 @@ fn emit_event<T: Serialize>(event_name: &str, data: &T) {
             ));
         }
         Err(e) => {
-            env::log_str(&format!("EVENT_ERROR: Failed to serialize event '{}': {}", event_name, e));
+            env::log_str(&format!(
+                "EVENT_ERROR: Failed to serialize event '{}': {}",
+                event_name, e
+            ));
         }
     }
 }
@@ -220,7 +223,10 @@ impl SputnikBridge {
 
         // Create AddMemberToRole proposal on SputnikDAO
         let proposal = ProposalInput {
-            description: format!("Add verified citizen {} to {} role", near_account_id, self.citizen_role),
+            description: format!(
+                "Add verified citizen {} to {} role",
+                near_account_id, self.citizen_role
+            ),
             kind: ProposalKind::AddMemberToRole {
                 member_id: near_account_id.clone(),
                 role: self.citizen_role.clone(),
@@ -274,7 +280,11 @@ impl SputnikBridge {
 
     /// Callback after member addition is approved - now update the quorum
     #[private]
-    pub fn callback_member_added(&mut self, near_account_id: AccountId, proposal_id: u64) -> Promise {
+    pub fn callback_member_added(
+        &mut self,
+        near_account_id: AccountId,
+        proposal_id: u64,
+    ) -> Promise {
         // Check act_proposal succeeded
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
@@ -471,7 +481,12 @@ impl SputnikBridge {
 
     /// Final callback after quorum is updated
     #[private]
-    pub fn callback_quorum_updated(&mut self, citizen_count: u64, new_quorum: u64, proposal_id: u64) {
+    pub fn callback_quorum_updated(
+        &mut self,
+        citizen_count: u64,
+        new_quorum: u64,
+        proposal_id: u64,
+    ) {
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
                 emit_event(
@@ -633,9 +648,9 @@ impl SputnikBridge {
 mod tests {
     use super::*;
     use allure_rs::prelude::*;
+    use near_sdk::test_utils::get_logs;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::testing_env;
-    use near_sdk::test_utils::get_logs;
 
     fn get_context(predecessor: AccountId) -> VMContextBuilder {
         let mut builder = VMContextBuilder::new();
@@ -703,12 +718,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         let info = contract.get_info();
         assert_eq!(info.backend_wallet, accounts(0));
@@ -728,12 +739,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         contract.update_backend_wallet(accounts(3));
         assert_eq!(contract.get_backend_wallet(), accounts(3));
@@ -750,12 +757,8 @@ mod tests {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Switch to different account
         context.predecessor_account_id(accounts(4));
@@ -778,12 +781,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         contract.update_citizen_role("voter".to_string());
         assert_eq!(contract.get_citizen_role(), "voter");
@@ -800,12 +799,8 @@ mod tests {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Switch to different account
         context.predecessor_account_id(accounts(4));
@@ -929,13 +924,13 @@ mod tests {
         // - Any remainder above a multiple of ~14.28 adds 1
 
         // Test sequence: quorum increases every ~14.3 citizens
-        assert_eq!(super::calculate_quorum(1), 1);   // 0.07 → 1
-        assert_eq!(super::calculate_quorum(14), 1);  // 0.98 → 1
-        assert_eq!(super::calculate_quorum(15), 2);  // 1.05 → 2
-        assert_eq!(super::calculate_quorum(28), 2);  // 1.96 → 2
-        assert_eq!(super::calculate_quorum(29), 3);  // 2.03 → 3
-        assert_eq!(super::calculate_quorum(42), 3);  // 2.94 → 3
-        assert_eq!(super::calculate_quorum(43), 4);  // 3.01 → 4
+        assert_eq!(super::calculate_quorum(1), 1); // 0.07 → 1
+        assert_eq!(super::calculate_quorum(14), 1); // 0.98 → 1
+        assert_eq!(super::calculate_quorum(15), 2); // 1.05 → 2
+        assert_eq!(super::calculate_quorum(28), 2); // 1.96 → 2
+        assert_eq!(super::calculate_quorum(29), 3); // 2.03 → 3
+        assert_eq!(super::calculate_quorum(42), 3); // 2.94 → 3
+        assert_eq!(super::calculate_quorum(43), 4); // 3.01 → 4
     }
 
     #[allure_epic("Smart Contracts")]
@@ -969,8 +964,16 @@ mod tests {
         // limit-1: N/A (can't have negative citizens)
         // limit:   0 citizens → quorum 0
         // limit+1: 1 citizen  → quorum 1
-        assert_eq!(super::calculate_quorum(0), 0, "0 citizens should have 0 quorum");
-        assert_eq!(super::calculate_quorum(1), 1, "1 citizen should have 1 quorum (ceil(0.07) = 1)");
+        assert_eq!(
+            super::calculate_quorum(0),
+            0,
+            "0 citizens should have 0 quorum"
+        );
+        assert_eq!(
+            super::calculate_quorum(1),
+            1,
+            "1 citizen should have 1 quorum (ceil(0.07) = 1)"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -987,9 +990,21 @@ mod tests {
         // limit-1: 14 citizens → quorum 1
         // limit:   15 citizens → quorum 2 (first citizen count with quorum 2)
         // limit+1: 16 citizens → quorum 2
-        assert_eq!(super::calculate_quorum(14), 1, "14 citizens: ceil(0.98) = 1");
-        assert_eq!(super::calculate_quorum(15), 2, "15 citizens: ceil(1.05) = 2");
-        assert_eq!(super::calculate_quorum(16), 2, "16 citizens: ceil(1.12) = 2");
+        assert_eq!(
+            super::calculate_quorum(14),
+            1,
+            "14 citizens: ceil(0.98) = 1"
+        );
+        assert_eq!(
+            super::calculate_quorum(15),
+            2,
+            "15 citizens: ceil(1.05) = 2"
+        );
+        assert_eq!(
+            super::calculate_quorum(16),
+            2,
+            "16 citizens: ceil(1.12) = 2"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1006,9 +1021,21 @@ mod tests {
         // limit-1: 28 citizens → quorum 2
         // limit:   29 citizens → quorum 3 (first citizen count with quorum 3)
         // limit+1: 30 citizens → quorum 3
-        assert_eq!(super::calculate_quorum(28), 2, "28 citizens: ceil(1.96) = 2");
-        assert_eq!(super::calculate_quorum(29), 3, "29 citizens: ceil(2.03) = 3");
-        assert_eq!(super::calculate_quorum(30), 3, "30 citizens: ceil(2.10) = 3");
+        assert_eq!(
+            super::calculate_quorum(28),
+            2,
+            "28 citizens: ceil(1.96) = 2"
+        );
+        assert_eq!(
+            super::calculate_quorum(29),
+            3,
+            "29 citizens: ceil(2.03) = 3"
+        );
+        assert_eq!(
+            super::calculate_quorum(30),
+            3,
+            "30 citizens: ceil(2.10) = 3"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1025,9 +1052,21 @@ mod tests {
         // limit-1: 85 citizens → quorum 6
         // limit:   86 citizens → quorum 7 (first citizen count with quorum 7)
         // limit+1: 87 citizens → quorum 7
-        assert_eq!(super::calculate_quorum(85), 6, "85 citizens: ceil(5.95) = 6");
-        assert_eq!(super::calculate_quorum(86), 7, "86 citizens: ceil(6.02) = 7");
-        assert_eq!(super::calculate_quorum(87), 7, "87 citizens: ceil(6.09) = 7");
+        assert_eq!(
+            super::calculate_quorum(85),
+            6,
+            "85 citizens: ceil(5.95) = 6"
+        );
+        assert_eq!(
+            super::calculate_quorum(86),
+            7,
+            "86 citizens: ceil(6.02) = 7"
+        );
+        assert_eq!(
+            super::calculate_quorum(87),
+            7,
+            "87 citizens: ceil(6.09) = 7"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1045,9 +1084,21 @@ mod tests {
         // limit-1: 99 citizens  → quorum 7
         // limit:   100 citizens → quorum 7 (exact 7%)
         // limit+1: 101 citizens → quorum 8
-        assert_eq!(super::calculate_quorum(99), 7, "99 citizens: ceil(6.93) = 7");
-        assert_eq!(super::calculate_quorum(100), 7, "100 citizens: exact 7% = 7");
-        assert_eq!(super::calculate_quorum(101), 8, "101 citizens: ceil(7.07) = 8");
+        assert_eq!(
+            super::calculate_quorum(99),
+            7,
+            "99 citizens: ceil(6.93) = 7"
+        );
+        assert_eq!(
+            super::calculate_quorum(100),
+            7,
+            "100 citizens: exact 7% = 7"
+        );
+        assert_eq!(
+            super::calculate_quorum(101),
+            8,
+            "101 citizens: ceil(7.07) = 8"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1065,9 +1116,21 @@ mod tests {
         // limit-1: 199 citizens → quorum 14
         // limit:   200 citizens → quorum 14 (exact 14%)
         // limit+1: 201 citizens → quorum 15
-        assert_eq!(super::calculate_quorum(199), 14, "199 citizens: ceil(13.93) = 14");
-        assert_eq!(super::calculate_quorum(200), 14, "200 citizens: exact 14% = 14");
-        assert_eq!(super::calculate_quorum(201), 15, "201 citizens: ceil(14.07) = 15");
+        assert_eq!(
+            super::calculate_quorum(199),
+            14,
+            "199 citizens: ceil(13.93) = 14"
+        );
+        assert_eq!(
+            super::calculate_quorum(200),
+            14,
+            "200 citizens: exact 14% = 14"
+        );
+        assert_eq!(
+            super::calculate_quorum(201),
+            15,
+            "201 citizens: ceil(14.07) = 15"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1081,13 +1144,29 @@ mod tests {
         // Test cases where floor and ceiling would give different results
         // These verify that we're using ceiling, not floor
         // floor(0.07) = 0, ceil(0.07) = 1
-        assert_eq!(super::calculate_quorum(1), 1, "1 citizen: floor=0, ceil=1, should be 1");
+        assert_eq!(
+            super::calculate_quorum(1),
+            1,
+            "1 citizen: floor=0, ceil=1, should be 1"
+        );
         // floor(0.98) = 0, ceil(0.98) = 1
-        assert_eq!(super::calculate_quorum(14), 1, "14 citizens: floor=0, ceil=1, should be 1");
+        assert_eq!(
+            super::calculate_quorum(14),
+            1,
+            "14 citizens: floor=0, ceil=1, should be 1"
+        );
         // floor(1.05) = 1, ceil(1.05) = 2
-        assert_eq!(super::calculate_quorum(15), 2, "15 citizens: floor=1, ceil=2, should be 2");
+        assert_eq!(
+            super::calculate_quorum(15),
+            2,
+            "15 citizens: floor=1, ceil=2, should be 2"
+        );
         // floor(6.93) = 6, ceil(6.93) = 7
-        assert_eq!(super::calculate_quorum(99), 7, "99 citizens: floor=6, ceil=7, should be 7");
+        assert_eq!(
+            super::calculate_quorum(99),
+            7,
+            "99 citizens: floor=6, ceil=7, should be 7"
+        );
     }
 
     // ==================== DESCRIPTION VALIDATION TESTS (Phase 2.1) ====================
@@ -1105,12 +1184,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Empty description should fail before cross-contract call
         assert_panic_with(
@@ -1132,12 +1207,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Whitespace-only description should fail (trimmed to empty)
         assert_panic_with(
@@ -1162,12 +1233,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         let description = "x".repeat(9999);
         assert_eq!(description.len(), 9999);
@@ -1187,12 +1254,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         let description = "x".repeat(10000);
         assert_eq!(description.len(), 10000);
@@ -1212,12 +1275,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         let too_long = "x".repeat(10001);
         assert_eq!(too_long.len(), 10001);
@@ -1241,12 +1300,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Single char should pass validation
         let _ = contract.create_proposal("x".to_string());
@@ -1263,12 +1318,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // 10001 characters exceeds the 10000 char limit
         let too_long = "x".repeat(10001);
@@ -1291,12 +1342,8 @@ mod tests {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Switch to different account
         context.predecessor_account_id(accounts(4));
@@ -1321,12 +1368,8 @@ mod tests {
         let mut context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Switch to different account
         context.predecessor_account_id(accounts(4));
@@ -1459,12 +1502,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "voter".to_string(),
-        );
+        let contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "voter".to_string());
 
         let info = contract.get_info();
         assert_eq!(info.backend_wallet, accounts(0));
@@ -1484,17 +1523,16 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         let info = contract.get_info();
         assert_eq!(contract.get_backend_wallet(), info.backend_wallet);
         assert_eq!(contract.get_sputnik_dao(), info.sputnik_dao);
-        assert_eq!(contract.get_verified_accounts_contract(), info.verified_accounts_contract);
+        assert_eq!(
+            contract.get_verified_accounts_contract(),
+            info.verified_accounts_contract
+        );
         assert_eq!(contract.get_citizen_role(), info.citizen_role);
     }
 
@@ -1535,7 +1573,6 @@ mod tests {
         }
     }
 
-
     #[allure_epic("Smart Contracts")]
     #[allure_feature("Sputnik Bridge Contract")]
     #[allure_story("Invariants")]
@@ -1572,12 +1609,8 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // All account IDs should be non-empty
         assert!(
@@ -1585,7 +1618,10 @@ mod tests {
             "Backend wallet should not be empty"
         );
         assert!(
-            !contract.get_verified_accounts_contract().as_str().is_empty(),
+            !contract
+                .get_verified_accounts_contract()
+                .as_str()
+                .is_empty(),
             "Verified accounts contract should not be empty"
         );
         assert!(
@@ -1607,7 +1643,10 @@ mod tests {
     #[test]
     fn test_invariant_max_description_length_positive() {
         // Invariant: MAX_DESCRIPTION_LEN must be positive
-        assert!(MAX_DESCRIPTION_LEN > 0, "MAX_DESCRIPTION_LEN must be positive");
+        assert!(
+            MAX_DESCRIPTION_LEN > 0,
+            "MAX_DESCRIPTION_LEN must be positive"
+        );
     }
 
     // ==================== CALLBACK TESTS (Phase 3) ====================
@@ -1631,12 +1670,8 @@ mod tests {
             )]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Should succeed and schedule next promise (add_proposal)
         let _ = contract.callback_add_member(accounts(3));
@@ -1661,12 +1696,8 @@ mod tests {
             )]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         assert_panic_with(
             || {
@@ -1695,12 +1726,8 @@ mod tests {
             )]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Should succeed and schedule next promise (act_proposal)
         let _ = contract.callback_proposal_created(accounts(3));
@@ -1723,12 +1750,8 @@ mod tests {
             vec![PromiseResult::Successful(vec![])]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Should succeed and emit event + schedule get_policy
         let _ = contract.callback_member_added(accounts(3), 1);
@@ -1737,7 +1760,10 @@ mod tests {
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected logs to be emitted");
         assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(logs[0].contains("member_added"), "Expected member_added event");
+        assert!(
+            logs[0].contains("member_added"),
+            "Expected member_added event"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1749,7 +1775,7 @@ mod tests {
     #[test]
     fn test_callback_policy_received_for_quorum() {
         let builder = get_context(accounts(0));
-        
+
         // Mock Policy JSON
         let policy_json = near_sdk::serde_json::json!({
             "roles": [
@@ -1761,7 +1787,7 @@ mod tests {
             ],
             "proposal_bond": "100"
         });
-        
+
         testing_env!(
             builder.build(),
             near_sdk::test_vm_config(),
@@ -1772,12 +1798,8 @@ mod tests {
             )]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // 2 members -> quorum ceil(2 * 0.07) = 1
         // Should succeed and schedule add_proposal (quorum update)
@@ -1803,12 +1825,8 @@ mod tests {
             )]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Should succeed and schedule get_proposal
         let _ = contract.callback_quorum_proposal_created(2, 1);
@@ -1823,7 +1841,7 @@ mod tests {
     #[test]
     fn test_callback_got_quorum_proposal() {
         let builder = get_context(accounts(0));
-        
+
         // Mock Proposal JSON (ProposalKind::ChangePolicyAddOrUpdateRole)
         // We just need the "kind" field structure
         let proposal_json = near_sdk::serde_json::json!({
@@ -1849,12 +1867,8 @@ mod tests {
             )]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Should extract kind and schedule act_proposal
         let _ = contract.callback_got_quorum_proposal(2, 1, 2);
@@ -1877,21 +1891,20 @@ mod tests {
             vec![PromiseResult::Successful(vec![])]
         );
 
-        let mut contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let mut contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Should succeed and emit event
         contract.callback_quorum_updated(2, 1, 2);
-        
+
         // Check for event emission
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected logs to be emitted");
         assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(logs[0].contains("quorum_updated"), "Expected quorum_updated event");
+        assert!(
+            logs[0].contains("quorum_updated"),
+            "Expected quorum_updated event"
+        );
     }
 
     #[allure_epic("Smart Contracts")]
@@ -1913,20 +1926,19 @@ mod tests {
             )]
         );
 
-        let contract = SputnikBridge::new(
-            accounts(0),
-            accounts(1),
-            accounts(2),
-            "citizen".to_string(),
-        );
+        let contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
 
         // Should succeed and emit event
         let _ = contract.callback_vote_proposal_created("desc".to_string());
-        
+
         // Check for event emission
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected logs to be emitted");
         assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(logs[0].contains("proposal_created"), "Expected proposal_created event");
+        assert!(
+            logs[0].contains("proposal_created"),
+            "Expected proposal_created event"
+        );
     }
 }
