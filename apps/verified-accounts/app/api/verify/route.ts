@@ -17,6 +17,11 @@ import { updateSession } from "@/lib/session-store"
 // Extended to allow time for Self app ID verification process
 const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
 
+// Pattern to detect duplicate passport errors from the contract
+// Note: This relies on the contract's error message format - if the contract changes
+// its error messages, this detection may break. Ideally, the contract would return structured errors.
+const DUPLICATE_PASSPORT_ERROR_PATTERN = "already registered"
+
 function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
   if (!userDefinedDataRaw) return null
 
@@ -82,14 +87,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Note: Self.xyz's isOfacValid is confusingly named - true means user IS on OFAC list (i.e., blocked)
-    // Renaming for clarity: isOnOfacList = true means the user matched the OFAC sanctions list
-    const { isValid, isMinimumAgeValid, isOfacValid: isOnOfacList } = selfVerificationResult.isValidDetails || {}
+    // Self.xyz's isOfacValid: true = user passed OFAC check (NOT sanctioned), false = failed/sanctioned
+    const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
 
-    console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOnOfacList })
+    console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
 
     const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
-    const ofacCheckFailed = ofacEnabled && isOnOfacList === true
+    const ofacCheckFailed = ofacEnabled && isOfacValid === false
 
     if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
       const errorCode = !isMinimumAgeValid
@@ -248,11 +252,10 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       // Check for duplicate passport error from contract
-      // Note: This relies on the contract's error message format - if the contract changes its error messages,
-      // this detection may break. Ideally, the contract would return structured errors.
       const errorMessage = error instanceof Error ? error.message : ""
-      const DUPLICATE_PASSPORT_ERROR_PATTERN = "already registered"
-      const errorCode = errorMessage.includes(DUPLICATE_PASSPORT_ERROR_PATTERN) ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
+      const errorCode = errorMessage.includes(DUPLICATE_PASSPORT_ERROR_PATTERN)
+        ? "DUPLICATE_PASSPORT"
+        : "STORAGE_FAILED"
 
       // Update session status for deep link callback
       const sessionId = selfVerificationResult.userData?.userIdentifier

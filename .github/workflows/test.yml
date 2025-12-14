@@ -209,12 +209,13 @@ jobs:
       # Collect allure results from all contract directories
       # allure-rs outputs to ./allure-results relative to working directory,
       # so we need to copy results from each contract dir to the root
+      # Using rsync --ignore-existing to prevent silent overwrites of same-named files
       - name: Collect allure results from all contracts
         if: always()
         run: |
           for dir in contracts/*/allure-results; do
             if [ -d "$dir" ]; then
-              cp -r "$dir"/* allure-results/ 2>/dev/null || true
+              rsync -av --ignore-existing "$dir"/ allure-results/ || true
             fi
           done
           echo "Collected allure results:"

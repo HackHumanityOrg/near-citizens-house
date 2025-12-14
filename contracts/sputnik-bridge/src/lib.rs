@@ -64,7 +64,10 @@ fn calculate_quorum(citizen_count: u64) -> u64 {
     if citizen_count == 0 {
         0
     } else {
-        (citizen_count * QUORUM_PERCENT).div_ceil(100)
+        citizen_count
+            .checked_mul(QUORUM_PERCENT)
+            .expect("Quorum calculation overflow")
+            .div_ceil(100)
     }
 }
 
