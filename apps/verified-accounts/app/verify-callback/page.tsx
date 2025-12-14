@@ -187,7 +187,7 @@ function VerifyCallbackContent() {
   }, [sessionId])
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-background to-background/80">
       <Card className="max-w-md w-full">
         {status === "checking" && (
           <>
@@ -267,7 +267,7 @@ function VerifyCallbackContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-background to-background/80">
       <Card className="max-w-md w-full">
         <CardHeader>
           <div className="flex items-center gap-2">
