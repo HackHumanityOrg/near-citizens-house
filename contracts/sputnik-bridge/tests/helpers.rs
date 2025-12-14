@@ -262,6 +262,7 @@ pub fn create_policy_without_autoapprove(bridge_account_id: &str) -> serde_json:
             if role.get("name").and_then(|n| n.as_str()) == Some("bridge") {
                 // Replace permissions with limited set (no VoteApprove)
                 role["permissions"] = json!(["add_member_to_role:AddProposal", "vote:AddProposal"]);
+                break;
             }
         }
     }
@@ -640,7 +641,13 @@ pub fn calculate_effective_threshold(
         threshold.0
     } else {
         // Ratio: (num * citizen_count / denom) + 1 (SputnikDAO formula)
-        (threshold.0 * citizen_count / threshold.1) + 1
+        // Use checked_mul to guard against overflow
+        threshold
+            .0
+            .checked_mul(citizen_count)
+            .unwrap_or(u64::MAX)
+            / threshold.1
+            + 1
     };
 
     std::cmp::max(quorum, threshold_weight)

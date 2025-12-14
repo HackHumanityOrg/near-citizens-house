@@ -87,13 +87,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Self.xyz's isOfacValid: true = user passed OFAC check (NOT sanctioned), false = failed/sanctioned
+    // Self.xyz's isOfacValid: true = user IS ON OFAC sanctions list (blocked), false = NOT on list (allowed)
+    // See SDK source: "isOfacValid is true when a person is in OFAC list"
     const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
 
     console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
 
     const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
-    const ofacCheckFailed = ofacEnabled && isOfacValid === false
+    const ofacCheckFailed = ofacEnabled && isOfacValid === true
 
     if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
       const errorCode = !isMinimumAgeValid
