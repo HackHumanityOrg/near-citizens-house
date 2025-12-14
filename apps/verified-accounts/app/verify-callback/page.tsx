@@ -62,6 +62,19 @@ function VerifyCallbackContent() {
         // Check mounted before processing response
         if (!isMounted) return false
 
+        // Handle non-OK responses explicitly
+        if (!response.ok) {
+          // 4xx = client error (invalid/expired session) - terminal, stop polling
+          if (response.status >= 400 && response.status < 500) {
+            setStatus("error")
+            setErrorMessage("Invalid or expired verification session. Please try again.")
+            return true
+          }
+          // 5xx = server error - keep retrying
+          console.error(`[VerifyCallback] Server error: ${response.status}`)
+          return false
+        }
+
         const data = await response.json()
 
         // Check mounted again before updating state
@@ -70,8 +83,12 @@ function VerifyCallbackContent() {
         if (data.status === "success") {
           setStatus("success")
           setAccountId(data.accountId)
-          // Clean up localStorage
-          localStorage.removeItem(`self-session-${sessionId}`)
+          // Clean up localStorage (wrapped in try/catch for restricted environments)
+          try {
+            localStorage.removeItem(`self-session-${sessionId}`)
+          } catch {
+            // Ignore storage errors (e.g., incognito mode, storage disabled)
+          }
           return true
         } else if (data.status === "error") {
           setStatus("error")
@@ -127,8 +144,9 @@ function VerifyCallbackContent() {
       if (abortController) {
         abortController.abort()
       }
-      if (timeoutId) {
+      if (timeoutId !== null) {
         clearTimeout(timeoutId)
+        timeoutId = null
       }
     }
   }, [sessionId])

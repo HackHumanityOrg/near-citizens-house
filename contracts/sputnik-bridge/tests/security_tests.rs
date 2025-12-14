@@ -136,7 +136,7 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Citizen tries to VoteRemove (which they don't have permission for)
     let result = vote_on_proposal(
@@ -166,7 +166,7 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Finalize test")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Verify proposal is InProgress before finalization
     let proposal_before = get_proposal(&env.sputnik_dao, proposal_id).await?;

@@ -641,13 +641,13 @@ pub fn calculate_effective_threshold(
         threshold.0
     } else {
         // Ratio: (num * citizen_count / denom) + 1 (SputnikDAO formula)
-        // Use checked_mul to guard against overflow
-        threshold
+        // Use expect() for fail-fast in tests - overflow indicates invalid test setup
+        (threshold
             .0
             .checked_mul(citizen_count)
-            .unwrap_or(u64::MAX)
-            / threshold.1
-            + 1
+            .expect("Threshold calculation overflow - invalid test setup")
+            / threshold.1)
+            .saturating_add(1)
     };
 
     std::cmp::max(quorum, threshold_weight)

@@ -28,7 +28,7 @@ near-crypto = "0.34"
 sha2 = "0.10"
 borsh = "1.6"
 allure-rs = "0.1"
-allure-core = "0.1"
+allure-core = "0.1"  # Required: macros expand to allure_core:: references
 
 [lints.clippy]
 # Security-focused lints for smart contracts

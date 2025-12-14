@@ -60,22 +60,21 @@ export const ethImplicitAccountSchema = z
  *
  * Use this schema when accepting any type of NEAR account.
  * For stricter validation, use the specific schemas above.
+ *
+ * Delegates to the canonical schemas to ensure validation stays in sync.
  */
-export const nearAccountIdSchema = z.string().refine(
-  (val) => {
-    // Implicit account (64 hex)
-    if (NEAR_IMPLICIT_REGEX.test(val)) return true
-    // ETH-implicit (0x + 40 hex)
-    if (ETH_IMPLICIT_REGEX.test(val)) return true
-    // Named account (2-64 chars, spec regex)
-    if (val.length >= 2 && val.length <= 64 && NEAR_NAMED_ACCOUNT_REGEX.test(val)) return true
-    return false
-  },
-  {
-    message:
-      "Invalid NEAR account ID (named: 2-64 chars a-z0-9._-, implicit: 64 hex chars, or ETH-implicit: 0x + 40 hex chars)",
-  },
-)
+export const nearAccountIdSchema = z
+  .string()
+  .refine(
+    (val) =>
+      nearImplicitAccountSchema.safeParse(val).success ||
+      ethImplicitAccountSchema.safeParse(val).success ||
+      nearNamedAccountSchema.safeParse(val).success,
+    {
+      message:
+        "Invalid NEAR account ID (named: 2-64 chars a-z0-9._-, implicit: 64 hex chars, or ETH-implicit: 0x + 40 hex chars)",
+    },
+  )
 
 /**
  * Type for a valid NEAR account ID
@@ -97,7 +96,9 @@ export const NEAR_ACCOUNT_PATTERNS = {
 
 /**
  * Helper function to check if a string is a valid NEAR account ID
- * Useful when you need a boolean check without zod
+ *
+ * Returns a boolean without throwing exceptions.
+ * Uses the zod schema internally via safeParse.
  */
 export function isValidNearAccountId(value: string): boolean {
   return nearAccountIdSchema.safeParse(value).success
@@ -106,10 +107,12 @@ export function isValidNearAccountId(value: string): boolean {
 /**
  * Helper function to determine the type of a NEAR account ID
  * Returns null if the account ID is invalid
+ *
+ * Delegates to the canonical schemas to ensure validation stays in sync.
  */
 export function getNearAccountType(value: string): "named" | "implicit" | "eth-implicit" | null {
-  if (NEAR_IMPLICIT_REGEX.test(value)) return "implicit"
-  if (ETH_IMPLICIT_REGEX.test(value)) return "eth-implicit"
-  if (value.length >= 2 && value.length <= 64 && NEAR_NAMED_ACCOUNT_REGEX.test(value)) return "named"
+  if (nearImplicitAccountSchema.safeParse(value).success) return "implicit"
+  if (ethImplicitAccountSchema.safeParse(value).success) return "eth-implicit"
+  if (nearNamedAccountSchema.safeParse(value).success) return "named"
   return null
 }

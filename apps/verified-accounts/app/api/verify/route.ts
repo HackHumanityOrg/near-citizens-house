@@ -93,6 +93,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
 
+    // Type guards: ensure SDK returned expected boolean fields
+    if (typeof isValid !== "boolean" || typeof isMinimumAgeValid !== "boolean") {
+      return NextResponse.json(
+        createVerificationError(
+          "VERIFICATION_FAILED",
+          "Invalid verifier response structure",
+        ) satisfies SelfVerificationResult,
+        { status: 502 },
+      )
+    }
+
     const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
     const ofacCheckFailed = ofacEnabled && isOfacValid === true
 

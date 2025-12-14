@@ -189,7 +189,7 @@ function buildTerminalOutput(
     lines.push(`    ✓ NEP-413 signature verified for ${account.nearAccountId}`)
   } else {
     lines.push(`    ✗ Signature verification failed`)
-    if (verification.error && !verification.zkValid === false) {
+    if (verification.error && verification.zkValid) {
       lines.push(`    Error: ${verification.error}`)
     }
   }

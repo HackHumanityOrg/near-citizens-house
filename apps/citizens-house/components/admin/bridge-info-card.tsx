@@ -36,7 +36,14 @@ function formatThreshold(threshold: ThresholdValue, suffix = "", fallback = "N/A
     }
     return fallback
   }
-  return `${threshold.Weight} votes${suffix}`
+  // Type guard for Weight property
+  if (typeof threshold === "object" && threshold !== null && "Weight" in threshold) {
+    const weight = threshold.Weight
+    if (typeof weight === "string" || typeof weight === "number") {
+      return `${weight} votes${suffix}`
+    }
+  }
+  return fallback
 }
 
 export function BridgeInfoCard() {

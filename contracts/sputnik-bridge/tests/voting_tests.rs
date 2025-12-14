@@ -27,7 +27,7 @@ async fn test_citizen_can_vote_on_proposal() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Should we do X?")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Citizen votes on the proposal
     let result = vote_on_proposal(
@@ -61,7 +61,7 @@ async fn test_citizen_vote_approve() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Approve this?")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     vote_on_proposal(
         user,
@@ -97,7 +97,7 @@ async fn test_citizen_vote_reject() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Reject this?")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     vote_on_proposal(
         user,
@@ -128,7 +128,7 @@ async fn test_non_citizen_cannot_vote() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Can non-citizen vote?")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     let result = vote_on_proposal(
         non_citizen,
@@ -141,7 +141,8 @@ async fn test_non_citizen_cannot_vote() -> anyhow::Result<()> {
 
     assert!(
         result.is_failure(),
-        "Non-citizen should not be able to vote"
+        "Non-citizen should not be able to vote: {:?}",
+        result.failures()
     );
 
     Ok(())
@@ -162,7 +163,7 @@ async fn test_proposal_passes_with_majority() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Majority vote")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // First vote - proposal still in progress (1/3 approve, threshold is 1/2)
     vote_on_proposal(
@@ -217,7 +218,7 @@ async fn test_proposal_fails_with_majority_no() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Reject majority")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // First reject vote - still in progress
     vote_on_proposal(
@@ -273,7 +274,7 @@ async fn test_cannot_vote_twice_on_same_proposal() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Double vote test")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // First vote should succeed
     vote_on_proposal(
@@ -299,7 +300,8 @@ async fn test_cannot_vote_twice_on_same_proposal() -> anyhow::Result<()> {
     // Should fail because user already voted
     assert!(
         result.is_failure(),
-        "User should not be able to vote twice on same proposal"
+        "User should not be able to vote twice on same proposal: {:?}",
+        result.failures()
     );
 
     Ok(())
@@ -322,7 +324,8 @@ async fn test_vote_on_nonexistent_proposal_fails() -> anyhow::Result<()> {
 
     assert!(
         result.is_failure(),
-        "Voting on nonexistent proposal should fail"
+        "Voting on nonexistent proposal should fail: {:?}",
+        result.failures()
     );
 
     Ok(())
@@ -345,7 +348,7 @@ async fn test_proposal_expires_after_period() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Will expire")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Proposal should be InProgress initially
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
@@ -395,7 +398,7 @@ async fn test_vote_before_expiry_succeeds() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Vote quickly")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await? - 1;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
 
     // Vote immediately (within period)
     let result = vote_on_proposal(
