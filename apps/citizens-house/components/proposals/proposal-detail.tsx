@@ -273,7 +273,7 @@ export function ProposalDetail({
                               {" "}
                               Quorum is {votingReqs.quorum} (
                               {votingReqs.totalMembers > 0
-                                ? `${Math.round((votingReqs.quorum / votingReqs.totalMembers) * 100)}% of ${votingReqs.totalMembers} citizens, rounded up`
+                                ? `${Math.ceil((votingReqs.quorum / votingReqs.totalMembers) * 100)}% of ${votingReqs.totalMembers} citizens, rounded up`
                                 : `${votingReqs.quorum} votes minimum`}
                               ).
                             </>

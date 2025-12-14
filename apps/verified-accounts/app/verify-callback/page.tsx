@@ -95,9 +95,59 @@ function VerifyCallbackContent() {
       return
     }
 
-    // Track mounted state and timeout for cleanup
+    // Track mounted state, abort controller, and timeout for cleanup
     let isMounted = true
+    let abortController: AbortController | null = null
     let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    /**
+     * Check verification status with abort support.
+     * Returns early without updating state if aborted or unmounted.
+     */
+    const checkVerificationStatus = async (): Promise<boolean> => {
+      // Create new abort controller for this request
+      abortController = new AbortController()
+
+      try {
+        const response = await fetch(
+          `/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`,
+          { signal: abortController.signal }
+        )
+
+        // Check mounted before processing response
+        if (!isMounted) return false
+
+        const data = await response.json()
+
+        // Check mounted again before updating state
+        if (!isMounted) return false
+
+        if (data.status === "success") {
+          setStatus("success")
+          setAccountId(data.accountId)
+          // Clean up localStorage
+          localStorage.removeItem(`self-session-${sessionId}`)
+          return true
+        } else if (data.status === "error") {
+          setStatus("error")
+          setErrorMessage(getErrorMessage(data.error))
+          return true
+        } else if (data.status === "expired") {
+          setStatus("expired")
+          setErrorMessage("Session expired. Please try again.")
+          return true
+        }
+        // Still pending
+        return false
+      } catch (error) {
+        // Ignore abort errors, don't update state
+        if (error instanceof Error && error.name === "AbortError") {
+          return false
+        }
+        // Network error - keep polling (but only if still mounted)
+        return false
+      }
+    }
 
     // Poll for verification status
     let pollCount = 0
@@ -124,14 +174,17 @@ function VerifyCallbackContent() {
 
     poll()
 
-    // Cleanup function to prevent state updates after unmount
+    // Cleanup: abort pending fetch and clear timeout to prevent state updates after unmount
     return () => {
       isMounted = false
+      if (abortController) {
+        abortController.abort()
+      }
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
     }
-  }, [sessionId, checkVerificationStatus])
+  }, [sessionId])
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-background/80">

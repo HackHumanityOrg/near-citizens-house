@@ -149,11 +149,9 @@ impl SputnikBridge {
         verified_accounts_contract: AccountId,
         citizen_role: String,
     ) -> Self {
-        // Validate citizen_role is not empty
-        assert!(
-            !citizen_role.trim().is_empty(),
-            "citizen_role must be non-empty"
-        );
+        // Trim whitespace and validate citizen_role is not empty
+        let citizen_role = citizen_role.trim().to_string();
+        assert!(!citizen_role.is_empty(), "citizen_role must be non-empty");
         Self {
             backend_wallet,
             sputnik_dao,
@@ -579,11 +577,9 @@ impl SputnikBridge {
     #[payable]
     pub fn update_citizen_role(&mut self, new_role: String) {
         self.assert_backend_wallet();
-        assert!(
-            !new_role.trim().is_empty(),
-            "new_role must be non-empty"
-        );
-        self.citizen_role = new_role;
+        let new_role_trimmed = new_role.trim().to_string();
+        assert!(!new_role_trimmed.is_empty(), "new_role must be non-empty");
+        self.citizen_role = new_role_trimmed;
     }
 
     // ==================== VIEW METHODS ====================
