@@ -69,7 +69,9 @@ function calculateVotingRequirements(policy: TransformedPolicy, proposalKind: st
   if (Array.isArray(threshold)) {
     // Ratio: [num, denom] means > num/denom of total
     const [num, denom] = threshold
-    thresholdVotes = Math.min(Math.floor((num * totalMembers) / denom) + 1, totalMembers)
+    if (denom > 0) {
+      thresholdVotes = Math.min(Math.floor((num * totalMembers) / denom) + 1, totalMembers)
+    }
   } else if (typeof threshold === "object" && "Weight" in threshold) {
     // Fixed weight
     thresholdVotes = parseInt(threshold.Weight, 10)
@@ -260,7 +262,7 @@ export function ProposalDetail({
                         <p className="font-medium mb-1">Votes required to pass</p>
                         <p className="text-xs opacity-90">
                           Calculated as max(quorum, threshold).
-                          {votingReqs.thresholdRatio && (
+                          {votingReqs.thresholdRatio && votingReqs.thresholdRatio[1] > 0 && (
                             <>
                               {" "}
                               Threshold is {votingReqs.thresholdRatio[0]}/{votingReqs.thresholdRatio[1]} (

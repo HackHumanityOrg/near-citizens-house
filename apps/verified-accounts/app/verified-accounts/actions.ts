@@ -9,17 +9,10 @@ import {
   parseUserContextData,
   verifyNearSignature,
   buildProofData,
+  nearAccountIdSchema,
   type VerifiedAccount,
   type ProofData,
 } from "@near-citizens/shared"
-
-// NEAR account ID: 2-64 chars, lowercase alphanumeric + separators (._-), cannot start/end with separator
-const nearAccountIdSchema = z
-  .string()
-  .min(2)
-  .max(64)
-  .regex(/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/)
-  .refine((s) => !/[._-]{2}/.test(s), "Cannot have consecutive separators")
 
 const paginationSchema = z.object({
   page: z.number().int().min(0).max(100000),
