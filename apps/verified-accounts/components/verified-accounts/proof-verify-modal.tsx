@@ -70,7 +70,7 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
           </div>
 
           {/* Download Buttons */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <Button size="sm" onClick={() => downloadJson(proofJson, "proof.json")}>
               <Download className="h-4 w-4 mr-2" />
               proof.json

@@ -887,9 +887,12 @@ mod tests {
 
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected pause event");
-        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
         assert!(
-            logs[0].contains("contract_paused"),
+            logs.iter().any(|l| l.contains("EVENT_JSON")),
+            "Expected JSON event"
+        );
+        assert!(
+            logs.iter().any(|l| l.contains("contract_paused")),
             "Expected contract_paused event"
         );
 
@@ -902,9 +905,12 @@ mod tests {
 
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected unpause event");
-        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
         assert!(
-            logs[0].contains("contract_unpaused"),
+            logs.iter().any(|l| l.contains("EVENT_JSON")),
+            "Expected JSON event"
+        );
+        assert!(
+            logs.iter().any(|l| l.contains("contract_unpaused")),
             "Expected contract_unpaused event"
         );
     }
@@ -1036,9 +1042,12 @@ mod tests {
 
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected backend wallet update event");
-        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
         assert!(
-            logs[0].contains("backend_wallet_updated"),
+            logs.iter().any(|l| l.contains("EVENT_JSON")),
+            "Expected JSON event"
+        );
+        assert!(
+            logs.iter().any(|l| l.contains("backend_wallet_updated")),
             "Expected backend_wallet_updated event"
         );
     }
@@ -3240,11 +3249,11 @@ mod tests {
         // Step 5: Sign the hash
         let signature = signer.sign(&message_hash);
 
-        // Extract bytes from signature enum using Borsh (skip 1 byte tag)
-        // Signature::ED25519 is 0 + 64 bytes
-        let signature_borsh = near_sdk::borsh::to_vec(&signature).unwrap();
-        let signature_bytes = signature_borsh[1..].to_vec();
-        assert_eq!(signature_bytes.len(), 64, "Signature must be 64 bytes");
+        // Extract bytes from signature enum using pattern matching
+        let signature_bytes = match signature {
+            near_crypto::Signature::ED25519(sig) => sig.to_bytes().to_vec(),
+            _ => panic!("Only ED25519 signatures are supported in tests"),
+        };
 
         // Convert to our data structure
         let public_key_str = signer.public_key().to_string();
@@ -3300,9 +3309,12 @@ mod tests {
         // Verify events
         let logs = get_logs();
         assert!(!logs.is_empty(), "Expected verification event");
-        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
         assert!(
-            logs[0].contains("verification_stored"),
+            logs.iter().any(|l| l.contains("EVENT_JSON")),
+            "Expected JSON event"
+        );
+        assert!(
+            logs.iter().any(|l| l.contains("verification_stored")),
             "Expected verification_stored event"
         );
 

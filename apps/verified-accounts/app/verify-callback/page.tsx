@@ -89,6 +89,8 @@ function VerifyCallbackContent() {
         if (error instanceof Error && error.name === "AbortError") {
           return false
         }
+        // Log unexpected errors for debugging
+        console.error("[VerifyCallback] Polling error:", error)
         // Network error - keep polling (but only if still mounted)
         return false
       }
