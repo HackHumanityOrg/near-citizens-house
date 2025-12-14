@@ -15,37 +15,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
-name = "allure-rust"
-version = "0.0.1"
+name = "allure-core"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "382c4fb7951c5a27d5fa004e5c0ae8a88b77cd382223266afb96cc8fdad51706"
+checksum = "37f1e368b130adb0b4a52b6a9158867f10e77b2f917c401d0273c6939a1d426d"
 dependencies = [
- "allure-rust-core",
-]
-
-[[package]]
-name = "allure-rust-core"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0e83ee88bcd3aafbb9a32c1b6dbf11a04af02b6289994c4f92fc52f8ea7cd34"
-dependencies = [
- "allure-rust-macros",
- "chrono",
- "lazy_static",
+ "hostname",
+ "md-5",
  "serde",
  "serde_json",
- "thread_local",
+ "thiserror 1.0.69",
  "uuid",
 ]
 
 [[package]]
-name = "allure-rust-macros"
-version = "0.0.1"
+name = "allure-macros"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc4b5b34b636e5006a38c3fa8dee525f5c3639601f79d5c602067e76a6f00443"
+checksum = "e6cc3bc1d11b636bcf5227163f45d4342de77b5d2b229a1791e2e4976c8c884d"
 dependencies = [
+ "proc-macro2",
  "quote",
  "syn 2.0.111",
+]
+
+[[package]]
+name = "allure-rs"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09aaba22532bf776b658c9432e8f229f42d7bc0eb396286a3ca9484c3b5d57eb"
+dependencies = [
+ "allure-core",
+ "allure-macros",
 ]
 
 [[package]]
@@ -240,10 +241,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "145052bdd345b87320e369255277e3fb5152762ad123a901ef5c262dd38fe8d2"
 dependencies = [
  "iana-time-zone",
- "js-sys",
  "num-traits",
  "serde",
- "wasm-bindgen",
  "windows-link",
 ]
 
@@ -673,6 +672,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hostname"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "617aaa3557aef3810a6369d0a99fac8a080891b68bd9f9812a1eeda0c0730cbd"
+dependencies = [
+ "cfg-if 1.0.4",
+ "libc",
+ "windows-link",
+]
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -821,6 +831,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "md-5"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+dependencies = [
+ "cfg-if 1.0.4",
+ "digest",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -850,7 +870,7 @@ checksum = "5abe35e6d4b5e7575706ad607412e0f1e628e1786fcffc96c6e16aea10cebfe4"
 dependencies = [
  "anyhow",
  "json_comments",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -876,7 +896,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subtle",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -914,7 +934,7 @@ dependencies = [
  "serde_repr",
  "serde_yaml",
  "strum 0.24.1",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -952,7 +972,7 @@ dependencies = [
  "smallvec",
  "smart-default",
  "strum 0.24.1",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
  "zstd",
 ]
@@ -978,7 +998,7 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "sha2",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1107,7 +1127,7 @@ dependencies = [
  "sha3",
  "strum 0.24.1",
  "tempfile",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
  "zeropool-bn",
 ]
@@ -1728,11 +1748,31 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
+version = "1.0.69"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
+dependencies = [
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
 version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f63587ca0f12b72a0600bcba1d40081f830876000bb46dd2337a3051618f4fc8"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 2.0.17",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.69"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
 ]
 
 [[package]]
@@ -1744,15 +1784,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
-]
-
-[[package]]
-name = "thread_local"
-version = "1.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f60246a4944f24f6e018aa17cdeffb7818b76356965d03b07d6a9886e8962185"
-dependencies = [
- "cfg-if 1.0.4",
 ]
 
 [[package]]
@@ -1921,7 +1952,6 @@ checksum = "e2e054861b4bd027cd373e18e8d8d8e6548085000e41290d95ce0c373a654b4a"
 dependencies = [
  "getrandom 0.3.4",
  "js-sys",
- "serde_core",
  "wasm-bindgen",
 ]
 
@@ -1929,7 +1959,8 @@ dependencies = [
 name = "verified-accounts-interface"
 version = "1.0.0"
 dependencies = [
- "allure-rust",
+ "allure-core",
+ "allure-rs",
  "near-sdk",
 ]
 

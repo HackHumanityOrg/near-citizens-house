@@ -208,11 +208,17 @@ pub trait VerifiedAccounts {
 }
 
 #[cfg(test)]
-#[allure_rust::allure_suite("Verified Accounts Interface")]
+#[allure_rs::allure_suite("Verified Accounts Interface")]
 mod tests {
     use super::*;
+    use allure_rs::prelude::*;
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("VerifiedAccountInfo Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "json", "borsh")]
+    #[allure_test]
     #[test]
     fn test_verified_account_info_serialization() {
         let info = VerifiedAccountInfo {
@@ -235,7 +241,12 @@ mod tests {
         assert_eq!(decoded.nullifier, info.nullifier);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("VerifiedAccount Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "borsh")]
+    #[allure_test]
     #[test]
     fn test_verified_account_serialization() {
         let account = VerifiedAccount {
@@ -268,7 +279,12 @@ mod tests {
 
     // ==================== ADDITIONAL TYPE SERIALIZATION TESTS (Phase 3) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("ZkProof Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "json")]
+    #[allure_test]
     #[test]
     fn test_zk_proof_json_roundtrip() {
         let proof = ZkProof {
@@ -288,7 +304,12 @@ mod tests {
         assert_eq!(decoded.c, proof.c);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("ZkProof Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "borsh")]
+    #[allure_test]
     #[test]
     fn test_zk_proof_borsh_roundtrip() {
         let proof = ZkProof {
@@ -307,7 +328,12 @@ mod tests {
         assert_eq!(decoded.c, proof.c);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("SelfProofData Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "json")]
+    #[allure_test]
     #[test]
     fn test_self_proof_data_json_roundtrip() {
         let proof_data = SelfProofData {
@@ -332,7 +358,12 @@ mod tests {
         assert_eq!(decoded.public_signals[0], "nullifier");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("VerifiedAccountInfo Type")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "serialization", "json")]
+    #[allure_test]
     #[test]
     fn test_verified_account_info_json_roundtrip() {
         let info = VerifiedAccountInfo {
@@ -350,7 +381,13 @@ mod tests {
         assert_eq!(decoded.verified_at, info.verified_at);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("SelfProofData Type")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "serialization", "passport")]
+    #[allure_description("Tests serialization with realistic 21 public signals from passport proofs")]
+    #[allure_test]
     #[test]
     fn test_verified_account_with_21_signals() {
         // Test with realistic 21 public signals (passport proofs)
@@ -380,7 +417,12 @@ mod tests {
         assert_eq!(decoded.self_proof.public_signals.len(), 21);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("SelfProofData Type")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "serialization", "edge-case")]
+    #[allure_test]
     #[test]
     fn test_empty_public_signals() {
         let proof_data = SelfProofData {
@@ -402,7 +444,12 @@ mod tests {
 
     // ==================== NEGATIVE DESERIALIZATION TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_verified_account_info_json_missing_nullifier_fails() {
         // JSON without required "nullifier" field should fail deserialization
@@ -411,7 +458,12 @@ mod tests {
         assert!(result.is_err(), "Deserialization should fail when nullifier is missing");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_zk_proof_json_invalid_a_array_length_fails() {
         // 'a' should have exactly 2 elements, not 1
@@ -420,7 +472,12 @@ mod tests {
         assert!(result.is_err(), "Deserialization should fail when 'a' has wrong array length");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_self_proof_data_invalid_proof_type_fails() {
         // 'proof' should be an object, not a string
@@ -429,7 +486,12 @@ mod tests {
         assert!(result.is_err(), "Deserialization should fail when 'proof' is not an object");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Interface")]
+    #[allure_story("Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_zk_proof_json_missing_b_field_fails() {
         // Missing 'b' field should fail

@@ -1,15 +1,14 @@
-@import "tailwindcss";
-
-/* FK Grotesk - NEAR brand font */
+/* FK Grotesk - NEAR brand font (must be before tailwindcss import) */
 @import url("https://db.onlinewebfonts.com/c/9419cf3ea65d2c875025a63789ee57fa?family=FK+Grotesk+Variable");
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../../../packages/ui/styles/theme.css";
 
 /* Tell Tailwind v4 which files to scan for CSS classes */
 @source "../../../packages/ui/src";
 @source "../../components";
 @source "../../app";
-
-@import "tw-animate-css";
-@import "../../../packages/ui/styles/theme.css";
 
 @layer base {
   * {

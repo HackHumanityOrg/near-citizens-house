@@ -74,11 +74,18 @@ function parseContractError(error: unknown): string {
 
 /**
  * Extract return value from transaction result
+ * Uses browser-compatible base64 decoding (atob + TextDecoder)
  */
 function extractReturnValue<T>(result: TransactionResult): T | null {
   if (result.status.SuccessValue) {
     try {
-      const decoded = Buffer.from(result.status.SuccessValue, "base64").toString()
+      // Browser-compatible base64 decode
+      const binaryString = atob(result.status.SuccessValue)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+      const decoded = new TextDecoder().decode(bytes)
       return JSON.parse(decoded) as T
     } catch {
       return null
@@ -168,7 +175,12 @@ export function useAdminActions(): UseAdminActionsResult {
         })
 
         // Return transaction hash
-        return (txResult as { transaction: { hash: string } }).transaction?.hash ?? ""
+        const txHash = (txResult as { transaction: { hash: string } }).transaction?.hash
+        if (!txHash) {
+          console.warn("Transaction hash missing from result", txResult)
+          throw new Error("Transaction completed but hash is missing")
+        }
+        return txHash
       } catch (err) {
         const errorMsg = parseContractError(err)
         setError(errorMsg)
@@ -224,8 +236,10 @@ export function useAdminActions(): UseAdminActionsResult {
         // Parse proposal ID from return value
         const proposalId = extractReturnValue<number>(txResult as unknown as TransactionResult)
         if (proposalId === null) {
-          console.warn("Failed to get proposal ID from contract response")
-          return -1
+          const errorMsg = "Failed to extract proposal ID from contract response"
+          console.warn(errorMsg, txResult)
+          setError(errorMsg)
+          throw new Error(errorMsg)
         }
 
         return proposalId

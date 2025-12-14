@@ -626,9 +626,10 @@ impl Contract {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
-#[allure_rust::allure_suite("Verified Accounts - Unit Tests")]
+#[allure_rs::allure_suite("Verified Accounts Contract")]
 mod tests {
     use super::*;
+    use allure_rs::prelude::*;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::testing_env;
     use near_sdk::test_utils::get_logs;
@@ -641,7 +642,7 @@ mod tests {
     }
 
     /// Helper function to assert that a closure panics with an expected message.
-    /// This allows using #[allure_rust::allure_test] with panic tests.
+    /// This allows using #[allure_test] with panic tests.
     fn assert_panic_with<F: FnOnce()>(f: F, expected: &str) {
         use std::panic::{catch_unwind, AssertUnwindSafe};
         let result = catch_unwind(AssertUnwindSafe(f));
@@ -680,7 +681,12 @@ mod tests {
         }
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Contract Initialization")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "initialization")]
+    #[allure_test]
     #[test]
     fn test_initialization() {
         let context = get_context(accounts(0));
@@ -691,7 +697,12 @@ mod tests {
         assert_eq!(contract.get_verified_count(), 0);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Access Control")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_unauthorized_write() {
         let context = get_context(accounts(0));
@@ -725,7 +736,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Signature Verification")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "signature")]
+    #[allure_test]
     #[test]
     fn test_invalid_signature() {
         let backend = accounts(1);
@@ -761,7 +777,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Signature Verification")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "nonce")]
+    #[allure_test]
     #[test]
     fn test_invalid_nonce_length() {
         let backend = accounts(1);
@@ -797,7 +818,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Signature Verification")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "signature")]
+    #[allure_test]
     #[test]
     fn test_invalid_signature_length() {
         let backend = accounts(1);
@@ -835,7 +861,12 @@ mod tests {
 
     // ==================== PAUSE/UNPAUSE TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Pause/Unpause")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "admin", "pause")]
+    #[allure_test]
     #[test]
     fn test_pause_unpause() {
         let backend = accounts(1);
@@ -872,7 +903,12 @@ mod tests {
         assert!(logs[0].contains("contract_unpaused"), "Expected contract_unpaused event");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Pause/Unpause")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_unauthorized_pause() {
         let backend = accounts(1);
@@ -885,7 +921,12 @@ mod tests {
         assert_panic_with(|| contract.pause(), "Only backend wallet can pause contract");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Pause/Unpause")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_unauthorized_unpause() {
         let backend = accounts(1);
@@ -908,7 +949,12 @@ mod tests {
         assert_panic_with(|| contract.unpause(), "Only backend wallet can unpause contract");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Pause/Unpause")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "pause")]
+    #[allure_test]
     #[test]
     fn test_store_verification_when_paused() {
         let backend = accounts(1);
@@ -953,7 +999,12 @@ mod tests {
 
     // ==================== BACKEND WALLET UPDATE TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Backend Wallet Management")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "admin", "wallet")]
+    #[allure_test]
     #[test]
     fn test_update_backend_wallet() {
         let backend = accounts(1);
@@ -977,7 +1028,12 @@ mod tests {
         assert!(logs[0].contains("backend_wallet_updated"), "Expected backend_wallet_updated event");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Backend Wallet Management")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_unauthorized_update_backend_wallet() {
         let backend = accounts(1);
@@ -995,7 +1051,12 @@ mod tests {
 
     // ==================== INPUT VALIDATION TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "security")]
+    #[allure_test]
     #[test]
     fn test_account_id_mismatch() {
         let backend = accounts(1);
@@ -1032,7 +1093,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "security")]
+    #[allure_test]
     #[test]
     fn test_recipient_mismatch() {
         let backend = accounts(1);
@@ -1069,7 +1135,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Read Functions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "query", "view")]
+    #[allure_test]
     #[test]
     fn test_read_functions() {
         let backend = accounts(1);
@@ -1095,7 +1166,12 @@ mod tests {
         assert_eq!(accounts_list.len(), 0);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Read Functions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "pagination", "edge-case")]
+    #[allure_test]
     #[test]
     fn test_pagination_limit() {
         let backend = accounts(1);
@@ -1111,7 +1187,12 @@ mod tests {
 
     // ==================== COMPOSABILITY INTERFACE TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Composability Interface")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "interface", "composability")]
+    #[allure_test]
     #[test]
     fn test_interface_version() {
         let backend = accounts(1);
@@ -1125,7 +1206,12 @@ mod tests {
     // Note: NEP-330 contract_source_metadata() is auto-generated by SDK
     // and tested via integration tests
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Composability Interface")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "interface", "query")]
+    #[allure_test]
     #[test]
     fn test_get_account_empty() {
         let backend = accounts(1);
@@ -1139,7 +1225,12 @@ mod tests {
         assert!(info.is_none());
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Composability Interface")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "interface", "batch")]
+    #[allure_test]
     #[test]
     fn test_are_accounts_verified_empty() {
         let backend = accounts(1);
@@ -1156,7 +1247,12 @@ mod tests {
         assert!(!results[2]);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Composability Interface")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "interface", "batch")]
+    #[allure_test]
     #[test]
     fn test_get_accounts_empty() {
         let backend = accounts(1);
@@ -1173,7 +1269,12 @@ mod tests {
         assert!(results[2].is_none());
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Composability Interface")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "interface", "edge-case")]
+    #[allure_test]
     #[test]
     fn test_are_accounts_verified_empty_input() {
         let backend = accounts(1);
@@ -1189,7 +1290,12 @@ mod tests {
 
     // ==================== INPUT VALIDATION TESTS (NEW) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "batch-size")]
+    #[allure_test]
     #[test]
     fn test_batch_size_exceeded_are_accounts_verified() {
         let backend = accounts(1);
@@ -1211,7 +1317,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "batch-size")]
+    #[allure_test]
     #[test]
     fn test_batch_size_exceeded_get_accounts() {
         let backend = accounts(1);
@@ -1233,7 +1344,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "nullifier")]
+    #[allure_test]
     #[test]
     fn test_nullifier_too_long() {
         let backend = accounts(1);
@@ -1272,7 +1388,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "user-id")]
+    #[allure_test]
     #[test]
     fn test_user_id_too_long() {
         let backend = accounts(1);
@@ -1311,7 +1432,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "context-data")]
+    #[allure_test]
     #[test]
     fn test_user_context_data_too_long() {
         let backend = accounts(1);
@@ -1350,7 +1476,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Input Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "attestation-id")]
+    #[allure_test]
     #[test]
     fn test_attestation_id_too_long() {
         let backend = accounts(1);
@@ -1387,7 +1518,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Proof Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_public_signals_too_many() {
         let backend = accounts(1);
@@ -1436,7 +1572,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Proof Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_public_signal_item_too_long() {
         let backend = accounts(1);
@@ -1487,7 +1628,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Proof Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_proof_component_a_too_long() {
         let backend = accounts(1);
@@ -1536,7 +1682,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Proof Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_proof_component_b_too_long() {
         let backend = accounts(1);
@@ -1585,7 +1736,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Proof Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_proof_component_c_too_long() {
         let backend = accounts(1);
@@ -1665,7 +1821,12 @@ mod tests {
         }
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "nullifier")]
+    #[allure_test]
     #[test]
     fn test_nullifier_at_max_length_80_reaches_signature_check() {
         // If nullifier at exactly 80 chars passes validation, it should reach signature check
@@ -1697,7 +1858,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "user-id")]
+    #[allure_test]
     #[test]
     fn test_user_id_at_max_length_80_reaches_signature_check() {
         let backend = accounts(1);
@@ -1728,7 +1894,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "attestation-id")]
+    #[allure_test]
     #[test]
     fn test_attestation_id_at_max_length_1_reaches_signature_check() {
         let backend = accounts(1);
@@ -1756,7 +1927,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "context-data")]
+    #[allure_test]
     #[test]
     fn test_user_context_data_at_max_length_4096_reaches_signature_check() {
         let backend = accounts(1);
@@ -1787,7 +1963,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_public_signals_at_max_21_reaches_signature_check() {
         let backend = accounts(1);
@@ -1818,7 +1999,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_public_signal_item_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
@@ -1850,7 +2036,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_proof_component_a_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
@@ -1890,7 +2081,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_proof_component_b_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
@@ -1930,7 +2126,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "zk-proof")]
+    #[allure_test]
     #[test]
     fn test_proof_component_c_at_80_chars_reaches_signature_check() {
         let backend = accounts(1);
@@ -1972,7 +2173,12 @@ mod tests {
 
     // ==================== EMPTY STRING EDGE CASE TESTS (Phase 1.2) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Edge Cases")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "edge-case", "empty-values")]
+    #[allure_test]
     #[test]
     fn test_empty_nullifier_passes_validation() {
         // Empty nullifier is allowed (no minimum length requirement)
@@ -2000,7 +2206,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Edge Cases")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "edge-case", "empty-values")]
+    #[allure_test]
     #[test]
     fn test_empty_user_id_passes_validation() {
         let backend = accounts(1);
@@ -2027,7 +2238,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Edge Cases")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "edge-case", "empty-values")]
+    #[allure_test]
     #[test]
     fn test_empty_attestation_id_passes_validation() {
         // Empty attestation_id has length 0, which is <= 1, so it passes validation
@@ -2056,7 +2272,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Edge Cases")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "edge-case", "empty-values")]
+    #[allure_test]
     #[test]
     fn test_empty_user_context_data_passes_validation() {
         let backend = accounts(1);
@@ -2083,7 +2304,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Edge Cases")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "edge-case", "empty-values")]
+    #[allure_test]
     #[test]
     fn test_empty_public_signals_array_passes_validation() {
         let backend = accounts(1);
@@ -2114,7 +2340,12 @@ mod tests {
 
     // ==================== NEP-413 SIGNATURE COMPONENT TESTS (Phase 1.5) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Signature Verification")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "nonce", "boundary")]
+    #[allure_test]
     #[test]
     fn test_nonce_31_bytes_fails() {
         let backend = accounts(1);
@@ -2150,7 +2381,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Signature Verification")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "nonce", "boundary")]
+    #[allure_test]
     #[test]
     fn test_nonce_33_bytes_fails() {
         let backend = accounts(1);
@@ -2186,7 +2422,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Signature Verification")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "signature", "boundary")]
+    #[allure_test]
     #[test]
     fn test_signature_63_bytes_fails() {
         let backend = accounts(1);
@@ -2222,7 +2463,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Signature Verification")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "signature", "boundary")]
+    #[allure_test]
     #[test]
     fn test_signature_65_bytes_fails() {
         let backend = accounts(1);
@@ -2260,7 +2506,12 @@ mod tests {
 
     // ==================== UNICODE/MULTIBYTE TESTS (Phase 1.4) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Unicode Handling")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "unicode", "encoding")]
+    #[allure_test]
     #[test]
     fn test_nullifier_with_unicode_counted_by_bytes() {
         // Unicode characters take multiple bytes - test boundary behavior
@@ -2295,7 +2546,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Unicode Handling")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "unicode", "encoding")]
+    #[allure_test]
     #[test]
     fn test_nullifier_with_unicode_exceeds_byte_limit() {
         // 21 emojis = 84 bytes, exceeds 80 byte limit
@@ -2326,7 +2582,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Unicode Handling")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "unicode", "encoding")]
+    #[allure_test]
     #[test]
     fn test_user_context_data_with_unicode_at_boundary() {
         // Test user_context_data at exactly 4096 bytes with multibyte chars
@@ -2358,7 +2619,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Unicode Handling")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "unicode", "encoding")]
+    #[allure_test]
     #[test]
     fn test_user_context_data_with_unicode_exceeds_limit() {
         // 1025 emojis = 4100 bytes, exceeds limit
@@ -2393,7 +2659,12 @@ mod tests {
     // Per ISTQB best practices: test at limit-1, limit, and limit+1
     // limit and limit+1 tests already exist above; these add limit-1 tests
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_nullifier_boundary_limit_minus_1_passes() {
         // 79 chars - one below the 80 char limit
@@ -2424,7 +2695,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_user_id_boundary_limit_minus_1_passes() {
         // 79 chars - one below the 80 char limit
@@ -2455,7 +2731,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_user_context_data_boundary_limit_minus_1_passes() {
         // 4095 chars - one below the 4096 char limit
@@ -2486,7 +2767,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_public_signals_boundary_limit_minus_1_passes() {
         // 20 signals - one below the 21 signal limit
@@ -2517,7 +2803,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_public_signal_item_boundary_limit_minus_1_passes() {
         // 79 char signal string - one below the 80 char limit
@@ -2549,7 +2840,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_proof_component_a_boundary_limit_minus_1_passes() {
         // 79 char proof component - one below the 80 char limit
@@ -2589,7 +2885,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_proof_component_b_boundary_limit_minus_1_passes() {
         // 79 char proof component - one below the 80 char limit
@@ -2629,7 +2930,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "boundary", "limit-minus-1")]
+    #[allure_test]
     #[test]
     fn test_proof_component_c_boundary_limit_minus_1_passes() {
         // 79 char proof component - one below the 80 char limit
@@ -2671,7 +2977,12 @@ mod tests {
 
     // ==================== BATCH SIZE BOUNDARY TESTS (Phase 1.7) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "batch-size")]
+    #[allure_test]
     #[test]
     fn test_batch_size_boundary_limit_minus_1_passes() {
         // 99 accounts - one below the 100 account limit
@@ -2691,7 +3002,12 @@ mod tests {
         assert_eq!(results.len(), 99);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "batch-size")]
+    #[allure_test]
     #[test]
     fn test_batch_size_boundary_at_limit_passes() {
         // 100 accounts - exactly at the limit
@@ -2711,7 +3027,12 @@ mod tests {
         assert_eq!(results.len(), 100);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "batch-size")]
+    #[allure_test]
     #[test]
     fn test_batch_size_get_accounts_boundary_limit_minus_1_passes() {
         // 99 accounts - one below the 100 account limit
@@ -2731,7 +3052,12 @@ mod tests {
         assert_eq!(results.len(), 99);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Boundary Conditions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "boundary", "batch-size")]
+    #[allure_test]
     #[test]
     fn test_batch_size_get_accounts_boundary_at_limit_passes() {
         // 100 accounts - exactly at the limit
@@ -2754,7 +3080,12 @@ mod tests {
     // ==================== INVARIANT TESTS (Phase 2) ====================
     // Per OpenZeppelin best practices: verify system-wide invariants
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "invariant")]
+    #[allure_test]
     #[test]
     fn test_invariant_backend_wallet_always_valid() {
         // Invariant: backend_wallet should never be empty after initialization
@@ -2769,7 +3100,12 @@ mod tests {
         assert_eq!(contract.get_backend_wallet(), backend);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "invariant")]
+    #[allure_test]
     #[test]
     fn test_invariant_verified_count_starts_at_zero() {
         // Invariant: new contract should have zero verified accounts
@@ -2783,7 +3119,12 @@ mod tests {
         assert!(contract.get_verified_accounts(0, 100).is_empty());
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "invariant")]
+    #[allure_test]
     #[test]
     fn test_invariant_paused_state_consistent() {
         // Invariant: is_paused should reflect actual state after pause/unpause
@@ -2812,7 +3153,12 @@ mod tests {
     // ==================== STRESS TESTS (Phase 4) ====================
     // Verify behavior at maximum capacity
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Stress Tests")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "stress", "serialization")]
+    #[allure_test]
     #[test]
     fn test_stress_max_payload_proof_serialization() {
         // Create proof with max-size components (80 chars each, 21 signals)
@@ -2898,7 +3244,12 @@ mod tests {
         }
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Verified Accounts Contract")]
+    #[allure_story("Store Verification")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "happy-path", "integration")]
+    #[allure_test]
     #[test]
     fn test_happy_path_store_verification() {
         let backend = accounts(1);

@@ -271,7 +271,11 @@ export function ProposalDetail({
                           {votingReqs.quorum > 0 && (
                             <>
                               {" "}
-                              Quorum is {votingReqs.quorum} (7% of {votingReqs.totalMembers} citizens, rounded up).
+                              Quorum is {votingReqs.quorum} (
+                              {votingReqs.totalMembers > 0
+                                ? `${Math.round((votingReqs.quorum / votingReqs.totalMembers) * 100)}% of ${votingReqs.totalMembers} citizens, rounded up`
+                                : `${votingReqs.quorum} votes minimum`}
+                              ).
                             </>
                           )}{" "}
                           The higher value ({votingReqs.effectiveThreshold}) applies.

@@ -20,11 +20,25 @@ import { useAdminActions } from "@/hooks/admin-actions"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
 import { Loader2, UserPlus, CheckCircle, AlertCircle } from "lucide-react"
 
+// NEAR account ID validation: supports both named accounts (2-64 chars with dots) and implicit accounts (64 hex chars)
+const NEAR_NAMED_ACCOUNT_REGEX = /^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/
+const NEAR_IMPLICIT_ACCOUNT_REGEX = /^[0-9a-f]{64}$/
+
 const addMemberSchema = z.object({
   accountId: z
     .string()
     .min(1, "Account ID is required")
-    .regex(/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/, "Invalid NEAR account ID format"),
+    .max(64, "Account ID must be at most 64 characters")
+    .refine(
+      (val) => {
+        // Check if it's an implicit account (64 hex chars)
+        if (NEAR_IMPLICIT_ACCOUNT_REGEX.test(val)) return true
+        // Check if it's a valid named account (2-64 chars)
+        if (val.length >= 2 && val.length <= 64 && NEAR_NAMED_ACCOUNT_REGEX.test(val)) return true
+        return false
+      },
+      { message: "Invalid NEAR account ID format (named: 2-64 chars with a-z0-9_-., or implicit: 64 hex chars)" }
+    ),
 })
 
 type AddMemberFormData = z.infer<typeof addMemberSchema>
@@ -45,15 +59,23 @@ export function AddMemberForm() {
 
   // Fetch policy to get proposal bond
   useEffect(() => {
+    let isMounted = true
+
     async function fetchPolicy() {
       try {
         const daoPolicy = await getPolicy()
-        setPolicy(daoPolicy)
+        if (isMounted) {
+          setPolicy(daoPolicy)
+        }
       } catch (err) {
         console.error("Error fetching policy:", err)
       }
     }
     fetchPolicy()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const onSubmit = async (data: AddMemberFormData) => {
@@ -66,7 +88,8 @@ export function AddMemberForm() {
       const bondYocto = policy?.proposalBond || "100000000000000000000000"
 
       const txHash = await addMember(data.accountId, bondYocto)
-      setSuccess(`Member ${data.accountId} added successfully! Transaction: ${txHash.slice(0, 8)}...`)
+      const txHashDisplay = typeof txHash === "string" && txHash.length > 0 ? `${txHash.slice(0, 8)}...` : "unknown"
+      setSuccess(`Member ${data.accountId} added successfully! Transaction: ${txHashDisplay}`)
       reset()
     } catch {
       // Error is set by hook

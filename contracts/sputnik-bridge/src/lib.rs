@@ -96,11 +96,16 @@ pub struct QuorumUpdatedEvent {
 
 /// Helper to emit JSON events in NEAR standard format
 fn emit_event<T: Serialize>(event_name: &str, data: &T) {
-    if let Ok(json) = near_sdk::serde_json::to_string(data) {
-        env::log_str(&format!(
-            "EVENT_JSON:{{\"standard\":\"sputnik-bridge\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}",
-            event_name, json
-        ));
+    match near_sdk::serde_json::to_string(data) {
+        Ok(json) => {
+            env::log_str(&format!(
+                "EVENT_JSON:{{\"standard\":\"sputnik-bridge\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}",
+                event_name, json
+            ));
+        }
+        Err(e) => {
+            env::log_str(&format!("EVENT_ERROR: Failed to serialize event '{}': {}", event_name, e));
+        }
     }
 }
 
@@ -144,6 +149,11 @@ impl SputnikBridge {
         verified_accounts_contract: AccountId,
         citizen_role: String,
     ) -> Self {
+        // Validate citizen_role is not empty
+        assert!(
+            !citizen_role.trim().is_empty(),
+            "citizen_role must be non-empty"
+        );
         Self {
             backend_wallet,
             sputnik_dao,
@@ -565,9 +575,14 @@ impl SputnikBridge {
     ///
     /// # Panics
     /// * If caller is not backend_wallet
+    /// * If new_role is empty
     #[payable]
     pub fn update_citizen_role(&mut self, new_role: String) {
         self.assert_backend_wallet();
+        assert!(
+            !new_role.trim().is_empty(),
+            "new_role must be non-empty"
+        );
         self.citizen_role = new_role;
     }
 
@@ -615,9 +630,10 @@ impl SputnikBridge {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
-#[allure_rust::allure_suite("Sputnik Bridge - Unit Tests")]
+#[allure_rs::allure_suite("Sputnik Bridge Contract")]
 mod tests {
     use super::*;
+    use allure_rs::prelude::*;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::testing_env;
     use near_sdk::test_utils::get_logs;
@@ -653,7 +669,12 @@ mod tests {
         }
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Contract Initialization")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "initialization")]
+    #[allure_test]
     #[test]
     fn test_initialization() {
         let context = get_context(accounts(0));
@@ -672,7 +693,12 @@ mod tests {
         assert_eq!(contract.get_citizen_role(), "citizen");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Read Functions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "query", "view")]
+    #[allure_test]
     #[test]
     fn test_get_info() {
         let context = get_context(accounts(0));
@@ -692,7 +718,12 @@ mod tests {
         assert_eq!(info.citizen_role, "citizen");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Backend Wallet Management")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "admin", "wallet")]
+    #[allure_test]
     #[test]
     fn test_update_backend_wallet() {
         let context = get_context(accounts(0));
@@ -709,7 +740,12 @@ mod tests {
         assert_eq!(contract.get_backend_wallet(), accounts(3));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Backend Wallet Management")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_update_backend_wallet_unauthorized() {
         let mut context = get_context(accounts(0));
@@ -732,7 +768,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Citizen Role Management")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "admin", "role")]
+    #[allure_test]
     #[test]
     fn test_update_citizen_role() {
         let context = get_context(accounts(0));
@@ -749,7 +790,12 @@ mod tests {
         assert_eq!(contract.get_citizen_role(), "voter");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Citizen Role Management")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_update_citizen_role_unauthorized() {
         let mut context = get_context(accounts(0));
@@ -775,62 +821,107 @@ mod tests {
     // ==================== QUORUM CALCULATION TESTS (Phase 2.2) ====================
     // Tests for the calculate_quorum helper function
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_0_citizens_equals_0() {
         assert_eq!(super::calculate_quorum(0), 0);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_1_citizen_equals_1() {
         // 1 * 7 / 100 = 0.07 → ceiling = 1
         assert_eq!(super::calculate_quorum(1), 1);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_14_citizens_equals_1() {
         // 14 * 7 / 100 = 0.98 → ceiling = 1
         assert_eq!(super::calculate_quorum(14), 1);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_15_citizens_equals_2() {
         // 15 * 7 / 100 = 1.05 → ceiling = 2
         assert_eq!(super::calculate_quorum(15), 2);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_100_citizens_equals_7() {
         // 100 * 7 / 100 = 7.0 → ceiling = 7
         assert_eq!(super::calculate_quorum(100), 7);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_101_citizens_equals_8() {
         // 101 * 7 / 100 = 7.07 → ceiling = 8
         assert_eq!(super::calculate_quorum(101), 8);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_143_citizens_equals_11() {
         // 143 * 7 / 100 = 10.01 → ceiling = 11
         assert_eq!(super::calculate_quorum(143), 11);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "quorum", "math")]
+    #[allure_test]
     #[test]
     fn test_quorum_with_1000_citizens_equals_70() {
         // 1000 * 7 / 100 = 70.0 → ceiling = 70
         assert_eq!(super::calculate_quorum(1000), 70);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "quorum", "math", "algorithm")]
+    #[allure_test]
     #[test]
     fn test_quorum_ceiling_division_correctness() {
         // Verify ceiling division works correctly at various boundaries
@@ -848,7 +939,12 @@ mod tests {
         assert_eq!(super::calculate_quorum(43), 4);  // 3.01 → 4
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Calculation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "math", "scale")]
+    #[allure_test]
     #[test]
     fn test_quorum_large_numbers() {
         // Test with large citizen counts
@@ -862,7 +958,12 @@ mod tests {
     // Formula: quorum = ceil(citizen_count * 7 / 100)
     // Quorum changes when citizen_count crosses multiples of 100/7 ≈ 14.2857
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Boundaries")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "quorum", "boundary")]
+    #[allure_test]
     #[test]
     fn test_quorum_boundary_0_to_1() {
         // Boundary: 0 → 1 (special case for zero)
@@ -873,7 +974,12 @@ mod tests {
         assert_eq!(super::calculate_quorum(1), 1, "1 citizen should have 1 quorum (ceil(0.07) = 1)");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Boundaries")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "quorum", "boundary")]
+    #[allure_test]
     #[test]
     fn test_quorum_boundary_1_to_2() {
         // Boundary: quorum changes from 1 to 2 at 15 citizens
@@ -887,7 +993,12 @@ mod tests {
         assert_eq!(super::calculate_quorum(16), 2, "16 citizens: ceil(1.12) = 2");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Boundaries")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "boundary")]
+    #[allure_test]
     #[test]
     fn test_quorum_boundary_2_to_3() {
         // Boundary: quorum changes from 2 to 3 at 29 citizens
@@ -901,7 +1012,12 @@ mod tests {
         assert_eq!(super::calculate_quorum(30), 3, "30 citizens: ceil(2.10) = 3");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Boundaries")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "boundary")]
+    #[allure_test]
     #[test]
     fn test_quorum_boundary_6_to_7() {
         // Boundary: quorum changes from 6 to 7 at 86 citizens
@@ -915,7 +1031,12 @@ mod tests {
         assert_eq!(super::calculate_quorum(87), 7, "87 citizens: ceil(6.09) = 7");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Boundaries")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "quorum", "boundary", "percentage")]
+    #[allure_test]
     #[test]
     fn test_quorum_boundary_exact_7_percent() {
         // Special boundary: exact 7% (100 citizens = 7 quorum exactly)
@@ -930,7 +1051,12 @@ mod tests {
         assert_eq!(super::calculate_quorum(101), 8, "101 citizens: ceil(7.07) = 8");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Boundaries")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "quorum", "boundary", "percentage")]
+    #[allure_test]
     #[test]
     fn test_quorum_boundary_exact_14_percent() {
         // Another exact boundary: 200 citizens = 14 quorum exactly
@@ -945,7 +1071,12 @@ mod tests {
         assert_eq!(super::calculate_quorum(201), 15, "201 citizens: ceil(14.07) = 15");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Quorum Boundaries")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "quorum", "boundary", "algorithm")]
+    #[allure_test]
     #[test]
     fn test_quorum_boundary_floor_vs_ceil_difference() {
         // Test cases where floor and ceiling would give different results
@@ -964,7 +1095,12 @@ mod tests {
     // Note: create_proposal method initiates cross-contract call, so we test validation
     // by checking that the method panics before the cross-contract call for invalid input
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Description Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "proposal")]
+    #[allure_test]
     #[test]
     fn test_create_proposal_empty_description_fails() {
         let context = get_context(accounts(0));
@@ -986,7 +1122,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Description Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "proposal")]
+    #[allure_test]
     #[test]
     fn test_create_proposal_whitespace_only_description_fails() {
         let context = get_context(accounts(0));
@@ -1010,7 +1151,12 @@ mod tests {
 
     // ==================== DESCRIPTION LENGTH BOUNDARY TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Description Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "boundary")]
+    #[allure_test]
     #[test]
     fn test_description_boundary_limit_minus_1_passes() {
         // 9,999 characters - just under the 10,000 limit
@@ -1030,7 +1176,12 @@ mod tests {
         let _ = contract.create_proposal(description);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Description Validation")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "validation", "boundary")]
+    #[allure_test]
     #[test]
     fn test_description_boundary_at_limit_passes() {
         // Exactly 10,000 characters - at the limit
@@ -1050,7 +1201,12 @@ mod tests {
         let _ = contract.create_proposal(description);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Description Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "boundary")]
+    #[allure_test]
     #[test]
     fn test_description_boundary_limit_plus_1_fails() {
         // 10,001 characters - just over the 10,000 limit
@@ -1074,7 +1230,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Description Validation")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "validation", "boundary", "edge-case")]
+    #[allure_test]
     #[test]
     fn test_description_boundary_single_char_passes() {
         // Single character - minimum valid non-empty description
@@ -1092,7 +1253,12 @@ mod tests {
         let _ = contract.create_proposal("x".to_string());
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Description Validation")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "validation", "negative")]
+    #[allure_test]
     #[test]
     fn test_create_proposal_description_over_max_fails() {
         let context = get_context(accounts(0));
@@ -1115,7 +1281,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Access Control")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_create_proposal_unauthorized_fails() {
         let mut context = get_context(accounts(0));
@@ -1140,7 +1311,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Access Control")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "security", "authorization")]
+    #[allure_test]
     #[test]
     fn test_add_member_unauthorized_fails() {
         let mut context = get_context(accounts(0));
@@ -1167,7 +1343,12 @@ mod tests {
 
     // ==================== EVENT STRUCTURE TESTS (Phase 2.4) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Events")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "events", "serialization")]
+    #[allure_test]
     #[test]
     fn test_member_added_event_serializes_correctly() {
         let event = super::MemberAddedEvent {
@@ -1182,7 +1363,12 @@ mod tests {
         assert!(json.contains("\"proposal_id\":42"));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Events")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "events", "serialization")]
+    #[allure_test]
     #[test]
     fn test_proposal_created_event_serializes_correctly() {
         let event = super::ProposalCreatedEvent {
@@ -1195,7 +1381,12 @@ mod tests {
         assert!(json.contains("\"description\":\"Test proposal description\""));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Events")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "events", "serialization")]
+    #[allure_test]
     #[test]
     fn test_quorum_updated_event_serializes_correctly() {
         let event = super::QuorumUpdatedEvent {
@@ -1212,7 +1403,12 @@ mod tests {
 
     // ==================== GAS CONSTANT VALIDATION TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Constants")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "constants", "gas")]
+    #[allure_test]
     #[test]
     fn test_gas_constants_are_reasonable() {
         // Verify gas allocations are within expected ranges
@@ -1227,14 +1423,24 @@ mod tests {
         assert!(super::GAS_FOR_QUORUM_UPDATE.as_tgas() <= 200);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Constants")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "constants")]
+    #[allure_test]
     #[test]
     fn test_max_description_length_constant() {
         // Verify the constant is as documented
         assert_eq!(super::MAX_DESCRIPTION_LEN, 10_000);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Constants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "constants", "quorum")]
+    #[allure_test]
     #[test]
     fn test_quorum_percent_constant() {
         // Verify the quorum percentage is 7%
@@ -1243,7 +1449,12 @@ mod tests {
 
     // ==================== BRIDGE INFO TESTS ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Read Functions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "query", "view")]
+    #[allure_test]
     #[test]
     fn test_bridge_info_contains_all_fields() {
         let context = get_context(accounts(0));
@@ -1263,7 +1474,12 @@ mod tests {
         assert_eq!(info.citizen_role, "voter");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Read Functions")]
+    #[allure_severity("normal")]
+    #[allure_tags("unit", "query", "view")]
+    #[allure_test]
     #[test]
     fn test_individual_getters_match_get_info() {
         let context = get_context(accounts(0));
@@ -1286,7 +1502,12 @@ mod tests {
     // ==================== INVARIANT TESTS (Phase 2) ====================
     // Per OpenZeppelin best practices: verify system-wide invariants
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "invariant", "quorum")]
+    #[allure_test]
     #[test]
     fn test_invariant_quorum_percent_valid_range() {
         // Invariant: QUORUM_PERCENT must be > 0 and <= 100
@@ -1294,7 +1515,12 @@ mod tests {
         assert!(QUORUM_PERCENT <= 100, "QUORUM_PERCENT must not exceed 100%");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "invariant", "quorum")]
+    #[allure_test]
     #[test]
     fn test_invariant_quorum_never_exceeds_citizen_count() {
         // Invariant: For any citizen count N, quorum should be <= N
@@ -1311,7 +1537,12 @@ mod tests {
     }
 
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "invariant", "quorum")]
+    #[allure_test]
     #[test]
     fn test_invariant_quorum_monotonic_increasing() {
         // Invariant: Quorum should be monotonically increasing with citizen count
@@ -1330,7 +1561,12 @@ mod tests {
         }
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "invariant", "initialization")]
+    #[allure_test]
     #[test]
     fn test_invariant_all_config_accounts_valid_after_init() {
         // Invariant: All configured account IDs should be valid after initialization
@@ -1363,7 +1599,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Invariants")]
+    #[allure_severity("minor")]
+    #[allure_tags("unit", "invariant", "constants")]
+    #[allure_test]
     #[test]
     fn test_invariant_max_description_length_positive() {
         // Invariant: MAX_DESCRIPTION_LEN must be positive
@@ -1372,7 +1613,12 @@ mod tests {
 
     // ==================== CALLBACK TESTS (Phase 3) ====================
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "verification")]
+    #[allure_test]
     #[test]
     fn test_callback_add_member_verified() {
         let builder = get_context(accounts(0));
@@ -1397,7 +1643,12 @@ mod tests {
         let _ = contract.callback_add_member(accounts(3));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "verification")]
+    #[allure_test]
     #[test]
     fn test_callback_add_member_not_verified() {
         let builder = get_context(accounts(0));
@@ -1426,7 +1677,12 @@ mod tests {
         );
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "proposal")]
+    #[allure_test]
     #[test]
     fn test_callback_proposal_created() {
         let builder = get_context(accounts(0));
@@ -1451,7 +1707,12 @@ mod tests {
         let _ = contract.callback_proposal_created(accounts(3));
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "member")]
+    #[allure_test]
     #[test]
     fn test_callback_member_added() {
         let builder = get_context(accounts(0));
@@ -1480,7 +1741,12 @@ mod tests {
         assert!(logs[0].contains("member_added"), "Expected member_added event");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "policy")]
+    #[allure_test]
     #[test]
     fn test_callback_policy_received_for_quorum() {
         let builder = get_context(accounts(0));
@@ -1519,7 +1785,12 @@ mod tests {
         let _ = contract.callback_policy_received_for_quorum();
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "quorum")]
+    #[allure_test]
     #[test]
     fn test_callback_quorum_proposal_created() {
         let builder = get_context(accounts(0));
@@ -1544,7 +1815,12 @@ mod tests {
         let _ = contract.callback_quorum_proposal_created(2, 1);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "quorum")]
+    #[allure_test]
     #[test]
     fn test_callback_got_quorum_proposal() {
         let builder = get_context(accounts(0));
@@ -1585,7 +1861,12 @@ mod tests {
         let _ = contract.callback_got_quorum_proposal(2, 1, 2);
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "quorum")]
+    #[allure_test]
     #[test]
     fn test_callback_quorum_updated() {
         let builder = get_context(accounts(0));
@@ -1614,7 +1895,12 @@ mod tests {
         assert!(logs[0].contains("quorum_updated"), "Expected quorum_updated event");
     }
 
-    #[allure_rust::allure_test]
+    #[allure_epic("Smart Contracts")]
+    #[allure_feature("Sputnik Bridge Contract")]
+    #[allure_story("Callbacks")]
+    #[allure_severity("critical")]
+    #[allure_tags("unit", "callback", "proposal")]
+    #[allure_test]
     #[test]
     fn test_callback_vote_proposal_created() {
         let builder = get_context(accounts(0));
