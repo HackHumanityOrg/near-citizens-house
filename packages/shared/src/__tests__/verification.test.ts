@@ -142,6 +142,25 @@ describe("Near Citizens House", () => {
             expect(hash).toBeDefined()
             expect(hash).toHaveLength(64)
           })
+
+          it("should handle empty recipient string", async () => {
+            await allure.severity("minor")
+
+            const hash = computeNep413Hash("Test", standardNonce, "")
+
+            expect(hash).toBeDefined()
+            expect(hash).toHaveLength(64)
+          })
+
+          it("should handle very long recipient string", async () => {
+            await allure.severity("minor")
+
+            const longRecipient = "a".repeat(64) + ".near"
+            const hash = computeNep413Hash("Test", standardNonce, longRecipient)
+
+            expect(hash).toBeDefined()
+            expect(hash).toHaveLength(64)
+          })
         })
 
         describe("Boundary Tests", () => {
@@ -449,6 +468,20 @@ describe("Near Citizens House", () => {
             // Should still parse the required fields
             const result = parseUserContextData(hex)
             expect(result).not.toBeNull()
+          })
+
+          it("should handle input exceeding typical maximum length", async () => {
+            await allure.severity("minor")
+
+            const hugeContext = {
+              ...validUserContextJson,
+              extra: "x".repeat(10000), // 10k+ chars
+            }
+            const hex = Buffer.from(JSON.stringify(hugeContext)).toString("hex")
+            const result = parseUserContextData(hex)
+
+            // Should still parse or return null gracefully (no crash)
+            expect(result === null || result?.accountId === testAccountId).toBe(true)
           })
         })
       })

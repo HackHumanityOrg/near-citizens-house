@@ -77,6 +77,40 @@ describe("Near Citizens House", () => {
               expect(nearNamedAccountSchema.safeParse("a.b.c.near").success).toBe(true)
             })
           })
+
+          it("accepts numeric-only accounts", async () => {
+            await allure.severity("normal")
+            await allure.step("Validate numeric accounts", async () => {
+              expect(nearNamedAccountSchema.safeParse("100").success).toBe(true)
+              expect(nearNamedAccountSchema.safeParse("12").success).toBe(true)
+              expect(nearNamedAccountSchema.safeParse("99").success).toBe(true)
+            })
+          })
+
+          it("accepts all valid examples from NEAR spec", async () => {
+            await allure.severity("normal")
+            await allure.step("Validate spec examples", async () => {
+              const specExamples = [
+                "ok",
+                "bowen",
+                "ek-2",
+                "ek.near",
+                "com",
+                "google.com",
+                "bowen.google.com",
+                "near",
+                "illia.cheap-accounts.near",
+                "max_99.near",
+                "100",
+                "near2019",
+                "over.9000",
+                "a.bro",
+              ]
+              for (const account of specExamples) {
+                expect(nearNamedAccountSchema.safeParse(account).success).toBe(true)
+              }
+            })
+          })
         })
 
         describe("invalid named accounts", () => {
@@ -140,6 +174,37 @@ describe("Near Citizens House", () => {
               expect(nearNamedAccountSchema.safeParse("alice@near").success).toBe(false)
               expect(nearNamedAccountSchema.safeParse("alice#near").success).toBe(false)
               expect(nearNamedAccountSchema.safeParse("alice near").success).toBe(false)
+            })
+          })
+
+          it("rejects all invalid examples from NEAR spec", async () => {
+            await allure.severity("critical")
+            await allure.step("Reject spec invalid examples", async () => {
+              const specInvalid = [
+                "a", // too short
+                "100-", // suffix separator
+                "bo__wen", // consecutive separators
+                "_illia", // prefix separator
+                ".near", // prefix dot
+                "near.", // suffix dot
+                "a..near", // two dots in a row
+                "$$$", // invalid chars
+                "WAT", // uppercase
+                "me@google.com", // invalid char @
+              ]
+              for (const account of specInvalid) {
+                expect(nearNamedAccountSchema.safeParse(account).success).toBe(false)
+              }
+            })
+          })
+
+          it("rejects separators at subaccount part boundaries", async () => {
+            await allure.severity("critical")
+            await allure.step("Reject part boundary separators", async () => {
+              expect(nearNamedAccountSchema.safeParse("alice.-bob.near").success).toBe(false)
+              expect(nearNamedAccountSchema.safeParse("alice.bob-.near").success).toBe(false)
+              expect(nearNamedAccountSchema.safeParse("alice._bob.near").success).toBe(false)
+              expect(nearNamedAccountSchema.safeParse("alice.bob_.near").success).toBe(false)
             })
           })
         })
