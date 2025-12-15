@@ -64,9 +64,9 @@ fn create_valid_signature(
     }
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Store Verification")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Store Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "happy-path", "integration")]
 #[allure_test]

@@ -6,9 +6,9 @@ use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
 use verified_accounts::Contract;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Composability Interface")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "composability")]
 #[allure_test]
@@ -22,9 +22,9 @@ fn test_interface_version() {
     assert_eq!(contract.interface_version(), "1.0.0");
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Composability Interface")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "query")]
 #[allure_test]
@@ -41,9 +41,9 @@ fn test_get_account_empty() {
     assert!(info.is_none());
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Composability Interface")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "batch")]
 #[allure_test]
@@ -63,9 +63,9 @@ fn test_are_accounts_verified_empty() {
     assert!(!results[2]);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Composability Interface")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "batch")]
 #[allure_test]
@@ -85,9 +85,9 @@ fn test_get_accounts_empty() {
     assert!(results[2].is_none());
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Composability Interface")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Composability Interface")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "interface", "edge-case")]
 #[allure_test]

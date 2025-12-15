@@ -5,9 +5,9 @@
 use allure_rs::prelude::*;
 use verified_accounts::{SelfProofData, ZkProof};
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Stress Tests")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Stress Tests")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "stress", "serialization")]
 #[allure_test]

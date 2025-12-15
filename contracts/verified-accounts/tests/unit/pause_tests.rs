@@ -7,9 +7,9 @@ use near_sdk::testing_env;
 use near_sdk::NearToken;
 use verified_accounts::{Contract, NearSignatureData};
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Pause/Unpause")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "pause")]
 #[allure_test]
@@ -61,9 +61,9 @@ fn test_pause_unpause() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Pause/Unpause")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
 #[allure_test]
@@ -82,9 +82,9 @@ fn test_unauthorized_pause() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Pause/Unpause")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
 #[allure_test]
@@ -113,9 +113,9 @@ fn test_unauthorized_unpause() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Pause/Unpause")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "pause")]
 #[allure_test]

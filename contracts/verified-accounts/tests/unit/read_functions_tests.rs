@@ -6,9 +6,9 @@ use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
 use verified_accounts::Contract;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Read Functions")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "query", "view")]
 #[allure_test]
@@ -37,9 +37,9 @@ fn test_read_functions() {
     assert_eq!(accounts_list.len(), 0);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Read Functions")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Read Functions")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "pagination", "edge-case")]
 #[allure_test]

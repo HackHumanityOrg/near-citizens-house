@@ -165,7 +165,7 @@ async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
         .expect("expected last proposal id > 0");
 
     // Vote sequentially - first 3 approve, then check status before remaining votes
-    // With 5 citizens and default 50% threshold: need ceil(5 * 1/2) + 1 = 3 votes
+    // With 5 citizens and >50% threshold: need >2.5 votes, so 3 votes (60%) is sufficient
     for i in 0..3 {
         let user = env.user(i);
         let result =

@@ -6,9 +6,9 @@ use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
 use verified_accounts::{Contract, NearSignatureData};
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Input Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "security")]
 #[allure_test]
@@ -48,9 +48,9 @@ fn test_account_id_mismatch() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Input Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "security")]
 #[allure_test]
@@ -90,9 +90,9 @@ fn test_recipient_mismatch() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Input Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "batch-size")]
 #[allure_test]
@@ -117,9 +117,9 @@ fn test_batch_size_exceeded_are_accounts_verified() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Input Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "batch-size")]
 #[allure_test]
@@ -144,9 +144,9 @@ fn test_batch_size_exceeded_get_accounts() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Input Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "nullifier")]
 #[allure_test]
@@ -188,9 +188,9 @@ fn test_nullifier_too_long() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Input Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "user-id")]
 #[allure_test]
@@ -232,9 +232,9 @@ fn test_user_id_too_long() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Input Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "attestation-id")]
 #[allure_test]
@@ -273,6 +273,50 @@ fn test_attestation_id_too_long() {
             );
         },
         "Attestation ID exceeds maximum length of 1",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "validation", "user-context-data")]
+#[allure_test]
+#[test]
+fn test_user_context_data_too_long() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+
+    assert_panic_with(
+        || {
+            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+            let sig_data = NearSignatureData {
+                account_id: user.clone(),
+                signature: vec![0; 64],
+                public_key: public_key_str.parse().unwrap(),
+                challenge: "Identify myself".to_string(),
+                nonce: vec![0; 32],
+                recipient: user.clone(),
+            };
+
+            // Create user_context_data that exceeds the 4096 character limit
+            let too_long_user_context = "x".repeat(4097);
+
+            contract.store_verification(
+                "test_nullifier".to_string(),
+                user,
+                "user1".to_string(),
+                "1".to_string(),
+                sig_data,
+                test_self_proof(),
+                too_long_user_context,
+            );
+        },
+        "User context data exceeds maximum length of 4096",
     );
 }
 
