@@ -225,11 +225,6 @@ jobs:
           echo "Collected allure results:"
           ls -la allure-results/ || echo "No results collected"
 
-      # Copy categories.json
-      - name: Add categories
-        if: always()
-        run: cp allure-categories.json allure-results/categories.json
-
       # Load test report history from gh-pages branch
       - name: Load test report history
         if: always()
