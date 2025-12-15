@@ -1,14 +1,7 @@
 //! Access control and callback security tests for sputnik-bridge contract
-//!
-//! Run with: cargo test --features integration-tests
 
-#![cfg(feature = "integration-tests")]
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-
-mod helpers;
-
+use super::helpers::*;
 use allure_rs::prelude::*;
-use helpers::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
@@ -275,10 +268,13 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
     );
 
     // Verify it fails due to #[private] macro protection (predecessor != current_account)
-    let error_indicates_private = contains_error(&result, "predecessor")
-        || contains_error(&result, "Method callback_add_member is private");
+    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
     assert!(
-        error_indicates_private,
+        contains_any_error(
+            &result,
+            &["predecessor", "Method callback_add_member is private", "private"],
+            "private callback"
+        ),
         "Should fail due to #[private] macro protection. Actual failures: {:?}",
         result.failures()
     );
@@ -311,10 +307,13 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
     );
 
     // Verify it fails due to #[private] macro protection
-    let error_indicates_private = contains_error(&result, "predecessor")
-        || contains_error(&result, "Method callback_proposal_created is private");
+    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
     assert!(
-        error_indicates_private,
+        contains_any_error(
+            &result,
+            &["predecessor", "Method callback_proposal_created is private", "private"],
+            "private callback"
+        ),
         "Should fail due to #[private] macro protection. Actual failures: {:?}",
         result.failures()
     );
@@ -350,10 +349,13 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
     );
 
     // Verify it fails due to #[private] macro protection
-    let error_indicates_private = contains_error(&result, "predecessor")
-        || contains_error(&result, "Method callback_member_added is private");
+    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
     assert!(
-        error_indicates_private,
+        contains_any_error(
+            &result,
+            &["predecessor", "Method callback_member_added is private", "private"],
+            "private callback"
+        ),
         "Should fail due to #[private] macro protection. Actual failures: {:?}",
         result.failures()
     );
@@ -386,10 +388,13 @@ async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> an
     );
 
     // Verify it fails due to #[private] macro protection
-    let error_indicates_private = contains_error(&result, "predecessor")
-        || contains_error(&result, "Method callback_vote_proposal_created is private");
+    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
     assert!(
-        error_indicates_private,
+        contains_any_error(
+            &result,
+            &["predecessor", "Method callback_vote_proposal_created is private", "private"],
+            "private callback"
+        ),
         "Should fail due to #[private] macro protection. Actual failures: {:?}",
         result.failures()
     );

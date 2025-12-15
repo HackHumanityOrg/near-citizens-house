@@ -68,12 +68,13 @@ jobs:
         run: mkdir -p allure-results
 
       # Run unit tests with cargo test (allure-rust generates results)
-      # Note: Integration tests are feature-gated and not run by default
+      # verified-accounts and sputnik-bridge require --features testing to run unit tests
+      # Interface crates don't need the testing feature
       - name: Run verified-accounts unit tests
         id: test_verified_accounts
         working-directory: contracts/verified-accounts
         run: |
-          cargo test --lib 2>&1 | tee test_output.txt
+          cargo test --features testing 2>&1 | tee test_output.txt
           # Extract test summary line (e.g., "test result: ok. 69 passed; 0 failed; 0 ignored")
           SUMMARY=$(grep "test result:" test_output.txt | tail -1)
           PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
@@ -88,7 +89,7 @@ jobs:
         id: test_verified_accounts_interface
         working-directory: contracts/verified-accounts-interface
         run: |
-          cargo test --lib 2>&1 | tee test_output.txt
+          cargo test 2>&1 | tee test_output.txt
           SUMMARY=$(grep "test result:" test_output.txt | tail -1)
           PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
           FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
@@ -102,7 +103,7 @@ jobs:
         id: test_sputnik_bridge
         working-directory: contracts/sputnik-bridge
         run: |
-          cargo test --lib 2>&1 | tee test_output.txt
+          cargo test --features testing 2>&1 | tee test_output.txt
           SUMMARY=$(grep "test result:" test_output.txt | tail -1)
           PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
           FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
@@ -116,7 +117,7 @@ jobs:
         id: test_sputnik_dao_interface
         working-directory: contracts/sputnik-dao-interface
         run: |
-          cargo test --lib 2>&1 | tee test_output.txt
+          cargo test 2>&1 | tee test_output.txt
           SUMMARY=$(grep "test result:" test_output.txt | tail -1)
           PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
           FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")

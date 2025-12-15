@@ -1,14 +1,7 @@
 //! Edge case and deposit/bond tests for sputnik-bridge contract
-//!
-//! Run with: cargo test --features integration-tests
 
-#![cfg(feature = "integration-tests")]
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-
-mod helpers;
-
+use super::helpers::*;
 use allure_rs::prelude::*;
-use helpers::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
@@ -45,11 +38,14 @@ async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
     );
 
     // Verify error message mentions insufficient deposit/bond
-    let has_deposit_error = contains_error(&result, "Not enough deposit")
-        || contains_error(&result, "ERR_MIN_BOND")
-        || contains_error(&result, "insufficient");
+    // Note: SputnikDAO may return different error messages in different versions,
+    // so we accept multiple possible messages for external contract errors
     assert!(
-        has_deposit_error,
+        contains_any_error(
+            &result,
+            &["Not enough deposit", "ERR_MIN_BOND"],
+            "insufficient deposit"
+        ),
         "Error should mention insufficient deposit. Failures: {:?}",
         result.failures()
     );
@@ -142,10 +138,13 @@ async fn test_concurrent_member_additions() -> anyhow::Result<()> {
 #[allure_suite_label("Sputnik Bridge Integration Tests")]
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("critical")]
-#[allure_tags("integration", "edge-case", "concurrency")]
+#[allure_tags("integration", "edge-case", "voting")]
 #[allure_test]
 #[tokio::test]
-async fn test_concurrent_proposal_voting() -> anyhow::Result<()> {
+async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
+    // This test verifies sequential voting behavior when threshold is reached mid-voting.
+    // With 5 citizens and 50% threshold, 3 approve votes (60%) triggers auto-approval.
+    // Subsequent votes on an approved proposal should fail gracefully.
     let env = setup_with_users(5).await?;
 
     // Setup: Verify and add all users as citizens
@@ -157,7 +156,7 @@ async fn test_concurrent_proposal_voting() -> anyhow::Result<()> {
     }
 
     // Create a Vote proposal
-    create_proposal_via_bridge(&env.backend, &env.bridge, "Concurrent voting test")
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Sequential voting test")
         .await?
         .into_result()?;
     let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
@@ -165,27 +164,51 @@ async fn test_concurrent_proposal_voting() -> anyhow::Result<()> {
         .checked_sub(1)
         .expect("expected last proposal id > 0");
 
-    // All citizens vote in rapid succession
-    // First 3 vote approve, last 2 vote reject
-    let mut vote_results = Vec::new();
-    for (i, user) in env.users.iter().enumerate() {
-        let action = if i < 3 { "VoteApprove" } else { "VoteReject" };
+    // Vote sequentially - first 3 approve, then check status before remaining votes
+    // With 5 citizens and default 50% threshold: need ceil(5 * 1/2) + 1 = 3 votes
+    for i in 0..3 {
+        let user = env.user(i);
         let result =
-            vote_on_proposal(user, &env.sputnik_dao, proposal_id, action, json!("Vote")).await?;
-        vote_results.push((user.id().to_string(), action, result.is_success()));
+            vote_on_proposal(user, &env.sputnik_dao, proposal_id, "VoteApprove", json!("Vote"))
+                .await?;
+        assert!(
+            result.is_success(),
+            "Vote {} should succeed. Failures: {:?}",
+            i,
+            result.failures()
+        );
     }
 
-    // Verify all votes were registered (only first 2 votes needed for majority)
-    // After 2 approve votes (40%), still in progress (need 50%)
-    // After 3 approve votes (60%), proposal passes
-    let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-
-    // With 3 approve votes out of 5 (60%), proposal should be approved
-    // The remaining 2 reject votes happen after the proposal is already approved
+    // After 3 approve votes, proposal should be approved
+    let proposal_after_approvals = get_proposal(&env.sputnik_dao, proposal_id).await?;
     assert_eq!(
-        proposal.status,
+        proposal_after_approvals.status,
         ProposalStatus::Approved,
-        "Proposal should be approved with 3/5 (60%) approval votes"
+        "Proposal should be approved after 3/5 (60%) approval votes"
+    );
+
+    // Verify that voting on an already-approved proposal fails
+    let late_vote_result = vote_on_proposal(
+        env.user(3),
+        &env.sputnik_dao,
+        proposal_id,
+        "VoteReject",
+        json!("Vote"),
+    )
+    .await?;
+
+    // Late votes on approved proposals should fail
+    assert!(
+        late_vote_result.is_failure(),
+        "Voting on an already-approved proposal should fail"
+    );
+
+    // Final verification - proposal is still approved
+    let final_proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
+    assert_eq!(
+        final_proposal.status,
+        ProposalStatus::Approved,
+        "Proposal should remain approved"
     );
 
     Ok(())
