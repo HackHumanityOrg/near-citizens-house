@@ -165,37 +165,24 @@ describe("computeNep413Hash", () => {
       expect(hash).toHaveLength(64)
     })
 
-    it("should handle short nonce (31 bytes)", async () => {
+    it("should throw for short nonce (31 bytes)", async () => {
       await allure.severity("critical")
       await allure.story("Short Nonce")
 
       // 31 bytes - one byte short
       const shortNonce = Array(31).fill(42)
-      // The function accepts the nonce as-is (Borsh will serialize what it gets)
-      // This produces a different hash than 32 bytes - not necessarily an error
-      const hash = computeNep413Hash("Test", shortNonce, testRecipient)
-      expect(hash).toHaveLength(64)
-
-      // Verify it differs from 32-byte nonce
-      const nonce32 = Array(32).fill(42)
-      const hash32 = computeNep413Hash("Test", nonce32, testRecipient)
-      expect(hash).not.toBe(hash32)
+      // Borsh serialization enforces exactly 32 bytes for the nonce field
+      expect(() => computeNep413Hash("Test", shortNonce, testRecipient)).toThrow(/length/i)
     })
 
-    it("should handle long nonce (33 bytes)", async () => {
+    it("should throw for long nonce (33 bytes)", async () => {
       await allure.severity("critical")
       await allure.story("Long Nonce")
 
       // 33 bytes - one byte extra
       const longNonce = Array(33).fill(42)
-      // The function accepts the nonce as-is (Borsh will serialize what it gets)
-      const hash = computeNep413Hash("Test", longNonce, testRecipient)
-      expect(hash).toHaveLength(64)
-
-      // Verify it differs from 32-byte nonce
-      const nonce32 = Array(32).fill(42)
-      const hash32 = computeNep413Hash("Test", nonce32, testRecipient)
-      expect(hash).not.toBe(hash32)
+      // Borsh serialization enforces exactly 32 bytes for the nonce field
+      expect(() => computeNep413Hash("Test", longNonce, testRecipient)).toThrow(/length/i)
     })
 
     it("should handle nonce with all 0xFF values (max byte)", async () => {
@@ -679,7 +666,8 @@ describe("verifyNearSignature", () => {
       expect(result.valid).toBe(false)
       expect(result.error).toBeDefined()
       // Verify error message gives useful context about the key issue
-      expect(result.error).toMatch(/key|decode|base58|invalid/i)
+      // base58 library throws "Unknown letter" for invalid characters like 'l'
+      expect(result.error).toMatch(/key|decode|base58|invalid|letter|allowed/i)
     })
   })
 
