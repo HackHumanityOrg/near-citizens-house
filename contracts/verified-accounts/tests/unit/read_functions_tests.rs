@@ -1,6 +1,8 @@
 //! Read functions tests for verified-accounts contract
 
-use super::helpers::get_context;
+use super::helpers::{
+    create_signer, create_valid_signature, get_context, test_self_proof,
+};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
@@ -36,6 +38,67 @@ fn test_read_functions() {
     // Test pagination with empty data
     let accounts_list = contract.get_verified_accounts(0, 10);
     assert_eq!(accounts_list.len(), 0);
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Read Functions")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "query", "pagination", "batch")]
+#[allure_description("Verifies pagination and batch queries return correct data when contract has verified accounts.")]
+#[allure_test]
+#[test]
+fn test_read_functions_with_verified_accounts() {
+    let backend = accounts(1);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend.clone());
+
+    // Insert two verified accounts
+    let user_a = accounts(2);
+    let signer_a = create_signer(&user_a);
+    let sig_a = create_valid_signature(&signer_a, &user_a, "Identify myself", &[9; 32], &user_a);
+    contract.store_verification(
+        "nullifier_a".to_string(),
+        user_a,
+        "userA".to_string(),
+        "1".to_string(),
+        sig_a,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    let user_b = accounts(3);
+    let signer_b = create_signer(&user_b);
+    let sig_b = create_valid_signature(&signer_b, &user_b, "Identify myself", &[10; 32], &user_b);
+    contract.store_verification(
+        "nullifier_b".to_string(),
+        user_b,
+        "userB".to_string(),
+        "1".to_string(),
+        sig_b,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    assert_eq!(contract.get_verified_count(), 2);
+
+    // Pagination should return slices without panicking
+    let first_page = contract.get_verified_accounts(0, 1);
+    assert_eq!(first_page.len(), 1);
+    let second_page = contract.get_verified_accounts(1, 10);
+    assert_eq!(second_page.len(), 1);
+
+    // Batch verification flags should align with stored accounts
+    let statuses =
+        contract.are_accounts_verified(vec![accounts(2), accounts(3), accounts(4)]);
+    assert_eq!(statuses, vec![true, true, false]);
+
+    // Batch account retrieval returns Some/None as expected
+    let accounts_data = contract.get_accounts(vec![accounts(2), accounts(4)]);
+    assert!(accounts_data[0].is_some());
+    assert!(accounts_data[1].is_none());
 }
 
 #[allure_parent_suite("Near Citizens House")]
