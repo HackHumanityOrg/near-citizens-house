@@ -1,14 +1,7 @@
 //! Admin and event tests for sputnik-bridge contract
-//!
-//! Run with: cargo test --features integration-tests
 
-#![cfg(feature = "integration-tests")]
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-
-mod helpers;
-
+use super::helpers::*;
 use allure_rs::prelude::*;
-use helpers::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
@@ -346,6 +339,157 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
     assert_eq!(
         proposal.description, "Event test",
         "Proposal description should match"
+    );
+
+    Ok(())
+}
+
+// ==================== BACKEND WALLET EDGE CASE TESTS ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "edge-case")]
+#[allure_test]
+#[tokio::test]
+async fn test_backend_wallet_self_update() -> anyhow::Result<()> {
+    // Test that backend can update to itself (no-op but valid)
+    let env = setup().await?;
+
+    let result = env
+        .backend
+        .call(env.bridge.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": env.backend.id() }))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Backend should be able to 'update' to itself. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify backend is still the same
+    let backend_wallet: String = env.bridge.view("get_backend_wallet").await?.json()?;
+    assert_eq!(backend_wallet, env.backend.id().to_string());
+
+    // Verify backend can still perform operations
+    let user_env = setup_with_users(1).await?;
+    let user = user_env.user(0);
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "concurrent")]
+#[allure_test]
+#[tokio::test]
+async fn test_operations_continue_after_wallet_rotation() -> anyhow::Result<()> {
+    // Test that ongoing/subsequent operations work correctly after wallet rotation
+    let env = setup_with_users(3).await?;
+    let user1 = env.user(0);
+    let user2 = env.user(1);
+    let new_backend = env.user(2);
+
+    // Verify user1 before rotation
+    verify_user(&env.backend, &env.verified_accounts, user1, 0).await?;
+
+    // Add user1 as citizen via old backend
+    let result1 = add_member_via_bridge(&env.backend, &env.bridge, user1).await?;
+    assert!(result1.is_success(), "First add should succeed");
+
+    // Rotate backend wallet
+    env.backend
+        .call(env.bridge.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": new_backend.id() }))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Verify user2 (backend still has access to verified-accounts)
+    verify_user(&env.backend, &env.verified_accounts, user2, 1).await?;
+
+    // New backend should be able to add user2
+    let result2 = new_backend
+        .call(env.bridge.id(), "add_member")
+        .args_json(json!({ "near_account_id": user2.id() }))
+        .deposit(NearToken::from_near(1))
+        .gas(near_workspaces::types::Gas::from_tgas(300))
+        .transact()
+        .await?;
+
+    assert!(
+        result2.is_success(),
+        "New backend should add members after rotation. Failures: {:?}",
+        result2.failures()
+    );
+
+    // Verify both users are citizens
+    let is_user1_citizen =
+        is_account_in_role(&env.sputnik_dao, user1.id().as_str(), "citizen").await?;
+    let is_user2_citizen =
+        is_account_in_role(&env.sputnik_dao, user2.id().as_str(), "citizen").await?;
+
+    assert!(is_user1_citizen, "User1 should be citizen (added before rotation)");
+    assert!(is_user2_citizen, "User2 should be citizen (added after rotation)");
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "events", "wallet")]
+#[allure_test]
+#[tokio::test]
+async fn test_wallet_update_event_emitted() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let new_backend = env.user(0);
+
+    let result = env
+        .backend
+        .call(env.bridge.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": new_backend.id() }))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    // Extract logs before consuming result
+    let logs = extract_event_logs(&result);
+    result.into_result()?;
+
+    let events = parse_events(&logs);
+
+    // Check for backend_wallet_updated event
+    let wallet_updated_events: Vec<_> = events
+        .iter()
+        .filter(|e| e.event == "backend_wallet_updated")
+        .collect();
+
+    assert_eq!(
+        wallet_updated_events.len(),
+        1,
+        "Expected exactly one backend_wallet_updated event"
+    );
+
+    let event = wallet_updated_events[0];
+    assert_eq!(
+        event.data.get("old_wallet"),
+        Some(&json!(env.backend.id().to_string())),
+        "Event should contain old wallet"
+    );
+    assert_eq!(
+        event.data.get("new_wallet"),
+        Some(&json!(new_backend.id().to_string())),
+        "Event should contain new wallet"
     );
 
     Ok(())

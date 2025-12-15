@@ -4,16 +4,9 @@
 //! - After each member addition, quorum is updated to ceil(7% * citizen_count)
 //! - Threshold remains at 50% (Ratio 1/2) of citizens
 //! - effective_threshold = max(quorum, threshold_weight)
-//!
-//! Run with: cargo test --features integration-tests
 
-#![cfg(feature = "integration-tests")]
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-
-mod helpers;
-
+use super::helpers::*;
 use allure_rs::prelude::*;
-use helpers::*;
 use serde_json::json;
 
 // ==================== DYNAMIC QUORUM TESTS ====================
@@ -433,6 +426,237 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
         "Proposal should be Rejected after {} NO votes",
         votes_needed
     );
+
+    Ok(())
+}
+
+// ==================== QUORUM EDGE CASE TESTS ====================
+
+/// Test 7: 0→1 citizen transition - first citizen addition
+/// This is a critical edge case where the DAO goes from having no citizens to one.
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "edge-case")]
+#[allure_test]
+#[tokio::test]
+async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
+    let env = setup_with_policy_and_users(1, create_policy_with_dynamic_quorum, true).await?;
+
+    // Initial state: no citizens
+    let initial_citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(initial_citizen_count, 0, "Should start with 0 citizens");
+
+    let initial_quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(initial_quorum, 0, "Initial quorum should be 0 with no citizens");
+
+    // Add the first citizen
+    let first_user = env.user(0);
+    verify_user(&env.backend, &env.verified_accounts, first_user, 0).await?;
+    let result = add_member_via_bridge(&env.backend, &env.bridge, first_user).await?;
+    assert!(
+        result.is_success(),
+        "Adding first citizen should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // After first citizen: quorum should be ceil(1 * 7 / 100) = 1
+    let new_citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(new_citizen_count, 1, "Should have 1 citizen after addition");
+
+    let new_quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(
+        new_quorum, 1,
+        "Quorum should be 1 after first citizen (ceil(1 * 0.07) = 1)"
+    );
+
+    // Verify the first citizen is actually in the role
+    let is_citizen = is_account_in_role(&env.sputnik_dao, first_user.id().as_str(), "citizen").await?;
+    assert!(is_citizen, "First user should be in citizen role");
+
+    // Create a vote proposal and verify single citizen can approve it
+    create_proposal_via_bridge(&env.backend, &env.bridge, "First citizen vote test")
+        .await?
+        .into_result()?;
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+
+    // With 1 citizen, effective_threshold = max(1, (1*1/2)+1) = max(1, 1) = 1
+    // Single vote should approve
+    vote_on_proposal(
+        first_user,
+        &env.sputnik_dao,
+        proposal_id,
+        "VoteApprove",
+        json!("Vote"),
+    )
+    .await?
+    .into_result()?;
+
+    let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
+    assert_eq!(
+        proposal.status,
+        ProposalStatus::Approved,
+        "Single citizen vote should approve proposal when there's only 1 citizen"
+    );
+
+    Ok(())
+}
+
+/// Test 8: Quorum boundary test at 14→15 citizens
+/// At 14 citizens: quorum = ceil(14 * 0.07) = ceil(0.98) = 1
+/// At 15 citizens: quorum = ceil(15 * 0.07) = ceil(1.05) = 2
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "boundary")]
+#[allure_test]
+#[tokio::test]
+async fn test_quorum_boundary_14_to_15_citizens() -> anyhow::Result<()> {
+    let env = setup_with_policy_and_users(15, create_policy_with_dynamic_quorum, true).await?;
+
+    // Add 14 citizens
+    for i in 0..14 {
+        let user = env.user(i);
+        verify_user(&env.backend, &env.verified_accounts, user, i).await?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
+    }
+
+    // With 14 citizens, quorum should be 1
+    let quorum_at_14 = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(
+        quorum_at_14, 1,
+        "At 14 citizens, quorum should be 1 (ceil(14 * 0.07) = ceil(0.98) = 1)"
+    );
+
+    // Add the 15th citizen
+    let fifteenth_user = env.user(14);
+    verify_user(&env.backend, &env.verified_accounts, fifteenth_user, 14).await?;
+    add_member_via_bridge(&env.backend, &env.bridge, fifteenth_user)
+        .await?
+        .into_result()?;
+
+    // With 15 citizens, quorum should be 2
+    let quorum_at_15 = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(
+        quorum_at_15, 2,
+        "At 15 citizens, quorum should be 2 (ceil(15 * 0.07) = ceil(1.05) = 2)"
+    );
+
+    // Verify the boundary transition
+    assert!(
+        quorum_at_15 > quorum_at_14,
+        "Quorum should increase from {} to {} when going from 14 to 15 citizens",
+        quorum_at_14,
+        quorum_at_15
+    );
+
+    Ok(())
+}
+
+/// Test 9: Large citizen count - test quorum calculation doesn't overflow
+/// Uses saturating arithmetic: citizen_count.saturating_mul(7) / 100
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "overflow")]
+#[allure_test]
+#[tokio::test]
+async fn test_quorum_calculation_with_many_citizens() -> anyhow::Result<()> {
+    // This test verifies the quorum calculation handles larger numbers correctly
+    // We can't actually add u64::MAX citizens, but we can verify the calculation
+    // is correct for a reasonably large number (100 citizens)
+    let env = setup_with_policy_and_users(100, create_policy_with_dynamic_quorum, true).await?;
+
+    // Add 100 citizens
+    for i in 0..100 {
+        let user = env.user(i);
+        verify_user(&env.backend, &env.verified_accounts, user, i).await?;
+        let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+        assert!(
+            result.is_success(),
+            "Adding citizen {} should succeed. Failures: {:?}",
+            i,
+            result.failures()
+        );
+    }
+
+    let citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(citizen_count, 100, "Should have 100 citizens");
+
+    // With 100 citizens, quorum = ceil(100 * 0.07) = 7
+    let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
+    assert_eq!(
+        quorum, 7,
+        "At 100 citizens, quorum should be 7 (ceil(100 * 0.07) = 7)"
+    );
+
+    // Threshold = (100 * 1 / 2) + 1 = 51
+    // effective_threshold = max(7, 51) = 51
+    let threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
+    let effective_threshold = calculate_effective_threshold(quorum, threshold, 100);
+    assert_eq!(
+        effective_threshold, 51,
+        "Effective threshold should be 51 for 100 citizens"
+    );
+
+    Ok(())
+}
+
+/// Test 10: Verify quorum updates are atomic with member addition
+/// The member should be added AND quorum updated in the same transaction chain
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "atomicity")]
+#[allure_test]
+#[tokio::test]
+async fn test_quorum_update_atomic_with_member_addition() -> anyhow::Result<()> {
+    let env = setup_with_policy_and_users(2, create_policy_with_dynamic_quorum, true).await?;
+
+    // Verify first user and add them
+    let first_user = env.user(0);
+    verify_user(&env.backend, &env.verified_accounts, first_user, 0).await?;
+
+    // Before adding first member
+    let quorum_before = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
+    let citizen_count_before = get_citizen_count(&env.sputnik_dao, "citizen").await?;
+
+    // Add first member - this should atomically add member and update quorum
+    let result = add_member_via_bridge(&env.backend, &env.bridge, first_user).await?;
+    assert!(result.is_success(), "Adding member should succeed");
+
+    // After adding - both should be updated
+    let quorum_after = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
+    let citizen_count_after = get_citizen_count(&env.sputnik_dao, "citizen").await?;
+
+    // Verify both changed together
+    assert_eq!(
+        citizen_count_after,
+        citizen_count_before + 1,
+        "Citizen count should increase by 1"
+    );
+    assert!(
+        quorum_after >= quorum_before,
+        "Quorum should increase or stay same (was {}, now {})",
+        quorum_before,
+        quorum_after
+    );
+
+    // Check events show both operations occurred
+    let logs = extract_event_logs(&result);
+    let events = parse_events(&logs);
+
+    let member_added = events.iter().any(|e| e.event == "member_added");
+    let quorum_updated = events.iter().any(|e| e.event == "quorum_updated");
+
+    assert!(member_added, "member_added event should be emitted");
+    assert!(quorum_updated, "quorum_updated event should be emitted");
 
     Ok(())
 }

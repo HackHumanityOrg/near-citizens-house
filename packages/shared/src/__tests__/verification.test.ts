@@ -165,6 +165,39 @@ describe("computeNep413Hash", () => {
       expect(hash).toHaveLength(64)
     })
 
+    it("should handle short nonce (31 bytes)", async () => {
+      await allure.severity("critical")
+      await allure.story("Short Nonce")
+
+      // 31 bytes - one byte short
+      const shortNonce = Array(31).fill(42)
+      // The function accepts the nonce as-is (Borsh will serialize what it gets)
+      // This produces a different hash than 32 bytes - not necessarily an error
+      const hash = computeNep413Hash("Test", shortNonce, testRecipient)
+      expect(hash).toHaveLength(64)
+
+      // Verify it differs from 32-byte nonce
+      const nonce32 = Array(32).fill(42)
+      const hash32 = computeNep413Hash("Test", nonce32, testRecipient)
+      expect(hash).not.toBe(hash32)
+    })
+
+    it("should handle long nonce (33 bytes)", async () => {
+      await allure.severity("critical")
+      await allure.story("Long Nonce")
+
+      // 33 bytes - one byte extra
+      const longNonce = Array(33).fill(42)
+      // The function accepts the nonce as-is (Borsh will serialize what it gets)
+      const hash = computeNep413Hash("Test", longNonce, testRecipient)
+      expect(hash).toHaveLength(64)
+
+      // Verify it differs from 32-byte nonce
+      const nonce32 = Array(32).fill(42)
+      const hash32 = computeNep413Hash("Test", nonce32, testRecipient)
+      expect(hash).not.toBe(hash32)
+    })
+
     it("should handle nonce with all 0xFF values (max byte)", async () => {
       await allure.severity("normal")
       await allure.story("Nonce Max Values")
@@ -282,10 +315,18 @@ describe("extractEd25519PublicKeyHex", () => {
     it("should handle key with only prefix (returns empty hex)", async () => {
       await allure.severity("minor")
       await allure.story("Empty Key Body")
+      await allure.description(
+        "KNOWN BEHAVIOR: Empty key body returns empty hex string. " +
+          "This documents current behavior - consider throwing an error instead " +
+          "since an empty key is invalid for cryptographic operations."
+      )
 
       // Empty base58 decodes to empty buffer -> empty hex string
+      // Note: This is arguably wrong behavior - an empty key should likely throw
+      // but we document current behavior here for regression detection
       const hex = extractEd25519PublicKeyHex("ed25519:")
       expect(hex).toBe("")
+      // If this behavior changes to throw, update this test accordingly
     })
   })
 
@@ -617,6 +658,8 @@ describe("verifyNearSignature", () => {
 
       expect(result.valid).toBe(false)
       expect(result.error).toBeDefined()
+      // Verify error message gives useful context
+      expect(result.error).toMatch(/signature|decode|base64|invalid/i)
     })
 
     it("should return error for invalid public key", async () => {
@@ -635,6 +678,8 @@ describe("verifyNearSignature", () => {
 
       expect(result.valid).toBe(false)
       expect(result.error).toBeDefined()
+      // Verify error message gives useful context about the key issue
+      expect(result.error).toMatch(/key|decode|base58|invalid/i)
     })
   })
 
