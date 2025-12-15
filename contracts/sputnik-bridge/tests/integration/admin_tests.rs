@@ -376,9 +376,9 @@ async fn test_backend_wallet_self_update() -> anyhow::Result<()> {
     assert_eq!(backend_wallet, env.backend.id().to_string());
 
     // Verify backend can still perform operations
-    let user_env = setup_with_users(1).await?;
-    let user = user_env.user(0);
-    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+    // Create user in the SAME environment (not a new one) to avoid cross-sandbox issues
+    let user = env.worker.dev_create_account().await?;
+    verify_user(&env.backend, &env.verified_accounts, &user, 0).await?;
 
     Ok(())
 }
