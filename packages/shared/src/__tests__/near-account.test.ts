@@ -8,7 +8,7 @@
  * Covers: nearAccountIdSchema, nearNamedAccountSchema, nearImplicitAccountSchema,
  *         ethImplicitAccountSchema, isValidNearAccountId, getNearAccountType
  */
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeEach } from "vitest"
 import * as allure from "allure-js-commons"
 import {
   nearAccountIdSchema,
@@ -18,6 +18,12 @@ import {
   isValidNearAccountId,
   getNearAccountType,
 } from "../validation/near-account"
+
+beforeEach(async () => {
+  await allure.label("parentSuite", "Near Citizens House")
+  await allure.label("suite", "Shared Library Tests")
+  await allure.label("subSuite", "NEAR Account Validation")
+})
 
 // ============================================================================
 // Named Account Tests

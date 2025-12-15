@@ -5,9 +5,9 @@ use near_sdk::json_types::U128;
 use sputnik_dao_interface::*;
 use std::collections::HashMap;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("ProposalInput Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "serialization", "proposals")]
 #[allure_test]
@@ -28,9 +28,9 @@ fn test_proposal_input_serialization() {
     assert_eq!(decoded.description, input.description);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("ProposalKind Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "serialization", "membership")]
 #[allure_test]
@@ -50,9 +50,9 @@ fn test_add_member_to_role_serialization() {
     assert!(json.contains("AddMemberToRole"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("Action Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -63,9 +63,9 @@ fn test_action_serialization() {
     assert!(json.contains("VoteApprove"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("ProposalKind Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "serialization", "policy")]
 #[allure_test]
@@ -103,9 +103,9 @@ fn test_change_policy_add_or_update_role_serialization() {
     assert_eq!(decoded.description, input.description);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("Action Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -131,9 +131,6 @@ fn test_all_action_variants_serialization() {
     }
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("ProposalKind Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "membership")]
 #[allure_test]
@@ -150,9 +147,6 @@ fn test_remove_member_from_role_serialization() {
     assert!(json.contains("council"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("RoleKind Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "roles")]
 #[allure_test]
@@ -163,9 +157,6 @@ fn test_role_kind_everyone_serialization() {
     assert!(json.contains("Everyone"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("RoleKind Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "roles")]
 #[allure_test]
@@ -183,9 +174,6 @@ fn test_role_kind_group_serialization() {
     assert!(json.contains("carol.near"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("VotePolicy Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -201,9 +189,6 @@ fn test_weight_kind_serialization() {
     assert!(json2.contains("TokenWeight"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("VotePolicy Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -214,9 +199,6 @@ fn test_weight_or_ratio_weight_serialization() {
     assert!(json.contains("1000"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("VotePolicy Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -229,9 +211,6 @@ fn test_weight_or_ratio_ratio_serialization() {
     assert!(json.contains("2"));
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("VotePolicy Type")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -252,9 +231,6 @@ fn test_vote_policy_serialization() {
     assert_eq!(decoded.quorum.0, 7);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("ProposalInput Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "borsh")]
 #[allure_test]
@@ -270,9 +246,6 @@ fn test_proposal_input_borsh_roundtrip() {
     assert_eq!(decoded.description, input.description);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("RolePermission Type")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "borsh")]
 #[allure_test]
@@ -294,9 +267,6 @@ fn test_role_permission_borsh_roundtrip() {
     assert_eq!(decoded.permissions.len(), 2);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("RoleKind Type")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "serialization", "edge-case")]
 #[allure_test]

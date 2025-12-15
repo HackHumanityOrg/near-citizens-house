@@ -3,9 +3,9 @@
 use allure_rs::prelude::*;
 use verified_accounts_interface::*;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]
@@ -21,9 +21,9 @@ fn test_verified_account_info_json_missing_nullifier_fails() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]
@@ -38,9 +38,9 @@ fn test_zk_proof_json_invalid_a_array_length_fails() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]
@@ -55,9 +55,9 @@ fn test_self_proof_data_invalid_proof_type_fails() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]

@@ -3,9 +3,9 @@
 use allure_rs::prelude::*;
 use verified_accounts_interface::*;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("VerifiedAccountInfo Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "json", "borsh")]
 #[allure_test]
@@ -31,9 +31,9 @@ fn test_verified_account_info_serialization() {
     assert_eq!(decoded.nullifier, info.nullifier);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("VerifiedAccount Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "borsh")]
 #[allure_test]
@@ -67,9 +67,9 @@ fn test_verified_account_serialization() {
     assert_eq!(decoded.self_proof.public_signals.len(), 2);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("ZkProof Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "json")]
 #[allure_test]
@@ -104,9 +104,9 @@ fn test_zk_proof_json_roundtrip() {
     assert_eq!(decoded.c, proof.c);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("ZkProof Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "borsh")]
 #[allure_test]
@@ -128,9 +128,9 @@ fn test_zk_proof_borsh_roundtrip() {
     assert_eq!(decoded.c, proof.c);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("SelfProofData Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "json")]
 #[allure_test]
@@ -158,9 +158,9 @@ fn test_self_proof_data_json_roundtrip() {
     assert_eq!(decoded.public_signals[0], "nullifier");
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("VerifiedAccountInfo Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "json")]
 #[allure_test]
@@ -181,9 +181,9 @@ fn test_verified_account_info_json_roundtrip() {
     assert_eq!(decoded.verified_at, info.verified_at);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("SelfProofData Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "serialization", "passport")]
 #[allure_description(
@@ -219,9 +219,9 @@ fn test_verified_account_with_21_signals() {
     assert_eq!(decoded.self_proof.public_signals.len(), 21);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Interface")]
-#[allure_story("SelfProofData Type")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "serialization", "edge-case")]
 #[allure_test]

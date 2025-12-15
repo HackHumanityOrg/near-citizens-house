@@ -239,3 +239,39 @@ fn test_double_verification_rejected() {
         "NEAR account already verified",
     );
 }
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Store Verification")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "storage", "economics")]
+#[allure_description("Verifies insufficient contract balance is rejected before persisting verification.")]
+#[allure_test]
+#[test]
+fn test_insufficient_balance_rejected() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let mut context = get_context(backend.clone());
+    // Set balance far below the estimated storage cost
+    context.account_balance(near_sdk::NearToken::from_yoctonear(1));
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let sig = create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
+
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "low_balance".to_string(),
+                user,
+                "user1".to_string(),
+                "1".to_string(),
+                sig,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Insufficient contract balance for storage",
+    );
+}
