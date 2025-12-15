@@ -265,9 +265,7 @@ function RoleCard({ role }: { role: TransformedPolicy["roles"][0] }) {
   const kindInfo = getRoleKindInfo()
 
   // Get vote policy details (sorted for stable rendering order)
-  const votePolicies = role.votePolicy
-    ? Object.entries(role.votePolicy).sort(([a], [b]) => a.localeCompare(b))
-    : []
+  const votePolicies = role.votePolicy ? Object.entries(role.votePolicy).sort(([a], [b]) => a.localeCompare(b)) : []
 
   return (
     <div className="p-4 rounded-lg border bg-card h-full flex flex-col">
