@@ -56,14 +56,11 @@ beforeEach(async () => {
 
 describe("computeNep413Hash", () => {
   beforeAll(async () => {
-    await allure.suite("Verification - Unit Tests")
-    await allure.feature("NEP-413 Signature Verification")
   })
 
   describe("Happy Path", () => {
     it("should compute hash for valid message/nonce/recipient", async () => {
       await allure.severity("critical")
-      await allure.story("Hash Computation")
 
       const hash = computeNep413Hash("Identify myself", standardNonce, testRecipient)
 
@@ -74,7 +71,6 @@ describe("computeNep413Hash", () => {
 
     it("should produce deterministic hash for same inputs", async () => {
       await allure.severity("critical")
-      await allure.story("Hash Determinism")
 
       const hash1 = computeNep413Hash("Identify myself", standardNonce, testRecipient)
       const hash2 = computeNep413Hash("Identify myself", standardNonce, testRecipient)
@@ -84,7 +80,6 @@ describe("computeNep413Hash", () => {
 
     it("should produce different hash for different nonces", async () => {
       await allure.severity("critical")
-      await allure.story("Nonce Sensitivity")
 
       const nonce1 = Array(32).fill(0)
       const nonce2 = Array(32).fill(1)
@@ -97,7 +92,6 @@ describe("computeNep413Hash", () => {
 
     it("should produce different hash for different messages", async () => {
       await allure.severity("critical")
-      await allure.story("Message Sensitivity")
 
       const hash1 = computeNep413Hash("Message A", standardNonce, testRecipient)
       const hash2 = computeNep413Hash("Message B", standardNonce, testRecipient)
@@ -107,7 +101,6 @@ describe("computeNep413Hash", () => {
 
     it("should produce different hash for different recipients", async () => {
       await allure.severity("normal")
-      await allure.story("Recipient Sensitivity")
 
       const hash1 = computeNep413Hash("Identify myself", standardNonce, "alice.testnet")
       const hash2 = computeNep413Hash("Identify myself", standardNonce, "bob.testnet")
@@ -119,7 +112,6 @@ describe("computeNep413Hash", () => {
   describe("Edge Cases", () => {
     it("should handle unicode messages correctly", async () => {
       await allure.severity("normal")
-      await allure.story("Unicode Support")
 
       const hash = computeNep413Hash("Привет мир 你好世界 🌍", standardNonce, testRecipient)
 
@@ -129,7 +121,6 @@ describe("computeNep413Hash", () => {
 
     it("should handle empty message", async () => {
       await allure.severity("normal")
-      await allure.story("Empty Message")
 
       const hash = computeNep413Hash("", standardNonce, testRecipient)
 
@@ -139,7 +130,6 @@ describe("computeNep413Hash", () => {
 
     it("should handle very long message", async () => {
       await allure.severity("minor")
-      await allure.story("Long Message")
 
       const longMessage = "A".repeat(10000)
       const hash = computeNep413Hash(longMessage, standardNonce, testRecipient)
@@ -150,7 +140,6 @@ describe("computeNep413Hash", () => {
 
     it("should handle special characters in message", async () => {
       await allure.severity("minor")
-      await allure.story("Special Characters")
 
       const specialMessage = "Test\n\t\r\0\"'\\<>!@#$%^&*()"
       const hash = computeNep413Hash(specialMessage, standardNonce, testRecipient)
@@ -163,7 +152,6 @@ describe("computeNep413Hash", () => {
   describe("Boundary Tests", () => {
     it("should require exactly 32-byte nonce", async () => {
       await allure.severity("critical")
-      await allure.story("Nonce Length")
 
       // 32 bytes - exact boundary
       const nonce32 = Array(32).fill(42)
@@ -173,7 +161,6 @@ describe("computeNep413Hash", () => {
 
     it("should throw for short nonce (31 bytes)", async () => {
       await allure.severity("critical")
-      await allure.story("Short Nonce")
 
       // 31 bytes - one byte short
       const shortNonce = Array(31).fill(42)
@@ -183,7 +170,6 @@ describe("computeNep413Hash", () => {
 
     it("should throw for long nonce (33 bytes)", async () => {
       await allure.severity("critical")
-      await allure.story("Long Nonce")
 
       // 33 bytes - one byte extra
       const longNonce = Array(33).fill(42)
@@ -193,7 +179,6 @@ describe("computeNep413Hash", () => {
 
     it("should handle nonce with all 0xFF values (max byte)", async () => {
       await allure.severity("normal")
-      await allure.story("Nonce Max Values")
 
       const maxNonce = Array(32).fill(255)
       const hash = computeNep413Hash("Test", maxNonce, testRecipient)
@@ -204,7 +189,6 @@ describe("computeNep413Hash", () => {
 
     it("should handle nonce with mixed byte values", async () => {
       await allure.severity("minor")
-      await allure.story("Mixed Nonce")
 
       const mixedNonce = Array.from({ length: 32 }, (_, i) => i % 256)
       const hash = computeNep413Hash("Test", mixedNonce, testRecipient)
@@ -217,7 +201,6 @@ describe("computeNep413Hash", () => {
   describe("NEP-413 Tag Verification", () => {
     it("should use correct NEP-413 tag (2^31 + 413)", async () => {
       await allure.severity("critical")
-      await allure.story("NEP-413 Compliance")
       await allure.description("NEP-413 specifies tag = 2147484061 (2^31 + 413) as little-endian 4-byte prefix")
 
       // The tag is internal to the function, but we can verify consistency
@@ -236,14 +219,11 @@ describe("computeNep413Hash", () => {
 
 describe("extractEd25519PublicKeyHex", () => {
   beforeAll(async () => {
-    await allure.suite("Verification - Unit Tests")
-    await allure.feature("Public Key Extraction")
   })
 
   describe("Happy Path", () => {
     it("should extract public key from valid ed25519: prefixed key", async () => {
       await allure.severity("critical")
-      await allure.story("Key Extraction")
 
       const hex = extractEd25519PublicKeyHex(testPublicKey)
 
@@ -254,7 +234,6 @@ describe("extractEd25519PublicKeyHex", () => {
 
     it("should produce consistent output for same input", async () => {
       await allure.severity("critical")
-      await allure.story("Extraction Determinism")
 
       const hex1 = extractEd25519PublicKeyHex(testPublicKey)
       const hex2 = extractEd25519PublicKeyHex(testPublicKey)
@@ -266,7 +245,6 @@ describe("extractEd25519PublicKeyHex", () => {
   describe("Positive Tests", () => {
     it("should handle keys from different keypairs", async () => {
       await allure.severity("normal")
-      await allure.story("Multiple Keys")
 
       const kp1 = KeyPair.fromRandom("ed25519")
       const kp2 = KeyPair.fromRandom("ed25519")
@@ -283,7 +261,6 @@ describe("extractEd25519PublicKeyHex", () => {
   describe("Negative Tests", () => {
     it("should throw for missing ed25519: prefix", async () => {
       await allure.severity("critical")
-      await allure.story("Invalid Prefix")
 
       // Get base58 part without prefix
       const base58Part = testPublicKey.replace("ed25519:", "")
@@ -295,7 +272,6 @@ describe("extractEd25519PublicKeyHex", () => {
 
     it("should throw for invalid base58 characters", async () => {
       await allure.severity("critical")
-      await allure.story("Invalid Base58")
 
       // Base58 doesn't include 0, O, I, l
       const invalidKey = "ed25519:0OIl000000000000000000000000000000000000000"
@@ -307,7 +283,6 @@ describe("extractEd25519PublicKeyHex", () => {
   describe("Edge Cases", () => {
     it("should handle key with only prefix (returns empty hex)", async () => {
       await allure.severity("minor")
-      await allure.story("Empty Key Body")
       await allure.description(
         "KNOWN BEHAVIOR: Empty key body returns empty hex string. " +
           "This documents current behavior - consider throwing an error instead " +
@@ -326,7 +301,6 @@ describe("extractEd25519PublicKeyHex", () => {
   describe("Boundary Tests", () => {
     it("should produce exactly 32-byte (64 hex char) output", async () => {
       await allure.severity("critical")
-      await allure.story("Output Size")
 
       const hex = extractEd25519PublicKeyHex(testPublicKey)
       expect(hex).toHaveLength(64)
@@ -344,14 +318,11 @@ describe("extractEd25519PublicKeyHex", () => {
 
 describe("parseUserContextData", () => {
   beforeAll(async () => {
-    await allure.suite("Verification - Unit Tests")
-    await allure.feature("User Context Parsing")
   })
 
   describe("Happy Path", () => {
     it("should parse valid hex-encoded JSON input", async () => {
       await allure.severity("critical")
-      await allure.story("Hex Parsing")
 
       const result = parseUserContextData(validUserContextHex)
 
@@ -362,7 +333,6 @@ describe("parseUserContextData", () => {
 
     it("should parse valid plain JSON input", async () => {
       await allure.severity("critical")
-      await allure.story("JSON Parsing")
 
       const jsonString = JSON.stringify(validUserContextJson)
       const result = parseUserContextData(jsonString)
@@ -375,7 +345,6 @@ describe("parseUserContextData", () => {
   describe("Positive Tests", () => {
     it("should convert base64 nonce to array", async () => {
       await allure.severity("normal")
-      await allure.story("Nonce Conversion")
 
       const result = parseUserContextData(validUserContextHex)
 
@@ -386,7 +355,6 @@ describe("parseUserContextData", () => {
 
     it("should preserve array nonce format", async () => {
       await allure.severity("normal")
-      await allure.story("Array Nonce")
 
       const contextWithArrayNonce = {
         ...validUserContextJson,
@@ -402,7 +370,6 @@ describe("parseUserContextData", () => {
   describe("Negative Tests", () => {
     it("should return null for malformed JSON", async () => {
       await allure.severity("critical")
-      await allure.story("Malformed JSON")
 
       const result = parseUserContextData("not valid json at all")
 
@@ -411,7 +378,6 @@ describe("parseUserContextData", () => {
 
     it("should return null for missing required fields", async () => {
       await allure.severity("critical")
-      await allure.story("Missing Fields")
 
       const incomplete = { accountId: testAccountId } // missing signature, publicKey, nonce
       const hex = Buffer.from(JSON.stringify(incomplete)).toString("hex")
@@ -422,7 +388,6 @@ describe("parseUserContextData", () => {
 
     it("should return null for empty accountId", async () => {
       await allure.severity("normal")
-      await allure.story("Empty AccountId")
 
       const withEmptyAccountId = { ...validUserContextJson, accountId: "" }
       const hex = Buffer.from(JSON.stringify(withEmptyAccountId)).toString("hex")
@@ -436,7 +401,6 @@ describe("parseUserContextData", () => {
   describe("Edge Cases", () => {
     it("should handle JSON with null bytes", async () => {
       await allure.severity("normal")
-      await allure.story("Null Byte Handling")
 
       // Add null bytes around valid JSON
       const jsonWithNulls = "\0\0\0" + JSON.stringify(validUserContextJson) + "\0\0\0"
@@ -448,7 +412,6 @@ describe("parseUserContextData", () => {
 
     it("should handle hex with leading zeros", async () => {
       await allure.severity("minor")
-      await allure.story("Leading Zeros")
 
       // Prepend some zeros (will become non-printable chars)
       const hexWithPrefix = "0000" + validUserContextHex
@@ -461,7 +424,6 @@ describe("parseUserContextData", () => {
 
     it("should handle mixed binary and JSON data", async () => {
       await allure.severity("normal")
-      await allure.story("Mixed Data")
 
       // Binary prefix followed by JSON
       const prefix = Buffer.from([0x00, 0x01, 0x02, 0xff])
@@ -479,7 +441,6 @@ describe("parseUserContextData", () => {
   describe("Boundary Tests", () => {
     it("should return null for empty string", async () => {
       await allure.severity("normal")
-      await allure.story("Empty Input")
 
       const result = parseUserContextData("")
 
@@ -488,7 +449,6 @@ describe("parseUserContextData", () => {
 
     it("should handle maximum allowed length (4096 chars)", async () => {
       await allure.severity("normal")
-      await allure.story("Max Length")
 
       // Create a valid context with padding to reach near max length
       const largeContext = {
@@ -510,8 +470,6 @@ describe("parseUserContextData", () => {
 
 describe("verifyNearSignature", () => {
   beforeAll(async () => {
-    await allure.suite("Verification - Unit Tests")
-    await allure.feature("NEAR Signature Verification")
   })
 
   // Helper to create valid signature
@@ -525,7 +483,6 @@ describe("verifyNearSignature", () => {
   describe("Happy Path", () => {
     it("should verify valid signature from correct signer", async () => {
       await allure.severity("critical")
-      await allure.story("Valid Signature")
 
       const challenge = "Identify myself"
       const signature = await createValidSignature(challenge, standardNonce, testRecipient, testKeyPair)
@@ -540,7 +497,6 @@ describe("verifyNearSignature", () => {
   describe("Positive Tests", () => {
     it("should verify signature with different valid nonces", async () => {
       await allure.severity("normal")
-      await allure.story("Different Nonces")
 
       const challenge = "Identify myself"
       const signature = await createValidSignature(challenge, randomNonce, testRecipient, testKeyPair)
@@ -552,7 +508,6 @@ describe("verifyNearSignature", () => {
 
     it("should verify signature with unicode challenge", async () => {
       await allure.severity("normal")
-      await allure.story("Unicode Challenge")
 
       const challenge = "Привет мир"
       const signature = await createValidSignature(challenge, standardNonce, testRecipient, testKeyPair)
@@ -566,7 +521,6 @@ describe("verifyNearSignature", () => {
   describe("Negative Tests", () => {
     it("should reject invalid signature", async () => {
       await allure.severity("critical")
-      await allure.story("Invalid Signature")
 
       const invalidSignature = Buffer.from(Array(64).fill(0)).toString("base64")
 
@@ -583,7 +537,6 @@ describe("verifyNearSignature", () => {
 
     it("should reject signature from wrong signer", async () => {
       await allure.severity("critical")
-      await allure.story("Wrong Signer")
 
       const otherKeyPair = KeyPair.fromRandom("ed25519")
       const challenge = "Identify myself"
@@ -597,7 +550,6 @@ describe("verifyNearSignature", () => {
 
     it("should reject signature for wrong message", async () => {
       await allure.severity("critical")
-      await allure.story("Wrong Message")
 
       const signature = await createValidSignature("Original message", standardNonce, testRecipient, testKeyPair)
 
@@ -608,7 +560,6 @@ describe("verifyNearSignature", () => {
 
     it("should reject signature for wrong nonce", async () => {
       await allure.severity("critical")
-      await allure.story("Wrong Nonce")
 
       const challenge = "Identify myself"
       const signature = await createValidSignature(challenge, standardNonce, testRecipient, testKeyPair)
@@ -621,7 +572,6 @@ describe("verifyNearSignature", () => {
 
     it("should reject signature for wrong recipient", async () => {
       await allure.severity("critical")
-      await allure.story("Wrong Recipient")
 
       const challenge = "Identify myself"
       const signature = await createValidSignature(challenge, standardNonce, "alice.testnet", testKeyPair)
@@ -639,7 +589,6 @@ describe("verifyNearSignature", () => {
 
     it("should return error for malformed signature", async () => {
       await allure.severity("normal")
-      await allure.story("Malformed Signature")
 
       const result = verifyNearSignature(
         "Identify myself",
@@ -657,7 +606,6 @@ describe("verifyNearSignature", () => {
 
     it("should return error for invalid public key", async () => {
       await allure.severity("normal")
-      await allure.story("Invalid Public Key")
 
       const signature = await createValidSignature("Identify myself", standardNonce, testRecipient, testKeyPair)
 
@@ -680,7 +628,6 @@ describe("verifyNearSignature", () => {
   describe("Edge Cases", () => {
     it("should handle empty challenge message", async () => {
       await allure.severity("minor")
-      await allure.story("Empty Challenge")
 
       const challenge = ""
       const signature = await createValidSignature(challenge, standardNonce, testRecipient, testKeyPair)
@@ -694,7 +641,6 @@ describe("verifyNearSignature", () => {
   describe("Boundary Tests", () => {
     it("should handle 64-byte signature (Ed25519 standard)", async () => {
       await allure.severity("critical")
-      await allure.story("Signature Length")
 
       const challenge = "Identify myself"
       const signature = await createValidSignature(challenge, standardNonce, testRecipient, testKeyPair)
@@ -709,7 +655,6 @@ describe("verifyNearSignature", () => {
 
     it("should reject short signature", async () => {
       await allure.severity("critical")
-      await allure.story("Short Signature")
 
       // 63 bytes instead of 64
       const shortSignature = Buffer.from(Array(63).fill(0)).toString("base64")
@@ -721,7 +666,6 @@ describe("verifyNearSignature", () => {
 
     it("should reject long signature", async () => {
       await allure.severity("critical")
-      await allure.story("Long Signature")
 
       // 65 bytes instead of 64
       const longSignature = Buffer.from(Array(65).fill(0)).toString("base64")
@@ -739,8 +683,6 @@ describe("verifyNearSignature", () => {
 
 describe("buildProofData", () => {
   beforeAll(async () => {
-    await allure.suite("Verification - Unit Tests")
-    await allure.feature("Proof Data Construction")
   })
 
   // Sample account data
@@ -773,7 +715,6 @@ describe("buildProofData", () => {
   describe("Happy Path", () => {
     it("should build proof data from valid inputs", async () => {
       await allure.severity("critical")
-      await allure.story("Proof Construction")
 
       const result = buildProofData(sampleAccount, sampleSigData)
 
@@ -785,7 +726,6 @@ describe("buildProofData", () => {
 
     it("should include NEP-413 verification data", async () => {
       await allure.severity("critical")
-      await allure.story("NEP-413 Data")
 
       const result = buildProofData(sampleAccount, sampleSigData)
 
@@ -800,7 +740,6 @@ describe("buildProofData", () => {
   describe("Positive Tests", () => {
     it("should include signature data in correct format", async () => {
       await allure.severity("normal")
-      await allure.story("Signature Format")
 
       const result = buildProofData(sampleAccount, sampleSigData)
 
@@ -812,7 +751,6 @@ describe("buildProofData", () => {
 
     it("should convert nonce to base64", async () => {
       await allure.severity("normal")
-      await allure.story("Nonce Format")
 
       const result = buildProofData(sampleAccount, sampleSigData)
 
@@ -824,7 +762,6 @@ describe("buildProofData", () => {
 
     it("should include ZK proof data", async () => {
       await allure.severity("normal")
-      await allure.story("ZK Proof Data")
 
       const result = buildProofData(sampleAccount, sampleSigData)
 
@@ -836,7 +773,6 @@ describe("buildProofData", () => {
   describe("Negative Tests", () => {
     it("should return null when sigData is null", async () => {
       await allure.severity("critical")
-      await allure.story("Null SigData")
 
       const result = buildProofData(sampleAccount, null)
 
@@ -847,7 +783,6 @@ describe("buildProofData", () => {
   describe("Edge Cases", () => {
     it("should handle minimum valid inputs", async () => {
       await allure.severity("minor")
-      await allure.story("Minimum Inputs")
 
       const minAccount = {
         ...sampleAccount,
