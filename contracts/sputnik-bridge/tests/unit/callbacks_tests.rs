@@ -1,4 +1,6 @@
 //! Callback tests for sputnik-bridge contract
+//!
+//! Tests both successful and failed promise results to ensure proper error handling
 
 use super::helpers::{assert_panic_with, get_context};
 use allure_rs::prelude::*;
@@ -295,5 +297,177 @@ fn test_callback_vote_proposal_created() {
     assert!(
         logs[0].contains("proposal_created"),
         "Expected proposal_created event"
+    );
+}
+
+// ==================== PROMISE FAILURE TESTS ====================
+// These tests verify that callbacks properly handle PromiseResult::Failed
+// which occurs when a cross-contract call fails entirely (network error, out of gas, etc.)
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "callback", "failure-handling")]
+#[allure_test]
+#[test]
+fn test_callback_add_member_promise_failed() {
+    let builder = get_context(accounts(0));
+    testing_env!(
+        builder.build(),
+        near_sdk::test_vm_config(),
+        near_sdk::RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Failed] // Actual promise failure, not Successful(false)
+    );
+
+    let mut contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || {
+            let _ = contract.callback_add_member(accounts(3));
+        },
+        "Verification check failed",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "callback", "failure-handling")]
+#[allure_test]
+#[test]
+fn test_callback_proposal_created_promise_failed() {
+    let builder = get_context(accounts(0));
+    testing_env!(
+        builder.build(),
+        near_sdk::test_vm_config(),
+        near_sdk::RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Failed]
+    );
+
+    let mut contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || {
+            let _ = contract.callback_proposal_created(accounts(3));
+        },
+        "Failed to create proposal",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "callback", "failure-handling")]
+#[allure_test]
+#[test]
+fn test_callback_member_added_promise_failed() {
+    let builder = get_context(accounts(0));
+    testing_env!(
+        builder.build(),
+        near_sdk::test_vm_config(),
+        near_sdk::RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Failed]
+    );
+
+    let mut contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || {
+            let _ = contract.callback_member_added(accounts(3), 1);
+        },
+        "Failed to approve member addition proposal",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "callback", "failure-handling")]
+#[allure_test]
+#[test]
+fn test_callback_policy_received_for_quorum_promise_failed() {
+    let builder = get_context(accounts(0));
+    testing_env!(
+        builder.build(),
+        near_sdk::test_vm_config(),
+        near_sdk::RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Failed]
+    );
+
+    let mut contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || {
+            let _ = contract.callback_policy_received_for_quorum();
+        },
+        "Failed to get policy",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "callback", "failure-handling")]
+#[allure_test]
+#[test]
+fn test_callback_quorum_updated_promise_failed() {
+    let builder = get_context(accounts(0));
+    testing_env!(
+        builder.build(),
+        near_sdk::test_vm_config(),
+        near_sdk::RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Failed]
+    );
+
+    let mut contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || {
+            contract.callback_quorum_updated(2, 1, 2);
+        },
+        "Failed to approve quorum update proposal",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "callback", "failure-handling")]
+#[allure_test]
+#[test]
+fn test_callback_vote_proposal_created_promise_failed() {
+    let builder = get_context(accounts(0));
+    testing_env!(
+        builder.build(),
+        near_sdk::test_vm_config(),
+        near_sdk::RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![PromiseResult::Failed]
+    );
+
+    let contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || {
+            let _ = contract.callback_vote_proposal_created("desc".to_string());
+        },
+        "Failed to create proposal",
     );
 }

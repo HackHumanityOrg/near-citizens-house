@@ -7,9 +7,9 @@ use near_sdk::testing_env;
 use near_sdk::NearToken;
 use verified_accounts::Contract;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Backend Wallet Management")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "wallet")]
 #[allure_test]
@@ -42,9 +42,9 @@ fn test_update_backend_wallet() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Backend Wallet Management")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
 #[allure_test]

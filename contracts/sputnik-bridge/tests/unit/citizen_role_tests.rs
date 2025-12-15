@@ -47,3 +47,43 @@ fn test_update_citizen_role_unauthorized() {
         "Only backend wallet can call this function",
     );
 }
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Citizen Role Management")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "admin", "role", "validation")]
+#[allure_test]
+#[test]
+fn test_update_citizen_role_empty_fails() {
+    let context = get_context(accounts(0));
+    testing_env!(context.build());
+
+    let mut contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || contract.update_citizen_role("".to_string()),
+        "new_role must be non-empty",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Citizen Role Management")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "admin", "role", "validation")]
+#[allure_test]
+#[test]
+fn test_update_citizen_role_whitespace_only_fails() {
+    let context = get_context(accounts(0));
+    testing_env!(context.build());
+
+    let mut contract =
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+
+    assert_panic_with(
+        || contract.update_citizen_role("   ".to_string()), // Whitespace-only (gets trimmed to empty)
+        "new_role must be non-empty",
+    );
+}

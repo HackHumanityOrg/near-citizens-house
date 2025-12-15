@@ -6,9 +6,9 @@ use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
 use verified_accounts::{Contract, NearSignatureData};
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Access Control")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
 #[allure_test]

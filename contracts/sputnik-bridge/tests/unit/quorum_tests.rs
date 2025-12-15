@@ -3,6 +3,7 @@
 //! Tests for the calculate_quorum helper function and boundary conditions.
 //! Formula: quorum = ceil(citizen_count * 7 / 100)
 
+use super::helpers::assert_panic_with;
 use allure_rs::prelude::*;
 use sputnik_bridge::calculate_quorum;
 
@@ -247,4 +248,43 @@ fn test_quorum_boundary_floor_vs_ceil_difference() {
         7,
         "99 citizens: floor=6, ceil=7, should be 7"
     );
+}
+
+// ==================== OVERFLOW TESTS ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Quorum Overflow")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "quorum", "overflow", "security")]
+#[allure_test]
+#[test]
+fn test_quorum_overflow_panics() {
+    // u64::MAX * 7 would overflow u64, so checked_mul returns None
+    // and the function should panic with the overflow message.
+    // This tests that the contract properly handles overflow scenarios.
+    assert_panic_with(
+        || {
+            calculate_quorum(u64::MAX);
+        },
+        "Quorum calculation overflow",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Unit Tests")]
+#[allure_sub_suite("Quorum Overflow")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "quorum", "overflow", "security")]
+#[allure_test]
+#[test]
+fn test_quorum_near_overflow_boundary() {
+    // Test with a large value that's just below the overflow threshold
+    // u64::MAX / 7 = 2635249153387078802
+    // At this value, citizen_count * 7 should still be within u64 range
+    let safe_max = u64::MAX / 7;
+    let result = calculate_quorum(safe_max);
+    // Expected: ceil(safe_max * 7 / 100) = ceil(safe_max * 0.07)
+    // safe_max * 7 = u64::MAX (approximately), divided by 100 gives ~26352491533870788
+    assert!(result > 0, "Quorum should be calculated for safe_max");
 }

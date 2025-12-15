@@ -6,9 +6,9 @@ use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
 use verified_accounts::{Contract, NearSignatureData, SelfProofData, ZkProof};
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Proof Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Proof Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "zk-proof")]
 #[allure_test]
@@ -60,9 +60,9 @@ fn test_public_signals_too_many() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Proof Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
 #[allure_test]
@@ -116,9 +116,9 @@ fn test_public_signal_item_too_long() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Proof Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
 #[allure_test]
@@ -170,9 +170,9 @@ fn test_proof_component_a_too_long() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Proof Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
 #[allure_test]
@@ -224,9 +224,9 @@ fn test_proof_component_b_too_long() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Proof Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
 #[allure_test]

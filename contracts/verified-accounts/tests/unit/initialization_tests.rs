@@ -6,9 +6,9 @@ use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
 use verified_accounts::Contract;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Contract Initialization")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Contract Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "initialization")]
 #[allure_test]

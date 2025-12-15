@@ -9,9 +9,9 @@ use near_sdk::testing_env;
 use near_sdk::NearToken;
 use verified_accounts::Contract;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Invariants")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant")]
 #[allure_test]
@@ -29,9 +29,9 @@ fn test_invariant_backend_wallet_always_valid() {
     assert_eq!(contract.get_backend_wallet(), backend);
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Invariants")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant")]
 #[allure_test]
@@ -48,9 +48,9 @@ fn test_invariant_verified_count_starts_at_zero() {
     assert!(contract.get_verified_accounts(0, 100).is_empty());
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Verified Accounts Contract")]
-#[allure_story("Invariants")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant")]
 #[allure_test]
