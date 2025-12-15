@@ -3,9 +3,9 @@
 use allure_rs::prelude::*;
 use sputnik_dao_interface::*;
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]
@@ -20,9 +20,9 @@ fn test_proposal_kind_unknown_variant_deserialization_fails() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]
@@ -37,9 +37,9 @@ fn test_action_invalid_string_deserialization_fails() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]
@@ -54,9 +54,9 @@ fn test_weight_or_ratio_empty_array_fails() {
     );
 }
 
-#[allure_epic("Smart Contracts")]
-#[allure_feature("Sputnik DAO Interface")]
-#[allure_story("Validation")]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]

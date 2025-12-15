@@ -89,6 +89,12 @@ fn test_read_functions_with_verified_accounts() {
     assert_eq!(first_page.len(), 1);
     let second_page = contract.get_verified_accounts(1, 10);
     assert_eq!(second_page.len(), 1);
+    // Limit should cap at 100 even if requested higher
+    let capped = contract.get_verified_accounts(0, 200);
+    assert_eq!(capped.len(), 2);
+    // From index beyond length returns empty
+    let empty_page = contract.get_verified_accounts(5, 10);
+    assert!(empty_page.is_empty());
 
     // Batch verification flags should align with stored accounts
     let statuses =

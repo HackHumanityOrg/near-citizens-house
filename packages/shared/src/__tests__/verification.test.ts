@@ -4,7 +4,7 @@
  * Tests NEP-413 signature verification functions per TESTING_STRATEGY.md Section 1.2
  * Covers: computeNep413Hash, extractEd25519PublicKeyHex, parseUserContextData, verifyNearSignature, buildProofData
  */
-import { describe, it, expect, beforeAll } from "vitest"
+import { describe, it, expect, beforeAll, beforeEach } from "vitest"
 import * as allure from "allure-js-commons"
 import { KeyPair } from "@near-js/crypto"
 import bs58 from "bs58"
@@ -43,6 +43,12 @@ const validUserContextJson = {
 }
 
 const validUserContextHex = Buffer.from(JSON.stringify(validUserContextJson)).toString("hex")
+
+beforeEach(async () => {
+  await allure.label("parentSuite", "Near Citizens House")
+  await allure.label("suite", "Shared Library Tests")
+  await allure.label("subSuite", "NEP-413 Verification")
+})
 
 // ============================================================================
 // computeNep413Hash Tests

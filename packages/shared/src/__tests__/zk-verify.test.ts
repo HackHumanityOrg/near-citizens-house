@@ -7,7 +7,7 @@
  * NOTE: These tests use REAL Celo RPC network calls per user requirement.
  * Tests may be slower but validate actual integration with on-chain verifier.
  */
-import { describe, it, expect, beforeAll } from "vitest"
+import { describe, it, expect, beforeAll, beforeEach } from "vitest"
 import * as allure from "allure-js-commons"
 import { verifyStoredProof, verifyStoredProofWithDetails } from "../zk-verify"
 import type { SelfProofData } from "../contracts/verification"
@@ -81,6 +81,12 @@ const emptyProof: SelfProofData = {
 const PASSPORT_ATTESTATION_ID = 1
 const BIOMETRIC_ATTESTATION_ID = 2
 const AADHAAR_ATTESTATION_ID = 3
+
+beforeEach(async () => {
+  await allure.label("parentSuite", "Near Citizens House")
+  await allure.label("suite", "Shared Library Tests")
+  await allure.label("subSuite", "ZK Verification")
+})
 
 // ============================================================================
 // verifyStoredProof Tests

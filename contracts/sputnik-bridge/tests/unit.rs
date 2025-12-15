@@ -40,3 +40,6 @@ mod callbacks_tests;
 
 #[path = "unit/access_control_tests.rs"]
 mod access_control_tests;
+
+#[path = "unit/write_functions_tests.rs"]
+mod write_functions_tests;

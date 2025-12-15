@@ -126,6 +126,11 @@ fn test_callback_member_added() {
         logs[0].contains("member_added"),
         "Expected member_added event"
     );
+    assert!(logs[0].contains("danny"), "Expected member ID in event payload");
+    assert!(
+        logs[0].contains("citizen"),
+        "Expected citizen role to be included in event payload"
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -271,6 +276,18 @@ fn test_callback_quorum_updated() {
         logs[0].contains("quorum_updated"),
         "Expected quorum_updated event"
     );
+    assert!(
+        logs[0].contains("\"citizen_count\":2"),
+        "Expected citizen_count in quorum_updated event"
+    );
+    assert!(
+        logs[0].contains("\"new_quorum\":1"),
+        "Expected new_quorum in quorum_updated event"
+    );
+    assert!(
+        logs[0].contains("\"proposal_id\":2"),
+        "Expected proposal_id in quorum_updated event"
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -306,6 +323,14 @@ fn test_callback_vote_proposal_created() {
     assert!(
         logs[0].contains("proposal_created"),
         "Expected proposal_created event"
+    );
+    assert!(
+        logs[0].contains("\"proposal_id\":3"),
+        "Expected proposal_id in proposal_created event"
+    );
+    assert!(
+        logs[0].contains("\"description\":\"desc\""),
+        "Expected description to be serialized in proposal_created event"
     );
 }
 

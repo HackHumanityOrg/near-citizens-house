@@ -1,6 +1,8 @@
 //! Signature verification tests for verified-accounts contract
 
-use super::helpers::{assert_panic_with, get_context, test_self_proof};
+use super::helpers::{
+    assert_panic_with, create_signer, create_valid_signature, get_context, test_self_proof,
+};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
@@ -213,5 +215,43 @@ fn test_signature_too_long() {
             );
         },
         "Signature must be 64 bytes",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Signature Verification")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "security", "signature")]
+#[allure_description("Verifies that a tampered signature fails NEP-413 verification.")]
+#[allure_test]
+#[test]
+fn test_invalid_signature_contents() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+
+    // Create a valid signature, then tamper with it
+    let signer = create_signer(&user);
+    let mut sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &user);
+    sig_data.signature[0] ^= 0xFF; // flip a byte to invalidate signature
+
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "tampered".to_string(),
+                user,
+                "user1".to_string(),
+                "1".to_string(),
+                sig_data,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Invalid NEAR signature - NEP-413 verification failed",
     );
 }
