@@ -2,68 +2,14 @@
 //!
 //! Happy path tests with real cryptographic signatures
 
-use super::helpers::{get_context, test_self_proof};
+use super::helpers::{
+    assert_panic_with, create_signer, create_valid_signature, get_context, test_self_proof,
+};
 use allure_rs::bdd;
 use allure_rs::prelude::*;
-use near_crypto::{InMemorySigner, KeyType, SecretKey, Signer};
 use near_sdk::test_utils::{accounts, get_logs};
 use near_sdk::testing_env;
-use near_sdk::{env, AccountId};
-use verified_accounts::{Contract, NearSignatureData, Nep413Payload};
-
-/// Helper to create a valid signature for a given message
-fn create_valid_signature(
-    signer: &Signer,
-    signer_id: &AccountId,
-    challenge: &str,
-    nonce: &[u8],
-    recipient: &AccountId,
-) -> NearSignatureData {
-    // Step 1: Serialize the NEP-413 prefix tag (2^31 + 413)
-    let tag: u32 = 2147484061;
-    let tag_bytes = tag.to_le_bytes().to_vec();
-
-    // Step 2: Create valid NEP-413 payload
-    let mut nonce_array = [0u8; 32];
-    nonce_array.copy_from_slice(nonce);
-
-    let payload = Nep413Payload {
-        message: challenge.to_string(),
-        nonce: nonce_array,
-        recipient: recipient.to_string(),
-        callback_url: None,
-    };
-
-    let payload_bytes = near_sdk::borsh::to_vec(&payload).unwrap();
-
-    // Step 3: Concatenate tag + payload
-    let mut full_message = tag_bytes;
-    full_message.extend_from_slice(&payload_bytes);
-
-    // Step 4: SHA-256 hash
-    let message_hash = env::sha256(&full_message);
-
-    // Step 5: Sign the hash
-    let signature = signer.sign(&message_hash);
-
-    // Extract bytes from signature enum using pattern matching
-    let signature_bytes = match signature {
-        near_crypto::Signature::ED25519(sig) => sig.to_bytes().to_vec(),
-        _ => panic!("Only ED25519 signatures are supported in tests"),
-    };
-
-    // Convert to our data structure
-    let public_key_str = signer.public_key().to_string();
-
-    NearSignatureData {
-        account_id: signer_id.clone(),
-        signature: signature_bytes,
-        public_key: public_key_str.parse().unwrap(),
-        challenge: challenge.to_string(),
-        nonce: nonce.to_vec(),
-        recipient: recipient.clone(),
-    }
-}
+use verified_accounts::Contract;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -89,22 +35,22 @@ Verifies the complete happy path for storing a verified account with real ED2551
 #[allure_test]
 #[test]
 fn test_happy_path_store_verification() {
-    let (mut contract, user, sig_data) = bdd::given("contract initialized with valid user signature", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
+    let (mut contract, user, sig_data) =
+        bdd::given("contract initialized with valid user signature", || {
+            let backend = accounts(1);
+            let user = accounts(2);
+            let context = get_context(backend.clone());
+            testing_env!(context.build());
 
-        let contract = Contract::new(backend);
-        let signer =
-            InMemorySigner::from_secret_key(user.clone(), SecretKey::from_random(KeyType::ED25519));
+            let contract = Contract::new(backend);
+            let signer = create_signer(&user);
 
-        let challenge = "Identify myself";
-        let nonce = vec![0u8; 32];
-        let sig_data = create_valid_signature(&signer, &user, challenge, &nonce, &user);
+            let challenge = "Identify myself";
+            let nonce = vec![0u8; 32];
+            let sig_data = create_valid_signature(&signer, &user, challenge, &nonce, &user);
 
-        (contract, user, sig_data)
-    });
+            (contract, user, sig_data)
+        });
 
     bdd::when("storing the verification with valid proof", || {
         contract.store_verification(
@@ -137,4 +83,159 @@ fn test_happy_path_store_verification() {
         assert_eq!(account.near_account_id, user);
         assert_eq!(account.nullifier, "test_nullifier");
     });
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Store Verification")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "replay-protection")]
+#[allure_description("Verifies signature replay protection rejects storing the same signature twice.")]
+#[allure_test]
+#[test]
+fn test_signature_replay_rejected() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let nonce = vec![1u8; 32];
+    let sig_data = create_valid_signature(&signer, &user, "Identify myself", &nonce, &user);
+
+    // First store succeeds
+    contract.store_verification(
+        "nullifier_one".to_string(),
+        user.clone(),
+        "user1".to_string(),
+        "1".to_string(),
+        sig_data,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+    assert!(contract.is_account_verified(user.clone()));
+
+    // Second attempt with the same signature should be rejected
+    assert_panic_with(
+        || {
+            let replay_sig = create_valid_signature(
+                &signer,
+                &user,
+                "Identify myself",
+                &nonce,
+                &user,
+            );
+            contract.store_verification(
+                "nullifier_two".to_string(),
+                user.clone(),
+                "user1".to_string(),
+                "1".to_string(),
+                replay_sig,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Signature already used - potential replay attack",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Store Verification")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "nullifier-dedup")]
+#[allure_description("Verifies duplicate nullifiers are rejected even for different accounts.")]
+#[allure_test]
+#[test]
+fn test_nullifier_reuse_rejected() {
+    let backend = accounts(1);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+
+    // First verified account
+    let user_a = accounts(2);
+    let signer_a = create_signer(&user_a);
+    let sig_a = create_valid_signature(&signer_a, &user_a, "Identify myself", &[0; 32], &user_a);
+    contract.store_verification(
+        "shared_nullifier".to_string(),
+        user_a,
+        "userA".to_string(),
+        "1".to_string(),
+        sig_a,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    // Second attempt with same nullifier but new account/signature should fail
+    let user_b = accounts(3);
+    let signer_b = create_signer(&user_b);
+    let sig_b = create_valid_signature(
+        &signer_b,
+        &user_b,
+        "Identify myself",
+        &[2; 32],
+        &user_b,
+    );
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "shared_nullifier".to_string(),
+                user_b,
+                "userB".to_string(),
+                "1".to_string(),
+                sig_b,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Nullifier already used - passport already registered",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Store Verification")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "duplicate-account")]
+#[allure_description("Verifies the same NEAR account cannot be verified twice even with new signatures/nullifiers.")]
+#[allure_test]
+#[test]
+fn test_double_verification_rejected() {
+    let backend = accounts(1);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let user = accounts(2);
+    let signer = create_signer(&user);
+
+    let sig_one = create_valid_signature(&signer, &user, "Identify myself", &[3; 32], &user);
+    contract.store_verification(
+        "n1".to_string(),
+        user.clone(),
+        "user1".to_string(),
+        "1".to_string(),
+        sig_one,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    let sig_two = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "n2".to_string(),
+                user.clone(),
+                "user1".to_string(),
+                "1".to_string(),
+                sig_two,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "NEAR account already verified",
+    );
 }

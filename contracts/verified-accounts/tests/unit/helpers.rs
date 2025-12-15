@@ -1,8 +1,8 @@
 //! Shared test helpers for verified-accounts unit tests
 
-use near_sdk::test_utils::VMContextBuilder;
-use near_sdk::AccountId;
-use verified_accounts::{SelfProofData, ZkProof};
+use near_crypto::{InMemorySigner, KeyType, SecretKey, Signer};
+use near_sdk::{env, test_utils::VMContextBuilder, AccountId};
+use verified_accounts::{NearSignatureData, SelfProofData, ZkProof};
 
 /// Create a test context with the given predecessor account
 pub fn get_context(predecessor: AccountId) -> VMContextBuilder {
@@ -76,5 +76,59 @@ pub fn test_self_proof_with_signals(signals: Vec<String>) -> SelfProofData {
             c: ["7".to_string(), "8".to_string()],
         },
         public_signals: signals,
+    }
+}
+
+/// Create an in-memory ED25519 signer for a given account (convenience for signature tests)
+pub fn create_signer(account_id: &AccountId) -> Signer {
+    InMemorySigner::from_secret_key(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
+}
+
+/// Produce a valid NEP-413 signature payload for the provided signer/account
+pub fn create_valid_signature(
+    signer: &Signer,
+    signer_id: &AccountId,
+    challenge: &str,
+    nonce: &[u8],
+    recipient: &AccountId,
+) -> NearSignatureData {
+    // Step 1: Serialize the NEP-413 prefix tag (2^31 + 413)
+    let tag: u32 = 2_147_484_061;
+    let mut full_message = tag.to_le_bytes().to_vec();
+
+    // Step 2: Create valid NEP-413 payload
+    let mut nonce_array = [0u8; 32];
+    nonce_array.copy_from_slice(nonce);
+
+    let payload = verified_accounts::Nep413Payload {
+        message: challenge.to_string(),
+        nonce: nonce_array,
+        recipient: recipient.to_string(),
+        callback_url: None,
+    };
+    let payload_bytes = near_sdk::borsh::to_vec(&payload).unwrap();
+
+    // Step 3: Concatenate tag + payload
+    full_message.extend_from_slice(&payload_bytes);
+
+    // Step 4: SHA-256 hash
+    let message_hash = env::sha256(&full_message);
+
+    // Step 5: Sign the hash
+    let signature = signer.sign(&message_hash);
+    let signature_bytes = match signature {
+        near_crypto::Signature::ED25519(sig) => sig.to_bytes().to_vec(),
+        _ => panic!("Only ED25519 signatures are supported in tests"),
+    };
+
+    // Step 6: Return NearSignatureData used by contract
+    let public_key_str = signer.public_key().to_string();
+    NearSignatureData {
+        account_id: signer_id.clone(),
+        signature: signature_bytes,
+        public_key: public_key_str.parse().unwrap(),
+        challenge: challenge.to_string(),
+        nonce: nonce.to_vec(),
+        recipient: recipient.clone(),
     }
 }
