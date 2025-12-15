@@ -17,6 +17,7 @@ use serde_json::json;
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "threshold")]
+#[allure_description("Verifies that dynamic quorum is calculated correctly as ceil(7% * citizen_count) when adding multiple citizens.")]
 #[allure_test]
 #[tokio::test]
 async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
@@ -90,6 +91,7 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "voting")]
+#[allure_description("Verifies that a proposal remains InProgress when not enough votes are cast to reach the effective threshold.")]
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
@@ -162,6 +164,7 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "threshold")]
+#[allure_description("Verifies that a proposal remains InProgress when participation meets quorum but YES votes don't reach the threshold.")]
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()> {
@@ -249,6 +252,7 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "quorum", "edge-case")]
+#[allure_description("Documents that quorum failing while threshold passes is impossible due to effective_threshold = max(quorum, threshold_weight).")]
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow::Result<()> {
@@ -299,6 +303,7 @@ async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "voting")]
+#[allure_description("Verifies that a proposal is approved when YES votes reach the effective threshold (max of quorum and 50%).")]
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
@@ -375,6 +380,7 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "quorum", "voting")]
+#[allure_description("Verifies that a proposal is rejected when NO votes reach the effective threshold.")]
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
@@ -439,6 +445,7 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "edge-case")]
+#[allure_description("Verifies the critical 0-to-1 citizen transition, where quorum updates from 0 to 1 and the first citizen can approve proposals.")]
 #[allure_test]
 #[tokio::test]
 async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
@@ -511,6 +518,7 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "boundary")]
+#[allure_description("Verifies the quorum boundary transition from 14 to 15 citizens where quorum increases from 1 to 2.")]
 #[allure_test]
 #[tokio::test]
 async fn test_quorum_boundary_14_to_15_citizens() -> anyhow::Result<()> {
@@ -564,6 +572,7 @@ async fn test_quorum_boundary_14_to_15_citizens() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "overflow")]
+#[allure_description("Verifies that quorum calculation handles large citizen counts (100+) correctly without overflow using saturating arithmetic.")]
 #[allure_test]
 #[tokio::test]
 async fn test_quorum_calculation_with_many_citizens() -> anyhow::Result<()> {
@@ -614,6 +623,7 @@ async fn test_quorum_calculation_with_many_citizens() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "atomicity")]
+#[allure_description("Verifies that quorum updates are atomic with member addition, with both member_added and quorum_updated events emitted.")]
 #[allure_test]
 #[tokio::test]
 async fn test_quorum_update_atomic_with_member_addition() -> anyhow::Result<()> {

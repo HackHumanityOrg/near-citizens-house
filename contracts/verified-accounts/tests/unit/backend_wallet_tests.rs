@@ -12,6 +12,7 @@ use verified_accounts::Contract;
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "wallet")]
+#[allure_description("Verifies that backend wallet can be updated by the current backend wallet, emitting proper events.")]
 #[allure_test]
 #[test]
 fn test_update_backend_wallet() {
@@ -47,6 +48,7 @@ fn test_update_backend_wallet() {
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies that only the current backend wallet can update the backend wallet and unauthorized accounts are rejected.")]
 #[allure_test]
 #[test]
 fn test_unauthorized_update_backend_wallet() {

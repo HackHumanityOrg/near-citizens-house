@@ -11,6 +11,7 @@ use verified_accounts::Contract;
 #[allure_sub_suite("Contract Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "initialization")]
+#[allure_description("Verifies contract initialization stores correct backend wallet and sets initial verified count to zero.")]
 #[allure_test]
 #[test]
 fn test_initialization() {

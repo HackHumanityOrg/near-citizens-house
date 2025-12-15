@@ -11,6 +11,7 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "security")]
+#[allure_description("Verifies that store_verification rejects when signature account_id doesn't match near_account_id parameter.")]
 #[allure_test]
 #[test]
 fn test_account_id_mismatch() {
@@ -53,6 +54,7 @@ fn test_account_id_mismatch() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "security")]
+#[allure_description("Verifies that store_verification rejects when signature recipient doesn't match near_account_id parameter.")]
 #[allure_test]
 #[test]
 fn test_recipient_mismatch() {
@@ -95,6 +97,7 @@ fn test_recipient_mismatch() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "batch-size")]
+#[allure_description("Verifies that are_accounts_verified rejects batch queries exceeding maximum size of 100 accounts.")]
 #[allure_test]
 #[test]
 fn test_batch_size_exceeded_are_accounts_verified() {
@@ -122,6 +125,7 @@ fn test_batch_size_exceeded_are_accounts_verified() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "batch-size")]
+#[allure_description("Verifies that get_accounts rejects batch queries exceeding maximum size of 100 accounts.")]
 #[allure_test]
 #[test]
 fn test_batch_size_exceeded_get_accounts() {
@@ -149,6 +153,7 @@ fn test_batch_size_exceeded_get_accounts() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "nullifier")]
+#[allure_description("Verifies that store_verification rejects nullifier strings exceeding 80 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_nullifier_too_long() {
@@ -193,6 +198,7 @@ fn test_nullifier_too_long() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "user-id")]
+#[allure_description("Verifies that store_verification rejects user_id strings exceeding 80 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_user_id_too_long() {
@@ -237,6 +243,7 @@ fn test_user_id_too_long() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "attestation-id")]
+#[allure_description("Verifies that store_verification rejects attestation_id strings exceeding 1 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_attestation_id_too_long() {
@@ -281,6 +288,7 @@ fn test_attestation_id_too_long() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "user-context-data")]
+#[allure_description("Verifies that store_verification rejects user_context_data strings exceeding 4096 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_user_context_data_too_long() {

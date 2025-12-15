@@ -13,6 +13,7 @@ use sputnik_bridge::{calculate_quorum, SputnikBridge, MAX_DESCRIPTION_LEN, QUORU
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant", "quorum")]
+#[allure_description("Verifies QUORUM_PERCENT is within valid range (0 < value <= 100).")]
 #[allure_test]
 #[test]
 fn test_invariant_quorum_percent_valid_range() {
@@ -26,6 +27,7 @@ fn test_invariant_quorum_percent_valid_range() {
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant", "quorum")]
+#[allure_description("Verifies that calculated quorum never exceeds the total citizen count.")]
 #[allure_test]
 #[test]
 fn test_invariant_quorum_never_exceeds_citizen_count() {
@@ -47,6 +49,7 @@ fn test_invariant_quorum_never_exceeds_citizen_count() {
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant", "quorum")]
+#[allure_description("Verifies that quorum is monotonically increasing as citizen count grows.")]
 #[allure_test]
 #[test]
 fn test_invariant_quorum_monotonic_increasing() {
@@ -71,6 +74,7 @@ fn test_invariant_quorum_monotonic_increasing() {
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant", "initialization")]
+#[allure_description("Verifies all configured account IDs are valid and non-empty after contract initialization.")]
 #[allure_test]
 #[test]
 fn test_invariant_all_config_accounts_valid_after_init() {
@@ -108,6 +112,7 @@ fn test_invariant_all_config_accounts_valid_after_init() {
 #[allure_sub_suite("Invariants")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "invariant", "constants")]
+#[allure_description("Verifies MAX_DESCRIPTION_LEN constant is positive.")]
 #[allure_test]
 #[test]
 fn test_invariant_max_description_length_positive() {

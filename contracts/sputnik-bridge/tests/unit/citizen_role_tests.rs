@@ -11,6 +11,7 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Citizen Role Management")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "admin", "role")]
+#[allure_description("Verifies backend wallet can successfully update the citizen role name.")]
 #[allure_test]
 #[test]
 fn test_update_citizen_role() {
@@ -29,6 +30,7 @@ fn test_update_citizen_role() {
 #[allure_sub_suite("Citizen Role Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies unauthorized account cannot update citizen role and receives appropriate error.")]
 #[allure_test]
 #[test]
 fn test_update_citizen_role_unauthorized() {
@@ -53,6 +55,7 @@ fn test_update_citizen_role_unauthorized() {
 #[allure_sub_suite("Citizen Role Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "role", "validation")]
+#[allure_description("Verifies empty string is rejected when updating citizen role.")]
 #[allure_test]
 #[test]
 fn test_update_citizen_role_empty_fails() {
@@ -73,6 +76,7 @@ fn test_update_citizen_role_empty_fails() {
 #[allure_sub_suite("Citizen Role Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "role", "validation")]
+#[allure_description("Verifies whitespace-only string is rejected when updating citizen role.")]
 #[allure_test]
 #[test]
 fn test_update_citizen_role_whitespace_only_fails() {

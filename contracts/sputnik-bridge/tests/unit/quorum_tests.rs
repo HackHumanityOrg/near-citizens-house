@@ -14,6 +14,7 @@ use sputnik_bridge::calculate_quorum;
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies quorum is 0 when there are no citizens.")]
 #[allure_test]
 #[test]
 fn test_quorum_with_0_citizens_equals_0() {
@@ -25,6 +26,7 @@ fn test_quorum_with_0_citizens_equals_0() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies ceil(1 * 7 / 100) = ceil(0.07) = 1.")]
 #[allure_test]
 #[test]
 fn test_quorum_with_1_citizen_equals_1() {
@@ -37,6 +39,7 @@ fn test_quorum_with_1_citizen_equals_1() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies ceil(14 * 7 / 100) = ceil(0.98) = 1.")]
 #[allure_test]
 #[test]
 fn test_quorum_with_14_citizens_equals_1() {
@@ -49,6 +52,7 @@ fn test_quorum_with_14_citizens_equals_1() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies ceil(15 * 7 / 100) = ceil(1.05) = 2.")]
 #[allure_test]
 #[test]
 fn test_quorum_with_15_citizens_equals_2() {
@@ -61,6 +65,7 @@ fn test_quorum_with_15_citizens_equals_2() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies 100 * 7 / 100 = 7.0 exactly (no ceiling needed).")]
 #[allure_test]
 #[test]
 fn test_quorum_with_100_citizens_equals_7() {
@@ -73,6 +78,7 @@ fn test_quorum_with_100_citizens_equals_7() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies ceil(101 * 7 / 100) = ceil(7.07) = 8.")]
 #[allure_test]
 #[test]
 fn test_quorum_with_101_citizens_equals_8() {
@@ -85,6 +91,7 @@ fn test_quorum_with_101_citizens_equals_8() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies ceil(143 * 7 / 100) = ceil(10.01) = 11.")]
 #[allure_test]
 #[test]
 fn test_quorum_with_143_citizens_equals_11() {
@@ -97,6 +104,7 @@ fn test_quorum_with_143_citizens_equals_11() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "quorum", "math")]
+#[allure_description("Verifies 1000 * 7 / 100 = 70.0 exactly.")]
 #[allure_test]
 #[test]
 fn test_quorum_with_1000_citizens_equals_70() {
@@ -109,6 +117,7 @@ fn test_quorum_with_1000_citizens_equals_70() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "math", "algorithm")]
+#[allure_description("Verifies ceiling division across multiple boundary transitions.")]
 #[allure_test]
 #[test]
 fn test_quorum_ceiling_division_correctness() {
@@ -127,6 +136,7 @@ fn test_quorum_ceiling_division_correctness() {
 #[allure_sub_suite("Quorum Calculation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "math", "scale")]
+#[allure_description("Verifies quorum calculation scales correctly with large citizen counts.")]
 #[allure_test]
 #[test]
 fn test_quorum_large_numbers() {
@@ -143,6 +153,7 @@ fn test_quorum_large_numbers() {
 #[allure_sub_suite("Quorum Boundaries")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "boundary")]
+#[allure_description("Tests boundary transition from 0 to 1 quorum.")]
 #[allure_test]
 #[test]
 fn test_quorum_boundary_0_to_1() {
@@ -159,6 +170,7 @@ fn test_quorum_boundary_0_to_1() {
 #[allure_sub_suite("Quorum Boundaries")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "boundary")]
+#[allure_description("Tests boundary transition from 1 to 2 quorum (14→15 citizens).")]
 #[allure_test]
 #[test]
 fn test_quorum_boundary_1_to_2() {
@@ -172,6 +184,7 @@ fn test_quorum_boundary_1_to_2() {
 #[allure_sub_suite("Quorum Boundaries")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "boundary")]
+#[allure_description("Tests boundary transition from 2 to 3 quorum (28→29 citizens).")]
 #[allure_test]
 #[test]
 fn test_quorum_boundary_2_to_3() {
@@ -185,6 +198,7 @@ fn test_quorum_boundary_2_to_3() {
 #[allure_sub_suite("Quorum Boundaries")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "boundary")]
+#[allure_description("Tests boundary transition from 6 to 7 quorum (85→86 citizens).")]
 #[allure_test]
 #[test]
 fn test_quorum_boundary_6_to_7() {
@@ -198,6 +212,7 @@ fn test_quorum_boundary_6_to_7() {
 #[allure_sub_suite("Quorum Boundaries")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "quorum", "boundary", "percentage")]
+#[allure_description("Tests exact 7% boundary at 100 citizens.")]
 #[allure_test]
 #[test]
 fn test_quorum_boundary_exact_7_percent() {
@@ -211,6 +226,7 @@ fn test_quorum_boundary_exact_7_percent() {
 #[allure_sub_suite("Quorum Boundaries")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "quorum", "boundary", "percentage")]
+#[allure_description("Tests exact 14% boundary at 200 citizens.")]
 #[allure_test]
 #[test]
 fn test_quorum_boundary_exact_14_percent() {
@@ -224,6 +240,7 @@ fn test_quorum_boundary_exact_14_percent() {
 #[allure_sub_suite("Quorum Boundaries")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "boundary", "algorithm")]
+#[allure_description("Verifies ceiling is used (not floor) for fractional quorum values.")]
 #[allure_test]
 #[test]
 fn test_quorum_boundary_floor_vs_ceil_difference() {
@@ -257,6 +274,7 @@ fn test_quorum_boundary_floor_vs_ceil_difference() {
 #[allure_sub_suite("Quorum Overflow")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "overflow", "security")]
+#[allure_description("Verifies u64::MAX input causes overflow panic (u64::MAX * 7 overflows).")]
 #[allure_test]
 #[test]
 fn test_quorum_overflow_panics() {
@@ -276,6 +294,7 @@ fn test_quorum_overflow_panics() {
 #[allure_sub_suite("Quorum Overflow")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "quorum", "overflow", "security")]
+#[allure_description("Verifies max safe value (u64::MAX / 7) calculates without overflow.")]
 #[allure_test]
 #[test]
 fn test_quorum_near_overflow_boundary() {

@@ -12,6 +12,7 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "pause")]
+#[allure_description("Verifies that backend wallet can pause and unpause the contract, emitting proper events.")]
 #[allure_test]
 #[test]
 fn test_pause_unpause() {
@@ -66,6 +67,7 @@ fn test_pause_unpause() {
 #[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies that only the backend wallet can pause the contract and unauthorized accounts are rejected.")]
 #[allure_test]
 #[test]
 fn test_unauthorized_pause() {
@@ -87,6 +89,7 @@ fn test_unauthorized_pause() {
 #[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies that only the backend wallet can unpause the contract and unauthorized accounts are rejected.")]
 #[allure_test]
 #[test]
 fn test_unauthorized_unpause() {
@@ -118,6 +121,7 @@ fn test_unauthorized_unpause() {
 #[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "pause")]
+#[allure_description("Verifies that storing verifications is blocked when the contract is paused.")]
 #[allure_test]
 #[test]
 fn test_store_verification_when_paused() {

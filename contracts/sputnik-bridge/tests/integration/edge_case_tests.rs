@@ -12,6 +12,7 @@ use serde_json::json;
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "deposit")]
+#[allure_description("Verifies that adding a member with insufficient deposit (below DAO proposal bond) fails with appropriate error.")]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
@@ -58,6 +59,7 @@ async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "deposit")]
+#[allure_description("Verifies that adding a member with zero deposit fails as expected.")]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
@@ -93,6 +95,7 @@ async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "edge-case", "concurrency")]
+#[allure_description("Verifies that multiple members can be added in rapid succession without state corruption or race conditions.")]
 #[allure_test]
 #[tokio::test]
 async fn test_concurrent_member_additions() -> anyhow::Result<()> {
@@ -139,6 +142,7 @@ async fn test_concurrent_member_additions() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "edge-case", "voting")]
+#[allure_description("Verifies that sequential voting correctly auto-approves when threshold is reached and rejects late votes on approved proposals.")]
 #[allure_test]
 #[tokio::test]
 async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {

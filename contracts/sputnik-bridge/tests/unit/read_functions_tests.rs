@@ -11,6 +11,7 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "query", "view")]
+#[allure_description("Verifies get_info returns correct contract configuration information.")]
 #[allure_test]
 #[test]
 fn test_get_info() {
