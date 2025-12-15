@@ -7,10 +7,17 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 
 // ==================== SETUP TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "initialization")]
+#[allure_test]
 #[tokio::test]
 async fn test_full_setup() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -33,6 +40,12 @@ async fn test_full_setup() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "dao")]
+#[allure_test]
 #[tokio::test]
 async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -45,6 +58,12 @@ async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "policy")]
+#[allure_test]
 #[tokio::test]
 async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -68,6 +87,12 @@ async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Read Functions")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "query", "view")]
+#[allure_test]
 #[tokio::test]
 async fn test_get_info() -> anyhow::Result<()> {
     let env = setup().await?;

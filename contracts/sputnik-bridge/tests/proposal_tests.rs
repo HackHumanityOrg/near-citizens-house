@@ -7,12 +7,19 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 // ==================== PROPOSAL CREATION TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Creation")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "proposal", "happy-path")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_vote_proposal_success() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -28,6 +35,12 @@ async fn test_create_vote_proposal_success() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Creation")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "proposal")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_returns_id() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -58,6 +71,12 @@ async fn test_create_proposal_returns_id() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Creation")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "proposal", "security")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_unauthorized() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -77,6 +96,12 @@ async fn test_create_proposal_unauthorized() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Validation")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "proposal", "validation")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_empty_description() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -89,6 +114,12 @@ async fn test_create_proposal_empty_description() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Validation")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "proposal", "validation")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_too_long() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -102,6 +133,12 @@ async fn test_create_proposal_too_long() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Validation")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "proposal", "boundary")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_exactly_max_length() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -121,6 +158,12 @@ async fn test_create_proposal_exactly_max_length() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Validation")]
+#[allure_severity("minor")]
+#[allure_tags("integration", "proposal", "boundary")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_single_char_description() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -138,6 +181,12 @@ async fn test_create_proposal_single_char_description() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Validation")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "proposal", "validation")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_whitespace_only_description() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -159,6 +208,12 @@ async fn test_create_proposal_whitespace_only_description() -> anyhow::Result<()
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Validation")]
+#[allure_severity("minor")]
+#[allure_tags("integration", "proposal", "unicode")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_unicode_description() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -189,6 +244,12 @@ async fn test_create_proposal_unicode_description() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Creation")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "proposal", "deposit")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_insufficient_deposit() -> anyhow::Result<()> {
     let env = setup().await?;

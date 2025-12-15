@@ -11,12 +11,19 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 // ==================== CROSS-CONTRACT CALL FAILURE TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "failure", "state")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -51,6 +58,12 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "failure", "events")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
     // Bridge lacks VoteApprove permission, so auto-approval should fail
@@ -81,6 +94,12 @@ async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "failure", "promise")]
+#[allure_test]
 #[tokio::test]
 async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
     // Verification contract is uninitialized; promise should return Failure
@@ -115,6 +134,12 @@ async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "failure", "proposal")]
+#[allure_test]
 #[tokio::test]
 async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -145,6 +170,12 @@ async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "failure", "member")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -186,6 +217,12 @@ async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "failure", "state")]
+#[allure_test]
 #[tokio::test]
 async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
     let env = setup_with_users(3).await?;
@@ -235,6 +272,12 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "failure", "gas")]
+#[allure_test]
 #[tokio::test]
 async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -277,6 +320,12 @@ async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Failure Handling")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "failure", "recovery")]
+#[allure_test]
 #[tokio::test]
 async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()> {
     let env = setup_with_users(2).await?;

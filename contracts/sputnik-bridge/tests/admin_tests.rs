@@ -7,12 +7,19 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
 // ==================== ADMIN TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "admin", "wallet")]
+#[allure_test]
 #[tokio::test]
 async fn test_update_backend_wallet() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -32,6 +39,12 @@ async fn test_update_backend_wallet() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "wallet")]
+#[allure_test]
 #[tokio::test]
 async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -84,6 +97,12 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Role Management")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "admin", "role")]
+#[allure_test]
 #[tokio::test]
 async fn test_update_citizen_role() -> anyhow::Result<()> {
     let env = setup().await?;
@@ -102,6 +121,12 @@ async fn test_update_citizen_role() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Role Management")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "admin", "events")]
+#[allure_test]
 #[tokio::test]
 async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Result<()> {
     // Start with policy that already defines the new role we plan to use ("voter")
@@ -220,6 +245,12 @@ async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Res
 
 // ==================== EVENT TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Events")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "events")]
+#[allure_test]
 #[tokio::test]
 async fn test_member_added_event_emitted() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -269,6 +300,12 @@ async fn test_member_added_event_emitted() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Events")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "events")]
+#[allure_test]
 #[tokio::test]
 async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
     let env = setup().await?;

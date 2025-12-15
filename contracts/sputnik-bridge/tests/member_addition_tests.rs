@@ -7,12 +7,19 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 // ==================== MEMBER ADDITION FLOW TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "member", "happy-path")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_verified_member_success() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -36,6 +43,12 @@ async fn test_add_verified_member_success() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "member", "proposal")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_creates_proposal() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -59,6 +72,12 @@ async fn test_add_member_creates_proposal() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "member", "auto-approve")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_auto_approves() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -88,6 +107,12 @@ async fn test_add_member_auto_approves() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "member", "role")]
+#[allure_test]
 #[tokio::test]
 async fn test_member_appears_in_citizen_role() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -108,6 +133,12 @@ async fn test_member_appears_in_citizen_role() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "member", "security")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_unauthorized() -> anyhow::Result<()> {
     let env = setup_with_users(2).await?;
@@ -131,6 +162,12 @@ async fn test_add_member_unauthorized() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "member", "verification")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_unverified_member_fails() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -150,6 +187,12 @@ async fn test_add_unverified_member_fails() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "member", "multiple")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_multiple_members() -> anyhow::Result<()> {
     let env = setup_with_users(3).await?;
@@ -172,6 +215,12 @@ async fn test_add_multiple_members() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "member", "duplicate")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_already_citizen() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
