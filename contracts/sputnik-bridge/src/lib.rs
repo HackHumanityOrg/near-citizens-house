@@ -644,7 +644,6 @@ impl SputnikBridge {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
-#[allure_rs::allure_suite("Sputnik Bridge Contract")]
 mod tests {
     use super::*;
     use allure_rs::prelude::*;
@@ -683,9 +682,9 @@ mod tests {
         }
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Contract Initialization")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Initialization")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "initialization")]
     #[allure_test]
@@ -707,9 +706,9 @@ mod tests {
         assert_eq!(contract.get_citizen_role(), "citizen");
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Read Functions")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Read Functions")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "query", "view")]
     #[allure_test]
@@ -728,9 +727,9 @@ mod tests {
         assert_eq!(info.citizen_role, "citizen");
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Backend Wallet Management")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Backend Wallet Management")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "admin", "wallet")]
     #[allure_test]
@@ -746,9 +745,9 @@ mod tests {
         assert_eq!(contract.get_backend_wallet(), accounts(3));
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Backend Wallet Management")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Backend Wallet Management")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "security", "authorization")]
     #[allure_test]
@@ -770,9 +769,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Citizen Role Management")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Citizen Role Management")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "admin", "role")]
     #[allure_test]
@@ -788,9 +787,9 @@ mod tests {
         assert_eq!(contract.get_citizen_role(), "voter");
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Citizen Role Management")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Citizen Role Management")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "security", "authorization")]
     #[allure_test]
@@ -815,9 +814,9 @@ mod tests {
     // ==================== QUORUM CALCULATION TESTS (Phase 2.2) ====================
     // Tests for the calculate_quorum helper function
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -826,9 +825,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(0), 0);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -838,9 +837,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(1), 1);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -850,9 +849,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(14), 1);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -862,9 +861,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(15), 2);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -874,9 +873,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(100), 7);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -886,9 +885,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(101), 8);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("minor")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -898,9 +897,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(143), 11);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("minor")]
     #[allure_tags("unit", "quorum", "math")]
     #[allure_test]
@@ -910,9 +909,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(1000), 70);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "quorum", "math", "algorithm")]
     #[allure_test]
@@ -933,9 +932,9 @@ mod tests {
         assert_eq!(super::calculate_quorum(43), 4); // 3.01 → 4
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Calculation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Calculation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "math", "scale")]
     #[allure_test]
@@ -952,9 +951,9 @@ mod tests {
     // Formula: quorum = ceil(citizen_count * 7 / 100)
     // Quorum changes when citizen_count crosses multiples of 100/7 ≈ 14.2857
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Boundaries")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Boundaries")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "quorum", "boundary")]
     #[allure_test]
@@ -976,9 +975,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Boundaries")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Boundaries")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "quorum", "boundary")]
     #[allure_test]
@@ -1007,9 +1006,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Boundaries")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Boundaries")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "boundary")]
     #[allure_test]
@@ -1038,9 +1037,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Boundaries")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Boundaries")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "boundary")]
     #[allure_test]
@@ -1069,9 +1068,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Boundaries")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Boundaries")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "quorum", "boundary", "percentage")]
     #[allure_test]
@@ -1101,9 +1100,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Boundaries")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Boundaries")]
     #[allure_severity("minor")]
     #[allure_tags("unit", "quorum", "boundary", "percentage")]
     #[allure_test]
@@ -1133,9 +1132,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Quorum Boundaries")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Quorum Boundaries")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "quorum", "boundary", "algorithm")]
     #[allure_test]
@@ -1173,9 +1172,9 @@ mod tests {
     // Note: create_proposal method initiates cross-contract call, so we test validation
     // by checking that the method panics before the cross-contract call for invalid input
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Description Validation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Description Validation")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "validation", "proposal")]
     #[allure_test]
@@ -1196,9 +1195,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Description Validation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Description Validation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "validation", "proposal")]
     #[allure_test]
@@ -1221,9 +1220,9 @@ mod tests {
 
     // ==================== DESCRIPTION LENGTH BOUNDARY TESTS ====================
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Description Validation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Description Validation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "validation", "boundary")]
     #[allure_test]
@@ -1242,9 +1241,9 @@ mod tests {
         let _ = contract.create_proposal(description);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Description Validation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Description Validation")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "validation", "boundary")]
     #[allure_test]
@@ -1263,9 +1262,9 @@ mod tests {
         let _ = contract.create_proposal(description);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Description Validation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Description Validation")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "validation", "boundary")]
     #[allure_test]
@@ -1288,9 +1287,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Description Validation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Description Validation")]
     #[allure_severity("minor")]
     #[allure_tags("unit", "validation", "boundary", "edge-case")]
     #[allure_test]
@@ -1307,9 +1306,9 @@ mod tests {
         let _ = contract.create_proposal("x".to_string());
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Description Validation")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Description Validation")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "validation", "negative")]
     #[allure_test]
@@ -1331,9 +1330,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Access Control")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Access Control")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "security", "authorization")]
     #[allure_test]
@@ -1357,9 +1356,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Access Control")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Access Control")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "security", "authorization")]
     #[allure_test]
@@ -1385,9 +1384,9 @@ mod tests {
 
     // ==================== EVENT STRUCTURE TESTS (Phase 2.4) ====================
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Events")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Events")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "events", "serialization")]
     #[allure_test]
@@ -1405,9 +1404,9 @@ mod tests {
         assert!(json.contains("\"proposal_id\":42"));
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Events")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Events")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "events", "serialization")]
     #[allure_test]
@@ -1423,9 +1422,9 @@ mod tests {
         assert!(json.contains("\"description\":\"Test proposal description\""));
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Events")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Events")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "events", "serialization")]
     #[allure_test]
@@ -1445,9 +1444,9 @@ mod tests {
 
     // ==================== GAS CONSTANT VALIDATION TESTS ====================
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Constants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Constants")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "constants", "gas")]
     #[allure_test]
@@ -1465,9 +1464,9 @@ mod tests {
         assert!(super::GAS_FOR_QUORUM_UPDATE.as_tgas() <= 200);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Constants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Constants")]
     #[allure_severity("minor")]
     #[allure_tags("unit", "constants")]
     #[allure_test]
@@ -1477,9 +1476,9 @@ mod tests {
         assert_eq!(super::MAX_DESCRIPTION_LEN, 10_000);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Constants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Constants")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "constants", "quorum")]
     #[allure_test]
@@ -1491,9 +1490,9 @@ mod tests {
 
     // ==================== BRIDGE INFO TESTS ====================
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Read Functions")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Read Functions")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "query", "view")]
     #[allure_test]
@@ -1512,9 +1511,9 @@ mod tests {
         assert_eq!(info.citizen_role, "voter");
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Read Functions")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Read Functions")]
     #[allure_severity("normal")]
     #[allure_tags("unit", "query", "view")]
     #[allure_test]
@@ -1539,9 +1538,9 @@ mod tests {
     // ==================== INVARIANT TESTS (Phase 2) ====================
     // Per OpenZeppelin best practices: verify system-wide invariants
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Invariants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Invariants")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "invariant", "quorum")]
     #[allure_test]
@@ -1552,9 +1551,9 @@ mod tests {
         assert!(QUORUM_PERCENT <= 100, "QUORUM_PERCENT must not exceed 100%");
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Invariants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Invariants")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "invariant", "quorum")]
     #[allure_test]
@@ -1573,9 +1572,9 @@ mod tests {
         }
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Invariants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Invariants")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "invariant", "quorum")]
     #[allure_test]
@@ -1597,9 +1596,9 @@ mod tests {
         }
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Invariants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Invariants")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "invariant", "initialization")]
     #[allure_test]
@@ -1634,9 +1633,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Invariants")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Invariants")]
     #[allure_severity("minor")]
     #[allure_tags("unit", "invariant", "constants")]
     #[allure_test]
@@ -1651,9 +1650,9 @@ mod tests {
 
     // ==================== CALLBACK TESTS (Phase 3) ====================
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "verification")]
     #[allure_test]
@@ -1677,9 +1676,9 @@ mod tests {
         let _ = contract.callback_add_member(accounts(3));
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "verification")]
     #[allure_test]
@@ -1707,9 +1706,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "proposal")]
     #[allure_test]
@@ -1733,9 +1732,9 @@ mod tests {
         let _ = contract.callback_proposal_created(accounts(3));
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "member")]
     #[allure_test]
@@ -1766,9 +1765,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "policy")]
     #[allure_test]
@@ -1806,9 +1805,9 @@ mod tests {
         let _ = contract.callback_policy_received_for_quorum();
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "quorum")]
     #[allure_test]
@@ -1832,9 +1831,9 @@ mod tests {
         let _ = contract.callback_quorum_proposal_created(2, 1);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "quorum")]
     #[allure_test]
@@ -1874,9 +1873,9 @@ mod tests {
         let _ = contract.callback_got_quorum_proposal(2, 1, 2);
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "quorum")]
     #[allure_test]
@@ -1907,9 +1906,9 @@ mod tests {
         );
     }
 
-    #[allure_epic("Smart Contracts")]
-    #[allure_feature("Sputnik Bridge Contract")]
-    #[allure_story("Callbacks")]
+    #[allure_parent_suite("Near Citizens House")]
+    #[allure_suite_label("Sputnik Bridge Unit Tests")]
+    #[allure_sub_suite("Callbacks")]
     #[allure_severity("critical")]
     #[allure_tags("unit", "callback", "proposal")]
     #[allure_test]

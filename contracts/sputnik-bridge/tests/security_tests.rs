@@ -7,12 +7,19 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 // ==================== ACCESS CONTROL SECURITY TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "authorization")]
+#[allure_test]
 #[tokio::test]
 async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -34,6 +41,12 @@ async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "authorization")]
+#[allure_test]
 #[tokio::test]
 async fn test_update_citizen_role_unauthorized() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -55,6 +68,12 @@ async fn test_update_citizen_role_unauthorized() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "dao")]
+#[allure_test]
 #[tokio::test]
 async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -93,6 +112,12 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "dao")]
+#[allure_test]
 #[tokio::test]
 async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -121,6 +146,12 @@ async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> 
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "voting")]
+#[allure_test]
 #[tokio::test]
 async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -157,6 +188,12 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "security", "finalization")]
+#[allure_test]
 #[tokio::test]
 async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -213,6 +250,12 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
 
 // ==================== CALLBACK SECURITY TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Callback Security")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "callback")]
+#[allure_test]
 #[tokio::test]
 async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -243,6 +286,12 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Callback Security")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "callback")]
+#[allure_test]
 #[tokio::test]
 async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -273,6 +322,12 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Callback Security")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "callback")]
+#[allure_test]
 #[tokio::test]
 async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -306,6 +361,12 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Callback Security")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "callback")]
+#[allure_test]
 #[tokio::test]
 async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;

@@ -7,12 +7,19 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 // ==================== DEPOSIT/BOND TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "edge-case", "deposit")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -50,6 +57,12 @@ async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "edge-case", "deposit")]
+#[allure_test]
 #[tokio::test]
 async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -79,6 +92,12 @@ async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
 
 // ==================== CONCURRENT OPERATIONS TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "edge-case", "concurrency")]
+#[allure_test]
 #[tokio::test]
 async fn test_concurrent_member_additions() -> anyhow::Result<()> {
     let env = setup_with_users(5).await?;
@@ -119,6 +138,12 @@ async fn test_concurrent_member_additions() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "edge-case", "concurrency")]
+#[allure_test]
 #[tokio::test]
 async fn test_concurrent_proposal_voting() -> anyhow::Result<()> {
     let env = setup_with_users(5).await?;

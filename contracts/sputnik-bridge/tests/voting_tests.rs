@@ -7,11 +7,18 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use serde_json::json;
 
 // ==================== VOTING FLOW TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Voting")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "voting", "happy-path")]
+#[allure_test]
 #[tokio::test]
 async fn test_citizen_can_vote_on_proposal() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -48,6 +55,12 @@ async fn test_citizen_can_vote_on_proposal() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Voting")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "voting", "approve")]
+#[allure_test]
 #[tokio::test]
 async fn test_citizen_vote_approve() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -84,6 +97,12 @@ async fn test_citizen_vote_approve() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Voting")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "voting", "reject")]
+#[allure_test]
 #[tokio::test]
 async fn test_citizen_vote_reject() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -119,6 +138,12 @@ async fn test_citizen_vote_reject() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Voting")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "voting", "security")]
+#[allure_test]
 #[tokio::test]
 async fn test_non_citizen_cannot_vote() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -148,6 +173,12 @@ async fn test_non_citizen_cannot_vote() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Outcomes")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "voting", "majority")]
+#[allure_test]
 #[tokio::test]
 async fn test_proposal_passes_with_majority() -> anyhow::Result<()> {
     let env = setup_with_users(3).await?;
@@ -204,6 +235,12 @@ async fn test_proposal_passes_with_majority() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Outcomes")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "voting", "majority")]
+#[allure_test]
 #[tokio::test]
 async fn test_proposal_fails_with_majority_no() -> anyhow::Result<()> {
     let env = setup_with_users(3).await?;
@@ -259,6 +296,12 @@ async fn test_proposal_fails_with_majority_no() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Voting")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "voting", "duplicate")]
+#[allure_test]
 #[tokio::test]
 async fn test_cannot_vote_twice_on_same_proposal() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -307,6 +350,12 @@ async fn test_cannot_vote_twice_on_same_proposal() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Citizen Voting")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "voting", "validation")]
+#[allure_test]
 #[tokio::test]
 async fn test_vote_on_nonexistent_proposal_fails() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -333,6 +382,12 @@ async fn test_vote_on_nonexistent_proposal_fails() -> anyhow::Result<()> {
 
 // ==================== TIME-BASED TESTS ====================
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Lifecycle")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "voting", "expiry")]
+#[allure_test]
 #[tokio::test]
 async fn test_proposal_expires_after_period() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
@@ -385,6 +440,12 @@ async fn test_proposal_expires_after_period() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Proposal Lifecycle")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "voting", "expiry")]
+#[allure_test]
 #[tokio::test]
 async fn test_vote_before_expiry_succeeds() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;

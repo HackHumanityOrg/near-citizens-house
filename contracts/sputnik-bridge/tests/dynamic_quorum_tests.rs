@@ -12,12 +12,19 @@
 
 mod helpers;
 
+use allure_rs::prelude::*;
 use helpers::*;
 use serde_json::json;
 
 // ==================== DYNAMIC QUORUM TESTS ====================
 
 /// Test 1: Add multiple citizens and verify quorum + threshold are calculated correctly
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "threshold")]
+#[allure_test]
 #[tokio::test]
 async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
     // Use the policy with dynamic quorum support
@@ -85,6 +92,12 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
 }
 
 /// Test 2: Quorum fails - not enough votes to reach effective threshold
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "voting")]
+#[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
     let env = setup_with_policy_and_users(10, create_policy_with_dynamic_quorum, true).await?;
@@ -151,6 +164,12 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
 
 /// Test 3: Quorum passes but threshold fails - enough participation but not enough YES
 /// In SputnikDAO, this means: total participation >= quorum, but YES votes < effective_threshold
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "threshold")]
+#[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()> {
     let env = setup_with_policy_and_users(20, create_policy_with_dynamic_quorum, true).await?;
@@ -232,6 +251,12 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
 /// effective_threshold = max(quorum, threshold_weight). If threshold_weight
 /// votes are cast, the quorum floor is necessarily met.
 /// This test documents this behavior.
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "quorum", "edge-case")]
+#[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow::Result<()> {
     // This test demonstrates that quorum failing while threshold passes is impossible.
@@ -276,6 +301,12 @@ async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow
 }
 
 /// Test 5: Both quorum and threshold pass - proposal approved
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "quorum", "voting")]
+#[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
     let env = setup_with_policy_and_users(10, create_policy_with_dynamic_quorum, true).await?;
@@ -346,6 +377,12 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
 }
 
 /// Test 6: Proposal rejected when NO votes reach threshold
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Dynamic Quorum")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "quorum", "voting")]
+#[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
     let env = setup_with_policy_and_users(10, create_policy_with_dynamic_quorum, true).await?;
