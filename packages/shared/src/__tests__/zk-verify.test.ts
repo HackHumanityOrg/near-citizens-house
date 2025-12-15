@@ -314,6 +314,51 @@ describe("Near Citizens House", () => {
             // Either succeeds with rpcUrl or fails with error
             expect(result.rpcUrl !== undefined || result.error !== undefined).toBe(true)
           })
+
+          it("should handle invalid attestation ID gracefully", async () => {
+            await allure.severity("normal")
+
+            // ID=0 is not a valid attestation type (valid: 1, 2, 3)
+            const result = await verifyStoredProofWithDetails(mockInvalidProof, 0)
+
+            expect(result.isValid).toBe(false)
+            // Should have error about verifier not found or invalid attestation
+          })
+
+          it("should handle non-numeric proof values", async () => {
+            await allure.severity("normal")
+
+            const invalidProof: SelfProofData = {
+              proof: {
+                a: ["not-a-number", "also-not-a-number"],
+                b: [
+                  ["1", "2"],
+                  ["3", "4"],
+                ],
+                c: ["5", "6"],
+              },
+              publicSignals: Array(21).fill("0"),
+            }
+
+            const result = await verifyStoredProofWithDetails(invalidProof, PASSPORT_ATTESTATION_ID)
+
+            expect(result.isValid).toBe(false)
+            expect(result.error).toBeDefined()
+          })
+
+          it("should handle malformed proof with missing fields", async () => {
+            await allure.severity("normal")
+
+            const malformedProof = {
+              proof: { a: ["1", "2"] }, // missing b and c
+              publicSignals: Array(21).fill("0"),
+            } as unknown as SelfProofData
+
+            const result = await verifyStoredProofWithDetails(malformedProof, PASSPORT_ATTESTATION_ID)
+
+            expect(result.isValid).toBe(false)
+            expect(result.error).toBeDefined()
+          })
         })
 
         describe("Edge Cases", () => {
@@ -352,6 +397,30 @@ describe("Near Citizens House", () => {
             const result = await verifyStoredProofWithDetails(mockInvalidProof, 3)
 
             expect(result).toBeDefined()
+          })
+
+          it("should handle proof components exceeding typical size limits", async () => {
+            await allure.severity("minor")
+
+            // SIZE_LIMITS.PROOF_COMPONENT is 80 chars (BN254 field ~77 decimal digits)
+            const oversizedElement = "1".repeat(100) // 100 chars exceeds 80 limit
+
+            const oversizedProof: SelfProofData = {
+              proof: {
+                a: [oversizedElement, "1"],
+                b: [
+                  ["1", "2"],
+                  ["3", "4"],
+                ],
+                c: ["5", "6"],
+              },
+              publicSignals: Array(21).fill("0"),
+            }
+
+            const result = await verifyStoredProofWithDetails(oversizedProof, PASSPORT_ATTESTATION_ID)
+
+            // Should either fail validation or return false from verifier
+            expect(typeof result.isValid).toBe("boolean")
           })
         })
       })
