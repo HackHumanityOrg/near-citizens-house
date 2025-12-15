@@ -11,6 +11,7 @@ use verified_accounts::Contract;
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "query", "view")]
+#[allure_description("Verifies all read-only view functions return correct values for empty contract state.")]
 #[allure_test]
 #[test]
 fn test_read_functions() {
@@ -42,6 +43,7 @@ fn test_read_functions() {
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "pagination", "edge-case")]
+#[allure_description("Verifies that pagination handles large limit values gracefully on empty data without panicking.")]
 #[allure_test]
 #[test]
 fn test_pagination_with_large_limit_on_empty() {

@@ -3,6 +3,7 @@
 //! Happy path tests with real cryptographic signatures
 
 use super::helpers::{get_context, test_self_proof};
+use allure_rs::bdd;
 use allure_rs::prelude::*;
 use near_crypto::{InMemorySigner, KeyType, SecretKey, Signer};
 use near_sdk::test_utils::{accounts, get_logs};
@@ -69,52 +70,71 @@ fn create_valid_signature(
 #[allure_sub_suite("Store Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "happy-path", "integration")]
+#[allure_description(r#"
+## Purpose
+Verifies the complete happy path for storing a verified account with real ED25519 cryptographic signatures.
+
+## Preconditions
+- Backend wallet is configured as contract owner
+- User has a valid ED25519 keypair
+- NEP-413 signature is properly formatted and valid
+
+## Expected Behavior
+1. Verification is stored without panic
+2. Account is marked as verified
+3. Verified count increments to 1
+4. `verification_stored` event is emitted with correct JSON format
+5. Account data is retrievable with correct nullifier
+"#)]
 #[allure_test]
 #[test]
 fn test_happy_path_store_verification() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, sig_data) = bdd::given("contract initialized with valid user signature", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
 
-    let mut contract = Contract::new(backend);
+        let contract = Contract::new(backend);
+        let signer =
+            InMemorySigner::from_secret_key(user.clone(), SecretKey::from_random(KeyType::ED25519));
 
-    // create a signer for the user (using near-crypto)
-    let signer =
-        InMemorySigner::from_secret_key(user.clone(), SecretKey::from_random(KeyType::ED25519));
+        let challenge = "Identify myself";
+        let nonce = vec![0u8; 32];
+        let sig_data = create_valid_signature(&signer, &user, challenge, &nonce, &user);
 
-    let challenge = "Identify myself";
-    let nonce = vec![0u8; 32];
-    let sig_data = create_valid_signature(&signer, &user, challenge, &nonce, &user);
+        (contract, user, sig_data)
+    });
 
-    // Should succeed without panic
-    contract.store_verification(
-        "test_nullifier".to_string(),
-        user.clone(),
-        "user1".to_string(),
-        "1".to_string(),
-        sig_data,
-        test_self_proof(),
-        "test_user_context_data".to_string(),
-    );
+    bdd::when("storing the verification with valid proof", || {
+        contract.store_verification(
+            "test_nullifier".to_string(),
+            user.clone(),
+            "user1".to_string(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "test_user_context_data".to_string(),
+        );
+    });
 
-    // Verify state changes
-    assert!(contract.is_account_verified(user.clone()));
-    assert_eq!(contract.get_verified_count(), 1);
+    bdd::then("account is verified with correct state and events", || {
+        assert!(contract.is_account_verified(user.clone()));
+        assert_eq!(contract.get_verified_count(), 1);
 
-    // Verify events
-    let logs = get_logs();
-    assert!(!logs.is_empty(), "Expected verification event");
-    assert!(
-        logs.iter().any(|l| l.contains("EVENT_JSON")),
-        "Expected JSON event"
-    );
-    assert!(
-        logs.iter().any(|l| l.contains("verification_stored")),
-        "Expected verification_stored event"
-    );
+        let logs = get_logs();
+        assert!(!logs.is_empty(), "Expected verification event");
+        assert!(
+            logs.iter().any(|l| l.contains("EVENT_JSON")),
+            "Expected JSON event"
+        );
+        assert!(
+            logs.iter().any(|l| l.contains("verification_stored")),
+            "Expected verification_stored event"
+        );
 
-    let account = contract.get_account(user.clone()).unwrap();
-    assert_eq!(account.near_account_id, user);
-    assert_eq!(account.nullifier, "test_nullifier");
+        let account = contract.get_account(user.clone()).unwrap();
+        assert_eq!(account.near_account_id, user);
+        assert_eq!(account.nullifier, "test_nullifier");
+    });
 }

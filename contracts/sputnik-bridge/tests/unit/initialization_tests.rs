@@ -11,6 +11,7 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "initialization")]
+#[allure_description("Verifies contract initializes correctly with all config values stored properly.")]
 #[allure_test]
 #[test]
 fn test_initialization() {
@@ -35,6 +36,7 @@ fn test_initialization() {
 #[allure_sub_suite("Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "initialization", "validation")]
+#[allure_description("Verifies that empty citizen_role is rejected during initialization.")]
 #[allure_test]
 #[test]
 fn test_initialization_empty_citizen_role_fails() {
@@ -59,6 +61,7 @@ fn test_initialization_empty_citizen_role_fails() {
 #[allure_sub_suite("Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "initialization", "validation")]
+#[allure_description("Verifies that whitespace-only citizen_role is trimmed and rejected as empty.")]
 #[allure_test]
 #[test]
 fn test_initialization_whitespace_only_citizen_role_fails() {

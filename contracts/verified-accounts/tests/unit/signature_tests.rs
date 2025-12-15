@@ -11,6 +11,7 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "signature")]
+#[allure_description("Verifies that invalid NEAR signatures are rejected during NEP-413 verification.")]
 #[allure_test]
 #[test]
 fn test_invalid_signature() {
@@ -52,6 +53,7 @@ fn test_invalid_signature() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "nonce")]
+#[allure_description("Verifies that nonces shorter than 32 bytes are rejected.")]
 #[allure_test]
 #[test]
 fn test_invalid_nonce_length() {
@@ -93,6 +95,7 @@ fn test_invalid_nonce_length() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "signature")]
+#[allure_description("Verifies that signatures shorter than 64 bytes are rejected.")]
 #[allure_test]
 #[test]
 fn test_invalid_signature_length() {
@@ -134,6 +137,7 @@ fn test_invalid_signature_length() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "nonce", "boundary")]
+#[allure_description("Verifies that nonces longer than 32 bytes are rejected.")]
 #[allure_test]
 #[test]
 fn test_nonce_too_long() {
@@ -175,6 +179,7 @@ fn test_nonce_too_long() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "signature", "boundary")]
+#[allure_description("Verifies that signatures longer than 64 bytes are rejected.")]
 #[allure_test]
 #[test]
 fn test_signature_too_long() {

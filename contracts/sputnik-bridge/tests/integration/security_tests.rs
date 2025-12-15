@@ -12,6 +12,7 @@ use serde_json::json;
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "authorization")]
+#[allure_description("Verifies that unauthorized users cannot update the backend wallet address. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
@@ -39,6 +40,7 @@ async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "authorization")]
+#[allure_description("Verifies that unauthorized users cannot update the citizen role name. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_update_citizen_role_unauthorized() -> anyhow::Result<()> {
@@ -66,6 +68,7 @@ async fn test_update_citizen_role_unauthorized() -> anyhow::Result<()> {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "dao")]
+#[allure_description("Verifies that citizens cannot bypass the bridge and add proposals directly to the DAO. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()> {
@@ -110,6 +113,7 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "dao")]
+#[allure_description("Verifies that random accounts without any role cannot add proposals to the DAO. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> {
@@ -144,6 +148,7 @@ async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> 
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "voting")]
+#[allure_description("Verifies that citizens cannot use VoteRemove action as they only have VoteApprove and VoteReject permissions.")]
 #[allure_test]
 #[tokio::test]
 async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
@@ -186,6 +191,7 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "security", "finalization")]
+#[allure_description("Verifies that anyone can finalize expired proposals as per the 'all' role permissions in the DAO policy.")]
 #[allure_test]
 #[tokio::test]
 async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
@@ -248,6 +254,7 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
 #[allure_sub_suite("Callback Security")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
+#[allure_description("Verifies that callback_add_member cannot be called externally, protected by #[private] macro. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Result<()> {
@@ -287,6 +294,7 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
 #[allure_sub_suite("Callback Security")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
+#[allure_description("Verifies that callback_proposal_created cannot be called externally, protected by #[private] macro. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow::Result<()> {
@@ -326,6 +334,7 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
 #[allure_sub_suite("Callback Security")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
+#[allure_description("Verifies that callback_member_added cannot be called externally, protected by #[private] macro. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Result<()> {
@@ -368,6 +377,7 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
 #[allure_sub_suite("Callback Security")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
+#[allure_description("Verifies that callback_vote_proposal_created cannot be called externally, protected by #[private] macro. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> anyhow::Result<()> {

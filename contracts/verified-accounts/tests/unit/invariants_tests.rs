@@ -14,6 +14,7 @@ use verified_accounts::Contract;
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant")]
+#[allure_description("Verifies that backend_wallet is always valid and non-empty after contract initialization.")]
 #[allure_test]
 #[test]
 fn test_invariant_backend_wallet_always_valid() {
@@ -34,6 +35,7 @@ fn test_invariant_backend_wallet_always_valid() {
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant")]
+#[allure_description("Verifies that newly initialized contract starts with zero verified accounts.")]
 #[allure_test]
 #[test]
 fn test_invariant_verified_count_starts_at_zero() {
@@ -53,6 +55,7 @@ fn test_invariant_verified_count_starts_at_zero() {
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant")]
+#[allure_description("Verifies that is_paused() correctly reflects the actual contract state after pause and unpause operations.")]
 #[allure_test]
 #[test]
 fn test_invariant_paused_state_consistent() {

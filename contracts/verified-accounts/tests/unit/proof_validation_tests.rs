@@ -11,6 +11,7 @@ use verified_accounts::{Contract, NearSignatureData, SelfProofData, ZkProof};
 #[allure_sub_suite("Proof Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "zk-proof")]
+#[allure_description("Verifies that store_verification rejects ZK proof with public_signals array exceeding maximum length of 21.")]
 #[allure_test]
 #[test]
 fn test_public_signals_too_many() {
@@ -65,6 +66,7 @@ fn test_public_signals_too_many() {
 #[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
+#[allure_description("Verifies that store_verification rejects ZK proof with any public_signal string exceeding 80 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_public_signal_item_too_long() {
@@ -121,6 +123,7 @@ fn test_public_signal_item_too_long() {
 #[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
+#[allure_description("Verifies that store_verification rejects ZK proof with 'a' component strings exceeding 80 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_proof_component_a_too_long() {
@@ -175,6 +178,7 @@ fn test_proof_component_a_too_long() {
 #[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
+#[allure_description("Verifies that store_verification rejects ZK proof with 'b' component strings exceeding 80 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_proof_component_b_too_long() {
@@ -229,6 +233,7 @@ fn test_proof_component_b_too_long() {
 #[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof")]
+#[allure_description("Verifies that store_verification rejects ZK proof with 'c' component strings exceeding 80 character maximum length.")]
 #[allure_test]
 #[test]
 fn test_proof_component_c_too_long() {

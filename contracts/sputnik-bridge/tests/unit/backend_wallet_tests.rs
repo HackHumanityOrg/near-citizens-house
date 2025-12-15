@@ -11,6 +11,7 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "wallet")]
+#[allure_description("Verifies backend wallet can successfully update to a new wallet address.")]
 #[allure_test]
 #[test]
 fn test_update_backend_wallet() {
@@ -29,6 +30,7 @@ fn test_update_backend_wallet() {
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies unauthorized account cannot update backend wallet and receives appropriate error.")]
 #[allure_test]
 #[test]
 fn test_update_backend_wallet_unauthorized() {

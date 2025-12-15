@@ -11,6 +11,7 @@ use verified_accounts::Contract;
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "composability")]
+#[allure_description("Verifies that the contract returns the correct interface version string.")]
 #[allure_test]
 #[test]
 fn test_interface_version() {
@@ -27,6 +28,7 @@ fn test_interface_version() {
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "query")]
+#[allure_description("Verifies that get_account returns None for non-existent accounts.")]
 #[allure_test]
 #[test]
 fn test_get_account_empty() {
@@ -46,6 +48,7 @@ fn test_get_account_empty() {
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "batch")]
+#[allure_description("Verifies that batch verification returns false for all non-verified accounts.")]
 #[allure_test]
 #[test]
 fn test_are_accounts_verified_empty() {
@@ -68,6 +71,7 @@ fn test_are_accounts_verified_empty() {
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "batch")]
+#[allure_description("Verifies that batch get_accounts returns None for all non-existent accounts.")]
 #[allure_test]
 #[test]
 fn test_get_accounts_empty() {
@@ -90,6 +94,7 @@ fn test_get_accounts_empty() {
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "interface", "edge-case")]
+#[allure_description("Verifies that batch verification handles empty input array correctly.")]
 #[allure_test]
 #[test]
 fn test_are_accounts_verified_empty_input() {

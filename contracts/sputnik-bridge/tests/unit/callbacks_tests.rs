@@ -14,6 +14,7 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "verification")]
+#[allure_description("Verifies callback successfully processes verified account and schedules add_proposal.")]
 #[allure_test]
 #[test]
 fn test_callback_add_member_verified() {
@@ -40,6 +41,7 @@ fn test_callback_add_member_verified() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "verification")]
+#[allure_description("Verifies callback rejects unverified account with appropriate error message.")]
 #[allure_test]
 #[test]
 fn test_callback_add_member_not_verified() {
@@ -70,6 +72,7 @@ fn test_callback_add_member_not_verified() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "proposal")]
+#[allure_description("Verifies callback successfully processes proposal creation and schedules act_proposal.")]
 #[allure_test]
 #[test]
 fn test_callback_proposal_created() {
@@ -96,6 +99,7 @@ fn test_callback_proposal_created() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "member")]
+#[allure_description("Verifies callback emits member_added event and schedules get_policy when member is successfully added.")]
 #[allure_test]
 #[test]
 fn test_callback_member_added() {
@@ -129,6 +133,7 @@ fn test_callback_member_added() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "policy")]
+#[allure_description("Verifies callback calculates quorum from policy and schedules quorum update proposal.")]
 #[allure_test]
 #[test]
 fn test_callback_policy_received_for_quorum() {
@@ -169,6 +174,7 @@ fn test_callback_policy_received_for_quorum() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "quorum")]
+#[allure_description("Verifies callback successfully processes quorum proposal creation and schedules get_proposal.")]
 #[allure_test]
 #[test]
 fn test_callback_quorum_proposal_created() {
@@ -195,6 +201,7 @@ fn test_callback_quorum_proposal_created() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "quorum")]
+#[allure_description("Verifies callback extracts proposal kind and schedules act_proposal for quorum update.")]
 #[allure_test]
 #[test]
 fn test_callback_got_quorum_proposal() {
@@ -237,6 +244,7 @@ fn test_callback_got_quorum_proposal() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "quorum")]
+#[allure_description("Verifies callback emits quorum_updated event when quorum update is successfully approved.")]
 #[allure_test]
 #[test]
 fn test_callback_quorum_updated() {
@@ -270,6 +278,7 @@ fn test_callback_quorum_updated() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "proposal")]
+#[allure_description("Verifies callback emits proposal_created event when vote proposal is successfully created.")]
 #[allure_test]
 #[test]
 fn test_callback_vote_proposal_created() {
@@ -309,6 +318,7 @@ fn test_callback_vote_proposal_created() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
+#[allure_description("Verifies callback handles promise failure during verification check with appropriate error.")]
 #[allure_test]
 #[test]
 fn test_callback_add_member_promise_failed() {
@@ -337,6 +347,7 @@ fn test_callback_add_member_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
+#[allure_description("Verifies callback handles promise failure during proposal creation with appropriate error.")]
 #[allure_test]
 #[test]
 fn test_callback_proposal_created_promise_failed() {
@@ -365,6 +376,7 @@ fn test_callback_proposal_created_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
+#[allure_description("Verifies callback handles promise failure when approving member addition with appropriate error.")]
 #[allure_test]
 #[test]
 fn test_callback_member_added_promise_failed() {
@@ -393,6 +405,7 @@ fn test_callback_member_added_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
+#[allure_description("Verifies callback handles promise failure when retrieving policy with appropriate error.")]
 #[allure_test]
 #[test]
 fn test_callback_policy_received_for_quorum_promise_failed() {
@@ -421,6 +434,7 @@ fn test_callback_policy_received_for_quorum_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
+#[allure_description("Verifies callback handles promise failure when approving quorum update with appropriate error.")]
 #[allure_test]
 #[test]
 fn test_callback_quorum_updated_promise_failed() {
@@ -449,6 +463,7 @@ fn test_callback_quorum_updated_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
+#[allure_description("Verifies callback handles promise failure when creating vote proposal with appropriate error.")]
 #[allure_test]
 #[test]
 fn test_callback_vote_proposal_created_promise_failed() {

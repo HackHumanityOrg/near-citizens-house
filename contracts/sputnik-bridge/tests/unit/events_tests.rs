@@ -8,6 +8,7 @@ use sputnik_bridge::{MemberAddedEvent, ProposalCreatedEvent, QuorumUpdatedEvent}
 #[allure_sub_suite("Events")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "events", "serialization")]
+#[allure_description("Verifies that MemberAddedEvent serializes correctly to JSON.")]
 #[allure_test]
 #[test]
 fn test_member_added_event_serializes_correctly() {
@@ -28,6 +29,7 @@ fn test_member_added_event_serializes_correctly() {
 #[allure_sub_suite("Events")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "events", "serialization")]
+#[allure_description("Verifies that ProposalCreatedEvent serializes correctly to JSON.")]
 #[allure_test]
 #[test]
 fn test_proposal_created_event_serializes_correctly() {
@@ -46,6 +48,7 @@ fn test_proposal_created_event_serializes_correctly() {
 #[allure_sub_suite("Events")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "events", "serialization")]
+#[allure_description("Verifies that QuorumUpdatedEvent serializes correctly to JSON.")]
 #[allure_test]
 #[test]
 fn test_quorum_updated_event_serializes_correctly() {

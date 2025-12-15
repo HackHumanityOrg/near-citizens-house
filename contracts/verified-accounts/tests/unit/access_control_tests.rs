@@ -11,6 +11,7 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies that only the backend wallet can store verifications and unauthorized accounts are rejected.")]
 #[allure_test]
 #[test]
 fn test_unauthorized_write() {

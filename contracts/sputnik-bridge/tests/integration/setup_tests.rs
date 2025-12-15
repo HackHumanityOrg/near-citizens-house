@@ -10,6 +10,7 @@ use allure_rs::prelude::*;
 #[allure_sub_suite("Contract Setup")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "setup", "initialization")]
+#[allure_description("Verifies that all contracts are deployed and the bridge is initialized with correct configuration.")]
 #[allure_test]
 #[tokio::test]
 async fn test_full_setup() -> anyhow::Result<()> {
@@ -38,6 +39,7 @@ async fn test_full_setup() -> anyhow::Result<()> {
 #[allure_sub_suite("Contract Setup")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "setup", "dao")]
+#[allure_description("Verifies that the bridge contract is properly registered in the DAO's bridge role.")]
 #[allure_test]
 #[tokio::test]
 async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
@@ -56,6 +58,7 @@ async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
 #[allure_sub_suite("Contract Setup")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "setup", "policy")]
+#[allure_description("Verifies that the DAO policy is configured correctly with proper proposal period and citizen role.")]
 #[allure_test]
 #[tokio::test]
 async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
@@ -85,6 +88,7 @@ async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "query", "view")]
+#[allure_description("Verifies that the get_info view function returns correct bridge configuration details.")]
 #[allure_test]
 #[tokio::test]
 async fn test_get_info() -> anyhow::Result<()> {

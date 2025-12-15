@@ -12,6 +12,7 @@ use serde_json::json;
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "admin", "wallet")]
+#[allure_description("Verifies that the backend wallet can update its address to a new wallet. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_update_backend_wallet() -> anyhow::Result<()> {
@@ -37,6 +38,7 @@ async fn test_update_backend_wallet() -> anyhow::Result<()> {
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "wallet")]
+#[allure_description("Verifies that after wallet rotation, the old backend wallet is blocked from bridge write operations while the new backend wallet has full access. Security-critical test.")]
 #[allure_test]
 #[tokio::test]
 async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
@@ -95,6 +97,7 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
 #[allure_sub_suite("Citizen Role Management")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "admin", "role")]
+#[allure_description("Verifies that the backend wallet can update the citizen role name used when adding members to the DAO.")]
 #[allure_test]
 #[tokio::test]
 async fn test_update_citizen_role() -> anyhow::Result<()> {
@@ -119,6 +122,7 @@ async fn test_update_citizen_role() -> anyhow::Result<()> {
 #[allure_sub_suite("Citizen Role Management")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "admin", "events")]
+#[allure_description("Verifies that updating the citizen role name is properly applied to new members and reflected in events.")]
 #[allure_test]
 #[tokio::test]
 async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Result<()> {
@@ -243,6 +247,7 @@ async fn test_update_citizen_role_applies_to_members_and_events() -> anyhow::Res
 #[allure_sub_suite("Events")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "events")]
+#[allure_description("Verifies that the member_added event is emitted when a member is successfully added to the DAO with correct event data.")]
 #[allure_test]
 #[tokio::test]
 async fn test_member_added_event_emitted() -> anyhow::Result<()> {
@@ -298,6 +303,7 @@ async fn test_member_added_event_emitted() -> anyhow::Result<()> {
 #[allure_sub_suite("Events")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "events")]
+#[allure_description("Verifies that the proposal_created event is emitted when a proposal is created via the bridge with correct event data.")]
 #[allure_test]
 #[tokio::test]
 async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
@@ -351,6 +357,7 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "edge-case")]
+#[allure_description("Verifies that the backend wallet can update to itself (no-op but valid operation) and continue functioning normally.")]
 #[allure_test]
 #[tokio::test]
 async fn test_backend_wallet_self_update() -> anyhow::Result<()> {
@@ -388,6 +395,7 @@ async fn test_backend_wallet_self_update() -> anyhow::Result<()> {
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "concurrent")]
+#[allure_description("Verifies that ongoing and subsequent operations work correctly after backend wallet rotation. Tests state consistency across rotation.")]
 #[allure_test]
 #[tokio::test]
 async fn test_operations_continue_after_wallet_rotation() -> anyhow::Result<()> {
@@ -448,6 +456,7 @@ async fn test_operations_continue_after_wallet_rotation() -> anyhow::Result<()> 
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "events", "wallet")]
+#[allure_description("Verifies that the backend_wallet_updated event is emitted when the backend wallet is changed with correct old and new wallet data.")]
 #[allure_test]
 #[tokio::test]
 async fn test_wallet_update_event_emitted() -> anyhow::Result<()> {

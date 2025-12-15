@@ -10,6 +10,7 @@ use verified_accounts::{SelfProofData, ZkProof};
 #[allure_sub_suite("Stress Tests")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "stress", "serialization")]
+#[allure_description("Verifies that ZK proof with maximum-size components serializes and deserializes correctly without errors.")]
 #[allure_test]
 #[test]
 fn test_stress_max_payload_proof_serialization() {

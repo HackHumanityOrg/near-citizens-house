@@ -11,6 +11,7 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Description Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "proposal")]
+#[allure_description("Verifies that creating a proposal with an empty description fails.")]
 #[allure_test]
 #[test]
 fn test_create_proposal_empty_description_fails() {
@@ -33,6 +34,7 @@ fn test_create_proposal_empty_description_fails() {
 #[allure_sub_suite("Description Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "proposal")]
+#[allure_description("Verifies that creating a proposal with a whitespace-only description fails.")]
 #[allure_test]
 #[test]
 fn test_create_proposal_whitespace_only_description_fails() {
@@ -55,6 +57,7 @@ fn test_create_proposal_whitespace_only_description_fails() {
 #[allure_sub_suite("Description Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "boundary")]
+#[allure_description("Verifies that a description with 9,999 characters (one less than limit) passes validation.")]
 #[allure_test]
 #[test]
 fn test_description_boundary_limit_minus_1_passes() {
@@ -74,6 +77,7 @@ fn test_description_boundary_limit_minus_1_passes() {
 #[allure_sub_suite("Description Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "boundary")]
+#[allure_description("Verifies that a description with exactly 10,000 characters (at limit) passes validation.")]
 #[allure_test]
 #[test]
 fn test_description_boundary_at_limit_passes() {
@@ -93,6 +97,7 @@ fn test_description_boundary_at_limit_passes() {
 #[allure_sub_suite("Description Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "boundary")]
+#[allure_description("Verifies that a description with 10,001 characters (one more than limit) fails validation.")]
 #[allure_test]
 #[test]
 fn test_description_boundary_limit_plus_1_fails() {
@@ -117,6 +122,7 @@ fn test_description_boundary_limit_plus_1_fails() {
 #[allure_sub_suite("Description Validation")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "validation", "boundary", "edge-case")]
+#[allure_description("Verifies that a single-character description passes validation.")]
 #[allure_test]
 #[test]
 fn test_description_boundary_single_char_passes() {
@@ -134,6 +140,7 @@ fn test_description_boundary_single_char_passes() {
 #[allure_sub_suite("Description Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "negative")]
+#[allure_description("Verifies that creating a proposal with a description exceeding maximum length fails.")]
 #[allure_test]
 #[test]
 fn test_create_proposal_description_over_max_fails() {

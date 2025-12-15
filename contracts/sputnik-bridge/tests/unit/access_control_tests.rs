@@ -11,6 +11,7 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies unauthorized account cannot create proposal and receives appropriate error.")]
 #[allure_test]
 #[test]
 fn test_create_proposal_unauthorized_fails() {
@@ -37,6 +38,7 @@ fn test_create_proposal_unauthorized_fails() {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
+#[allure_description("Verifies unauthorized account cannot add member and receives appropriate error.")]
 #[allure_test]
 #[test]
 fn test_add_member_unauthorized_fails() {
