@@ -269,18 +269,20 @@ describe("Near Citizens House", () => {
           })
         })
 
-        describe("Negative Tests", () => {
-          it("should throw for missing ed25519: prefix", async () => {
+        describe("Positive Tests - Prefix Handling", () => {
+          it("should work without ed25519: prefix", async () => {
             await allure.severity("critical")
 
             // Get base58 part without prefix
             const base58Part = testPublicKey.replace("ed25519:", "")
 
-            // This should still work as the function strips the prefix
+            // Function strips the prefix if present, so works without it too
             const hex = extractEd25519PublicKeyHex(base58Part)
             expect(hex).toHaveLength(64)
           })
+        })
 
+        describe("Negative Tests", () => {
           it("should throw for invalid base58 characters", async () => {
             await allure.severity("critical")
 
