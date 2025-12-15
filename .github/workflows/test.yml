@@ -65,7 +65,9 @@ jobs:
 
       # Create allure-results directory
       - name: Setup Allure results
-        run: mkdir -p allure-results
+        run: |
+          rm -rf allure-results
+          mkdir -p allure-results
 
       # Run unit tests with cargo test (allure-rust generates results)
       # verified-accounts and sputnik-bridge require --features testing to run unit tests
@@ -210,13 +212,12 @@ jobs:
       # Collect allure results from all contract directories
       # allure-rs outputs to ./allure-results relative to working directory,
       # so we need to copy results from each contract dir to the root
-      # Using rsync --ignore-existing to prevent silent overwrites of same-named files
       - name: Collect allure results from all contracts
         if: always()
         run: |
           for dir in contracts/*/allure-results; do
             if [ -d "$dir" ]; then
-              rsync -av --ignore-existing "$dir"/ allure-results/ || true
+              rsync -av "$dir"/ allure-results/ || true
             fi
           done
           echo "Collected allure results:"
