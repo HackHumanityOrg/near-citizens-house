@@ -131,6 +131,9 @@ fn test_all_action_variants_serialization() {
     }
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "membership")]
 #[allure_test]
@@ -147,6 +150,9 @@ fn test_remove_member_from_role_serialization() {
     assert!(json.contains("council"));
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "roles")]
 #[allure_test]
@@ -157,6 +163,9 @@ fn test_role_kind_everyone_serialization() {
     assert!(json.contains("Everyone"));
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "roles")]
 #[allure_test]
@@ -174,6 +183,9 @@ fn test_role_kind_group_serialization() {
     assert!(json.contains("carol.near"));
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -189,6 +201,9 @@ fn test_weight_kind_serialization() {
     assert!(json2.contains("TokenWeight"));
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -199,6 +214,9 @@ fn test_weight_or_ratio_weight_serialization() {
     assert!(json.contains("1000"));
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -211,6 +229,9 @@ fn test_weight_or_ratio_ratio_serialization() {
     assert!(json.contains("2"));
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "serialization", "voting")]
 #[allure_test]
@@ -231,6 +252,9 @@ fn test_vote_policy_serialization() {
     assert_eq!(decoded.quorum.0, 7);
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "borsh")]
 #[allure_test]
@@ -246,6 +270,9 @@ fn test_proposal_input_borsh_roundtrip() {
     assert_eq!(decoded.description, input.description);
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "serialization", "borsh")]
 #[allure_test]
@@ -267,6 +294,9 @@ fn test_role_permission_borsh_roundtrip() {
     assert_eq!(decoded.permissions.len(), 2);
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "serialization", "edge-case")]
 #[allure_test]

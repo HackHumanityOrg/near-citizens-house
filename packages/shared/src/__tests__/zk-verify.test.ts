@@ -12,6 +12,9 @@ import * as allure from "allure-js-commons"
 import { verifyStoredProof, verifyStoredProofWithDetails } from "../zk-verify"
 import type { SelfProofData } from "../contracts/verification"
 
+const runNetworkTests = process.env.ENABLE_NETWORK_TESTS === "true"
+const describeNetwork = runNetworkTests ? describe : describe.skip
+
 // ============================================================================
 // Test Data Fixtures
 // ============================================================================
@@ -92,16 +95,13 @@ beforeEach(async () => {
 // verifyStoredProof Tests
 // ============================================================================
 
-describe("verifyStoredProof", () => {
+describeNetwork("verifyStoredProof", () => {
   beforeAll(async () => {
-    await allure.suite("ZK Verification - Unit Tests")
-    await allure.feature("Groth16 Proof Verification")
   })
 
   describe("Happy Path (Network Connectivity)", () => {
     it("should connect to Celo RPC and attempt verification", async () => {
       await allure.severity("critical")
-      await allure.story("RPC Connectivity")
       await allure.description(
         "Verifies that the function can connect to Celo RPC endpoints. " +
           "An invalid proof should return false (not throw).",
@@ -118,7 +118,6 @@ describe("verifyStoredProof", () => {
 
     it("should handle well-formed proof structure", async () => {
       await allure.severity("critical")
-      await allure.story("Proof Structure")
 
       // Well-formed but invalid proof
       const result = await verifyStoredProof(wellFormedProof, PASSPORT_ATTESTATION_ID)
@@ -130,7 +129,6 @@ describe("verifyStoredProof", () => {
   describe("Positive Tests - Attestation Types", () => {
     it("should support Passport attestation (ID=1)", async () => {
       await allure.severity("normal")
-      await allure.story("Passport Attestation")
 
       const result = await verifyStoredProof(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -139,7 +137,6 @@ describe("verifyStoredProof", () => {
 
     it("should support BiometricID attestation (ID=2)", async () => {
       await allure.severity("normal")
-      await allure.story("Biometric Attestation")
 
       // BiometricID uses same verifier contract
       const result = await verifyStoredProof(mockInvalidProof, BIOMETRIC_ATTESTATION_ID)
@@ -149,7 +146,6 @@ describe("verifyStoredProof", () => {
 
     it("should support Aadhaar attestation (ID=3)", async () => {
       await allure.severity("normal")
-      await allure.story("Aadhaar Attestation")
 
       const result = await verifyStoredProof(mockInvalidProof, AADHAAR_ATTESTATION_ID)
 
@@ -160,7 +156,6 @@ describe("verifyStoredProof", () => {
   describe("Negative Tests", () => {
     it("should return false for invalid proof", async () => {
       await allure.severity("critical")
-      await allure.story("Invalid Proof")
 
       const result = await verifyStoredProof(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -169,7 +164,6 @@ describe("verifyStoredProof", () => {
 
     it("should handle proof with zero values", async () => {
       await allure.severity("normal")
-      await allure.story("Zero Proof")
 
       // Proof with all zeros should fail verification
       const zeroProof: SelfProofData = {
@@ -193,7 +187,6 @@ describe("verifyStoredProof", () => {
   describe("Edge Cases", () => {
     it("should handle proof b coordinate swap correctly", async () => {
       await allure.severity("critical")
-      await allure.story("B Coordinate Swap")
       await allure.description(
         "The Groth16 verifier expects b coordinates in swapped order: " +
           "b[i][1], b[i][0] instead of b[i][0], b[i][1]. " +
@@ -209,7 +202,6 @@ describe("verifyStoredProof", () => {
 
     it("should default to attestationId=1 when not specified", async () => {
       await allure.severity("minor")
-      await allure.story("Default Attestation")
 
       // Call without explicit attestationId
       const result = await verifyStoredProof(mockInvalidProof)
@@ -221,7 +213,6 @@ describe("verifyStoredProof", () => {
   describe("Boundary Tests", () => {
     it("should handle exactly 21 public signals (passport max)", async () => {
       await allure.severity("critical")
-      await allure.story("Max Public Signals")
 
       const proofWith21Signals: SelfProofData = {
         ...mockInvalidProof,
@@ -235,7 +226,6 @@ describe("verifyStoredProof", () => {
 
     it("should handle proof with large BN254 field elements", async () => {
       await allure.severity("normal")
-      await allure.story("Large Field Elements")
 
       // Max BN254 field element is about 77 decimal digits
       const largeElement = "21888242871839275222246405745257275088696311157297823662689037894645226208582"
@@ -263,16 +253,13 @@ describe("verifyStoredProof", () => {
 // verifyStoredProofWithDetails Tests
 // ============================================================================
 
-describe("verifyStoredProofWithDetails", () => {
+describeNetwork("verifyStoredProofWithDetails", () => {
   beforeAll(async () => {
-    await allure.suite("ZK Verification - Unit Tests")
-    await allure.feature("Detailed Proof Verification")
   })
 
   describe("Happy Path", () => {
     it("should return detailed result with verifier address", async () => {
       await allure.severity("critical")
-      await allure.story("Detailed Result")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -283,7 +270,6 @@ describe("verifyStoredProofWithDetails", () => {
 
     it("should include RPC URL used for verification", async () => {
       await allure.severity("normal")
-      await allure.story("RPC URL Tracking")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -296,7 +282,6 @@ describe("verifyStoredProofWithDetails", () => {
 
     it("should include verifier address on success", async () => {
       await allure.severity("normal")
-      await allure.story("Verifier Address")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -310,7 +295,6 @@ describe("verifyStoredProofWithDetails", () => {
   describe("Positive Tests", () => {
     it("should return correct public signals count", async () => {
       await allure.severity("normal")
-      await allure.story("Signals Count")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -319,7 +303,6 @@ describe("verifyStoredProofWithDetails", () => {
 
     it("should return isValid=false for invalid proof", async () => {
       await allure.severity("critical")
-      await allure.story("Invalid Result")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -330,7 +313,6 @@ describe("verifyStoredProofWithDetails", () => {
   describe("Negative Tests", () => {
     it("should return error message when all RPCs fail", async () => {
       await allure.severity("critical")
-      await allure.story("RPC Failure Handling")
 
       // This test may not fail if at least one RPC works
       // It validates that error handling structure is correct
@@ -344,7 +326,6 @@ describe("verifyStoredProofWithDetails", () => {
   describe("Edge Cases", () => {
     it("should handle empty public signals array", async () => {
       await allure.severity("normal")
-      await allure.story("Empty Signals")
 
       const result = await verifyStoredProofWithDetails(emptyProof, PASSPORT_ATTESTATION_ID)
 
@@ -353,7 +334,6 @@ describe("verifyStoredProofWithDetails", () => {
 
     it("should handle different attestation IDs consistently", async () => {
       await allure.severity("normal")
-      await allure.story("Attestation Consistency")
 
       const result1 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
       const result2 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
@@ -367,7 +347,6 @@ describe("verifyStoredProofWithDetails", () => {
   describe("Boundary Tests", () => {
     it("should handle minimum attestation ID (1)", async () => {
       await allure.severity("minor")
-      await allure.story("Min Attestation ID")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, 1)
 
@@ -376,7 +355,6 @@ describe("verifyStoredProofWithDetails", () => {
 
     it("should handle maximum attestation ID (3)", async () => {
       await allure.severity("minor")
-      await allure.story("Max Attestation ID")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, 3)
 
@@ -391,14 +369,11 @@ describe("verifyStoredProofWithDetails", () => {
 
 describe("RPC Failover Mechanism", () => {
   beforeAll(async () => {
-    await allure.suite("ZK Verification - Unit Tests")
-    await allure.feature("RPC Failover")
   })
 
   describe("Happy Path", () => {
     it("should successfully connect to at least one RPC endpoint", async () => {
       await allure.severity("critical")
-      await allure.story("RPC Connection")
 
       // If this test passes, at least one RPC endpoint is working
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
@@ -411,7 +386,6 @@ describe("RPC Failover Mechanism", () => {
   describe("Positive Tests", () => {
     it("should cache successful RPC endpoint", async () => {
       await allure.severity("normal")
-      await allure.story("RPC Caching")
 
       // First call
       const result1 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
@@ -440,7 +414,6 @@ describe("RPC Failover Mechanism", () => {
   describe("Edge Cases", () => {
     it("should handle concurrent verification requests", async () => {
       await allure.severity("normal")
-      await allure.story("Concurrent Requests")
 
       // Make multiple concurrent requests
       const promises = [
@@ -461,7 +434,6 @@ describe("RPC Failover Mechanism", () => {
   describe("Timeout Handling", () => {
     it("should complete within reasonable time (30s)", async () => {
       await allure.severity("critical")
-      await allure.story("Timeout Handling")
 
       const start = Date.now()
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
@@ -479,14 +451,11 @@ describe("RPC Failover Mechanism", () => {
 
 describe("Verifier Contract Resolution", () => {
   beforeAll(async () => {
-    await allure.suite("ZK Verification - Unit Tests")
-    await allure.feature("Contract Resolution")
   })
 
   describe("Happy Path", () => {
     it("should resolve verifier contract for attestation ID 1", async () => {
       await allure.severity("critical")
-      await allure.story("Contract Resolution")
 
       const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
@@ -502,7 +471,6 @@ describe("Verifier Contract Resolution", () => {
   describe("Positive Tests", () => {
     it("should cache verifier address", async () => {
       await allure.severity("normal")
-      await allure.story("Address Caching")
 
       // Multiple calls should return same address
       const result1 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
