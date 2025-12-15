@@ -66,7 +66,7 @@ fn calculate_quorum(citizen_count: u64) -> u64 {
     } else {
         citizen_count
             .checked_mul(QUORUM_PERCENT)
-            .expect("Quorum calculation overflow")
+            .unwrap_or_else(|| env::panic_str("Quorum calculation overflow"))
             .div_ceil(100)
     }
 }
