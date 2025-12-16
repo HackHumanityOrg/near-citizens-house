@@ -374,7 +374,7 @@ describe("Near Citizens House", () => {
             await allure.severity("normal")
 
             const result1 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
-            const result2 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
+            const result2 = await verifyStoredProofWithDetails(mockInvalidProof, BIOMETRIC_ATTESTATION_ID)
 
             // Both should have same structure
             expect(typeof result1.isValid).toBe("boolean")

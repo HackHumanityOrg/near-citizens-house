@@ -772,3 +772,25 @@ pub fn assert_error_contains(result: &ExecutionFinalResult, expected: &str, cont
         result.failures()
     );
 }
+
+// ==================== FUNDING HELPERS ====================
+
+/// Fund an account with additional NEAR from the root account.
+/// Useful for tests that require many transactions (e.g., adding 100 members).
+///
+/// # Arguments
+/// * `env` - The test environment
+/// * `account` - The account to fund
+/// * `amount_near` - Amount of NEAR to transfer
+pub async fn fund_account(
+    env: &TestEnv,
+    account: &Account,
+    amount_near: u128,
+) -> anyhow::Result<()> {
+    env.worker
+        .root_account()?
+        .transfer_near(account.id(), NearToken::from_near(amount_near))
+        .await?
+        .into_result()?;
+    Ok(())
+}

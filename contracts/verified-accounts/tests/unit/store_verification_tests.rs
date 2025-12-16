@@ -9,7 +9,7 @@ use allure_rs::bdd;
 use allure_rs::prelude::*;
 use near_sdk::test_utils::{accounts, get_logs};
 use near_sdk::testing_env;
-use verified_accounts::Contract;
+use verified_accounts::{Contract, VerifiedAccount};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -138,6 +138,53 @@ fn test_signature_replay_rejected() {
         },
         "Signature already used - potential replay attack",
     );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Store Verification")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "timestamp")]
+#[allure_description("Verifies that verified_at matches the block timestamp when the verification was stored.")]
+#[allure_test]
+#[test]
+fn test_verification_timestamp_matches_block_time() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let mut context = get_context(backend.clone());
+    let expected_ts = 123_456_789u64;
+    context.block_timestamp(expected_ts);
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &user);
+
+    contract.store_verification(
+        "timestamp_nullifier".to_string(),
+        user.clone(),
+        "ts_user".to_string(),
+        "1".to_string(),
+        sig_data,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    let account: VerifiedAccount = contract.get_account_with_proof(user.clone()).unwrap();
+    assert_eq!(account.verified_at, expected_ts);
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Store Verification")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "replay-protection")]
+#[allure_description("Alias test to mirror the integration test plan naming for replay attack prevention.")]
+#[allure_test]
+#[test]
+fn test_replay_attack_same_signature_rejected() {
+    test_signature_replay_rejected();
 }
 
 #[allure_parent_suite("Near Citizens House")]

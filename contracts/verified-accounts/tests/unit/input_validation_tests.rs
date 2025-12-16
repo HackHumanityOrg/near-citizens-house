@@ -1,6 +1,8 @@
 //! Input validation tests for verified-accounts contract
 
-use super::helpers::{assert_panic_with, get_context, test_self_proof};
+use super::helpers::{
+    assert_panic_with, create_signer, create_valid_signature, get_context, test_self_proof,
+};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
@@ -328,3 +330,137 @@ fn test_user_context_data_too_long() {
     );
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "validation", "nullifier", "boundary")]
+#[allure_description("Verifies that a nullifier exactly 80 characters long is accepted.")]
+#[allure_test]
+#[test]
+fn test_nullifier_max_length_allowed() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[2; 32], &user);
+
+    contract.store_verification(
+        "n".repeat(80),
+        user.clone(),
+        "user1".to_string(),
+        "9".to_string(),
+        sig_data,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    assert!(contract.is_account_verified(user));
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "validation", "user-id", "boundary")]
+#[allure_description("Verifies that a user_id exactly 80 characters long is accepted.")]
+#[allure_test]
+#[test]
+fn test_user_id_max_length_allowed() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[3; 32], &user);
+
+    contract.store_verification(
+        "nullifier_ok".to_string(),
+        user.clone(),
+        "u".repeat(80),
+        "9".to_string(),
+        sig_data,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    assert!(contract.is_account_verified(user));
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "validation", "attestation-id", "boundary")]
+#[allure_description("Verifies that a single-character attestation_id is accepted.")]
+#[allure_test]
+#[test]
+fn test_attestation_id_single_char_allowed() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
+
+    contract.store_verification(
+        "nullifier_attestation".to_string(),
+        user.clone(),
+        "user_id_ok".to_string(),
+        "Z".to_string(),
+        sig_data,
+        test_self_proof(),
+        "ctx".to_string(),
+    );
+
+    assert!(contract.is_account_verified(user));
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "validation", "context", "boundary")]
+#[allure_description("Verifies that user_context_data at the 4096 character limit is accepted.")]
+#[allure_test]
+#[test]
+fn test_user_context_data_max_length_allowed() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
+
+    let context_data = "c".repeat(4096);
+
+    contract.store_verification(
+        "nullifier_context".to_string(),
+        user.clone(),
+        "user_context".to_string(),
+        "1".to_string(),
+        sig_data,
+        test_self_proof(),
+        context_data.clone(),
+    );
+
+    let account = contract.get_account(user.clone()).unwrap();
+    assert_eq!(account.user_id, "user_context");
+    assert_eq!(account.attestation_id, "1");
+    assert_eq!(account.near_account_id, user);
+    assert_eq!(account.nullifier, "nullifier_context");
+    assert_eq!(contract.get_verified_count(), 1);
+}
