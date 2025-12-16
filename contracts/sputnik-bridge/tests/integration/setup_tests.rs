@@ -83,6 +83,245 @@ async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Test 1.3.2: Verify DAO has empty citizen role initially
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("DAO Integration Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "dao", "citizen-role")]
+#[allure_description("Verifies that the DAO has an empty citizen role initially, ready for citizens to be added.")]
+#[allure_test]
+#[tokio::test]
+async fn test_dao_init_with_citizen_role() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    let policy = get_dao_policy(&env.sputnik_dao).await?;
+    let roles = policy
+        .get("roles")
+        .and_then(|r| r.as_array())
+        .expect("Policy should have roles");
+
+    let citizen_role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("citizen"))
+        .expect("Citizen role should exist");
+
+    // Verify it's a Group kind with empty members
+    let kind = citizen_role.get("kind").expect("Role should have kind");
+    let group = kind.get("Group").expect("Citizen role should be a Group");
+    let members = group.as_array().expect("Group should be an array");
+    assert!(members.is_empty(), "Citizen role should be empty initially");
+
+    // Verify citizens can vote when added
+    let permissions = citizen_role
+        .get("permissions")
+        .and_then(|p| p.as_array())
+        .expect("Role should have permissions");
+    let has_vote_permissions = permissions
+        .iter()
+        .any(|p| p.as_str().map(|s| s.contains("VoteApprove") || s.contains("VoteReject")).unwrap_or(false));
+    assert!(has_vote_permissions, "Citizen role should have vote permissions");
+
+    Ok(())
+}
+
+/// Test 1.3.3: Verify bridge has add_member_to_role permissions
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("DAO Integration Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "dao", "permissions")]
+#[allure_description("Verifies that the bridge role has add_member_to_role:AddProposal and VoteApprove permissions for auto-approval.")]
+#[allure_test]
+#[tokio::test]
+async fn test_dao_init_bridge_has_add_member_permission() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    let policy = get_dao_policy(&env.sputnik_dao).await?;
+    let roles = policy
+        .get("roles")
+        .and_then(|r| r.as_array())
+        .expect("Policy should have roles");
+
+    let bridge_role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
+        .expect("Bridge role should exist");
+
+    let permissions = bridge_role
+        .get("permissions")
+        .and_then(|p| p.as_array())
+        .expect("Role should have permissions");
+
+    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
+
+    // Check for AddProposal permission
+    let has_add_proposal = perm_strings
+        .iter()
+        .any(|p| p.contains("add_member_to_role") && p.contains("AddProposal"));
+    assert!(
+        has_add_proposal,
+        "Bridge should have add_member_to_role:AddProposal. Found: {:?}",
+        perm_strings
+    );
+
+    // Check for VoteApprove permission for auto-approval
+    let has_vote_approve = perm_strings
+        .iter()
+        .any(|p| p.contains("add_member_to_role") && p.contains("VoteApprove"));
+    assert!(
+        has_vote_approve,
+        "Bridge should have add_member_to_role:VoteApprove for auto-approval. Found: {:?}",
+        perm_strings
+    );
+
+    Ok(())
+}
+
+/// Test 1.3.4: Verify bridge has policy update permissions
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("DAO Integration Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "dao", "permissions")]
+#[allure_description("Verifies that the bridge role has policy_add_or_update_role permissions for quorum updates.")]
+#[allure_test]
+#[tokio::test]
+async fn test_dao_init_bridge_has_policy_update_permission() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    let policy = get_dao_policy(&env.sputnik_dao).await?;
+    let roles = policy
+        .get("roles")
+        .and_then(|r| r.as_array())
+        .expect("Policy should have roles");
+
+    let bridge_role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
+        .expect("Bridge role should exist");
+
+    let permissions = bridge_role
+        .get("permissions")
+        .and_then(|p| p.as_array())
+        .expect("Role should have permissions");
+
+    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
+
+    // Check for policy_add_or_update_role permissions (both AddProposal and VoteApprove)
+    let has_policy_add_proposal = perm_strings
+        .iter()
+        .any(|p| p.contains("policy_add_or_update_role") && p.contains("AddProposal"));
+    assert!(
+        has_policy_add_proposal,
+        "Bridge should have policy_add_or_update_role:AddProposal. Found: {:?}",
+        perm_strings
+    );
+
+    let has_policy_vote_approve = perm_strings
+        .iter()
+        .any(|p| p.contains("policy_add_or_update_role") && p.contains("VoteApprove"));
+    assert!(
+        has_policy_vote_approve,
+        "Bridge should have policy_add_or_update_role:VoteApprove for quorum updates. Found: {:?}",
+        perm_strings
+    );
+
+    Ok(())
+}
+
+/// Test 1.3.5: Verify bridge has vote proposal permissions
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("DAO Integration Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "dao", "permissions")]
+#[allure_description("Verifies that the bridge role has vote:AddProposal permission for creating Vote proposals.")]
+#[allure_test]
+#[tokio::test]
+async fn test_dao_init_bridge_has_vote_permission() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    let policy = get_dao_policy(&env.sputnik_dao).await?;
+    let roles = policy
+        .get("roles")
+        .and_then(|r| r.as_array())
+        .expect("Policy should have roles");
+
+    let bridge_role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
+        .expect("Bridge role should exist");
+
+    let permissions = bridge_role
+        .get("permissions")
+        .and_then(|p| p.as_array())
+        .expect("Role should have permissions");
+
+    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
+
+    // Check for vote:AddProposal permission
+    let has_vote_add_proposal = perm_strings
+        .iter()
+        .any(|p| p.contains("vote") && p.contains("AddProposal"));
+    assert!(
+        has_vote_add_proposal,
+        "Bridge should have vote:AddProposal permission. Found: {:?}",
+        perm_strings
+    );
+
+    Ok(())
+}
+
+/// Test 1.3.6: Verify "all" role can finalize proposals
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("DAO Integration Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "dao", "permissions")]
+#[allure_description("Verifies that the 'all' (Everyone) role has *:Finalize permission so anyone can finalize expired proposals.")]
+#[allure_test]
+#[tokio::test]
+async fn test_dao_init_all_role_can_finalize() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    let policy = get_dao_policy(&env.sputnik_dao).await?;
+    let roles = policy
+        .get("roles")
+        .and_then(|r| r.as_array())
+        .expect("Policy should have roles");
+
+    let all_role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("all"))
+        .expect("'all' role should exist");
+
+    // Verify it's an Everyone kind
+    let kind = all_role.get("kind").expect("Role should have kind");
+    assert!(
+        kind.as_str() == Some("Everyone"),
+        "'all' role should be Everyone kind. Got: {:?}",
+        kind
+    );
+
+    let permissions = all_role
+        .get("permissions")
+        .and_then(|p| p.as_array())
+        .expect("Role should have permissions");
+
+    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
+
+    // Check for *:Finalize permission (anyone can finalize any proposal type)
+    let has_finalize = perm_strings.iter().any(|p| p.contains("Finalize"));
+    assert!(
+        has_finalize,
+        "'all' role should have Finalize permission. Found: {:?}",
+        perm_strings
+    );
+
+    Ok(())
+}
+
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Sputnik Bridge Integration Tests")]
 #[allure_sub_suite("Read Functions")]
@@ -103,6 +342,346 @@ async fn test_get_info() -> anyhow::Result<()> {
         env.verified_accounts.id().to_string()
     );
     assert_eq!(info.citizen_role, "citizen");
+
+    Ok(())
+}
+
+/// Test 1.2.5: Verify bridge contract cannot be reinitialized
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "setup", "security")]
+#[allure_description("Verifies that the bridge contract cannot be initialized twice.")]
+#[allure_test]
+#[tokio::test]
+async fn test_init_cannot_reinitialize() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    // Try to reinitialize the bridge contract - should fail
+    let result = env
+        .bridge
+        .call("new")
+        .args_json(serde_json::json!({
+            "backend_wallet": env.backend.id(),
+            "sputnik_dao": env.sputnik_dao.id(),
+            "verified_accounts_contract": env.verified_accounts.id(),
+            "citizen_role": "citizen"
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_failure(),
+        "Reinitialization should fail. Got success instead."
+    );
+
+    // Verify error message indicates contract is already initialized
+    let failure_msg = format!("{:?}", result.failures());
+    assert!(
+        failure_msg.contains("already initialized")
+            || failure_msg.contains("The contract has already been initialized"),
+        "Expected 'already initialized' error, got: {}",
+        failure_msg
+    );
+
+    Ok(())
+}
+
+/// Test 1.2.8: Initialize bridge with unicode role name
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "setup", "unicode")]
+#[allure_description("Verifies that unicode characters in role name are accepted.")]
+#[allure_test]
+#[tokio::test]
+async fn test_init_with_unicode_role_name() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let backend = worker.dev_create_account().await?;
+
+    // Deploy contracts
+    let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
+    verified_accounts
+        .call("new")
+        .args_json(serde_json::json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let sputnik_dao = worker.dev_deploy(SPUTNIKDAO_WASM).await?;
+    let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
+
+    // Initialize DAO with unicode role name
+    let policy = serde_json::json!({
+        "roles": [
+            {
+                "name": "市民",
+                "kind": { "Group": [] },
+                "permissions": ["*:VoteApprove", "*:VoteReject"],
+                "vote_policy": {}
+            }
+        ],
+        "default_vote_policy": {
+            "weight_kind": "RoleWeight",
+            "quorum": "0",
+            "threshold": [1, 2]
+        },
+        "proposal_bond": "1000000000000000000000000",
+        "proposal_period": "10000000000",
+        "bounty_bond": "1000000000000000000000000",
+        "bounty_forgiveness_period": "86400000000000"
+    });
+
+    sputnik_dao
+        .call("new")
+        .args_json(serde_json::json!({
+            "config": {
+                "name": "test-dao",
+                "purpose": "Unicode role test",
+                "metadata": ""
+            },
+            "policy": policy
+        }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Initialize bridge with unicode role name
+    let result = bridge
+        .call("new")
+        .args_json(serde_json::json!({
+            "backend_wallet": backend.id(),
+            "sputnik_dao": sputnik_dao.id(),
+            "verified_accounts_contract": verified_accounts.id(),
+            "citizen_role": "市民"
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Init with unicode role should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify the role is stored correctly
+    let info: BridgeInfo = bridge.view("get_info").await?.json()?;
+    assert_eq!(info.citizen_role, "市民");
+
+    Ok(())
+}
+
+/// Test 1.2.6: Initialize bridge with nonexistent DAO contract
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "setup", "nonexistent")]
+#[allure_description("Verifies that bridge initialization succeeds even if the DAO contract doesn't exist. Cross-contract calls will fail later.")]
+#[allure_test]
+#[tokio::test]
+async fn test_init_with_nonexistent_dao() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let backend = worker.dev_create_account().await?;
+
+    // Deploy verified_accounts (real)
+    let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
+    verified_accounts
+        .call("new")
+        .args_json(serde_json::json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Deploy bridge
+    let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
+
+    // Create a fake DAO account ID that doesn't have any contract deployed
+    let fake_dao_id = "nonexistent-dao.near";
+
+    // Initialize bridge with nonexistent DAO - should succeed
+    let result = bridge
+        .call("new")
+        .args_json(serde_json::json!({
+            "backend_wallet": backend.id(),
+            "sputnik_dao": fake_dao_id,
+            "verified_accounts_contract": verified_accounts.id(),
+            "citizen_role": "citizen"
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Init with nonexistent DAO should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify the DAO address is stored correctly
+    let info: BridgeInfo = bridge.view("get_info").await?.json()?;
+    assert_eq!(info.sputnik_dao, fake_dao_id);
+
+    Ok(())
+}
+
+/// Test 1.2.7: Initialize bridge with nonexistent verified-accounts contract
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "setup", "nonexistent")]
+#[allure_description("Verifies that bridge initialization succeeds even if the verified-accounts contract doesn't exist. Cross-contract calls will fail later.")]
+#[allure_test]
+#[tokio::test]
+async fn test_init_with_nonexistent_verified_accounts() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let backend = worker.dev_create_account().await?;
+
+    // Deploy DAO (real)
+    let sputnik_dao = worker.dev_deploy(SPUTNIKDAO_WASM).await?;
+
+    // Initialize DAO with minimal policy
+    let policy = serde_json::json!({
+        "roles": [],
+        "default_vote_policy": {
+            "weight_kind": "RoleWeight",
+            "quorum": "0",
+            "threshold": [1, 2]
+        },
+        "proposal_bond": "1000000000000000000000000",
+        "proposal_period": "10000000000",
+        "bounty_bond": "1000000000000000000000000",
+        "bounty_forgiveness_period": "86400000000000"
+    });
+
+    sputnik_dao
+        .call("new")
+        .args_json(serde_json::json!({
+            "config": {
+                "name": "test-dao",
+                "purpose": "Nonexistent verified-accounts test",
+                "metadata": ""
+            },
+            "policy": policy
+        }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Deploy bridge
+    let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
+
+    // Create a fake verified-accounts ID that doesn't have any contract deployed
+    let fake_verified_accounts_id = "nonexistent-verified.near";
+
+    // Initialize bridge with nonexistent verified-accounts - should succeed
+    let result = bridge
+        .call("new")
+        .args_json(serde_json::json!({
+            "backend_wallet": backend.id(),
+            "sputnik_dao": sputnik_dao.id(),
+            "verified_accounts_contract": fake_verified_accounts_id,
+            "citizen_role": "citizen"
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Init with nonexistent verified-accounts should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify the verified-accounts address is stored correctly
+    let info: BridgeInfo = bridge.view("get_info").await?.json()?;
+    assert_eq!(info.verified_accounts_contract, fake_verified_accounts_id);
+
+    Ok(())
+}
+
+/// Test 1.2.9: Initialize bridge with special characters in role name
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Contract Setup")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "setup", "special-chars")]
+#[allure_description("Verifies that special characters (-, _, .) in role name are accepted.")]
+#[allure_test]
+#[tokio::test]
+async fn test_init_with_special_chars_role() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let backend = worker.dev_create_account().await?;
+
+    // Deploy contracts
+    let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
+    verified_accounts
+        .call("new")
+        .args_json(serde_json::json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let sputnik_dao = worker.dev_deploy(SPUTNIKDAO_WASM).await?;
+    let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
+
+    // Initialize DAO with special chars role name
+    let policy = serde_json::json!({
+        "roles": [
+            {
+                "name": "verified-citizen_v2.0",
+                "kind": { "Group": [] },
+                "permissions": ["*:VoteApprove", "*:VoteReject"],
+                "vote_policy": {}
+            }
+        ],
+        "default_vote_policy": {
+            "weight_kind": "RoleWeight",
+            "quorum": "0",
+            "threshold": [1, 2]
+        },
+        "proposal_bond": "1000000000000000000000000",
+        "proposal_period": "10000000000",
+        "bounty_bond": "1000000000000000000000000",
+        "bounty_forgiveness_period": "86400000000000"
+    });
+
+    sputnik_dao
+        .call("new")
+        .args_json(serde_json::json!({
+            "config": {
+                "name": "test-dao",
+                "purpose": "Special chars role test",
+                "metadata": ""
+            },
+            "policy": policy
+        }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Initialize bridge with special chars role name
+    let result = bridge
+        .call("new")
+        .args_json(serde_json::json!({
+            "backend_wallet": backend.id(),
+            "sputnik_dao": sputnik_dao.id(),
+            "verified_accounts_contract": verified_accounts.id(),
+            "citizen_role": "verified-citizen_v2.0"
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Init with special chars role should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify the role is stored correctly
+    let info: BridgeInfo = bridge.view("get_info").await?.json()?;
+    assert_eq!(info.citizen_role, "verified-citizen_v2.0");
 
     Ok(())
 }

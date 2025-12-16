@@ -22,6 +22,7 @@ Verifies the complete happy path for adding a verified user as a citizen through
 3. Bridge verifies user and creates SputnikDAO proposal
 4. Proposal is auto-approved, user becomes citizen
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_verified_member_success() -> anyhow::Result<()> {
@@ -58,6 +59,7 @@ Verifies that add_member creates a proposal in SputnikDAO.
 ## Expected
 Proposal count increases after add_member call.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_creates_proposal() -> anyhow::Result<()> {
@@ -94,6 +96,7 @@ Verifies that add_member proposals are auto-approved by the bridge.
 ## Mechanism
 Bridge has council role and auto-votes approve on AddMemberToRole proposals.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_auto_approves() -> anyhow::Result<()> {
@@ -136,6 +139,7 @@ Verifies that added member appears in the citizen role in SputnikDAO.
 ## Expected
 is_account_in_role("citizen") returns true for added user.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_member_appears_in_citizen_role() -> anyhow::Result<()> {
@@ -169,6 +173,7 @@ Verifies that only the backend wallet can call add_member.
 ## Security
 Unauthorized accounts should receive "Only backend wallet" error.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_unauthorized() -> anyhow::Result<()> {
@@ -205,6 +210,7 @@ Verifies that unverified users cannot be added as citizens.
 ## Sybil Resistance
 Bridge checks verification status before creating proposal.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_unverified_member_fails() -> anyhow::Result<()> {
@@ -237,6 +243,7 @@ Verifies that multiple users can be added as citizens sequentially.
 ## Expected
 All 3 users end up in the citizen role.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_multiple_members() -> anyhow::Result<()> {
@@ -273,6 +280,7 @@ Verifies idempotent behavior when adding an existing citizen again.
 SputnikDAO allows adding existing members (idempotent).
 Two proposals are created (member + quorum update), user stays citizen.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_already_citizen() -> anyhow::Result<()> {
@@ -319,6 +327,128 @@ async fn test_add_member_already_citizen() -> anyhow::Result<()> {
         is_still_citizen,
         "User should still be a citizen after duplicate add"
     );
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "member", "proposal")]
+#[allure_description(r#"
+## Purpose
+Verifies that proposals created via the bridge show the bridge contract as the proposer.
+
+## Test 4.2.5 - bridge_proposal_shows_bridge_as_proposer
+
+## Expected
+Proposal.proposer == bridge contract account ID.
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_bridge_proposal_shows_bridge_as_proposer() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Verify and add user as citizen
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
+
+    // Get the proposal that was created
+    let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
+    // The quorum update proposal is the last one, member addition is the one before it
+    let member_proposal_id = last_id
+        .checked_sub(2)
+        .expect("expected at least 2 proposals");
+    let member_proposal = get_proposal(&env.sputnik_dao, member_proposal_id).await?;
+
+    // Verify the proposer is the bridge contract
+    assert_eq!(
+        member_proposal.proposer,
+        env.bridge.id().to_string(),
+        "Proposer should be the bridge contract"
+    );
+
+    // Also verify a Vote proposal shows bridge as proposer
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Test bridge proposer")
+        .await?
+        .into_result()?;
+
+    let vote_proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
+    let vote_proposal = get_proposal(&env.sputnik_dao, vote_proposal_id).await?;
+
+    assert_eq!(
+        vote_proposal.proposer,
+        env.bridge.id().to_string(),
+        "Vote proposal proposer should be the bridge contract"
+    );
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Member Addition")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "member", "proposal")]
+#[allure_description(r#"
+## Purpose
+Verifies that AddMemberToRole proposals have the correct member_id and role.
+
+## Test 8.3.2 & 8.3.3 - add_member_proposal_has_correct_member_id/role
+
+## Expected
+- Proposal kind is AddMemberToRole
+- member_id matches the user being added
+- role is "citizen"
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_add_member_proposal_has_correct_content() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Verify and add user as citizen
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+    add_member_via_bridge(&env.backend, &env.bridge, user)
+        .await?
+        .into_result()?;
+
+    // Get the member addition proposal (not the quorum update)
+    let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
+    let member_proposal_id = last_id
+        .checked_sub(2)
+        .expect("expected at least 2 proposals");
+    let proposal = get_proposal(&env.sputnik_dao, member_proposal_id).await?;
+
+    // Verify the proposal kind is AddMemberToRole
+    let kind = &proposal.kind;
+    assert!(
+        kind.get("AddMemberToRole").is_some(),
+        "Proposal kind should be AddMemberToRole. Kind: {:?}",
+        kind
+    );
+
+    // Verify the member_id matches the user
+    let add_member_data = kind.get("AddMemberToRole").unwrap();
+    let member_id = add_member_data.get("member_id").and_then(|v| v.as_str());
+    assert_eq!(
+        member_id,
+        Some(user.id().as_str()),
+        "member_id should match the user being added"
+    );
+
+    // Verify the role is "citizen"
+    let role = add_member_data.get("role").and_then(|v| v.as_str());
+    assert_eq!(role, Some("citizen"), "role should be 'citizen'");
 
     Ok(())
 }

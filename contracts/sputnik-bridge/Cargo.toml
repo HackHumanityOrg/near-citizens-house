@@ -28,8 +28,9 @@ anyhow = "1.0"
 near-crypto = "0.34"
 sha2 = "0.10"
 borsh = "1.6"
-allure-rs = "0.1"
-allure-core = { version = "0.1", features = ["async"] }  # Required: macros expand to allure_core:: references
+allure-rs = { version = "0.1", features = ["async", "tokio"] }
+allure-core = { version = "0.1", features = ["async", "tokio"] }  # Required: macros expand to allure_core:: references
+futures = "0.3"  # Required for FutureExt::catch_unwind in async allure tests
 
 [lints.clippy]
 # Security-focused lints for smart contracts

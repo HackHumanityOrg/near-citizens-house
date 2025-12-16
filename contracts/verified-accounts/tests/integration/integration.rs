@@ -6,6 +6,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use borsh::BorshSerialize;
+use near_workspaces::types::NearToken;
 use near_workspaces::{Account, AccountId, Contract, Worker};
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -153,6 +154,113 @@ async fn test_contract_initialization() -> anyhow::Result<()> {
     // Verify contract is not paused initially
     let is_paused: bool = contract.view("is_paused").await?.json()?;
     assert!(!is_paused);
+
+    Ok(())
+}
+
+/// Test 1.1.4: Verify contract cannot be reinitialized
+#[tokio::test]
+async fn test_init_cannot_reinitialize() -> anyhow::Result<()> {
+    let (_worker, contract, backend) = init().await?;
+
+    // Try to reinitialize the contract - should fail
+    let result = contract
+        .call("new")
+        .args_json(json!({
+            "backend_wallet": backend.id()
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_failure(),
+        "Reinitialization should fail. Got success instead."
+    );
+
+    // Verify error message indicates contract is already initialized
+    let failure_msg = format!("{:?}", result.failures());
+    assert!(
+        failure_msg.contains("already initialized") || failure_msg.contains("The contract has already been initialized"),
+        "Expected 'already initialized' error, got: {}",
+        failure_msg
+    );
+
+    Ok(())
+}
+
+/// Test 1.1.5: Initialize with subaccount as backend wallet
+#[tokio::test]
+async fn test_init_with_subaccount_backend() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+
+    // Create a parent account first
+    let parent = worker.dev_create_account().await?;
+
+    // Create a subaccount under the parent
+    let subaccount = parent
+        .create_subaccount("backend")
+        .initial_balance(NearToken::from_near(10))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Deploy contract
+    let wasm = std::fs::read(WASM_PATH).expect("Could not find WASM file");
+    let contract = worker.dev_deploy(&wasm).await?;
+
+    // Initialize with subaccount as backend wallet
+    let result = contract
+        .call("new")
+        .args_json(json!({
+            "backend_wallet": subaccount.id()
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Init with subaccount should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify backend wallet is set correctly
+    let backend_wallet: AccountId = contract.view("get_backend_wallet").await?.json()?;
+    assert_eq!(backend_wallet, *subaccount.id());
+
+    Ok(())
+}
+
+/// Test 1.1.6: Initialize with implicit account (64 hex chars) as backend wallet
+#[tokio::test]
+async fn test_init_with_implicit_account_backend() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+
+    // In NEAR, implicit accounts are 64 hex characters representing a public key
+    // Dev accounts in sandbox are essentially implicit-like accounts
+    let implicit_backend = worker.dev_create_account().await?;
+
+    // Deploy contract
+    let wasm = std::fs::read(WASM_PATH).expect("Could not find WASM file");
+    let contract = worker.dev_deploy(&wasm).await?;
+
+    // Initialize with the dev account (which has implicit-style ID in sandbox)
+    let result = contract
+        .call("new")
+        .args_json(json!({
+            "backend_wallet": implicit_backend.id()
+        }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Init with implicit-style account should succeed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify backend wallet is set correctly
+    let backend_wallet: AccountId = contract.view("get_backend_wallet").await?.json()?;
+    assert_eq!(backend_wallet, *implicit_backend.id());
 
     Ok(())
 }
@@ -1274,6 +1382,248 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
         "Should accept all-0xFF nonce. Failures: {:?}",
         result.failures()
     );
+
+    Ok(())
+}
+
+// ==================== UNIQUENESS CONSTRAINT TESTS ====================
+
+/// Test 2.6.4: Allow same user_id for different accounts (not a unique constraint)
+#[tokio::test]
+async fn test_allow_same_user_id_different_accounts() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init().await?;
+    let user1 = worker.dev_create_account().await?;
+    let user2 = worker.dev_create_account().await?;
+
+    // Generate valid signatures for both users
+    let nonce1: [u8; 32] = [1u8; 32];
+    let nonce2: [u8; 32] = [2u8; 32];
+    let challenge = "Identify myself";
+
+    let (signature1, public_key1) =
+        generate_nep413_signature(&user1, challenge, &nonce1, user1.id().as_str());
+    let (signature2, public_key2) =
+        generate_nep413_signature(&user2, challenge, &nonce2, user2.id().as_str());
+
+    // First verification with user_id "same_user"
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "unique_nullifier_1",
+            "near_account_id": user1.id(),
+            "user_id": "same_user",  // Same user_id
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user1.id(),
+                "signature": signature1,
+                "public_key": public_key1,
+                "challenge": challenge,
+                "nonce": nonce1.to_vec(),
+                "recipient": user1.id()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context1"
+        }))
+        .gas(near_workspaces::types::Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "First verification failed: {:?}",
+        result.failures()
+    );
+
+    // Second verification with same user_id but different account
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "unique_nullifier_2",  // Different nullifier
+            "near_account_id": user2.id(),       // Different account
+            "user_id": "same_user",              // Same user_id!
+            "attestation_id": "2",
+            "signature_data": {
+                "account_id": user2.id(),
+                "signature": signature2,
+                "public_key": public_key2,
+                "challenge": challenge,
+                "nonce": nonce2.to_vec(),
+                "recipient": user2.id()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context2"
+        }))
+        .gas(near_workspaces::types::Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    // Should succeed - user_id is not a unique constraint
+    assert!(
+        result.is_success(),
+        "Same user_id for different accounts should be allowed. Failures: {:?}",
+        result.failures()
+    );
+
+    // Verify both accounts are verified
+    let verified1: bool = contract
+        .view("is_account_verified")
+        .args_json(json!({"near_account_id": user1.id()}))
+        .await?
+        .json()?;
+    let verified2: bool = contract
+        .view("is_account_verified")
+        .args_json(json!({"near_account_id": user2.id()}))
+        .await?
+        .json()?;
+    assert!(verified1 && verified2);
+
+    Ok(())
+}
+
+/// Test 2.6.5: Allow same attestation_id for different accounts (not a unique constraint)
+#[tokio::test]
+async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init().await?;
+    let user1 = worker.dev_create_account().await?;
+    let user2 = worker.dev_create_account().await?;
+
+    // Generate valid signatures for both users
+    let nonce1: [u8; 32] = [3u8; 32];
+    let nonce2: [u8; 32] = [4u8; 32];
+    let challenge = "Identify myself";
+
+    let (signature1, public_key1) =
+        generate_nep413_signature(&user1, challenge, &nonce1, user1.id().as_str());
+    let (signature2, public_key2) =
+        generate_nep413_signature(&user2, challenge, &nonce2, user2.id().as_str());
+
+    // First verification with attestation_id "1"
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "attestation_test_nullifier_1",
+            "near_account_id": user1.id(),
+            "user_id": "user_1",
+            "attestation_id": "1",  // Same attestation_id
+            "signature_data": {
+                "account_id": user1.id(),
+                "signature": signature1,
+                "public_key": public_key1,
+                "challenge": challenge,
+                "nonce": nonce1.to_vec(),
+                "recipient": user1.id()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context1"
+        }))
+        .gas(near_workspaces::types::Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "First verification failed: {:?}",
+        result.failures()
+    );
+
+    // Second verification with same attestation_id but different account
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "attestation_test_nullifier_2",  // Different nullifier
+            "near_account_id": user2.id(),                 // Different account
+            "user_id": "user_2",
+            "attestation_id": "1",                         // Same attestation_id!
+            "signature_data": {
+                "account_id": user2.id(),
+                "signature": signature2,
+                "public_key": public_key2,
+                "challenge": challenge,
+                "nonce": nonce2.to_vec(),
+                "recipient": user2.id()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context2"
+        }))
+        .gas(near_workspaces::types::Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    // Should succeed - attestation_id is not a unique constraint
+    assert!(
+        result.is_success(),
+        "Same attestation_id for different accounts should be allowed. Failures: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Test 2.7.2: Pause allows read operations (is_account_verified still works when paused)
+#[tokio::test]
+async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init().await?;
+    let user = worker.dev_create_account().await?;
+
+    // First verify a user
+    let nonce: [u8; 32] = [5u8; 32];
+    let challenge = "Identify myself";
+    let recipient = user.id().to_string();
+
+    let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
+
+    backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "pause_read_test_nullifier",
+            "near_account_id": user.id(),
+            "user_id": "pause_read_user",
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context"
+        }))
+        .gas(near_workspaces::types::Gas::from_tgas(100))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Pause the contract
+    backend
+        .call(contract.id(), "pause")
+        .deposit(near_workspaces::types::NearToken::from_yoctonear(1))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // Verify contract is paused
+    let is_paused: bool = contract.view("is_paused").await?.json()?;
+    assert!(is_paused, "Contract should be paused");
+
+    // Read operations should still work while paused
+    let is_verified: bool = contract
+        .view("is_account_verified")
+        .args_json(json!({"near_account_id": user.id()}))
+        .await?
+        .json()?;
+    assert!(is_verified, "Should return true for verified account even when paused");
+
+    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    assert_eq!(count, 1, "Count should be accessible when paused");
+
+    let accounts: Vec<serde_json::Value> = contract
+        .view("get_verified_accounts")
+        .args_json(json!({"from_index": 0, "limit": 10}))
+        .await?
+        .json()?;
+    assert_eq!(accounts.len(), 1, "get_verified_accounts should work when paused");
 
     Ok(())
 }

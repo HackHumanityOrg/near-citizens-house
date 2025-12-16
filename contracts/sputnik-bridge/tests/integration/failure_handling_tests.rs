@@ -17,6 +17,7 @@ use serde_json::json;
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "state")]
 #[allure_description("Verifies that when user verification fails, no state changes occur and no proposals are created in the DAO.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<()> {
@@ -58,6 +59,7 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "events")]
 #[allure_description("Verifies that when auto-approve fails (due to missing permissions), no member_added event is emitted and the user is not added.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
@@ -95,6 +97,7 @@ async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "promise")]
 #[allure_description("Verifies that when the verification contract promise fails, the entire flow is aborted with no events or state changes.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
@@ -136,6 +139,7 @@ async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "proposal")]
 #[allure_description("Verifies that when proposal creation fails at the DAO level (e.g., insufficient deposit), no proposal_created event is emitted.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
@@ -173,6 +177,7 @@ async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "member")]
 #[allure_description("Verifies that when DAO rejects a member addition (e.g., insufficient deposit), no member_added event is emitted and user is not added.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
@@ -221,6 +226,7 @@ async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "state")]
 #[allure_description("Verifies that multiple consecutive failures don't corrupt state and successful operations continue to work correctly.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
@@ -277,6 +283,7 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "gas")]
 #[allure_description("Verifies that gas exhaustion during cross-contract calls doesn't cause partial state corruption and user is not added.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
@@ -326,6 +333,7 @@ async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
 #[allure_severity("normal")]
 #[allure_tags("integration", "failure", "recovery")]
 #[allure_description("Verifies that successful operations work correctly after a failed callback, demonstrating proper error recovery.")]
+
 #[allure_test]
 #[tokio::test]
 async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()> {

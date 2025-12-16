@@ -34,3 +34,6 @@ mod security_tests;
 
 #[path = "integration/failure_handling_tests.rs"]
 mod failure_handling_tests;
+
+#[path = "integration/state_consistency_tests.rs"]
+mod state_consistency_tests;

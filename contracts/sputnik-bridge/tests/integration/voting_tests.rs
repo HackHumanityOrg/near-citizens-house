@@ -24,6 +24,7 @@ Verifies that a verified citizen can successfully vote on a proposal.
 ## Expected
 Vote transaction succeeds.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_citizen_can_vote_on_proposal() -> anyhow::Result<()> {
@@ -73,6 +74,7 @@ Verifies that VoteApprove from a single citizen results in Approved status.
 ## Expected
 With only 1 citizen voting approve, proposal status becomes Approved.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_citizen_vote_approve() -> anyhow::Result<()> {
@@ -122,6 +124,7 @@ Verifies that VoteReject from a single citizen results in Rejected status.
 ## Expected
 With only 1 citizen voting reject, proposal status becomes Rejected.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_citizen_vote_reject() -> anyhow::Result<()> {
@@ -170,6 +173,7 @@ Verifies that non-citizens (users not in the citizen role) cannot vote on propos
 ## Security
 Critical access control test - only verified citizens should participate in governance.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_non_citizen_cannot_vote() -> anyhow::Result<()> {
@@ -212,6 +216,7 @@ Verifies proposal passes when majority (>50%) votes approve.
 ## Scenario
 3 citizens: 1st vote → InProgress, 2nd vote → Approved (2/3 ≥ 50%)
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_proposal_passes_with_majority() -> anyhow::Result<()> {
@@ -281,6 +286,7 @@ Verifies proposal is rejected when majority (>50%) votes reject.
 ## Scenario
 3 citizens: 1st reject → InProgress, 2nd reject → Rejected (2/3 ≥ 50%)
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_proposal_fails_with_majority_no() -> anyhow::Result<()> {
@@ -349,6 +355,7 @@ Verifies that a citizen cannot vote twice on the same proposal.
 ## Security
 Prevents vote manipulation by ensuring one-vote-per-citizen per proposal.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_cannot_vote_twice_on_same_proposal() -> anyhow::Result<()> {
@@ -410,6 +417,7 @@ Verifies that voting on a nonexistent proposal ID fails gracefully.
 ## Input Validation
 Proposal ID 999999 should not exist and vote should fail.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_vote_on_nonexistent_proposal_fails() -> anyhow::Result<()> {
@@ -450,6 +458,7 @@ Verifies that proposals expire after the voting period ends.
 Uses fast_forward(100 blocks) to simulate passage of time.
 Vote triggers status update → Expired.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_proposal_expires_after_period() -> anyhow::Result<()> {
@@ -515,6 +524,7 @@ Verifies that voting within the valid period succeeds (baseline for expiry test)
 ## Expected
 Immediate vote after proposal creation should succeed.
 "#)]
+
 #[allure_test]
 #[tokio::test]
 async fn test_vote_before_expiry_succeeds() -> anyhow::Result<()> {

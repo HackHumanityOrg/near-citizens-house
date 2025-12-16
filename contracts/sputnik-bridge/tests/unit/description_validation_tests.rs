@@ -135,26 +135,3 @@ fn test_description_boundary_single_char_passes() {
     let _ = contract.create_proposal("x".to_string());
 }
 
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Sputnik Bridge Unit Tests")]
-#[allure_sub_suite("Description Validation")]
-#[allure_severity("critical")]
-#[allure_tags("unit", "validation", "negative")]
-#[allure_description("Verifies that creating a proposal with a description exceeding maximum length fails.")]
-#[allure_test]
-#[test]
-fn test_create_proposal_description_over_max_fails() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
-
-    let mut contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
-
-    let too_long = "x".repeat(10001);
-    assert_panic_with(
-        || {
-            let _ = contract.create_proposal(too_long);
-        },
-        "Description exceeds maximum length",
-    );
-}

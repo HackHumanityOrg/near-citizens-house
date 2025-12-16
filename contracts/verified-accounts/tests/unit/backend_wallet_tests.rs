@@ -64,3 +64,23 @@ fn test_unauthorized_update_backend_wallet() {
         "Only current backend wallet can update backend wallet",
     );
 }
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("minor")]
+#[allure_tags("unit", "admin", "wallet", "alias")]
+#[allure_description("Alias test to align documentation naming; asserts backend wallet update succeeds and persists.")]
+#[allure_test]
+#[test]
+fn test_update() {
+    let backend = accounts(1);
+    let new_backend = accounts(2);
+    let mut context = get_context(backend.clone());
+    context.attached_deposit(NearToken::from_yoctonear(1));
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend.clone());
+    contract.update_backend_wallet(new_backend.clone());
+    assert_eq!(contract.get_backend_wallet(), new_backend);
+}

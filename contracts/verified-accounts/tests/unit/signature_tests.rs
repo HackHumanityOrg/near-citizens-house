@@ -223,6 +223,163 @@ fn test_signature_too_long() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "signature")]
+#[allure_description("Verifies signatures signed by a different key than the declared account are rejected.")]
+#[allure_test]
+#[test]
+fn test_signature_from_different_key_rejected() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let other = accounts(3);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+
+    // Sign with a different key but claim it belongs to `user`
+    let signer_other = create_signer(&other);
+    let mut sig_data =
+        create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &user);
+    // Tamper public key to a different key than the one that produced the signature
+    let user_pk = create_signer(&user).public_key();
+    sig_data.public_key = user_pk.to_string().parse().unwrap();
+
+    // Signature bytes are for `other`, not `user`
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "nullifier_wrong_key".to_string(),
+                user.clone(),
+                "user_wrong_key".to_string(),
+                "1".to_string(),
+                sig_data,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Invalid NEAR signature - NEP-413 verification failed",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Signature Verification")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "validation", "signature", "nonce")]
+#[allure_description("Verifies that changing the nonce after signing invalidates the signature.")]
+#[allure_test]
+#[test]
+fn test_signature_wrong_nonce_rejected() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let mut sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[10; 32], &user);
+
+    // Tamper with nonce after signing
+    sig_data.nonce = vec![42u8; 32];
+
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "nullifier_wrong_nonce".to_string(),
+                user.clone(),
+                "user_wrong_nonce".to_string(),
+                "1".to_string(),
+                sig_data,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Invalid NEAR signature - NEP-413 verification failed",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Signature Verification")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "validation", "signature", "recipient")]
+#[allure_description("Verifies that changing the recipient after signing invalidates the signature.")]
+#[allure_test]
+#[test]
+fn test_signature_wrong_recipient_rejected() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let other = accounts(3);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let mut sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[11; 32], &user);
+
+    // Tamper recipient after signing
+    sig_data.recipient = other.clone();
+
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "nullifier_wrong_recipient".to_string(),
+                user.clone(),
+                "user_wrong_recipient".to_string(),
+                "1".to_string(),
+                sig_data,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Signature recipient must match near_account_id",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Signature Verification")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "validation", "signature", "challenge")]
+#[allure_description("Verifies that changing the challenge after signing invalidates the signature.")]
+#[allure_test]
+#[test]
+fn test_signature_wrong_challenge_rejected() {
+    let backend = accounts(1);
+    let user = accounts(2);
+    let context = get_context(backend.clone());
+    testing_env!(context.build());
+
+    let mut contract = Contract::new(backend);
+    let signer = create_signer(&user);
+    let mut sig_data =
+        create_valid_signature(&signer, &user, "Identify myself", &[12; 32], &user);
+
+    // Tamper challenge after signing
+    sig_data.challenge = "Different message".to_string();
+
+    assert_panic_with(
+        || {
+            contract.store_verification(
+                "nullifier_wrong_challenge".to_string(),
+                user.clone(),
+                "user_wrong_challenge".to_string(),
+                "1".to_string(),
+                sig_data,
+                test_self_proof(),
+                "ctx".to_string(),
+            );
+        },
+        "Invalid NEAR signature - NEP-413 verification failed",
+    );
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Signature Verification")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "security", "signature")]
 #[allure_description("Verifies that a tampered signature fails NEP-413 verification.")]
 #[allure_test]
 #[test]
