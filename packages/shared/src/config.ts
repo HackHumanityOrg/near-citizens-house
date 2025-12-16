@@ -6,7 +6,7 @@
 // ==============================================================================
 
 import { z } from "zod"
-import { countries } from "@selfxyz/core"
+import type { VerificationConfig } from "@selfxyz/core"
 
 // ==============================================================================
 // ENVIRONMENT VALIDATION
@@ -105,17 +105,10 @@ export const APP_URLS = {
 }
 
 // Self.xyz Configuration
-const DISCLOSURE_CONFIG = {
+const DISCLOSURE_CONFIG: VerificationConfig = {
   minimumAge: 18,
-  excludedCountries: [
-    countries.IRAN,
-    countries.IRAQ,
-    countries.NORTH_KOREA,
-    countries.RUSSIA,
-    countries.SYRIAN_ARAB_REPUBLIC,
-    countries.VENEZUELA,
-  ],
-  ofac: true,
+  excludedCountries: [],
+  ofac: false,
 }
 
 export const SELF_CONFIG = {
