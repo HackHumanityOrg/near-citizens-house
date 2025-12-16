@@ -65,18 +65,13 @@ export function IdentityVerificationFlow() {
             recipient: accountId,
           })
           setSelfVerificationComplete(true)
-          setCurrentStep(3)
-        } else if (currentStep === 1) {
-          // Not verified - move to step 2
           setCurrentStep(2)
         }
+        // If not verified, stay on step 1 until user signs
       } catch (error) {
         if (cancelled) return
         console.error("Error checking verification status:", error)
-        // On error, just proceed to step 2
-        if (currentStep === 1) {
-          setCurrentStep(2)
-        }
+        // On error, stay on step 1
       } finally {
         if (!cancelled) {
           setIsCheckingVerification(false)
@@ -106,32 +101,26 @@ export function IdentityVerificationFlow() {
   // Invalidate signature if user connects a different wallet
   useEffect(() => {
     if (nearSignature && accountId && nearSignature.accountId !== accountId) {
-      // Different wallet connected - signature is invalid, go back to sign step
+      // Different wallet connected - signature is invalid, go back to wallet step
       setNearSignature(null)
       setVerificationError(null)
       setSelfVerificationComplete(false)
-      setCurrentStep(2)
+      setCurrentStep(1)
     }
   }, [accountId, nearSignature])
 
   const steps: VerificationStep[] = [
     {
-      id: "connect",
-      title: "Connect Wallet",
-      description: "Connect your NEAR wallet to begin verification",
-      status: isConnected ? "complete" : currentStep === 1 ? "active" : "pending",
+      id: "wallet",
+      title: "Verify your wallet",
+      description: "Connect and sign to prove wallet ownership",
+      status: nearSignature ? "complete" : currentStep === 1 ? "active" : "pending",
     },
     {
-      id: "sign",
-      title: "Sign Message",
-      description: "Sign a message to prove wallet ownership",
-      status: nearSignature ? "complete" : currentStep === 2 ? "active" : "pending",
-    },
-    {
-      id: "verify",
-      title: "Verify Identity",
+      id: "identity",
+      title: "Verify your identity",
       description: "Scan QR code with Self app to verify your passport",
-      status: selfVerificationComplete ? "complete" : currentStep === 3 ? "active" : "pending",
+      status: selfVerificationComplete ? "complete" : currentStep === 2 ? "active" : "pending",
     },
   ]
 
@@ -147,7 +136,7 @@ export function IdentityVerificationFlow() {
     try {
       const signature = await signMessage(CONSTANTS.SIGNING_MESSAGE)
       setNearSignature(signature)
-      setCurrentStep(3)
+      setCurrentStep(2)
     } catch (error) {
       console.error("Error signing message:", error)
       setSignError(error instanceof Error ? error.message : "Failed to sign message")
@@ -168,7 +157,7 @@ export function IdentityVerificationFlow() {
   const handleBackToSign = () => {
     setNearSignature(null)
     setVerificationError(null)
-    setCurrentStep(2)
+    setCurrentStep(1)
   }
 
   const handleStartOver = () => {
@@ -247,102 +236,91 @@ export function IdentityVerificationFlow() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" aria-hidden="true" />
-                <CardTitle>Connect Your NEAR Wallet</CardTitle>
+                <CardTitle>Verify your wallet</CardTitle>
               </div>
               <CardDescription>
-                First, connect your NEAR wallet to begin the identity verification process
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                onClick={handleConnect}
-                size="lg"
-                className="w-full"
-                disabled={isLoading || isCheckingVerification}
-                aria-busy={isLoading || isCheckingVerification}
-              >
-                {isLoading || isCheckingVerification ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" aria-hidden="true" />
-                    <span>{isCheckingVerification ? "Checking verification..." : "Loading..."}</span>
-                  </>
-                ) : (
-                  <>
-                    <Wallet className="h-5 w-5 mr-2" aria-hidden="true" />
-                    Connect NEAR Wallet
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 2 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <FileKey className="h-5 w-5 text-primary" aria-hidden="true" />
-                <CardTitle>Sign Verification Message</CardTitle>
-              </div>
-              <CardDescription>
-                Sign a message to prove you own this NEAR wallet. This signature will be cryptographically linked to
-                your identity proof.
+                {isConnected
+                  ? "Sign a message to prove you own this NEAR wallet. This signature will be cryptographically linked to your identity proof."
+                  : "Connect your NEAR wallet to begin the identity verification process"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div
-                className="p-4 bg-muted rounded-lg space-y-2"
-                role="status"
-                aria-label="Connected wallet information"
-              >
-                <span id="wallet-label" className="text-sm font-medium">
-                  Connected Wallet
-                </span>
-                <div className="text-sm text-muted-foreground font-mono break-all" aria-labelledby="wallet-label">
-                  {accountId}
-                </div>
-              </div>
+              {isConnected ? (
+                <>
+                  <div
+                    className="p-4 bg-muted rounded-lg space-y-2"
+                    role="status"
+                    aria-label="Connected wallet information"
+                  >
+                    <span id="wallet-label" className="text-sm font-medium">
+                      Connected Wallet
+                    </span>
+                    <div className="text-sm text-muted-foreground font-mono break-all" aria-labelledby="wallet-label">
+                      {accountId}
+                    </div>
+                  </div>
 
-              {signError && (
-                <Alert variant="destructive" role="alert">
-                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                  <AlertDescription>{signError}</AlertDescription>
-                </Alert>
+                  {signError && (
+                    <Alert variant="destructive" role="alert">
+                      <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                      <AlertDescription>{signError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <Button
+                    onClick={handleSignMessage}
+                    size="lg"
+                    className="w-full"
+                    disabled={isSigningMessage || isCheckingVerification}
+                    aria-busy={isSigningMessage || isCheckingVerification}
+                  >
+                    {isSigningMessage ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" aria-hidden="true" />
+                        <span>Signing Message...</span>
+                      </>
+                    ) : isCheckingVerification ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" aria-hidden="true" />
+                        <span>Checking verification...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileKey className="h-5 w-5 mr-2" aria-hidden="true" />
+                        Sign Message
+                      </>
+                    )}
+                  </Button>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    This will open your wallet to sign a message. No transaction fees required.
+                  </p>
+
+                  <Button onClick={handleStartOver} variant="outline" size="sm" className="w-full">
+                    <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Disconnect Wallet
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={handleConnect} size="lg" className="w-full" disabled={isLoading} aria-busy={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" aria-hidden="true" />
+                      <span>Loading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-5 w-5 mr-2" aria-hidden="true" />
+                      Connect NEAR Wallet
+                    </>
+                  )}
+                </Button>
               )}
-
-              <Button
-                onClick={handleSignMessage}
-                size="lg"
-                className="w-full"
-                disabled={isSigningMessage}
-                aria-busy={isSigningMessage}
-              >
-                {isSigningMessage ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" aria-hidden="true" />
-                    <span>Signing Message...</span>
-                  </>
-                ) : (
-                  <>
-                    <FileKey className="h-5 w-5 mr-2" aria-hidden="true" />
-                    Sign Message
-                  </>
-                )}
-              </Button>
-
-              <p className="text-xs text-muted-foreground text-center">
-                This will open your wallet to sign a message. No transaction fees required.
-              </p>
-
-              <Button onClick={handleStartOver} variant="outline" size="sm" className="w-full">
-                <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
-                Disconnect Wallet
-              </Button>
             </CardContent>
           </Card>
         )}
 
-        {currentStep === 3 && nearSignature && (
+        {currentStep === 2 && nearSignature && (
           <>
             {verificationError ? (
               <Card role="alert" aria-labelledby="error-title">

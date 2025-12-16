@@ -23,22 +23,14 @@ export default function HomePage() {
                   </Badge>
                 </div>
                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                  Become a Verified
+                  Become a
                   <br />
-                  <span className="text-[#00C08B] dark:text-[#00EC97]">NEAR Account</span>
+                  <span className="text-[#00C08B] dark:text-[#00EC97]">NEAR Verified Account</span>
                 </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
                   Complete the verification process to participate in NEAR governance with enhanced trust and
                   credibility.
                 </p>
-                <div className="pt-2">
-                  <Link href="/verified-accounts">
-                    <Button variant="outline" size="lg" className="gap-2 px-8">
-                      <Search className="h-4 w-4" aria-hidden="true" />
-                      Browse Verified Accounts
-                    </Button>
-                  </Link>
-                </div>
               </CardContent>
             </Card>
 
@@ -49,6 +41,15 @@ export default function HomePage() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="flex justify-center pt-2">
+              <Link href="/verified-accounts">
+                <Button variant="outline" size="lg" className="gap-2 px-8">
+                  <Search className="h-4 w-4" aria-hidden="true" />
+                  Browse Verified Accounts
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
