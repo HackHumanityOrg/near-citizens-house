@@ -6,6 +6,7 @@ import { VercelToolbar } from "@vercel/toolbar/next"
 import { ThemeProvider, Footer } from "@near-citizens/ui"
 import { Header } from "@/components/shared/header"
 import { BetaBanner } from "@/components/shared/beta-banner"
+import { Providers } from "./providers"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -55,12 +56,14 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <BetaBanner />
-          <div className="pt-8">
-            <Header />
-          </div>
-          {children}
-          <Footer />
+          <Providers>
+            <BetaBanner />
+            <div className="pt-8">
+              <Header />
+            </div>
+            {children}
+            <Footer />
+          </Providers>
         </ThemeProvider>
         <Analytics />
         <VercelToolbar />
