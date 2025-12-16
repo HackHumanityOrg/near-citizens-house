@@ -54,10 +54,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <Header />
           {/* Beta testing banner */}
-          <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[100] bg-black text-white rounded-b px-6 py-1.5 shadow-lg">
+          <div className="fixed top-0 left-0 right-0 z-[100] w-full bg-stone-500 text-white py-1.5 text-center">
             <span className="text-sm font-bold tracking-wide">Beta testing on Testnet</span>
+          </div>
+          <div className="pt-8">
+            <Header />
           </div>
           {children}
           <Footer />
