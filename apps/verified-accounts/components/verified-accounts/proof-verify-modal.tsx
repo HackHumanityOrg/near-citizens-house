@@ -2,6 +2,7 @@
 
 import { useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from "@near-citizens/ui"
+import { useAnalytics } from "@/lib/analytics"
 import { Download, ExternalLink } from "lucide-react"
 import type { ZkProof } from "@near-citizens/shared"
 
@@ -13,6 +14,7 @@ interface ZkProofData {
   attestationId: string
   userId: string
   verifiedAt: number
+  nearAccountId: string
 }
 
 interface ZkProofVerifyModalProps {
@@ -22,17 +24,28 @@ interface ZkProofVerifyModalProps {
 }
 
 export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModalProps) {
-  const downloadJson = useCallback((content: object, filename: string) => {
-    const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, [])
+  const analytics = useAnalytics()
+
+  const downloadJson = useCallback(
+    (content: object, filename: string) => {
+      analytics.trackZkProofDownloaded(data?.nearAccountId || "unknown", filename)
+      const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+    [analytics, data?.nearAccountId],
+  )
+
+  const openSnarkjs = useCallback(() => {
+    analytics.trackExternalVerifierOpened("snarkjs")
+    window.open("https://github.com/iden3/snarkjs", "_blank")
+  }, [analytics])
 
   if (!data) return null
 
@@ -91,12 +104,7 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
 
           {/* Links */}
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => window.open("https://github.com/iden3/snarkjs", "_blank")}
-            >
+            <Button variant="outline" size="sm" className="flex-1" onClick={openSnarkjs}>
               <ExternalLink className="h-4 w-4 mr-2" />
               snarkjs
             </Button>

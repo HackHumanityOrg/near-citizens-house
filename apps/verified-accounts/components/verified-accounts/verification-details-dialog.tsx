@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Button } from "@near-citizens/ui"
+import { useAnalytics } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
 import { ProofVerifyModal } from "./proof-verify-modal"
@@ -14,10 +15,21 @@ interface Props {
 }
 
 export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
+  const analytics = useAnalytics()
   const [showSignatureModal, setShowSignatureModal] = useState(false)
   const [showZkProofModal, setShowZkProofModal] = useState(false)
 
   if (!data) return null
+
+  const handleOpenSignatureModal = () => {
+    analytics.trackSignatureVerificationOpened(data.account.nearAccountId)
+    setShowSignatureModal(true)
+  }
+
+  const handleOpenZkProofModal = () => {
+    analytics.trackZkProofDownloaded(data.account.nearAccountId, "modal_opened")
+    setShowZkProofModal(true)
+  }
 
   const { account, verification, proofData } = data
   const allValid = verification.zkValid && verification.signatureValid
@@ -52,11 +64,11 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
             <div className="space-y-2 mt-2">
               <p className="text-xs text-muted-foreground">Verify independently with third-party tools</p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowSignatureModal(true)}>
+                <Button variant="outline" size="sm" className="flex-1" onClick={handleOpenSignatureModal}>
                   <ExternalLink className="h-4 w-4 mr-2" />
                   NEAR Signature
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowZkProofModal(true)}>
+                <Button variant="outline" size="sm" className="flex-1" onClick={handleOpenZkProofModal}>
                   <ExternalLink className="h-4 w-4 mr-2" />
                   ZK Proof
                 </Button>
@@ -93,6 +105,7 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
                 attestationId: proofData.attestationId,
                 userId: proofData.userId,
                 verifiedAt: proofData.verifiedAt,
+                nearAccountId: account.nearAccountId,
               }
             : null
         }

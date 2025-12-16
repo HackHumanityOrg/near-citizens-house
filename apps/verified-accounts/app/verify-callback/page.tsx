@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, useCallback, Suspense } from "react"
+import { useEffect, useState, useCallback, Suspense, useRef } from "react"
 import { useSearchParams } from "next/navigation"
+import { useAnalytics } from "@/lib/analytics"
 import {
   Card,
   CardContent,
@@ -30,9 +31,11 @@ type VerificationStatus = "checking" | "success" | "error" | "expired"
 function VerifyCallbackContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("sessionId")
+  const analytics = useAnalytics()
   const [status, setStatus] = useState<VerificationStatus>("checking")
   const [accountId, setAccountId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const trackedResultRef = useRef(false)
 
   const checkVerificationStatus = useCallback(async () => {
     if (!sessionId) {
@@ -67,6 +70,23 @@ function VerifyCallbackContent() {
       return false
     }
   }, [sessionId])
+
+  // Track verification result when status changes
+  useEffect(() => {
+    if (trackedResultRef.current) return
+
+    if (status === "success" && accountId) {
+      analytics.trackVerificationCompleted(accountId, "deeplink")
+      trackedResultRef.current = true
+    } else if (status === "error" || status === "expired") {
+      // Get accountId from localStorage if available
+      const storedSession = sessionId ? localStorage.getItem(`self-session-${sessionId}`) : null
+      const storedAccountId = storedSession ? JSON.parse(storedSession).accountId : "unknown"
+      const errorCode = status === "expired" ? "TIMEOUT" : "VERIFICATION_FAILED"
+      analytics.trackVerificationFailed(storedAccountId, errorCode, errorMessage || undefined)
+      trackedResultRef.current = true
+    }
+  }, [status, accountId, sessionId, errorMessage, analytics])
 
   useEffect(() => {
     if (!sessionId) {

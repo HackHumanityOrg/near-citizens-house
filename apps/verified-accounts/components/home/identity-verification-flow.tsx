@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useNearWallet } from "@near-citizens/shared"
+import { useAnalytics } from "@/lib/analytics"
 import {
   Button,
   Card,
@@ -22,6 +23,7 @@ import { isAccountVerified } from "@/app/verified-accounts/actions"
 
 export function IdentityVerificationFlow() {
   const { accountId, isConnected, connect, disconnect, signMessage, isLoading } = useNearWallet()
+  const analytics = useAnalytics()
   const [currentStep, setCurrentStep] = useState(1)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
   const [isSigningMessage, setIsSigningMessage] = useState(false)
@@ -29,6 +31,7 @@ export function IdentityVerificationFlow() {
   const [verificationError, setVerificationError] = useState<string | null>(null)
   const [selfVerificationComplete, setSelfVerificationComplete] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
+  const trackedWalletRef = useRef<string | null>(null)
 
   // Generate stable session ID for Self.xyz verification
   const [sessionId] = useState(() => {
@@ -38,6 +41,14 @@ export function IdentityVerificationFlow() {
     }
     return crypto.randomUUID()
   })
+
+  // Track wallet connection
+  useEffect(() => {
+    if (accountId && isConnected && trackedWalletRef.current !== accountId) {
+      analytics.trackWalletConnected(accountId)
+      trackedWalletRef.current = accountId
+    }
+  }, [accountId, isConnected, analytics])
 
   // Check if wallet is already verified when connected
   useEffect(() => {
@@ -137,9 +148,16 @@ export function IdentityVerificationFlow() {
       const signature = await signMessage(CONSTANTS.SIGNING_MESSAGE)
       setNearSignature(signature)
       setCurrentStep(2)
+      if (accountId) {
+        analytics.trackMessageSigned(accountId)
+      }
     } catch (error) {
       console.error("Error signing message:", error)
-      setSignError(error instanceof Error ? error.message : "Failed to sign message")
+      const errorMessage = error instanceof Error ? error.message : "Failed to sign message"
+      setSignError(errorMessage)
+      if (accountId) {
+        analytics.trackMessageSignFailed(accountId, errorMessage)
+      }
     } finally {
       setIsSigningMessage(false)
     }
@@ -161,6 +179,8 @@ export function IdentityVerificationFlow() {
   }
 
   const handleStartOver = () => {
+    analytics.trackWalletDisconnected(accountId, currentStep)
+    trackedWalletRef.current = null
     disconnect()
     setNearSignature(null)
     setSignError(null)

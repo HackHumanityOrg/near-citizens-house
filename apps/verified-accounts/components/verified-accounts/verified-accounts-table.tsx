@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import { useAnalytics } from "@/lib/analytics"
 import {
   Button,
   Card,
@@ -59,7 +60,22 @@ function getAttestationType(id: string): string {
 }
 
 export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSize, totalPages }: Props) {
+  const analytics = useAnalytics()
   const [selectedAccount, setSelectedAccount] = useState<VerifiedAccountWithStatus | null>(null)
+  const trackedPageRef = useRef<number | null>(null)
+
+  // Track page view
+  useEffect(() => {
+    if (trackedPageRef.current !== page) {
+      analytics.trackVerifiedAccountsViewed(page)
+      trackedPageRef.current = page
+    }
+  }, [page, analytics])
+
+  const handleViewDetails = (account: VerifiedAccountWithStatus) => {
+    analytics.trackAccountDetailsViewed(account.account.nearAccountId)
+    setSelectedAccount(account)
+  }
 
   return (
     <>
@@ -149,11 +165,12 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() =>
-                                    setSelectedAccount(
-                                      accounts.find((a) => a.account.nearAccountId === account.nearAccountId) || null,
+                                  onClick={() => {
+                                    const found = accounts.find(
+                                      (a) => a.account.nearAccountId === account.nearAccountId,
                                     )
-                                  }
+                                    if (found) handleViewDetails(found)
+                                  }}
                                   title="View verification details"
                                 >
                                   {isValid ? (

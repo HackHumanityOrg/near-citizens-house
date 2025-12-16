@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
+import { useAnalytics } from "@/lib/analytics"
 import dynamic from "next/dynamic"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, type NearSignatureData } from "@near-citizens/shared"
@@ -58,9 +59,19 @@ export function PassportQrScanner({
   onError,
   onDisconnect,
 }: PassportQrScannerProps) {
+  const analytics = useAnalytics()
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",
   )
+  const trackedStartRef = useRef(false)
+
+  // Track verification started when QR is displayed
+  useEffect(() => {
+    if (!trackedStartRef.current) {
+      analytics.trackVerificationStarted(nearSignature.accountId, "qr")
+      trackedStartRef.current = true
+    }
+  }, [nearSignature.accountId, analytics])
 
   // Build SelfApp during render using useMemo instead of useEffect + setState
   // This avoids the synchronous setState in effect anti-pattern
@@ -93,11 +104,13 @@ export function PassportQrScanner({
 
   const handleSuccess = () => {
     setVerificationStatus("success")
+    analytics.trackVerificationCompleted(nearSignature.accountId, "qr")
     onSuccess()
   }
 
   const handleError = () => {
     setVerificationStatus("error")
+    analytics.trackVerificationFailed(nearSignature.accountId, "QR_SCAN_FAILED", "Verification failed during QR scan")
     onError("Verification failed. Please try again.")
   }
 

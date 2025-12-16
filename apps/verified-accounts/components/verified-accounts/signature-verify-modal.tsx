@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from "@near-citizens/ui"
+import { useAnalytics } from "@/lib/analytics"
 import { Copy, Check, ExternalLink } from "lucide-react"
 
 // Modal-specific type that combines nearSignatureVerification and signature fields from ProofData
@@ -20,6 +21,7 @@ interface NearSignatureVerifyModalProps {
 }
 
 export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignatureVerifyModalProps) {
+  const analytics = useAnalytics()
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
   const copyToClipboard = useCallback((text: string, field: string) => {
@@ -29,8 +31,9 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
   }, [])
 
   const openVerifier = useCallback(() => {
+    analytics.trackExternalVerifierOpened("cyphr")
     window.open("https://cyphr.me/ed25519_tool/ed.html", "_blank")
-  }, [])
+  }, [analytics])
 
   if (!data) return null
 

@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useEffect } from "react"
+import { useMemo, useEffect, useRef } from "react"
+import { useAnalytics } from "@/lib/analytics"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-citizens/shared"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@near-citizens/ui"
@@ -13,6 +14,17 @@ interface PassportDeepLinkProps {
 }
 
 export function PassportDeepLink({ nearSignature, sessionId, onDisconnect }: PassportDeepLinkProps) {
+  const analytics = useAnalytics()
+  const trackedStartRef = useRef(false)
+
+  // Track verification started when deep link UI is displayed
+  useEffect(() => {
+    if (!trackedStartRef.current) {
+      analytics.trackVerificationStarted(nearSignature.accountId, "deeplink")
+      trackedStartRef.current = true
+    }
+  }, [nearSignature.accountId, analytics])
+
   const selfApp = useMemo(() => {
     const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
 
