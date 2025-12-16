@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { VercelToolbar } from "@vercel/toolbar/next"
 import { ThemeProvider, Footer } from "@near-citizens/ui"
+import { Header } from "@/components/shared/header"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -53,6 +54,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          <Header />
           {/* Beta testing banner */}
           <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[100] bg-black text-white rounded-b px-6 py-1.5 shadow-lg">
             <span className="text-sm font-bold tracking-wide">Beta testing on Testnet</span>

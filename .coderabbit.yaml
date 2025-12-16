@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: "en-US"
-early_access: true  # Enable beta features for Pro
-enable_free_tier: false  # Pro tier
+early_access: true # Enable beta features for Pro
+enable_free_tier: false # Pro tier
 
 # Review settings
 reviews:
@@ -16,7 +16,7 @@ reviews:
   collapse_walkthrough: false
   sequence_diagrams: true
   changed_files_summary: true
-  poem: false  # Skip the poem
+  poem: false # Skip the poem
 
   # Pro: Linked issues & PRs
   assess_linked_issues: true

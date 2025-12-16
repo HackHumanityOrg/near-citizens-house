@@ -1,6 +1,5 @@
 import { getVerifiedAccountsWithStatus } from "./actions"
 import { VerifiedAccountsTable } from "@/components/verified-accounts/verified-accounts-table"
-import { ThemeToggle } from "@near-citizens/ui"
 
 const PAGE_SIZE = 10
 
@@ -20,9 +19,6 @@ export default async function VerificationsPage({ searchParams }: Props) {
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background to-background/80">
-      <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
       <VerifiedAccountsTable
         accounts={accounts}
         total={total}

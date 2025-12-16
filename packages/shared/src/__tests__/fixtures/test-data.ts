@@ -52,9 +52,7 @@ export const wellFormedProof: SelfProofData = {
       "21888242871839275222246405745257275088696311157297823662689037894645226208582",
     ],
   },
-  publicSignals: Array(21).fill(
-    "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-  ),
+  publicSignals: Array(21).fill("21888242871839275222246405745257275088696311157297823662689037894645226208582"),
 }
 
 /**
@@ -130,12 +128,7 @@ export const testAccountIds = {
 /**
  * Create a valid user context JSON object
  */
-export function createUserContext(
-  accountId: string,
-  signature: string,
-  publicKey: string,
-  nonce: number[],
-) {
+export function createUserContext(accountId: string, signature: string, publicKey: string, nonce: number[]) {
   return {
     accountId,
     signature,

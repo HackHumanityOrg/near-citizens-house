@@ -192,9 +192,7 @@ describe("computeNep413Hash", () => {
     it("should use correct NEP-413 tag (2^31 + 413)", async () => {
       await allure.severity("critical")
       await allure.story("NEP-413 Compliance")
-      await allure.description(
-        "NEP-413 specifies tag = 2147484061 (2^31 + 413) as little-endian 4-byte prefix",
-      )
+      await allure.description("NEP-413 specifies tag = 2147484061 (2^31 + 413) as little-endian 4-byte prefix")
 
       // The tag is internal to the function, but we can verify consistency
       // by checking that the same inputs always produce the same hash
@@ -483,12 +481,7 @@ describe("verifyNearSignature", () => {
   })
 
   // Helper to create valid signature
-  async function createValidSignature(
-    message: string,
-    nonce: number[],
-    recipient: string,
-    keyPair: KeyPair,
-  ) {
+  async function createValidSignature(message: string, nonce: number[], recipient: string, keyPair: KeyPair) {
     const hash = computeNep413Hash(message, nonce, recipient)
     const hashBuffer = Buffer.from(hash, "hex")
     const signature = keyPair.sign(hashBuffer)
@@ -572,20 +565,9 @@ describe("verifyNearSignature", () => {
       await allure.severity("critical")
       await allure.story("Wrong Message")
 
-      const signature = await createValidSignature(
-        "Original message",
-        standardNonce,
-        testRecipient,
-        testKeyPair,
-      )
+      const signature = await createValidSignature("Original message", standardNonce, testRecipient, testKeyPair)
 
-      const result = verifyNearSignature(
-        "Different message",
-        signature,
-        testPublicKey,
-        standardNonce,
-        testRecipient,
-      )
+      const result = verifyNearSignature("Different message", signature, testPublicKey, standardNonce, testRecipient)
 
       expect(result.valid).toBe(false)
     })
@@ -608,12 +590,7 @@ describe("verifyNearSignature", () => {
       await allure.story("Wrong Recipient")
 
       const challenge = "Identify myself"
-      const signature = await createValidSignature(
-        challenge,
-        standardNonce,
-        "alice.testnet",
-        testKeyPair,
-      )
+      const signature = await createValidSignature(challenge, standardNonce, "alice.testnet", testKeyPair)
 
       const result = verifyNearSignature(
         challenge,
@@ -646,12 +623,7 @@ describe("verifyNearSignature", () => {
       await allure.severity("normal")
       await allure.story("Invalid Public Key")
 
-      const signature = await createValidSignature(
-        "Identify myself",
-        standardNonce,
-        testRecipient,
-        testKeyPair,
-      )
+      const signature = await createValidSignature("Identify myself", standardNonce, testRecipient, testKeyPair)
 
       const result = verifyNearSignature(
         "Identify myself",
@@ -703,13 +675,7 @@ describe("verifyNearSignature", () => {
       // 63 bytes instead of 64
       const shortSignature = Buffer.from(Array(63).fill(0)).toString("base64")
 
-      const result = verifyNearSignature(
-        "Identify myself",
-        shortSignature,
-        testPublicKey,
-        standardNonce,
-        testRecipient,
-      )
+      const result = verifyNearSignature("Identify myself", shortSignature, testPublicKey, standardNonce, testRecipient)
 
       expect(result.valid).toBe(false)
     })
@@ -721,13 +687,7 @@ describe("verifyNearSignature", () => {
       // 65 bytes instead of 64
       const longSignature = Buffer.from(Array(65).fill(0)).toString("base64")
 
-      const result = verifyNearSignature(
-        "Identify myself",
-        longSignature,
-        testPublicKey,
-        standardNonce,
-        testRecipient,
-      )
+      const result = verifyNearSignature("Identify myself", longSignature, testPublicKey, standardNonce, testRecipient)
 
       expect(result.valid).toBe(false)
     })

@@ -39,11 +39,11 @@ The Citizens House uses SputnikDAO's voting system with dynamic quorum.
 
 **SputnikDAO v2 Limitation:** Threshold is calculated as a percentage of **total citizens**, not votes cast.
 
-| Parameter               | Value                                  | Description                             |
-| ----------------------- | -------------------------------------- | --------------------------------------- |
-| **Threshold**           | 50%                                    | 50% of total citizens must vote YES     |
-| **Quorum**              | 7%                                     | Minimum participation floor             |
-| **Effective Threshold** | `max(quorum, (citizen_count / 2) + 1)` | Actual YES votes needed to pass         |
+| Parameter               | Value                                  | Description                         |
+| ----------------------- | -------------------------------------- | ----------------------------------- |
+| **Threshold**           | 50%                                    | 50% of total citizens must vote YES |
+| **Quorum**              | 7%                                     | Minimum participation floor         |
+| **Effective Threshold** | `max(quorum, (citizen_count / 2) + 1)` | Actual YES votes needed to pass     |
 
 ### How It Works
 

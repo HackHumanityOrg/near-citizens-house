@@ -63,7 +63,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
 
   return (
     <>
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 pt-6 pb-12">
         <div className="max-w-7xl mx-auto space-y-12">
           <Card className="border-0 bg-transparent shadow-none">
             <CardContent className="space-y-3 py-4">
