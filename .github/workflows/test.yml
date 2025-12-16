@@ -62,8 +62,26 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin
             contracts/*/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-near
+        run: |
+          if ! command -v cargo-near &> /dev/null; then
+            curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/latest/download/cargo-near-installer.sh | sh
+          fi
+
+      # Build WASM contracts for integration tests
+      - name: Build verified-accounts WASM
+        working-directory: contracts/verified-accounts
+        run: cargo near build non-reproducible-wasm
+
+      - name: Build sputnik-bridge WASM
+        working-directory: contracts/sputnik-bridge
+        run: cargo near build non-reproducible-wasm
+
+      # Note: sputnikdao2.wasm is pre-built and committed in contracts/sputnik-dao-contract/sputnikdao2/res/
 
       # Create allure-results directory
       - name: Setup Allure results
@@ -145,6 +163,35 @@ jobs:
           echo "ignored=0" >> $GITHUB_OUTPUT
         continue-on-error: true
 
+      # Run Rust integration tests (require WASM contracts to be built)
+      - name: Run verified-accounts integration tests
+        id: test_verified_accounts_integration
+        working-directory: contracts/verified-accounts
+        run: |
+          cargo test --features integration-tests 2>&1 | tee test_output.txt
+          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
+          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
+          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
+          IGNORED=$(echo "$SUMMARY" | grep -oP '\d+(?= ignored)' || echo "0")
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "ignored=$IGNORED" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Run sputnik-bridge integration tests
+        id: test_sputnik_bridge_integration
+        working-directory: contracts/sputnik-bridge
+        run: |
+          cargo test --features integration-tests --test integration 2>&1 | tee test_output.txt
+          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
+          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
+          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
+          IGNORED=$(echo "$SUMMARY" | grep -oP '\d+(?= ignored)' || echo "0")
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "ignored=$IGNORED" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
       # Calculate total test results
       - name: Calculate total test results
         id: test_totals
@@ -154,21 +201,27 @@ jobs:
             ${{ steps.test_verified_accounts_interface.outputs.passed || 0 }} +
             ${{ steps.test_sputnik_bridge.outputs.passed || 0 }} +
             ${{ steps.test_sputnik_dao_interface.outputs.passed || 0 }} +
-            ${{ steps.test_typescript.outputs.passed || 0 }}
+            ${{ steps.test_typescript.outputs.passed || 0 }} +
+            ${{ steps.test_verified_accounts_integration.outputs.passed || 0 }} +
+            ${{ steps.test_sputnik_bridge_integration.outputs.passed || 0 }}
           ))
           TOTAL_FAILED=$((
             ${{ steps.test_verified_accounts.outputs.failed || 0 }} +
             ${{ steps.test_verified_accounts_interface.outputs.failed || 0 }} +
             ${{ steps.test_sputnik_bridge.outputs.failed || 0 }} +
             ${{ steps.test_sputnik_dao_interface.outputs.failed || 0 }} +
-            ${{ steps.test_typescript.outputs.failed || 0 }}
+            ${{ steps.test_typescript.outputs.failed || 0 }} +
+            ${{ steps.test_verified_accounts_integration.outputs.failed || 0 }} +
+            ${{ steps.test_sputnik_bridge_integration.outputs.failed || 0 }}
           ))
           TOTAL_IGNORED=$((
             ${{ steps.test_verified_accounts.outputs.ignored || 0 }} +
             ${{ steps.test_verified_accounts_interface.outputs.ignored || 0 }} +
             ${{ steps.test_sputnik_bridge.outputs.ignored || 0 }} +
             ${{ steps.test_sputnik_dao_interface.outputs.ignored || 0 }} +
-            ${{ steps.test_typescript.outputs.ignored || 0 }}
+            ${{ steps.test_typescript.outputs.ignored || 0 }} +
+            ${{ steps.test_verified_accounts_integration.outputs.ignored || 0 }} +
+            ${{ steps.test_sputnik_bridge_integration.outputs.ignored || 0 }}
           ))
           echo "passed=$TOTAL_PASSED" >> $GITHUB_OUTPUT
           echo "failed=$TOTAL_FAILED" >> $GITHUB_OUTPUT
