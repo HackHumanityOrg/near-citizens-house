@@ -83,8 +83,11 @@ jobs:
 
       # Build Sputnik DAO (needed for integration tests)
       - name: Build sputnik-dao WASM
-        working-directory: contracts/sputnik-dao-contract
-        run: ./build.sh
+        shell: bash
+        run: |
+          cd contracts/sputnik-dao-contract
+          chmod +x build.sh
+          ./build.sh
 
       # Create allure-results directory
       - name: Setup Allure results
