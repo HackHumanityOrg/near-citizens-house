@@ -24,6 +24,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       # Node.js setup for TypeScript tests
       - name: Setup Node.js
