@@ -92,8 +92,9 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
-      # Create allure-results directory
+      # Create allure-results directory (always run to ensure directory exists for executor.json)
       - name: Setup Allure results
+        if: always()
         run: |
           rm -rf allure-results
           mkdir -p allure-results
@@ -279,6 +280,7 @@ jobs:
       - name: Create executor.json
         if: always()
         run: |
+          mkdir -p allure-results
           cat > allure-results/executor.json << EOF
           {
             "name": "GitHub Actions",
