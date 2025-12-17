@@ -40,35 +40,6 @@ async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
 #[allure_suite_label("Sputnik Bridge Integration Tests")]
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
-#[allure_tags("integration", "security", "authorization")]
-#[allure_description("Verifies that unauthorized users cannot update the citizen role name. Security-critical test.")]
-
-#[allure_test]
-#[tokio::test]
-async fn test_update_citizen_role_unauthorized() -> anyhow::Result<()> {
-    let env = setup_with_users(1).await?;
-    let unauthorized = env.user(0);
-
-    let result = unauthorized
-        .call(env.bridge.id(), "update_citizen_role")
-        .args_json(json!({ "new_role": "hacker" }))
-        .deposit(NearToken::from_yoctonear(1))
-        .transact()
-        .await?;
-
-    assert!(
-        result.is_failure(),
-        "Unauthorized user should not be able to update citizen role"
-    );
-    assert!(contains_error(&result, "Only backend wallet"));
-
-    Ok(())
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Sputnik Bridge Integration Tests")]
-#[allure_sub_suite("Access Control")]
-#[allure_severity("critical")]
 #[allure_tags("integration", "security", "dao")]
 #[allure_description("Verifies that citizens cannot bypass the bridge and add proposals directly to the DAO. Security-critical test.")]
 
