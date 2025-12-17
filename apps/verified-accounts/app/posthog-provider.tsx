@@ -18,6 +18,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         capture_pageleave: true,
         // Exception autocapture - captures $exception events via window.onerror and onunhandledrejection
         capture_exceptions: true,
+        // Heatmaps - captures mouse movements, clicks, rageclicks, and scroll depth
+        enable_heatmaps: true,
         // Session recording configuration
         disable_session_recording: false,
         session_recording: {
