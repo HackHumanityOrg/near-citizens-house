@@ -57,6 +57,38 @@ fn test_weight_or_ratio_empty_array_fails() {
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Sputnik DAO Interface Tests")]
 #[allure_sub_suite("Validation")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "validation", "edge-case")]
+#[allure_description(
+    "Documents that WeightOrRatio::Ratio allows zero denominator at the type level. \
+     This is a dangerous edge case that could cause division-by-zero in consuming contracts. \
+     Validation must happen in the DAO contract, not the interface."
+)]
+#[allure_test]
+#[test]
+fn test_weight_or_ratio_zero_denominator_allowed() {
+    // Zero denominator is type-valid but logically dangerous (division by zero)
+    // This test documents that the interface allows it - validation must happen downstream
+    let json = r#"[1,0]"#;
+    let result: Result<WeightOrRatio, _> = near_sdk::serde_json::from_str(json);
+
+    // Interface allows zero denominator - no validation at this layer
+    assert!(
+        result.is_ok(),
+        "Interface allows zero denominator - validation must happen in DAO contract"
+    );
+
+    if let Ok(WeightOrRatio::Ratio(num, denom)) = result {
+        assert_eq!(num, 1);
+        assert_eq!(denom, 0, "Zero denominator should be preserved");
+    } else {
+        panic!("Expected Ratio variant with zero denominator");
+    }
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]

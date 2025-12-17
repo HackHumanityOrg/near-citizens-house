@@ -297,6 +297,38 @@ fn test_role_permission_borsh_roundtrip() {
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Sputnik DAO Interface Tests")]
 #[allure_sub_suite("Serialization")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "serialization", "edge-case")]
+#[allure_description(
+    "Documents serialization behavior for WeightOrRatio::Ratio with zero denominator. \
+     This dangerous edge case (potential division-by-zero) is allowed at the type level. \
+     Consuming DAO contracts must validate that Ratio denominators are non-zero."
+)]
+#[allure_test]
+#[test]
+fn test_weight_or_ratio_zero_denominator_serialization() {
+    // Zero denominator could cause division by zero in DAO contract
+    // This test documents that serialization allows it
+    let ratio = WeightOrRatio::Ratio(1, 0);
+
+    // Test that it serializes (type system allows it)
+    let json = near_sdk::serde_json::to_string(&ratio).unwrap();
+    assert!(json.contains('0'), "JSON should contain the zero denominator");
+
+    // Test roundtrip preserves the dangerous value
+    let decoded: WeightOrRatio = near_sdk::serde_json::from_str(&json).unwrap();
+    if let WeightOrRatio::Ratio(num, denom) = decoded {
+        assert_eq!(num, 1);
+        assert_eq!(denom, 0, "Zero denominator should survive roundtrip");
+        // Note: Actual validation must happen in the consuming DAO contract
+    } else {
+        panic!("Expected Ratio variant");
+    }
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik DAO Interface Tests")]
+#[allure_sub_suite("Serialization")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "serialization", "edge-case")]
 #[allure_test]

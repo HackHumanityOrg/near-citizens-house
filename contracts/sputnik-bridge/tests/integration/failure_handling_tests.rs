@@ -362,7 +362,9 @@ async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
         let has_gas_error = contains_error(&result, "gas")
             || contains_error(&result, "Gas")
             || contains_error(&result, "Exceeded")
-            || contains_error(&result, "prepaid");
+            || contains_error(&result, "prepaid")
+            || contains_error(&result, "NotEnoughGas")
+            || contains_error(&result, "GasExceeded");
         assert!(
             has_gas_error,
             "Error should mention gas exhaustion. Failures: {:?}",

@@ -331,12 +331,16 @@ async fn test_bridge_handles_verification_contract_pause() -> anyhow::Result<()>
 #[allure_suite_label("Sputnik Bridge Integration Tests")]
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("critical")]
-#[allure_tags("integration", "edge-case", "concurrency")]
-#[allure_description("Verifies that multiple members can be added in rapid succession without state corruption or race conditions.")]
+#[allure_tags("integration", "edge-case", "sequential")]
+#[allure_description(
+    "Verifies that multiple members can be added in rapid succession without state corruption. \
+     Note: Additions are sequential (not truly concurrent) due to blockchain transaction ordering, \
+     but rapid succession still tests for race conditions in state management."
+)]
 
 #[allure_test]
 #[tokio::test]
-async fn test_concurrent_member_additions() -> anyhow::Result<()> {
+async fn test_rapid_sequential_member_additions() -> anyhow::Result<()> {
     let env = setup_with_users(5).await?;
 
     // Verify all users first

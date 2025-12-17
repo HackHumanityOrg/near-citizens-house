@@ -363,9 +363,20 @@ fn test_quorum_overflow_panics() {
 #[allure_test]
 #[test]
 fn test_quorum_near_overflow_boundary() {
-    step("Calculate safe max value (u64::MAX / 7)", || {
+    step("Calculate safe max value (u64::MAX / 7) and verify exact result", || {
         let safe_max = u64::MAX / 7;
         let result = calculate_quorum(safe_max);
-        assert!(result > 0, "Quorum should be calculated for safe_max");
+
+        // Formula: (citizen_count * 7).div_ceil(100)
+        // For safe_max = u64::MAX / 7, we have:
+        // safe_max * 7 = (u64::MAX / 7) * 7 ≈ u64::MAX (with rounding)
+        // Expected = div_ceil(safe_max * 7, 100)
+        let expected = (safe_max * 7).div_ceil(100);
+
+        assert_eq!(
+            result, expected,
+            "Quorum calculation should match expected value at boundary: {} vs {}",
+            result, expected
+        );
     });
 }
