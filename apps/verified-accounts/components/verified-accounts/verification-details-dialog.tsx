@@ -103,7 +103,6 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
                 publicSignals: proofData.publicSignals,
                 nullifier: proofData.nullifier,
                 attestationId: proofData.attestationId,
-                userId: proofData.userId,
                 verifiedAt: proofData.verifiedAt,
                 nearAccountId: account.nearAccountId,
               }
@@ -123,7 +122,6 @@ interface VerificationResult {
 interface AccountData {
   nearAccountId: string
   nullifier: string
-  userId: string
   attestationId: string
   verifiedAt: number
   selfProof: {
@@ -139,7 +137,6 @@ interface AccountData {
 
 interface ProofDataType {
   nullifier: string
-  userId: string
   attestationId: string
   verifiedAt: number
   zkProof: {
@@ -217,7 +214,6 @@ function buildTerminalOutput(
     lines.push("════════════════════════════════════════════════════════════════════════════════")
     lines.push("")
     lines.push(`  nullifier: ${p.nullifier}`)
-    lines.push(`  user_id: ${p.userId}`)
     lines.push(`  attestation_id: ${p.attestationId}`)
     lines.push(`  verified_at: ${p.verifiedAt}`)
     lines.push(`  verified_at_iso: ${new Date(p.verifiedAt).toISOString()}`)

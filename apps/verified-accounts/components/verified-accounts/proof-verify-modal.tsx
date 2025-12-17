@@ -12,7 +12,6 @@ interface ZkProofData {
   publicSignals: string[]
   nullifier: string
   attestationId: string
-  userId: string
   verifiedAt: number
   nearAccountId: string
 }
