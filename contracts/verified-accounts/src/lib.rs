@@ -10,13 +10,19 @@
 //! ## Trust Assumptions
 //! - The `backend_wallet` is trusted to only submit valid Self.xyz ZK proofs
 //! - The contract cannot verify ZK proofs on-chain (prohibitively expensive)
+//! - **The `backend_wallet` is trusted to verify account ownership off-chain**
+//!   - NEP-413 signatures prove cryptographic validity, NOT that the public key
+//!     is a valid access key for the claimed account
+//!   - NEAR smart contracts cannot query on-chain access keys (SDK limitation)
+//!   - The backend MUST verify the signing key is registered for the account
+//!     via RPC (`view_access_key`) before submitting verifications
 //!
 //! ## On-Chain Verification
 //! The contract independently verifies:
-//! - NEP-413 Ed25519 signatures
-//! - Signature uniqueness
-//! - Nullifier uniqueness
-//! - Account uniqueness
+//! - NEP-413 Ed25519 signatures (cryptographic validity only)
+//! - Signature uniqueness (replay protection)
+//! - Nullifier uniqueness (one identity per person)
+//! - Account uniqueness (one identity per NEAR account)
 //!
 //! ## Proof Storage & Re-Verification
 //! Self.xyz ZK proofs are stored on-chain in their entirety
@@ -122,7 +128,7 @@ pub struct Nep413Payload {
 }
 
 /// Event emitted when a verification is stored
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct VerificationStoredEvent {
     pub near_account_id: String,
@@ -131,21 +137,21 @@ pub struct VerificationStoredEvent {
 }
 
 /// Event emitted when contract is paused
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractPausedEvent {
     pub by: String,
 }
 
 /// Event emitted when contract is unpaused
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractUnpausedEvent {
     pub by: String,
 }
 
 /// Event emitted when backend wallet is updated
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BackendWalletUpdatedEvent {
     pub old_wallet: String,
@@ -452,6 +458,18 @@ impl Contract {
     }
 
     /// Verify NEAR signature (NEP-413 format)
+    ///
+    /// # Security Note
+    ///
+    /// This function verifies cryptographic signature validity only. It does NOT
+    /// verify that the public key is a valid access key for the claimed account.
+    ///
+    /// The NEAR SDK does not provide a way to query on-chain access keys from
+    /// within a smart contract. Access key validation must be performed off-chain
+    /// by the backend wallet using RPC (`view_access_key`) before calling this
+    /// contract.
+    ///
+    /// See module-level documentation for the complete trust model.
     fn verify_near_signature(&self, sig_data: &NearSignatureData) {
         // Validate nonce length
         assert_eq!(sig_data.nonce.len(), 32, "Nonce must be exactly 32 bytes");

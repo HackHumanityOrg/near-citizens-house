@@ -1,8 +1,16 @@
 //! Shared test helpers for verified-accounts unit tests
 
 use near_crypto::{InMemorySigner, KeyType, SecretKey, Signer};
+use near_sdk::serde::de::DeserializeOwned;
+use near_sdk::serde::Deserialize;
 use near_sdk::{env, test_utils::VMContextBuilder, AccountId};
 use verified_accounts::{NearSignatureData, SelfProofData, ZkProof};
+
+// Re-export event structs from the contract for test use
+pub use verified_accounts::{
+    BackendWalletUpdatedEvent, ContractPausedEvent, ContractUnpausedEvent,
+    VerificationStoredEvent,
+};
 
 /// Create a test context with the given predecessor account
 pub fn get_context(predecessor: AccountId) -> VMContextBuilder {
@@ -131,4 +139,54 @@ pub fn create_valid_signature(
         nonce: nonce.to_vec(),
         recipient: recipient.clone(),
     }
+}
+
+// ==================== EVENT PARSING HELPERS ====================
+
+/// NEP-297 event wrapper structure
+#[derive(Debug, Clone, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct EventWrapper<T> {
+    pub standard: String,
+    pub version: String,
+    pub event: String,
+    pub data: T,
+}
+
+/// Parse an event of type T from the log lines.
+/// Searches for EVENT_JSON logs and deserializes the event data.
+///
+/// # Arguments
+/// * `logs` - The log lines from `get_logs()`
+/// * `event_name` - The name of the event to find (e.g., "verification_stored")
+///
+/// # Returns
+/// The parsed event data if found, None otherwise
+pub fn parse_event<T: DeserializeOwned>(logs: &[String], event_name: &str) -> Option<T> {
+    for log in logs {
+        if let Some(json_str) = log.strip_prefix("EVENT_JSON:") {
+            if let Ok(wrapper) = near_sdk::serde_json::from_str::<EventWrapper<T>>(json_str) {
+                if wrapper.event == event_name {
+                    return Some(wrapper.data);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Parse all events of type T from the log lines.
+/// Useful when multiple events of the same type may be emitted.
+pub fn parse_all_events<T: DeserializeOwned>(logs: &[String], event_name: &str) -> Vec<T> {
+    let mut events = Vec::new();
+    for log in logs {
+        if let Some(json_str) = log.strip_prefix("EVENT_JSON:") {
+            if let Ok(wrapper) = near_sdk::serde_json::from_str::<EventWrapper<T>>(json_str) {
+                if wrapper.event == event_name {
+                    events.push(wrapper.data);
+                }
+            }
+        }
+    }
+    events
 }

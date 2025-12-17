@@ -3,7 +3,8 @@
 //! Happy path tests with real cryptographic signatures
 
 use super::helpers::{
-    assert_panic_with, create_signer, create_valid_signature, get_context, test_self_proof,
+    assert_panic_with, create_signer, create_valid_signature, get_context, parse_event,
+    test_self_proof, VerificationStoredEvent,
 };
 use allure_rs::bdd;
 use allure_rs::prelude::*;
@@ -67,17 +68,27 @@ fn test_happy_path_store_verification() {
         assert!(contract.is_account_verified(user.clone()));
         assert_eq!(contract.get_verified_count(), 1);
 
+        // Parse and validate the verification_stored event
         let logs = get_logs();
-        assert!(!logs.is_empty(), "Expected verification event");
-        assert!(
-            logs.iter().any(|l| l.contains("EVENT_JSON")),
-            "Expected JSON event"
+        let event: VerificationStoredEvent =
+            parse_event(&logs, "verification_stored").expect("verification_stored event not found");
+
+        // Validate event data matches inputs
+        assert_eq!(
+            event.near_account_id,
+            user.to_string(),
+            "Event near_account_id should match stored account"
         );
-        assert!(
-            logs.iter().any(|l| l.contains("verification_stored")),
-            "Expected verification_stored event"
+        assert_eq!(
+            event.nullifier, "test_nullifier",
+            "Event nullifier should match input"
+        );
+        assert_eq!(
+            event.attestation_id, "1",
+            "Event attestation_id should match input"
         );
 
+        // Verify account data is also correct
         let account = contract.get_account(user.clone()).unwrap();
         assert_eq!(account.near_account_id, user);
         assert_eq!(account.nullifier, "test_nullifier");

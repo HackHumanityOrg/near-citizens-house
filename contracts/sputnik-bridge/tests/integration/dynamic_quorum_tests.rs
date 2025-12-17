@@ -684,5 +684,38 @@ async fn test_quorum_update_atomic_with_member_addition() -> anyhow::Result<()> 
     assert!(member_added, "member_added event should be emitted");
     assert!(quorum_updated, "quorum_updated event should be emitted");
 
+    // Parse and validate the quorum_updated event data
+    let quorum_event: QuorumUpdatedEvent =
+        parse_typed_event(&events, "quorum_updated").expect("quorum_updated event data not found");
+
+    // Validate event data matches expected values
+    assert_eq!(
+        quorum_event.citizen_count, citizen_count_after as u64,
+        "Event citizen_count should match actual count"
+    );
+
+    // Expected quorum = ceil(citizen_count * 7 / 100)
+    let expected_quorum = if citizen_count_after == 0 {
+        0
+    } else {
+        ((citizen_count_after as u64) * 7).div_ceil(100)
+    };
+    assert_eq!(
+        quorum_event.new_quorum, expected_quorum,
+        "Event new_quorum should match calculated ceil(7% * citizen_count)"
+    );
+
+    // Proposal ID should be valid (non-zero since it's for the policy update proposal)
+    assert!(
+        quorum_event.proposal_id > 0,
+        "Event proposal_id should be a valid proposal ID"
+    );
+
+    // Verify the quorum in the DAO matches the event
+    assert_eq!(
+        quorum_after, expected_quorum,
+        "DAO quorum should match event's new_quorum"
+    );
+
     Ok(())
 }

@@ -160,7 +160,7 @@ pub trait VerifiedAccounts {
     /// Get full account data including ZK proof.
     ///
     /// **Use this for:** Re-verification, audit trails, proof validation.
-    /// This is the most expensive method due to large proof data (~500 bytes).
+    /// This is the most expensive method due to large proof data (~2.5 KB).
     ///
     /// Returns `None` if the account is not verified.
     fn get_account_with_proof(&self, near_account_id: AccountId) -> Option<VerifiedAccount>;

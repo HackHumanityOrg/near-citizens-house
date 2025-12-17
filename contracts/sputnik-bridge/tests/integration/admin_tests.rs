@@ -12,7 +12,7 @@ use serde_json::json;
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "admin", "wallet")]
-#[allure_description("Verifies that the backend wallet can update its address to a new wallet. Security-critical test.")]
+#[allure_description("Verifies that the backend wallet can update its address to a new wallet.")]
 
 #[allure_test]
 #[tokio::test]

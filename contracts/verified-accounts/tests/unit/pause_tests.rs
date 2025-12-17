@@ -1,6 +1,9 @@
 //! Pause/Unpause tests for verified-accounts contract
 
-use super::helpers::{assert_panic_with, get_context, test_self_proof};
+use super::helpers::{
+    assert_panic_with, get_context, parse_event, test_self_proof, ContractPausedEvent,
+    ContractUnpausedEvent,
+};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::{accounts, get_logs};
 use near_sdk::testing_env;
@@ -32,33 +35,35 @@ fn test_pause_unpause() {
     contract.pause();
     assert!(contract.is_paused());
 
+    // Parse and validate the contract_paused event
     let logs = get_logs();
-    assert!(!logs.is_empty(), "Expected pause event");
-    assert!(
-        logs.iter().any(|l| l.contains("EVENT_JSON")),
-        "Expected JSON event"
-    );
-    assert!(
-        logs.iter().any(|l| l.contains("contract_paused")),
-        "Expected contract_paused event"
+    let pause_event: ContractPausedEvent =
+        parse_event(&logs, "contract_paused").expect("contract_paused event not found");
+
+    // Validate event data - 'by' should be the backend wallet
+    assert_eq!(
+        pause_event.by,
+        backend.to_string(),
+        "Event 'by' should be the backend wallet that paused"
     );
 
     // Unpause (requires 1 yocto)
-    let mut context = get_context(backend);
+    let mut context = get_context(backend.clone());
     context.attached_deposit(NearToken::from_yoctonear(1));
     testing_env!(context.build());
     contract.unpause();
     assert!(!contract.is_paused());
 
+    // Parse and validate the contract_unpaused event
     let logs = get_logs();
-    assert!(!logs.is_empty(), "Expected unpause event");
-    assert!(
-        logs.iter().any(|l| l.contains("EVENT_JSON")),
-        "Expected JSON event"
-    );
-    assert!(
-        logs.iter().any(|l| l.contains("contract_unpaused")),
-        "Expected contract_unpaused event"
+    let unpause_event: ContractUnpausedEvent =
+        parse_event(&logs, "contract_unpaused").expect("contract_unpaused event not found");
+
+    // Validate event data - 'by' should be the backend wallet
+    assert_eq!(
+        unpause_event.by,
+        backend.to_string(),
+        "Event 'by' should be the backend wallet that unpaused"
     );
 }
 

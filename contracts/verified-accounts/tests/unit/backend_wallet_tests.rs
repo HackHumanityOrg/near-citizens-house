@@ -1,6 +1,6 @@
 //! Backend wallet management tests for verified-accounts contract
 
-use super::helpers::{assert_panic_with, get_context};
+use super::helpers::{assert_panic_with, get_context, parse_event, BackendWalletUpdatedEvent};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::{accounts, get_logs};
 use near_sdk::testing_env;
@@ -25,21 +25,27 @@ fn test_update_backend_wallet() {
     assert_eq!(contract.get_backend_wallet(), backend);
 
     // Update backend wallet (requires 1 yocto)
+    let backend_str = backend.to_string(); // Store before moving
     let mut context = get_context(backend);
     context.attached_deposit(NearToken::from_yoctonear(1));
     testing_env!(context.build());
     contract.update_backend_wallet(new_backend.clone());
     assert_eq!(contract.get_backend_wallet(), new_backend);
 
+    // Parse and validate the backend_wallet_updated event
     let logs = get_logs();
-    assert!(!logs.is_empty(), "Expected backend wallet update event");
-    assert!(
-        logs.iter().any(|l| l.contains("EVENT_JSON")),
-        "Expected JSON event"
+    let event: BackendWalletUpdatedEvent = parse_event(&logs, "backend_wallet_updated")
+        .expect("backend_wallet_updated event not found");
+
+    // Validate event data matches the wallet change
+    assert_eq!(
+        event.old_wallet, backend_str,
+        "Event old_wallet should match original backend"
     );
-    assert!(
-        logs.iter().any(|l| l.contains("backend_wallet_updated")),
-        "Expected backend_wallet_updated event"
+    assert_eq!(
+        event.new_wallet,
+        new_backend.to_string(),
+        "Event new_wallet should match new backend"
     );
 }
 

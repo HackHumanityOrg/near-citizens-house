@@ -16,12 +16,18 @@ env:
   RUST_BACKTRACE: 1
   # Enable ZK verification tests (makes real Celo RPC calls)
   ENABLE_NETWORK_TESTS: "true"
+  # Faster Rust compilation on 8-core runners
+  CARGO_BUILD_JOBS: 8
+  # Reduce incremental compilation overhead in CI
+  CARGO_INCREMENTAL: 0
 
 jobs:
   # Build WASM contracts (shared by integration tests)
   build:
     name: Build Contracts
-    runs-on: ubuntu-latest
+    # Use 8-core runner for faster builds (requires GitHub Team/Enterprise)
+    # Falls back to ubuntu-latest on Free plan
+    runs-on: ubuntu-latest-8-cores
     steps:
       - uses: actions/checkout@v4
         with:
@@ -76,7 +82,8 @@ jobs:
   # Run all Rust unit tests in parallel
   unit-tests-rust:
     name: Rust Unit Tests
-    runs-on: ubuntu-latest
+    # Use 8-core runner for faster compilation (requires GitHub Team/Enterprise)
+    runs-on: ubuntu-latest-8-cores
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts.outputs.failed }}
@@ -240,7 +247,8 @@ jobs:
   # Run integration tests (requires built WASM contracts)
   integration-tests:
     name: Integration Tests
-    runs-on: ubuntu-latest
+    # Use 8-core runner for faster sandbox tests (requires GitHub Team/Enterprise)
+    runs-on: ubuntu-latest-8-cores
     needs: build
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts_integration.outputs.passed }}

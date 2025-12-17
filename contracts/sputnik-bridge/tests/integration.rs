@@ -37,3 +37,6 @@ mod failure_handling_tests;
 
 #[path = "integration/state_consistency_tests.rs"]
 mod state_consistency_tests;
+
+#[path = "integration/dao_sanity_tests.rs"]
+mod dao_sanity_tests;

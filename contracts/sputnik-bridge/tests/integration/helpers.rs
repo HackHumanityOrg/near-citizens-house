@@ -666,6 +666,9 @@ pub fn calculate_effective_threshold(
 
 // ==================== EVENT PARSING ====================
 
+// Re-export event types from the contract for test use
+pub use sputnik_bridge::{MemberAddedEvent, ProposalCreatedEvent, QuorumUpdatedEvent};
+
 /// Event wrapper structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventWrapper {
@@ -673,6 +676,21 @@ pub struct EventWrapper {
     pub version: String,
     pub event: String,
     pub data: serde_json::Value,
+}
+
+/// Parse a typed event from event wrappers by event name
+pub fn parse_typed_event<T: serde::de::DeserializeOwned>(
+    events: &[EventWrapper],
+    event_name: &str,
+) -> Option<T> {
+    for event in events {
+        if event.event == event_name {
+            if let Ok(data) = serde_json::from_value(event.data.clone()) {
+                return Some(data);
+            }
+        }
+    }
+    None
 }
 
 /// Extract EVENT_JSON logs from execution result

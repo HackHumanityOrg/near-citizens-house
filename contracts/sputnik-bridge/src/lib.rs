@@ -27,6 +27,7 @@
 //! - Bridge has minimal SputnikDAO permissions (cannot transfer funds, etc.)
 //! - Citizens vote directly on SputnikDAO, not through the bridge
 
+use near_sdk::assert_one_yocto;
 use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, Gas, NearSchema, PanicOnDefault, Promise, PromiseResult};
@@ -45,7 +46,7 @@ pub const MAX_DESCRIPTION_LEN: usize = 10_000;
 
 /// Gas allocations for cross-contract calls
 /// These are optimized to fit within NEAR's 300 TGas transaction limit
-/// Each callback reservation includes ~15 TGas execution overhead
+/// Each callback reservation includes ~20 TGas execution overhead
 #[cfg(not(feature = "testing"))]
 const GAS_FOR_VERIFICATION: Gas = Gas::from_tgas(5);
 #[cfg(feature = "testing")]
@@ -106,7 +107,7 @@ pub fn calculate_quorum(citizen_count: u64) -> u64 {
 }
 
 /// Event emitted when a member is added
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct MemberAddedEvent {
     pub member_id: String,
@@ -115,7 +116,7 @@ pub struct MemberAddedEvent {
 }
 
 /// Event emitted when a proposal is created
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ProposalCreatedEvent {
     pub proposal_id: u64,
@@ -123,7 +124,7 @@ pub struct ProposalCreatedEvent {
 }
 
 /// Event emitted when citizen quorum is updated
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct QuorumUpdatedEvent {
     pub citizen_count: u64,
@@ -614,6 +615,7 @@ impl SputnikBridge {
     /// * If caller is not current backend_wallet
     #[payable]
     pub fn update_backend_wallet(&mut self, new_backend_wallet: AccountId) {
+        assert_one_yocto();
         self.assert_backend_wallet();
         self.backend_wallet = new_backend_wallet;
     }
@@ -628,6 +630,7 @@ impl SputnikBridge {
     /// * If new_role is empty
     #[payable]
     pub fn update_citizen_role(&mut self, new_role: String) {
+        assert_one_yocto();
         self.assert_backend_wallet();
         let new_role_trimmed = new_role.trim().to_string();
         assert!(!new_role_trimmed.is_empty(), "new_role must be non-empty");
