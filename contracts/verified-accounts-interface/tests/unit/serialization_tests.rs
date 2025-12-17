@@ -14,7 +14,6 @@ fn test_verified_account_info_serialization() {
     let info = VerifiedAccountInfo {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
-        user_id: "user123".to_string(),
         attestation_id: "attestation123".to_string(),
         verified_at: 1234567890,
     };
@@ -42,7 +41,6 @@ fn test_verified_account_serialization() {
     let account = VerifiedAccount {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
-        user_id: "user123".to_string(),
         attestation_id: "attestation123".to_string(),
         verified_at: 1234567890,
         self_proof: SelfProofData {
@@ -169,7 +167,6 @@ fn test_verified_account_info_json_roundtrip() {
     let info = VerifiedAccountInfo {
         nullifier: "123456789012345678901234567890".to_string(),
         near_account_id: "alice.testnet".parse().unwrap(),
-        user_id: "user_abc".to_string(),
         attestation_id: "1".to_string(),
         verified_at: 1700000000000000000, // Realistic nanosecond timestamp
     };
@@ -196,7 +193,6 @@ fn test_verified_account_with_21_signals() {
     let account = VerifiedAccount {
         nullifier: "nullifier".to_string(),
         near_account_id: "user.near".parse().unwrap(),
-        user_id: "user_id".to_string(),
         attestation_id: "1".to_string(),
         verified_at: 0,
         self_proof: SelfProofData {
