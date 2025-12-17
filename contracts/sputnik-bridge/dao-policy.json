@@ -9,7 +9,7 @@
       {
         "name": "bridge",
         "kind": {
-          "Group": ["sputnik-bridge-v1.widefile4023.testnet"]
+          "Group": ["sputnik-bridge-v1.widevest5956.testnet"]
         },
         "permissions": [
           "add_member_to_role:AddProposal",
