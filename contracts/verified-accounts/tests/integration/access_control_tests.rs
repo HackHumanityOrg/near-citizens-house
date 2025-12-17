@@ -1,0 +1,195 @@
+//! Access control tests for verified-accounts contract
+
+use crate::helpers::{init, test_self_proof};
+use allure_rs::prelude::*;
+use near_workspaces::types::NearToken;
+use near_workspaces::AccountId;
+use serde_json::json;
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "authorization")]
+#[allure_description("Verifies that unauthorized accounts cannot store verifications. Security-critical test.")]
+#[allure_test]
+#[tokio::test]
+async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
+    let (worker, contract, _backend) = init().await?;
+    let unauthorized = worker.dev_create_account().await?;
+    let user = worker.dev_create_account().await?;
+
+    // Try to store verification from unauthorized account
+    let result = unauthorized
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "test_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": vec![0u8; 64],
+                "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
+                "challenge": "Identify myself",
+                "nonce": vec![0u8; 32],
+                "recipient": user.id()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "test"
+        }))
+        .transact()
+        .await?;
+
+    step("Verify unauthorized store_verification fails", || {
+        assert!(result.is_failure());
+        let failure_msg = format!("{:?}", result.failures());
+        assert!(failure_msg.contains("Only backend wallet can store verifications"));
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "authorization")]
+#[allure_description("Verifies that unauthorized accounts cannot pause the contract. Security-critical test.")]
+#[allure_test]
+#[tokio::test]
+async fn test_unauthorized_pause() -> anyhow::Result<()> {
+    let (worker, contract, _backend) = init().await?;
+    let unauthorized = worker.dev_create_account().await?;
+
+    let result = unauthorized
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify unauthorized pause fails", || {
+        assert!(result.is_failure());
+        let failure_msg = format!("{:?}", result.failures());
+        assert!(failure_msg.contains("Only backend wallet can pause"));
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "admin", "pause")]
+#[allure_description("Verifies that the backend wallet can pause and unpause the contract correctly.")]
+#[allure_test]
+#[tokio::test]
+async fn test_authorized_pause_unpause() -> anyhow::Result<()> {
+    let (_worker, contract, backend) = init().await?;
+
+    // Pause the contract (requires 1 yocto deposit)
+    let result = backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify pause succeeds", || {
+        assert!(result.is_success(), "Pause failed: {:?}", result.failures());
+    });
+
+    // Verify it's paused
+    let is_paused: bool = contract.view("is_paused").await?.json()?;
+
+    step("Verify contract is paused", || {
+        assert!(is_paused);
+    });
+
+    // Unpause the contract (requires 1 yocto deposit)
+    let result = backend
+        .call(contract.id(), "unpause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify unpause succeeds", || {
+        assert!(
+            result.is_success(),
+            "Unpause failed: {:?}",
+            result.failures()
+        );
+    });
+
+    // Verify it's unpaused
+    let is_paused: bool = contract.view("is_paused").await?.json()?;
+
+    step("Verify contract is unpaused", || {
+        assert!(!is_paused);
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "admin", "backend-wallet")]
+#[allure_description("Verifies that the backend wallet can be updated and the new wallet gains proper permissions.")]
+#[allure_test]
+#[tokio::test]
+async fn test_update_backend_wallet() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init().await?;
+    let new_backend = worker.dev_create_account().await?;
+
+    // Update backend wallet (requires 1 yocto deposit)
+    let result = backend
+        .call(contract.id(), "update_backend_wallet")
+        .args_json(json!({"new_backend_wallet": new_backend.id()}))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify update_backend_wallet succeeds", || {
+        assert!(
+            result.is_success(),
+            "Update backend wallet failed: {:?}",
+            result.failures()
+        );
+    });
+
+    // Verify new backend wallet
+    let current_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
+
+    step("Verify new backend wallet is set", || {
+        assert_eq!(current_backend, *new_backend.id());
+    });
+
+    // Old backend can no longer pause (with 1 yocto deposit)
+    let old_backend_result = backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify old backend cannot pause", || {
+        assert!(old_backend_result.is_failure());
+    });
+
+    // New backend can pause (with 1 yocto deposit)
+    let new_backend_result = new_backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify new backend can pause", || {
+        assert!(
+            new_backend_result.is_success(),
+            "New backend pause failed: {:?}",
+            new_backend_result.failures()
+        );
+    });
+
+    Ok(())
+}

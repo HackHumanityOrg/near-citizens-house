@@ -15,20 +15,32 @@ use sputnik_bridge::SputnikBridge;
 #[allure_test]
 #[test]
 fn test_initialization() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(
+            accounts(0), // backend_wallet
+            accounts(1), // sputnik_dao
+            accounts(2), // verified_accounts_contract
+            "citizen".to_string(),
+        )
+    });
 
-    let contract = SputnikBridge::new(
-        accounts(0), // backend_wallet
-        accounts(1), // sputnik_dao
-        accounts(2), // verified_accounts_contract
-        "citizen".to_string(),
-    );
+    step("Verify backend_wallet is set correctly", || {
+        assert_eq!(contract.get_backend_wallet(), accounts(0));
+    });
 
-    assert_eq!(contract.get_backend_wallet(), accounts(0));
-    assert_eq!(contract.get_sputnik_dao(), accounts(1));
-    assert_eq!(contract.get_verified_accounts_contract(), accounts(2));
-    assert_eq!(contract.get_citizen_role(), "citizen");
+    step("Verify sputnik_dao is set correctly", || {
+        assert_eq!(contract.get_sputnik_dao(), accounts(1));
+    });
+
+    step("Verify verified_accounts_contract is set correctly", || {
+        assert_eq!(contract.get_verified_accounts_contract(), accounts(2));
+    });
+
+    step("Verify citizen_role is set correctly", || {
+        assert_eq!(contract.get_citizen_role(), "citizen");
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -40,20 +52,24 @@ fn test_initialization() {
 #[allure_test]
 #[test]
 fn test_initialization_empty_citizen_role_fails() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    step("Set up test context", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+    });
 
-    assert_panic_with(
-        || {
-            SputnikBridge::new(
-                accounts(0),
-                accounts(1),
-                accounts(2),
-                "".to_string(), // Empty citizen_role
-            );
-        },
-        "citizen_role must be non-empty",
-    );
+    step("Attempt initialization with empty citizen_role", || {
+        assert_panic_with(
+            || {
+                SputnikBridge::new(
+                    accounts(0),
+                    accounts(1),
+                    accounts(2),
+                    "".to_string(),
+                );
+            },
+            "citizen_role must be non-empty",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -65,18 +81,22 @@ fn test_initialization_empty_citizen_role_fails() {
 #[allure_test]
 #[test]
 fn test_initialization_whitespace_only_citizen_role_fails() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    step("Set up test context", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+    });
 
-    assert_panic_with(
-        || {
-            SputnikBridge::new(
-                accounts(0),
-                accounts(1),
-                accounts(2),
-                "   ".to_string(), // Whitespace-only citizen_role (gets trimmed to empty)
-            );
-        },
-        "citizen_role must be non-empty",
-    );
+    step("Attempt initialization with whitespace-only citizen_role", || {
+        assert_panic_with(
+            || {
+                SputnikBridge::new(
+                    accounts(0),
+                    accounts(1),
+                    accounts(2),
+                    "   ".to_string(),
+                );
+            },
+            "citizen_role must be non-empty",
+        );
+    });
 }

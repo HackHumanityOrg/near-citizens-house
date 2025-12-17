@@ -33,24 +33,26 @@ async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should fail due to insufficient proposal bond
-    assert!(
-        result.is_failure(),
-        "Add member with insufficient deposit should fail"
-    );
+    step("Verify insufficient deposit is rejected", || {
+        // Should fail due to insufficient proposal bond
+        assert!(
+            result.is_failure(),
+            "Add member with insufficient deposit should fail"
+        );
 
-    // Verify error message mentions insufficient deposit/bond
-    // Note: SputnikDAO may return different error messages in different versions,
-    // so we accept multiple possible messages for external contract errors
-    assert!(
-        contains_any_error(
-            &result,
-            &["Not enough deposit", "ERR_MIN_BOND"],
-            "insufficient deposit"
-        ),
-        "Error should mention insufficient deposit. Failures: {:?}",
-        result.failures()
-    );
+        // Verify error message mentions insufficient deposit/bond
+        // Note: SputnikDAO may return different error messages in different versions,
+        // so we accept multiple possible messages for external contract errors
+        assert!(
+            contains_any_error(
+                &result,
+                &["Not enough deposit", "ERR_MIN_BOND"],
+                "insufficient deposit"
+            ),
+            "Error should mention insufficient deposit. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -81,11 +83,13 @@ async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should fail due to zero deposit
-    assert!(
-        result.is_failure(),
-        "Add member with zero deposit should fail"
-    );
+    step("Verify zero deposit is rejected", || {
+        // Should fail due to zero deposit
+        assert!(
+            result.is_failure(),
+            "Add member with zero deposit should fail"
+        );
+    });
 
     Ok(())
 }
@@ -124,16 +128,21 @@ async fn test_add_member_with_exact_bond_succeeds() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should succeed with exact bond amount
-    assert!(
-        result.is_success(),
-        "Add member with exact 1 NEAR bond should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify exact bond succeeds", || {
+        // Should succeed with exact bond amount
+        assert!(
+            result.is_success(),
+            "Add member with exact 1 NEAR bond should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     // Verify user was added as citizen
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(is_citizen, "User should be in citizen role");
+
+    step("Verify user is citizen after exact bond deposit", || {
+        assert!(is_citizen, "User should be in citizen role");
+    });
 
     Ok(())
 }
@@ -173,19 +182,21 @@ async fn test_add_member_with_excess_deposit_fails() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // SputnikDAO v2 requires EXACT bond amount, not minimum
-    // This fails with ERR_MIN_BOND (misleading name but checks equality)
-    assert!(
-        result.is_failure(),
-        "Add member with excess deposit should fail - DAO requires exact bond"
-    );
+    step("Verify excess deposit is rejected (DAO requires exact bond)", || {
+        // SputnikDAO v2 requires EXACT bond amount, not minimum
+        // This fails with ERR_MIN_BOND (misleading name but checks equality)
+        assert!(
+            result.is_failure(),
+            "Add member with excess deposit should fail - DAO requires exact bond"
+        );
 
-    // Verify error mentions bond
-    assert!(
-        contains_any_error(&result, &["ERR_MIN_BOND", "bond"], "bond error"),
-        "Error should mention bond. Failures: {:?}",
-        result.failures()
-    );
+        // Verify error mentions bond
+        assert!(
+            contains_any_error(&result, &["ERR_MIN_BOND", "bond"], "bond error"),
+            "Error should mention bond. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -220,16 +231,21 @@ async fn test_create_proposal_with_exact_bond() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should succeed with exact bond amount
-    assert!(
-        result.is_success(),
-        "Create proposal with exact 1 NEAR bond should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify create proposal with exact bond succeeds", || {
+        // Should succeed with exact bond amount
+        assert!(
+            result.is_success(),
+            "Create proposal with exact 1 NEAR bond should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     // Verify proposal was created
     let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?;
-    assert!(proposal_id > 0, "Proposal should have been created");
+
+    step("Verify proposal was created", || {
+        assert!(proposal_id > 0, "Proposal should have been created");
+    });
 
     Ok(())
 }
@@ -276,26 +292,35 @@ async fn test_bridge_handles_verification_contract_pause() -> anyhow::Result<()>
         .deposit(NearToken::from_yoctonear(1))
         .transact()
         .await?;
-    assert!(
-        pause_result.is_success(),
-        "Pause should succeed. Failures: {:?}",
-        pause_result.failures()
-    );
+
+    step("Verify pause succeeds", || {
+        assert!(
+            pause_result.is_success(),
+            "Pause should succeed. Failures: {:?}",
+            pause_result.failures()
+        );
+    });
 
     // Bridge should still be able to add member - read operations work when paused
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
-    assert!(
-        result.is_success(),
-        "Add member should succeed even when verified-accounts is paused (reads work). Failures: {:?}",
-        result.failures()
-    );
+
+    step("Verify add_member works when verified-accounts is paused", || {
+        assert!(
+            result.is_success(),
+            "Add member should succeed even when verified-accounts is paused (reads work). Failures: {:?}",
+            result.failures()
+        );
+    });
 
     // Verify user was added as citizen
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(
-        is_citizen,
-        "User should be in citizen role after add_member with paused verified-accounts"
-    );
+
+    step("Verify user is citizen after paused contract operation", || {
+        assert!(
+            is_citizen,
+            "User should be in citizen role after add_member with paused verified-accounts"
+        );
+    });
 
     Ok(())
 }
@@ -326,10 +351,12 @@ async fn test_concurrent_member_additions() -> anyhow::Result<()> {
         results.push((user.id().to_string(), result.is_success()));
     }
 
-    // All additions should succeed
-    for (user_id, success) in &results {
-        assert!(success, "Adding user {} should succeed", user_id);
-    }
+    step("Verify all rapid additions succeeded", || {
+        // All additions should succeed
+        for (user_id, success) in &results {
+            assert!(success, "Adding user {} should succeed", user_id);
+        }
+    });
 
     // Verify all users are citizens
     for user in &env.users {
@@ -340,12 +367,15 @@ async fn test_concurrent_member_additions() -> anyhow::Result<()> {
 
     // Verify correct number of proposals were created (one per user)
     let proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
-    assert!(
-        proposal_count >= env.users.len() as u64,
-        "Should have at least {} proposals, got {}",
-        env.users.len(),
-        proposal_count
-    );
+
+    step("Verify all users are citizens with correct proposal count", || {
+        assert!(
+            proposal_count >= env.users.len() as u64,
+            "Should have at least {} proposals, got {}",
+            env.users.len(),
+            proposal_count
+        );
+    });
 
     Ok(())
 }
@@ -399,11 +429,14 @@ async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
 
     // After 3 approve votes, proposal should be approved
     let proposal_after_approvals = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal_after_approvals.status,
-        ProposalStatus::Approved,
-        "Proposal should be approved after 3/5 (60%) approval votes"
-    );
+
+    step("Verify proposal approved after 3/5 (60%) votes", || {
+        assert_eq!(
+            proposal_after_approvals.status,
+            ProposalStatus::Approved,
+            "Proposal should be approved after 3/5 (60%) approval votes"
+        );
+    });
 
     // Verify that voting on an already-approved proposal fails
     let late_vote_result = vote_on_proposal(
@@ -415,19 +448,24 @@ async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
     )
     .await?;
 
-    // Late votes on approved proposals should fail
-    assert!(
-        late_vote_result.is_failure(),
-        "Voting on an already-approved proposal should fail"
-    );
+    step("Verify late vote on approved proposal fails", || {
+        // Late votes on approved proposals should fail
+        assert!(
+            late_vote_result.is_failure(),
+            "Voting on an already-approved proposal should fail"
+        );
+    });
 
     // Final verification - proposal is still approved
     let final_proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        final_proposal.status,
-        ProposalStatus::Approved,
-        "Proposal should remain approved"
-    );
+
+    step("Verify proposal remains approved after late vote attempt", || {
+        assert_eq!(
+            final_proposal.status,
+            ProposalStatus::Approved,
+            "Proposal should remain approved"
+        );
+    });
 
     Ok(())
 }

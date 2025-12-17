@@ -33,22 +33,30 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
     // Try to add unverified member
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
 
-    // Should fail
-    assert!(result.is_failure(), "Should fail for unverified user");
+    step("Verify unverified user add fails", || {
+        // Should fail
+        assert!(result.is_failure(), "Should fail for unverified user");
+    });
 
     // Verify NO proposal was created in DAO (state unchanged)
     let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
-    assert_eq!(
-        initial_proposal_count, final_proposal_count,
-        "No proposal should be created when verification fails"
-    );
+
+    step("Verify no proposal was created", || {
+        assert_eq!(
+            initial_proposal_count, final_proposal_count,
+            "No proposal should be created when verification fails"
+        );
+    });
 
     // Verify user is NOT in citizen role
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(
-        !is_citizen,
-        "User should not be added when verification fails"
-    );
+
+    step("Verify user is not citizen after failure", || {
+        assert!(
+            !is_citizen,
+            "User should not be added when verification fails"
+        );
+    });
 
     Ok(())
 }
@@ -70,23 +78,32 @@ async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
 
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
-    assert!(
-        result.is_failure(),
-        "Auto-approve should fail without permission"
-    );
+
+    step("Verify auto-approve fails without permission", || {
+        assert!(
+            result.is_failure(),
+            "Auto-approve should fail without permission"
+        );
+    });
 
     let logs = extract_event_logs(&result);
     let events = parse_events(&logs);
-    assert!(
-        events.iter().all(|e| e.event != "member_added"),
-        "member_added event must not be emitted on auto-approve failure"
-    );
+
+    step("Verify no member_added event on auto-approve failure", || {
+        assert!(
+            events.iter().all(|e| e.event != "member_added"),
+            "member_added event must not be emitted on auto-approve failure"
+        );
+    });
 
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(
-        !is_citizen,
-        "User should not be added when auto-approve fails"
-    );
+
+    step("Verify user is not citizen after auto-approve failure", || {
+        assert!(
+            !is_citizen,
+            "User should not be added when auto-approve fails"
+        );
+    });
 
     Ok(())
 }
@@ -106,29 +123,41 @@ async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
     let user = env.user(0);
 
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
-    assert!(
-        result.is_failure(),
-        "Verification promise failure should abort flow"
-    );
+
+    step("Verify verification promise failure aborts flow", || {
+        assert!(
+            result.is_failure(),
+            "Verification promise failure should abort flow"
+        );
+    });
 
     let logs = extract_event_logs(&result);
     let events = parse_events(&logs);
-    assert!(
-        events.iter().all(|e| e.event != "member_added"),
-        "No events should be emitted when verification promise fails"
-    );
+
+    step("Verify no events emitted on promise failure", || {
+        assert!(
+            events.iter().all(|e| e.event != "member_added"),
+            "No events should be emitted when verification promise fails"
+        );
+    });
 
     let proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
-    assert_eq!(
-        proposal_count, 0,
-        "No proposals should be created after promise failure"
-    );
+
+    step("Verify no proposals created after promise failure", || {
+        assert_eq!(
+            proposal_count, 0,
+            "No proposals should be created after promise failure"
+        );
+    });
 
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(
-        !is_citizen,
-        "User must not be added when verification promise fails"
-    );
+
+    step("Verify user not added after promise failure", || {
+        assert!(
+            !is_citizen,
+            "User must not be added when verification promise fails"
+        );
+    });
 
     Ok(())
 }
@@ -155,18 +184,23 @@ async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should fail
-    assert!(result.is_failure(), "Should fail with insufficient deposit");
+    step("Verify create proposal with insufficient deposit fails", || {
+        // Should fail
+        assert!(result.is_failure(), "Should fail with insufficient deposit");
+    });
 
     // Verify no proposal_created event was emitted (callback didn't complete)
     let logs = extract_event_logs(&result);
     let events = parse_events(&logs);
 
     let proposal_created = events.iter().find(|e| e.event == "proposal_created");
-    assert!(
-        proposal_created.is_none(),
-        "No proposal_created event should be emitted on failure"
-    );
+
+    step("Verify no proposal_created event on failure", || {
+        assert!(
+            proposal_created.is_none(),
+            "No proposal_created event should be emitted on failure"
+        );
+    });
 
     Ok(())
 }
@@ -197,25 +231,33 @@ async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should fail at DAO level
-    assert!(result.is_failure(), "Should fail with insufficient deposit");
+    step("Verify add_member with insufficient deposit fails at DAO", || {
+        // Should fail at DAO level
+        assert!(result.is_failure(), "Should fail with insufficient deposit");
+    });
 
     // Verify no member_added event was emitted
     let logs = extract_event_logs(&result);
     let events = parse_events(&logs);
 
     let member_added = events.iter().find(|e| e.event == "member_added");
-    assert!(
-        member_added.is_none(),
-        "No member_added event should be emitted on DAO failure"
-    );
+
+    step("Verify no member_added event on DAO failure", || {
+        assert!(
+            member_added.is_none(),
+            "No member_added event should be emitted on DAO failure"
+        );
+    });
 
     // Verify user was NOT added to citizen role
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(
-        !is_citizen,
-        "User should not be added when DAO rejects proposal"
-    );
+
+    step("Verify user not added when DAO rejects proposal", || {
+        assert!(
+            !is_citizen,
+            "User should not be added when DAO rejects proposal"
+        );
+    });
 
     Ok(())
 }
@@ -255,24 +297,33 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
 
     // Verify state is still consistent
     let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
-    assert_eq!(
-        initial_proposal_count, final_proposal_count,
-        "No proposals should be created after multiple failures"
-    );
+
+    step("Verify no proposals created after multiple failures", || {
+        assert_eq!(
+            initial_proposal_count, final_proposal_count,
+            "No proposals should be created after multiple failures"
+        );
+    });
 
     // Now do a successful operation to verify the system still works
     verify_user(&env.backend, &env.verified_accounts, env.user(2), 2).await?;
     let success_result = add_member_via_bridge(&env.backend, &env.bridge, env.user(2)).await?;
-    assert!(
-        success_result.is_success(),
-        "System should still work after failures. Failures: {:?}",
-        success_result.failures()
-    );
+
+    step("Verify system still works after failures", || {
+        assert!(
+            success_result.is_success(),
+            "System should still work after failures. Failures: {:?}",
+            success_result.failures()
+        );
+    });
 
     // Verify the successful user is a citizen
     let is_citizen =
         is_account_in_role(&env.sputnik_dao, env.user(2).id().as_str(), "citizen").await?;
-    assert!(is_citizen, "Successfully added user should be a citizen");
+
+    step("Verify successful user is a citizen", || {
+        assert!(is_citizen, "Successfully added user should be a citizen");
+    });
 
     Ok(())
 }
@@ -303,26 +354,31 @@ async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should fail due to gas exhaustion
-    assert!(result.is_failure(), "Should fail with insufficient gas");
+    step("Verify gas exhaustion causes failure", || {
+        // Should fail due to gas exhaustion
+        assert!(result.is_failure(), "Should fail with insufficient gas");
 
-    // Verify the failure is gas-related (prepaid gas exceeded, not enough gas, etc.)
-    let has_gas_error = contains_error(&result, "gas")
-        || contains_error(&result, "Gas")
-        || contains_error(&result, "Exceeded")
-        || contains_error(&result, "prepaid");
-    assert!(
-        has_gas_error,
-        "Error should mention gas exhaustion. Failures: {:?}",
-        result.failures()
-    );
+        // Verify the failure is gas-related (prepaid gas exceeded, not enough gas, etc.)
+        let has_gas_error = contains_error(&result, "gas")
+            || contains_error(&result, "Gas")
+            || contains_error(&result, "Exceeded")
+            || contains_error(&result, "prepaid");
+        assert!(
+            has_gas_error,
+            "Error should mention gas exhaustion. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     // Verify user was NOT added (no partial state corruption)
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(
-        !is_citizen,
-        "User should not be in citizen role after gas exhaustion failure"
-    );
+
+    step("Verify no partial state corruption after gas exhaustion", || {
+        assert!(
+            !is_citizen,
+            "User should not be in citizen role after gas exhaustion failure"
+        );
+    });
 
     Ok(())
 }
@@ -348,11 +404,13 @@ async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()>
     verify_user(&env.backend, &env.verified_accounts, user2, 1).await?;
     let success_result = add_member_via_bridge(&env.backend, &env.bridge, user2).await?;
 
-    assert!(
-        success_result.is_success(),
-        "Should succeed after previous failure. Failures: {:?}",
-        success_result.failures()
-    );
+    step("Verify second operation succeeds after first failure", || {
+        assert!(
+            success_result.is_success(),
+            "Should succeed after previous failure. Failures: {:?}",
+            success_result.failures()
+        );
+    });
 
     // Verify user2 is a citizen but user1 is not
     let is_user1_citizen =
@@ -360,8 +418,10 @@ async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()>
     let is_user2_citizen =
         is_account_in_role(&env.sputnik_dao, user2.id().as_str(), "citizen").await?;
 
-    assert!(!is_user1_citizen, "User1 should NOT be a citizen (failed)");
-    assert!(is_user2_citizen, "User2 should be a citizen (succeeded)");
+    step("Verify correct citizen status for both users", || {
+        assert!(!is_user1_citizen, "User1 should NOT be a citizen (failed)");
+        assert!(is_user2_citizen, "User2 should be a citizen (succeeded)");
+    });
 
     Ok(())
 }

@@ -19,52 +19,43 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_test]
 #[test]
 fn test_pause_unpause() {
-    let backend = accounts(1);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, backend) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend.clone());
+        (contract, backend)
+    });
 
-    let mut contract = Contract::new(backend.clone());
+    step("Verify contract starts unpaused", || {
+        assert!(!contract.is_paused());
+    });
 
-    // Initially not paused
-    assert!(!contract.is_paused());
+    step("Pause contract and verify event", || {
+        let mut context = get_context(backend.clone());
+        context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(context.build());
+        contract.pause();
+        assert!(contract.is_paused());
 
-    // Pause (requires 1 yocto)
-    let mut context = get_context(backend.clone());
-    context.attached_deposit(NearToken::from_yoctonear(1));
-    testing_env!(context.build());
-    contract.pause();
-    assert!(contract.is_paused());
+        let logs = get_logs();
+        let pause_event: ContractPausedEvent =
+            parse_event(&logs, "contract_paused").expect("contract_paused event not found");
+        assert_eq!(pause_event.by, backend.to_string());
+    });
 
-    // Parse and validate the contract_paused event
-    let logs = get_logs();
-    let pause_event: ContractPausedEvent =
-        parse_event(&logs, "contract_paused").expect("contract_paused event not found");
+    step("Unpause contract and verify event", || {
+        let mut context = get_context(backend.clone());
+        context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(context.build());
+        contract.unpause();
+        assert!(!contract.is_paused());
 
-    // Validate event data - 'by' should be the backend wallet
-    assert_eq!(
-        pause_event.by,
-        backend.to_string(),
-        "Event 'by' should be the backend wallet that paused"
-    );
-
-    // Unpause (requires 1 yocto)
-    let mut context = get_context(backend.clone());
-    context.attached_deposit(NearToken::from_yoctonear(1));
-    testing_env!(context.build());
-    contract.unpause();
-    assert!(!contract.is_paused());
-
-    // Parse and validate the contract_unpaused event
-    let logs = get_logs();
-    let unpause_event: ContractUnpausedEvent =
-        parse_event(&logs, "contract_unpaused").expect("contract_unpaused event not found");
-
-    // Validate event data - 'by' should be the backend wallet
-    assert_eq!(
-        unpause_event.by,
-        backend.to_string(),
-        "Event 'by' should be the backend wallet that unpaused"
-    );
+        let logs = get_logs();
+        let unpause_event: ContractUnpausedEvent =
+            parse_event(&logs, "contract_unpaused").expect("contract_unpaused event not found");
+        assert_eq!(unpause_event.by, backend.to_string());
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -76,17 +67,21 @@ fn test_pause_unpause() {
 #[allure_test]
 #[test]
 fn test_unauthorized_pause() {
-    let backend = accounts(1);
-    let unauthorized = accounts(0);
-    let mut context = get_context(unauthorized);
-    context.attached_deposit(NearToken::from_yoctonear(1));
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract with unauthorized caller", || {
+        let backend = accounts(1);
+        let unauthorized = accounts(0);
+        let mut context = get_context(unauthorized);
+        context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(context.build());
+        Contract::new(backend)
+    });
 
-    let mut contract = Contract::new(backend);
-    assert_panic_with(
-        || contract.pause(),
-        "Only backend wallet can pause contract",
-    );
+    step("Attempt pause from unauthorized account", || {
+        assert_panic_with(
+            || contract.pause(),
+            "Only backend wallet can pause contract",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -98,27 +93,31 @@ fn test_unauthorized_pause() {
 #[allure_test]
 #[test]
 fn test_unauthorized_unpause() {
-    let backend = accounts(1);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let mut contract = step("Initialize and pause contract", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let mut contract = Contract::new(backend.clone());
 
-    let mut contract = Contract::new(backend.clone());
+        let mut pause_context = get_context(backend);
+        pause_context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(pause_context.build());
+        contract.pause();
+        contract
+    });
 
-    // Pause (requires 1 yocto)
-    let mut context = get_context(backend);
-    context.attached_deposit(NearToken::from_yoctonear(1));
-    testing_env!(context.build());
-    contract.pause();
+    step("Switch to unauthorized caller context", || {
+        let mut unauthorized_context = get_context(accounts(0));
+        unauthorized_context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(unauthorized_context.build());
+    });
 
-    // Change context to unauthorized user (with 1 yocto to pass deposit check)
-    let mut unauthorized_context = get_context(accounts(0));
-    unauthorized_context.attached_deposit(NearToken::from_yoctonear(1));
-    testing_env!(unauthorized_context.build());
-
-    assert_panic_with(
-        || contract.unpause(),
-        "Only backend wallet can unpause contract",
-    );
+    step("Attempt unpause from unauthorized account", || {
+        assert_panic_with(
+            || contract.unpause(),
+            "Only backend wallet can unpause contract",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -130,41 +129,43 @@ fn test_unauthorized_unpause() {
 #[allure_test]
 #[test]
 fn test_store_verification_when_paused() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize and pause contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let mut contract = Contract::new(backend.clone());
 
-    let mut contract = Contract::new(backend.clone());
+        let mut pause_context = get_context(backend);
+        pause_context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(pause_context.build());
+        contract.pause();
+        (contract, user)
+    });
 
-    // Pause (requires 1 yocto)
-    let mut context = get_context(backend);
-    context.attached_deposit(NearToken::from_yoctonear(1));
-    testing_env!(context.build());
-    contract.pause();
+    step("Attempt store_verification while paused", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
-
-            // Should panic because contract is paused (before signature verification)
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Contract is paused - no new verifications allowed",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Contract is paused - no new verifications allowed",
+        );
+    });
 }

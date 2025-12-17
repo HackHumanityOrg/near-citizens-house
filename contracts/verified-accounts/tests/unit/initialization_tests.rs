@@ -15,10 +15,17 @@ use verified_accounts::Contract;
 #[allure_test]
 #[test]
 fn test_initialization() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let contract = step("Initialize contract with backend wallet", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        Contract::new(accounts(1))
+    });
 
-    let contract = Contract::new(accounts(1));
-    assert_eq!(contract.get_backend_wallet(), accounts(1));
-    assert_eq!(contract.get_verified_count(), 0);
+    step("Verify backend wallet is set correctly", || {
+        assert_eq!(contract.get_backend_wallet(), accounts(1));
+    });
+
+    step("Verify initial verified count is zero", || {
+        assert_eq!(contract.get_verified_count(), 0);
+    });
 }

@@ -53,11 +53,13 @@ async fn test_citizen_can_vote_on_proposal() -> anyhow::Result<()> {
     )
     .await?;
 
-    assert!(
-        result.is_success(),
-        "Citizen should be able to vote. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify citizen can vote on proposal", || {
+        assert!(
+            result.is_success(),
+            "Citizen should be able to vote. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -103,11 +105,14 @@ async fn test_citizen_vote_approve() -> anyhow::Result<()> {
 
     // Check proposal status - with only one citizen who approved, it should pass
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Approved,
-        "Proposal should be approved with majority yes"
-    );
+
+    step("Verify proposal is approved with single citizen vote", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Approved,
+            "Proposal should be approved with majority yes"
+        );
+    });
 
     Ok(())
 }
@@ -152,11 +157,14 @@ async fn test_citizen_vote_reject() -> anyhow::Result<()> {
     .into_result()?;
 
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Rejected,
-        "Proposal should be rejected with majority no"
-    );
+
+    step("Verify proposal is rejected with single citizen reject vote", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Rejected,
+            "Proposal should be rejected with majority no"
+        );
+    });
 
     Ok(())
 }
@@ -195,11 +203,13 @@ async fn test_non_citizen_cannot_vote() -> anyhow::Result<()> {
     )
     .await?;
 
-    assert!(
-        result.is_failure(),
-        "Non-citizen should not be able to vote: {:?}",
-        result.failures()
-    );
+    step("Verify non-citizen cannot vote", || {
+        assert!(
+            result.is_failure(),
+            "Non-citizen should not be able to vote: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -247,11 +257,14 @@ async fn test_proposal_passes_with_majority() -> anyhow::Result<()> {
     .into_result()?;
 
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::InProgress,
-        "After 1/3 votes, proposal should still be in progress"
-    );
+
+    step("Verify proposal still InProgress after 1/3 votes", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::InProgress,
+            "After 1/3 votes, proposal should still be in progress"
+        );
+    });
 
     // Second vote - this should pass the proposal (2/3 >= 1/2 threshold)
     vote_on_proposal(
@@ -265,11 +278,14 @@ async fn test_proposal_passes_with_majority() -> anyhow::Result<()> {
     .into_result()?;
 
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Approved,
-        "Proposal should pass with 2/3 approval majority"
-    );
+
+    step("Verify proposal approved with 2/3 majority", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Approved,
+            "Proposal should pass with 2/3 approval majority"
+        );
+    });
 
     Ok(())
 }
@@ -316,11 +332,14 @@ async fn test_proposal_fails_with_majority_no() -> anyhow::Result<()> {
     .into_result()?;
 
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::InProgress,
-        "After 1/3 reject votes, proposal should still be in progress"
-    );
+
+    step("Verify proposal still InProgress after 1/3 reject votes", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::InProgress,
+            "After 1/3 reject votes, proposal should still be in progress"
+        );
+    });
 
     // Second reject vote - this should reject the proposal (2/3 >= 1/2 threshold)
     vote_on_proposal(
@@ -334,11 +353,14 @@ async fn test_proposal_fails_with_majority_no() -> anyhow::Result<()> {
     .into_result()?;
 
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Rejected,
-        "Proposal should fail with 2/3 rejection"
-    );
+
+    step("Verify proposal rejected with 2/3 majority", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Rejected,
+            "Proposal should fail with 2/3 rejection"
+        );
+    });
 
     Ok(())
 }
@@ -395,12 +417,14 @@ async fn test_cannot_vote_twice_on_same_proposal() -> anyhow::Result<()> {
     )
     .await?;
 
-    // Should fail because user already voted
-    assert!(
-        result.is_failure(),
-        "User should not be able to vote twice on same proposal: {:?}",
-        result.failures()
-    );
+    step("Verify double voting is rejected", || {
+        // Should fail because user already voted
+        assert!(
+            result.is_failure(),
+            "User should not be able to vote twice on same proposal: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -434,11 +458,13 @@ async fn test_vote_on_nonexistent_proposal_fails() -> anyhow::Result<()> {
     let result =
         vote_on_proposal(user, &env.sputnik_dao, 999999, "VoteApprove", json!("Vote")).await?;
 
-    assert!(
-        result.is_failure(),
-        "Voting on nonexistent proposal should fail: {:?}",
-        result.failures()
-    );
+    step("Verify voting on nonexistent proposal fails", || {
+        assert!(
+            result.is_failure(),
+            "Voting on nonexistent proposal should fail: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -479,11 +505,14 @@ async fn test_proposal_expires_after_period() -> anyhow::Result<()> {
 
     // Proposal should be InProgress initially
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::InProgress,
-        "Proposal should be InProgress initially"
-    );
+
+    step("Verify proposal is InProgress initially", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::InProgress,
+            "Proposal should be InProgress initially"
+        );
+    });
 
     // Advance time way past proposal period (100 blocks for 10s period)
     env.worker.fast_forward(100).await?;
@@ -501,13 +530,15 @@ async fn test_proposal_expires_after_period() -> anyhow::Result<()> {
     // The proposal should now be expired (vote triggers status update)
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
 
-    // Note: In sputnik-dao, voting on an expired proposal marks it as Expired
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Expired,
-        "Proposal should be expired after period. Vote result: {:?}",
-        vote_result.is_success()
-    );
+    step("Verify proposal is expired after time period", || {
+        // Note: In sputnik-dao, voting on an expired proposal marks it as Expired
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Expired,
+            "Proposal should be expired after period. Vote result: {:?}",
+            vote_result.is_success()
+        );
+    });
 
     Ok(())
 }
@@ -550,7 +581,10 @@ async fn test_vote_before_expiry_succeeds() -> anyhow::Result<()> {
         json!("Vote"),
     )
     .await?;
-    assert!(result.is_success(), "Vote before expiry should succeed");
+
+    step("Verify vote before expiry succeeds", || {
+        assert!(result.is_success(), "Vote before expiry should succeed");
+    });
 
     Ok(())
 }

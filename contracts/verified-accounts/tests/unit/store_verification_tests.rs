@@ -104,48 +104,52 @@ fn test_happy_path_store_verification() {
 #[allure_test]
 #[test]
 fn test_signature_replay_rejected() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, signer, nonce) = step("Initialize contract with valid signature", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        let signer = create_signer(&user);
+        let nonce = vec![1u8; 32];
+        (contract, user, signer, nonce)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let nonce = vec![1u8; 32];
-    let sig_data = create_valid_signature(&signer, &user, "Identify myself", &nonce, &user);
+    step("Store first verification successfully", || {
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &nonce, &user);
+        contract.store_verification(
+            "nullifier_one".to_string(),
+            user.clone(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "ctx".to_string(),
+        );
+        assert!(contract.is_account_verified(user.clone()));
+    });
 
-    // First store succeeds
-    contract.store_verification(
-        "nullifier_one".to_string(),
-        user.clone(),
-        "1".to_string(),
-        sig_data,
-        test_self_proof(),
-        "ctx".to_string(),
-    );
-    assert!(contract.is_account_verified(user.clone()));
-
-    // Second attempt with the same signature should be rejected
-    assert_panic_with(
-        || {
-            let replay_sig = create_valid_signature(
-                &signer,
-                &user,
-                "Identify myself",
-                &nonce,
-                &user,
-            );
-            contract.store_verification(
-                "nullifier_two".to_string(),
-                user.clone(),
-                "1".to_string(),
-                replay_sig,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Signature already used - potential replay attack",
-    );
+    step("Attempt replay with same signature nonce", || {
+        assert_panic_with(
+            || {
+                let replay_sig = create_valid_signature(
+                    &signer,
+                    &user,
+                    "Identify myself",
+                    &nonce,
+                    &user,
+                );
+                contract.store_verification(
+                    "nullifier_two".to_string(),
+                    user.clone(),
+                    "1".to_string(),
+                    replay_sig,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Signature already used - potential replay attack",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -157,41 +161,34 @@ fn test_signature_replay_rejected() {
 #[allure_test]
 #[test]
 fn test_verification_timestamp_matches_block_time() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let mut context = get_context(backend.clone());
-    let expected_ts = 123_456_789u64;
-    context.block_timestamp(expected_ts);
-    testing_env!(context.build());
+    let (mut contract, user, sig_data, expected_ts) = step("Initialize contract with specific block timestamp", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let mut context = get_context(backend.clone());
+        let expected_ts = 123_456_789u64;
+        context.block_timestamp(expected_ts);
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        let signer = create_signer(&user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &user);
+        (contract, user, sig_data, expected_ts)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &user);
+    step("Store verification", || {
+        contract.store_verification(
+            "timestamp_nullifier".to_string(),
+            user.clone(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            "ctx".to_string(),
+        );
+    });
 
-    contract.store_verification(
-        "timestamp_nullifier".to_string(),
-        user.clone(),
-        "1".to_string(),
-        sig_data,
-        test_self_proof(),
-        "ctx".to_string(),
-    );
-
-    let account: VerifiedAccount = contract.get_account_with_proof(user.clone()).unwrap();
-    assert_eq!(account.verified_at, expected_ts);
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Store Verification")]
-#[allure_severity("normal")]
-#[allure_tags("unit", "replay-protection")]
-#[allure_description("Alias test to mirror the integration test plan naming for replay attack prevention.")]
-#[allure_test]
-#[test]
-fn test_replay_attack_same_signature_rejected() {
-    test_signature_replay_rejected();
+    step("Verify timestamp matches block time", || {
+        let account: VerifiedAccount = contract.get_account_with_proof(user.clone()).unwrap();
+        assert_eq!(account.verified_at, expected_ts);
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -203,48 +200,51 @@ fn test_replay_attack_same_signature_rejected() {
 #[allure_test]
 #[test]
 fn test_nullifier_reuse_rejected() {
-    let backend = accounts(1);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        Contract::new(backend)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Store first verification with nullifier", || {
+        let user_a = accounts(2);
+        let signer_a = create_signer(&user_a);
+        let sig_a = create_valid_signature(&signer_a, &user_a, "Identify myself", &[0; 32], &user_a);
+        contract.store_verification(
+            "shared_nullifier".to_string(),
+            user_a,
+            "1".to_string(),
+            sig_a,
+            test_self_proof(),
+            "ctx".to_string(),
+        );
+    });
 
-    // First verified account
-    let user_a = accounts(2);
-    let signer_a = create_signer(&user_a);
-    let sig_a = create_valid_signature(&signer_a, &user_a, "Identify myself", &[0; 32], &user_a);
-    contract.store_verification(
-        "shared_nullifier".to_string(),
-        user_a,
-        "1".to_string(),
-        sig_a,
-        test_self_proof(),
-        "ctx".to_string(),
-    );
-
-    // Second attempt with same nullifier but new account/signature should fail
-    let user_b = accounts(3);
-    let signer_b = create_signer(&user_b);
-    let sig_b = create_valid_signature(
-        &signer_b,
-        &user_b,
-        "Identify myself",
-        &[2; 32],
-        &user_b,
-    );
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "shared_nullifier".to_string(),
-                user_b,
-                "1".to_string(),
-                sig_b,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Nullifier already used - passport already registered",
-    );
+    step("Attempt to reuse nullifier with different account", || {
+        let user_b = accounts(3);
+        let signer_b = create_signer(&user_b);
+        let sig_b = create_valid_signature(
+            &signer_b,
+            &user_b,
+            "Identify myself",
+            &[2; 32],
+            &user_b,
+        );
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "shared_nullifier".to_string(),
+                    user_b,
+                    "1".to_string(),
+                    sig_b,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Nullifier already used - passport already registered",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -256,38 +256,44 @@ fn test_nullifier_reuse_rejected() {
 #[allure_test]
 #[test]
 fn test_double_verification_rejected() {
-    let backend = accounts(1);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, signer) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        let user = accounts(2);
+        let signer = create_signer(&user);
+        (contract, user, signer)
+    });
 
-    let mut contract = Contract::new(backend);
-    let user = accounts(2);
-    let signer = create_signer(&user);
+    step("Store first verification for user", || {
+        let sig_one = create_valid_signature(&signer, &user, "Identify myself", &[3; 32], &user);
+        contract.store_verification(
+            "n1".to_string(),
+            user.clone(),
+            "1".to_string(),
+            sig_one,
+            test_self_proof(),
+            "ctx".to_string(),
+        );
+    });
 
-    let sig_one = create_valid_signature(&signer, &user, "Identify myself", &[3; 32], &user);
-    contract.store_verification(
-        "n1".to_string(),
-        user.clone(),
-        "1".to_string(),
-        sig_one,
-        test_self_proof(),
-        "ctx".to_string(),
-    );
-
-    let sig_two = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "n2".to_string(),
-                user.clone(),
-                "1".to_string(),
-                sig_two,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "NEAR account already verified",
-    );
+    step("Attempt second verification for same user", || {
+        let sig_two = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "n2".to_string(),
+                    user.clone(),
+                    "1".to_string(),
+                    sig_two,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "NEAR account already verified",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -299,28 +305,31 @@ fn test_double_verification_rejected() {
 #[allure_test]
 #[test]
 fn test_insufficient_balance_rejected() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let mut context = get_context(backend.clone());
-    // Set balance far below the estimated storage cost
-    context.account_balance(near_sdk::NearToken::from_yoctonear(1));
-    testing_env!(context.build());
+    let (mut contract, user, sig) = step("Initialize contract with minimal balance", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let mut context = get_context(backend.clone());
+        context.account_balance(near_sdk::NearToken::from_yoctonear(1));
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        let signer = create_signer(&user);
+        let sig = create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
+        (contract, user, sig)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let sig = create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
-
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "low_balance".to_string(),
-                user,
-                "1".to_string(),
-                sig,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Insufficient contract balance for storage",
-    );
+    step("Attempt verification with insufficient balance", || {
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "low_balance".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Insufficient contract balance for storage",
+        );
+    });
 }

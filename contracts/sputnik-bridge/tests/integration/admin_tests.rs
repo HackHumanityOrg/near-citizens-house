@@ -29,7 +29,10 @@ async fn test_update_backend_wallet() -> anyhow::Result<()> {
         .into_result()?;
 
     let backend_wallet: String = env.bridge.view("get_backend_wallet").await?.json()?;
-    assert_eq!(backend_wallet, new_backend.id().to_string());
+
+    step("Verify backend wallet was updated", || {
+        assert_eq!(backend_wallet, new_backend.id().to_string());
+    });
 
     Ok(())
 }
@@ -47,7 +50,6 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
     let env = setup_with_users(1).await?;
     let new_backend = env.user(0);
 
-    // Rotate backend wallet
     env.backend
         .call(env.bridge.id(), "update_backend_wallet")
         .args_json(json!({ "new_backend_wallet": new_backend.id() }))
@@ -56,10 +58,8 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
         .await?
         .into_result()?;
 
-    // Old backend can still verify users in verified-accounts
     verify_user(&env.backend, &env.verified_accounts, new_backend, 0).await?;
 
-    // Old backend should now be blocked from bridge write calls
     let old_backend_result = env
         .backend
         .call(env.bridge.id(), "add_member")
@@ -68,13 +68,15 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
         .gas(near_workspaces::types::Gas::from_tgas(300))
         .transact()
         .await?;
-    assert!(
-        old_backend_result.is_failure(),
-        "Old backend should be rejected after rotation"
-    );
-    assert!(contains_error(&old_backend_result, "Only backend wallet"));
 
-    // New backend must be able to add members
+    step("Verify old backend is blocked after rotation", || {
+        assert!(
+            old_backend_result.is_failure(),
+            "Old backend should be rejected after rotation"
+        );
+        assert!(contains_error(&old_backend_result, "Only backend wallet"));
+    });
+
     let add_result = new_backend
         .call(env.bridge.id(), "add_member")
         .args_json(json!({ "near_account_id": new_backend.id() }))
@@ -82,14 +84,20 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
         .gas(near_workspaces::types::Gas::from_tgas(300))
         .transact()
         .await?;
-    assert!(add_result.is_success(), "New backend should be authorized");
+
+    step("Verify new backend can add members", || {
+        assert!(add_result.is_success(), "New backend should be authorized");
+    });
 
     let is_citizen =
         is_account_in_role(&env.sputnik_dao, new_backend.id().as_str(), "citizen").await?;
-    assert!(
-        is_citizen,
-        "Rotated backend should successfully add members"
-    );
+
+    step("Verify member was added successfully", || {
+        assert!(
+            is_citizen,
+            "Rotated backend should successfully add members"
+        );
+    });
 
     Ok(())
 }
@@ -112,44 +120,49 @@ async fn test_member_added_event_emitted() -> anyhow::Result<()> {
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
 
-    // Extract logs before consuming result
     let logs = extract_event_logs(&result);
     result.into_result()?;
-
     let events = parse_events(&logs);
 
-    let member_added_events: Vec<_> = events
-        .iter()
-        .filter(|e| e.event == "member_added")
-        .collect();
-    assert_eq!(
-        member_added_events.len(),
-        1,
-        "Expected exactly one member_added event, found {}",
-        member_added_events.len()
-    );
-    let member_added = member_added_events[0];
+    let member_added = step("Find member_added event", || {
+        let member_added_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.event == "member_added")
+            .collect();
+        assert_eq!(
+            member_added_events.len(),
+            1,
+            "Expected exactly one member_added event, found {}",
+            member_added_events.len()
+        );
+        member_added_events[0].clone()
+    });
 
-    // Use the event's proposal_id as source of truth (avoids order-dependent assumptions)
-    let add_member_proposal_id = member_added
-        .data
-        .get("proposal_id")
-        .and_then(|v| v.as_u64())
-        .expect("member_added event should have proposal_id");
+    let add_member_proposal_id = step("Extract proposal_id from event", || {
+        member_added
+            .data
+            .get("proposal_id")
+            .and_then(|v| v.as_u64())
+            .expect("member_added event should have proposal_id")
+    });
 
-    // Verify the proposal exists in the DAO
     let proposal = get_proposal(&env.sputnik_dao, add_member_proposal_id).await?;
-    assert!(
-        proposal.description.contains("Add verified citizen"),
-        "Proposal should be an add member proposal. Got: {}",
-        proposal.description
-    );
 
-    assert_eq!(
-        member_added.data.get("member_id"),
-        Some(&json!(user.id().to_string()))
-    );
-    assert_eq!(member_added.data.get("role"), Some(&json!("citizen")));
+    step("Verify proposal exists in DAO", || {
+        assert!(
+            proposal.description.contains("Add verified citizen"),
+            "Proposal should be an add member proposal. Got: {}",
+            proposal.description
+        );
+    });
+
+    step("Verify event contains correct member_id and role", || {
+        assert_eq!(
+            member_added.data.get("member_id"),
+            Some(&json!(user.id().to_string()))
+        );
+        assert_eq!(member_added.data.get("role"), Some(&json!("citizen")));
+    });
 
     Ok(())
 }
@@ -167,42 +180,45 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
     let env = setup().await?;
 
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, "Event test").await?;
-
-    // Extract logs before consuming result
     let logs = extract_event_logs(&result);
     result.into_result()?;
-
     let events = parse_events(&logs);
 
-    let proposal_created_events: Vec<_> = events
-        .iter()
-        .filter(|e| e.event == "proposal_created")
-        .collect();
-    assert_eq!(
-        proposal_created_events.len(),
-        1,
-        "Expected exactly one proposal_created event, found {}",
-        proposal_created_events.len()
-    );
-    let proposal_created = proposal_created_events[0];
+    let proposal_created = step("Find proposal_created event", || {
+        let proposal_created_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.event == "proposal_created")
+            .collect();
+        assert_eq!(
+            proposal_created_events.len(),
+            1,
+            "Expected exactly one proposal_created event, found {}",
+            proposal_created_events.len()
+        );
+        proposal_created_events[0].clone()
+    });
 
-    // Verify event contains required fields with valid values
-    let emitted_proposal_id = proposal_created
-        .data
-        .get("proposal_id")
-        .and_then(|v| v.as_u64())
-        .expect("proposal_created event should have proposal_id");
-    assert_eq!(
-        proposal_created.data.get("description"),
-        Some(&json!("Event test"))
-    );
+    let emitted_proposal_id = step("Extract and verify event fields", || {
+        let id = proposal_created
+            .data
+            .get("proposal_id")
+            .and_then(|v| v.as_u64())
+            .expect("proposal_created event should have proposal_id");
+        assert_eq!(
+            proposal_created.data.get("description"),
+            Some(&json!("Event test"))
+        );
+        id
+    });
 
-    // Verify the emitted proposal_id corresponds to a real proposal in the DAO
     let proposal = get_proposal(&env.sputnik_dao, emitted_proposal_id).await?;
-    assert_eq!(
-        proposal.description, "Event test",
-        "Proposal description should match"
-    );
+
+    step("Verify proposal exists in DAO with correct description", || {
+        assert_eq!(
+            proposal.description, "Event test",
+            "Proposal description should match"
+        );
+    });
 
     Ok(())
 }
@@ -219,7 +235,6 @@ async fn test_proposal_created_event_emitted() -> anyhow::Result<()> {
 #[allure_test]
 #[tokio::test]
 async fn test_backend_wallet_self_update() -> anyhow::Result<()> {
-    // Test that backend can update to itself (no-op but valid)
     let env = setup().await?;
 
     let result = env
@@ -230,18 +245,20 @@ async fn test_backend_wallet_self_update() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_success(),
-        "Backend should be able to 'update' to itself. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify self-update succeeds", || {
+        assert!(
+            result.is_success(),
+            "Backend should be able to 'update' to itself. Failures: {:?}",
+            result.failures()
+        );
+    });
 
-    // Verify backend is still the same
     let backend_wallet: String = env.bridge.view("get_backend_wallet").await?.json()?;
-    assert_eq!(backend_wallet, env.backend.id().to_string());
 
-    // Verify backend can still perform operations
-    // Create user in the SAME environment (not a new one) to avoid cross-sandbox issues
+    step("Verify backend is still the same", || {
+        assert_eq!(backend_wallet, env.backend.id().to_string());
+    });
+
     let user = env.worker.dev_create_account().await?;
     verify_user(&env.backend, &env.verified_accounts, &user, 0).await?;
 
@@ -258,20 +275,19 @@ async fn test_backend_wallet_self_update() -> anyhow::Result<()> {
 #[allure_test]
 #[tokio::test]
 async fn test_operations_continue_after_wallet_rotation() -> anyhow::Result<()> {
-    // Test that ongoing/subsequent operations work correctly after wallet rotation
     let env = setup_with_users(3).await?;
     let user1 = env.user(0);
     let user2 = env.user(1);
     let new_backend = env.user(2);
 
-    // Verify user1 before rotation
     verify_user(&env.backend, &env.verified_accounts, user1, 0).await?;
 
-    // Add user1 as citizen via old backend
     let result1 = add_member_via_bridge(&env.backend, &env.bridge, user1).await?;
-    assert!(result1.is_success(), "First add should succeed");
 
-    // Rotate backend wallet
+    step("Verify user1 added before rotation", || {
+        assert!(result1.is_success(), "First add should succeed");
+    });
+
     env.backend
         .call(env.bridge.id(), "update_backend_wallet")
         .args_json(json!({ "new_backend_wallet": new_backend.id() }))
@@ -280,10 +296,8 @@ async fn test_operations_continue_after_wallet_rotation() -> anyhow::Result<()> 
         .await?
         .into_result()?;
 
-    // Verify user2 (backend still has access to verified-accounts)
     verify_user(&env.backend, &env.verified_accounts, user2, 1).await?;
 
-    // New backend should be able to add user2
     let result2 = new_backend
         .call(env.bridge.id(), "add_member")
         .args_json(json!({ "near_account_id": user2.id() }))
@@ -292,20 +306,23 @@ async fn test_operations_continue_after_wallet_rotation() -> anyhow::Result<()> 
         .transact()
         .await?;
 
-    assert!(
-        result2.is_success(),
-        "New backend should add members after rotation. Failures: {:?}",
-        result2.failures()
-    );
+    step("Verify user2 added after rotation by new backend", || {
+        assert!(
+            result2.is_success(),
+            "New backend should add members after rotation. Failures: {:?}",
+            result2.failures()
+        );
+    });
 
-    // Verify both users are citizens
     let is_user1_citizen =
         is_account_in_role(&env.sputnik_dao, user1.id().as_str(), "citizen").await?;
     let is_user2_citizen =
         is_account_in_role(&env.sputnik_dao, user2.id().as_str(), "citizen").await?;
 
-    assert!(is_user1_citizen, "User1 should be citizen (added before rotation)");
-    assert!(is_user2_citizen, "User2 should be citizen (added after rotation)");
+    step("Verify both users are citizens", || {
+        assert!(is_user1_citizen, "User1 should be citizen (added before rotation)");
+        assert!(is_user2_citizen, "User2 should be citizen (added after rotation)");
+    });
 
     Ok(())
 }
@@ -339,23 +356,27 @@ async fn test_wallet_update_succeeds() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_success(),
-        "Backend wallet update should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify wallet update succeeds", || {
+        assert!(
+            result.is_success(),
+            "Backend wallet update should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
-    // Verify the new wallet is stored correctly
     let stored_wallet: String = env.bridge.view("get_backend_wallet").await?.json()?;
-    assert_eq!(
-        stored_wallet,
-        new_backend.id().to_string(),
-        "Stored wallet should be the new backend"
-    );
-    assert_ne!(
-        stored_wallet, old_backend_id,
-        "Stored wallet should be different from old backend"
-    );
+
+    step("Verify new wallet is stored correctly", || {
+        assert_eq!(
+            stored_wallet,
+            new_backend.id().to_string(),
+            "Stored wallet should be the new backend"
+        );
+        assert_ne!(
+            stored_wallet, old_backend_id,
+            "Stored wallet should be different from old backend"
+        );
+    });
 
     Ok(())
 }

@@ -51,16 +51,21 @@ async fn test_bridge_config_unchanged_after_operations() -> anyhow::Result<()> {
     // Get config after operations
     let final_info: BridgeInfo = env.bridge.view("get_info").await?.json()?;
 
-    // Verify immutable fields are unchanged
-    assert_eq!(
-        initial_info.sputnik_dao, final_info.sputnik_dao,
-        "sputnik_dao should be unchanged after operations"
-    );
-    assert_eq!(
-        initial_info.verified_accounts_contract, final_info.verified_accounts_contract,
-        "verified_accounts_contract should be unchanged after operations"
-    );
-    // backend_wallet and citizen_role CAN change, so we don't check them
+    step("Verify sputnik_dao address unchanged", || {
+        // Verify immutable fields are unchanged
+        assert_eq!(
+            initial_info.sputnik_dao, final_info.sputnik_dao,
+            "sputnik_dao should be unchanged after operations"
+        );
+    });
+
+    step("Verify verified_accounts_contract unchanged", || {
+        assert_eq!(
+            initial_info.verified_accounts_contract, final_info.verified_accounts_contract,
+            "verified_accounts_contract should be unchanged after operations"
+        );
+        // backend_wallet and citizen_role CAN change, so we don't check them
+    });
 
     Ok(())
 }
@@ -113,7 +118,9 @@ async fn test_dao_citizens_are_verified() -> anyhow::Result<()> {
         }
     }
 
-    assert_eq!(citizen_accounts.len(), 5, "Should have 5 citizens");
+    step("Verify 5 citizens are in DAO", || {
+        assert_eq!(citizen_accounts.len(), 5, "Should have 5 citizens");
+    });
 
     // Verify each citizen is verified in verified-accounts contract
     for account_id in &citizen_accounts {
@@ -130,6 +137,10 @@ async fn test_dao_citizens_are_verified() -> anyhow::Result<()> {
             account_id
         );
     }
+
+    step("Verify all citizens are verified in verified-accounts", || {
+        // All verifications passed above
+    });
 
     Ok(())
 }
@@ -168,7 +179,10 @@ async fn test_verified_accounts_not_necessarily_citizens() -> anyhow::Result<()>
     // User 0 should be citizen
     let user0_is_citizen =
         is_account_in_role(&env.sputnik_dao, env.user(0).id().as_str(), "citizen").await?;
-    assert!(user0_is_citizen, "User 0 should be citizen");
+
+    step("Verify user 0 is a citizen", || {
+        assert!(user0_is_citizen, "User 0 should be citizen");
+    });
 
     // Users 1 and 2 are verified but NOT citizens
     for i in 1..3 {
@@ -187,6 +201,10 @@ async fn test_verified_accounts_not_necessarily_citizens() -> anyhow::Result<()>
             i
         );
     }
+
+    step("Verify users 1 and 2 are verified but not citizens", || {
+        // All verifications passed above
+    });
 
     Ok(())
 }
@@ -231,11 +249,14 @@ async fn test_proposal_count_consistency() -> anyhow::Result<()> {
 
     // Final count: initial + 2*2 (member additions) + 3 (vote proposals) = initial + 7
     let final_count = get_last_proposal_id(&env.sputnik_dao).await?;
-    assert_eq!(
-        final_count,
-        initial_count + 7,
-        "Should have created exactly 7 proposals (4 from add_member + 3 vote)"
-    );
+
+    step("Verify exactly 7 proposals were created", || {
+        assert_eq!(
+            final_count,
+            initial_count + 7,
+            "Should have created exactly 7 proposals (4 from add_member + 3 vote)"
+        );
+    });
 
     // Verify proposals exist with sequential IDs (no gaps)
     for id in initial_count..final_count {
@@ -246,6 +267,10 @@ async fn test_proposal_count_consistency() -> anyhow::Result<()> {
             id
         );
     }
+
+    step("Verify proposal IDs are sequential with no gaps", || {
+        // All proposals verified above
+    });
 
     Ok(())
 }
@@ -277,24 +302,35 @@ async fn test_failed_add_member_leaves_dao_unchanged() -> anyhow::Result<()> {
 
     // Try to add unverified user (will fail at verification step)
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
-    assert!(result.is_failure(), "Should fail for unverified user");
+
+    step("Verify add_member fails for unverified user", || {
+        assert!(result.is_failure(), "Should fail for unverified user");
+    });
 
     // Verify DAO state is unchanged
     let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
     let final_citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
 
-    assert_eq!(
-        initial_proposal_count, final_proposal_count,
-        "Proposal count should be unchanged after failed add_member"
-    );
-    assert_eq!(
-        initial_citizen_count, final_citizen_count,
-        "Citizen count should be unchanged after failed add_member"
-    );
+    step("Verify proposal count unchanged after failure", || {
+        assert_eq!(
+            initial_proposal_count, final_proposal_count,
+            "Proposal count should be unchanged after failed add_member"
+        );
+    });
+
+    step("Verify citizen count unchanged after failure", || {
+        assert_eq!(
+            initial_citizen_count, final_citizen_count,
+            "Citizen count should be unchanged after failed add_member"
+        );
+    });
 
     // User should not be citizen
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(!is_citizen, "User should not be citizen after failed add_member");
+
+    step("Verify user is not citizen after failure", || {
+        assert!(!is_citizen, "User should not be citizen after failed add_member");
+    });
 
     Ok(())
 }

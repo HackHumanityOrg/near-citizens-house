@@ -120,11 +120,13 @@ async fn test_dao_deploys_and_initializes() -> anyhow::Result<()> {
     // Verify DAO is initialized by querying config
     let config: serde_json::Value = dao.view("get_config").await?.json()?;
 
-    assert_eq!(config["name"], "test-dao", "DAO name should be set");
-    assert_eq!(
-        config["purpose"], "Sanity testing",
-        "DAO purpose should be set"
-    );
+    step("Verify DAO config is set correctly", || {
+        assert_eq!(config["name"], "test-dao", "DAO name should be set");
+        assert_eq!(
+            config["purpose"], "Sanity testing",
+            "DAO purpose should be set"
+        );
+    });
 
     // Verify policy has the council member
     let policy: serde_json::Value = dao.view("get_policy").await?.json()?;
@@ -138,10 +140,13 @@ async fn test_dao_deploys_and_initializes() -> anyhow::Result<()> {
     let group = council_role["kind"]["Group"]
         .as_array()
         .expect("council kind should be Group");
-    assert!(
-        group.iter().any(|m| m.as_str() == Some(council.id().as_str())),
-        "Council member should be in the group"
-    );
+
+    step("Verify council member is in policy", || {
+        assert!(
+            group.iter().any(|m| m.as_str() == Some(council.id().as_str())),
+            "Council member should be in the group"
+        );
+    });
 
     Ok(())
 }
@@ -174,14 +179,19 @@ async fn test_dao_proposal_lifecycle_without_bridge() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_success(),
-        "Council should be able to create proposal"
-    );
+    step("Verify council can create proposal", || {
+        assert!(
+            result.is_success(),
+            "Council should be able to create proposal"
+        );
+    });
 
     // Get the proposal ID from return value
     let proposal_id: u64 = result.json()?;
-    assert_eq!(proposal_id, 0, "First proposal should have ID 0");
+
+    step("Verify first proposal has ID 0", || {
+        assert_eq!(proposal_id, 0, "First proposal should have ID 0");
+    });
 
     // Verify proposal is InProgress
     let proposal: ProposalOutput = dao
@@ -190,15 +200,17 @@ async fn test_dao_proposal_lifecycle_without_bridge() -> anyhow::Result<()> {
         .await?
         .json()?;
 
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::InProgress,
-        "Proposal should be InProgress"
-    );
-    assert_eq!(
-        proposal.description, "Test proposal created directly",
-        "Proposal description should match"
-    );
+    step("Verify proposal is InProgress with correct description", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::InProgress,
+            "Proposal should be InProgress"
+        );
+        assert_eq!(
+            proposal.description, "Test proposal created directly",
+            "Proposal description should match"
+        );
+    });
 
     // Council member votes to approve
     let vote_result = council
@@ -213,11 +225,13 @@ async fn test_dao_proposal_lifecycle_without_bridge() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        vote_result.is_success(),
-        "Vote should succeed: {:?}",
-        vote_result.failures()
-    );
+    step("Verify council vote succeeds", || {
+        assert!(
+            vote_result.is_success(),
+            "Vote should succeed: {:?}",
+            vote_result.failures()
+        );
+    });
 
     // Verify proposal is now Approved (single council member = 100% approval)
     let proposal_after: ProposalOutput = dao
@@ -226,11 +240,13 @@ async fn test_dao_proposal_lifecycle_without_bridge() -> anyhow::Result<()> {
         .await?
         .json()?;
 
-    assert_eq!(
-        proposal_after.status,
-        ProposalStatus::Approved,
-        "Proposal should be Approved after council vote"
-    );
+    step("Verify proposal is Approved after council vote", || {
+        assert_eq!(
+            proposal_after.status,
+            ProposalStatus::Approved,
+            "Proposal should be Approved after council vote"
+        );
+    });
 
     Ok(())
 }
@@ -267,10 +283,12 @@ async fn test_dao_non_council_cannot_create_proposal() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_failure(),
-        "Non-council member should not be able to create proposal"
-    );
+    step("Verify non-council member cannot create proposal", || {
+        assert!(
+            result.is_failure(),
+            "Non-council member should not be able to create proposal"
+        );
+    });
 
     Ok(())
 }
@@ -290,7 +308,10 @@ async fn test_dao_proposal_counting() -> anyhow::Result<()> {
 
     // Get initial last proposal ID (should fail or return 0 if no proposals)
     let initial_id: u64 = dao.view("get_last_proposal_id").await?.json()?;
-    assert_eq!(initial_id, 0, "Initial last proposal ID should be 0");
+
+    step("Verify initial proposal count is 0", || {
+        assert_eq!(initial_id, 0, "Initial last proposal ID should be 0");
+    });
 
     // Create first proposal
     let result1 = council
@@ -306,9 +327,12 @@ async fn test_dao_proposal_counting() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(result1.is_success(), "First proposal should succeed");
     let id1: u64 = result1.json()?;
-    assert_eq!(id1, 0, "First proposal ID should be 0");
+
+    step("Verify first proposal created with ID 0", || {
+        assert!(result1.is_success(), "First proposal should succeed");
+        assert_eq!(id1, 0, "First proposal ID should be 0");
+    });
 
     // Create second proposal
     let result2 = council
@@ -324,13 +348,19 @@ async fn test_dao_proposal_counting() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(result2.is_success(), "Second proposal should succeed");
     let id2: u64 = result2.json()?;
-    assert_eq!(id2, 1, "Second proposal ID should be 1");
+
+    step("Verify second proposal created with ID 1", || {
+        assert!(result2.is_success(), "Second proposal should succeed");
+        assert_eq!(id2, 1, "Second proposal ID should be 1");
+    });
 
     // Verify last proposal ID updated
     let final_id: u64 = dao.view("get_last_proposal_id").await?.json()?;
-    assert_eq!(final_id, 2, "Last proposal ID should be 2 after creating 2 proposals");
+
+    step("Verify final proposal count is 2", || {
+        assert_eq!(final_id, 2, "Last proposal ID should be 2 after creating 2 proposals");
+    });
 
     Ok(())
 }
@@ -377,11 +407,13 @@ async fn test_dao_proposal_rejection() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        vote_result.is_success(),
-        "Reject vote should succeed: {:?}",
-        vote_result.failures()
-    );
+    step("Verify reject vote succeeds", || {
+        assert!(
+            vote_result.is_success(),
+            "Reject vote should succeed: {:?}",
+            vote_result.failures()
+        );
+    });
 
     // Verify proposal is now Rejected
     let proposal_after: ProposalOutput = dao
@@ -390,11 +422,13 @@ async fn test_dao_proposal_rejection() -> anyhow::Result<()> {
         .await?
         .json()?;
 
-    assert_eq!(
-        proposal_after.status,
-        ProposalStatus::Rejected,
-        "Proposal should be Rejected after council vote"
-    );
+    step("Verify proposal is Rejected after council vote", || {
+        assert_eq!(
+            proposal_after.status,
+            ProposalStatus::Rejected,
+            "Proposal should be Rejected after council vote"
+        );
+    });
 
     Ok(())
 }

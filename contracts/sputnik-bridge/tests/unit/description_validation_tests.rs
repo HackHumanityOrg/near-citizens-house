@@ -15,18 +15,20 @@ use sputnik_bridge::SputnikBridge;
 #[allure_test]
 #[test]
 fn test_create_proposal_empty_description_fails() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+    });
 
-    let mut contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
-
-    assert_panic_with(
-        || {
-            let _ = contract.create_proposal("".to_string());
-        },
-        "Description cannot be empty",
-    );
+    step("Verify empty description is rejected", || {
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal("".to_string());
+            },
+            "Description cannot be empty",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -38,18 +40,20 @@ fn test_create_proposal_empty_description_fails() {
 #[allure_test]
 #[test]
 fn test_create_proposal_whitespace_only_description_fails() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+    });
 
-    let mut contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
-
-    assert_panic_with(
-        || {
-            let _ = contract.create_proposal("   \t\n  ".to_string());
-        },
-        "Description cannot be empty",
-    );
+    step("Verify whitespace-only description is rejected", || {
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal("   \t\n  ".to_string());
+            },
+            "Description cannot be empty",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -61,15 +65,17 @@ fn test_create_proposal_whitespace_only_description_fails() {
 #[allure_test]
 #[test]
 fn test_description_boundary_limit_minus_1_passes() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+    });
 
-    let mut contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
-
-    let description = "x".repeat(9999);
-    assert_eq!(description.len(), 9999);
-    let _ = contract.create_proposal(description);
+    step("Create 9999-character description (limit - 1)", || {
+        let description = "x".repeat(9999);
+        assert_eq!(description.len(), 9999);
+        let _ = contract.create_proposal(description);
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -81,15 +87,17 @@ fn test_description_boundary_limit_minus_1_passes() {
 #[allure_test]
 #[test]
 fn test_description_boundary_at_limit_passes() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+    });
 
-    let mut contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
-
-    let description = "x".repeat(10000);
-    assert_eq!(description.len(), 10000);
-    let _ = contract.create_proposal(description);
+    step("Create 10000-character description (at limit)", || {
+        let description = "x".repeat(10000);
+        assert_eq!(description.len(), 10000);
+        let _ = contract.create_proposal(description);
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -101,20 +109,22 @@ fn test_description_boundary_at_limit_passes() {
 #[allure_test]
 #[test]
 fn test_description_boundary_limit_plus_1_fails() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+    });
 
-    let mut contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
-
-    let too_long = "x".repeat(10001);
-    assert_eq!(too_long.len(), 10001);
-    assert_panic_with(
-        || {
-            let _ = contract.create_proposal(too_long);
-        },
-        "Description exceeds maximum length",
-    );
+    step("Verify 10001-character description (limit + 1) is rejected", || {
+        let too_long = "x".repeat(10001);
+        assert_eq!(too_long.len(), 10001);
+        assert_panic_with(
+            || {
+                let _ = contract.create_proposal(too_long);
+            },
+            "Description exceeds maximum length",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -126,12 +136,14 @@ fn test_description_boundary_limit_plus_1_fails() {
 #[allure_test]
 #[test]
 fn test_description_boundary_single_char_passes() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let mut contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+    });
 
-    let mut contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
-
-    let _ = contract.create_proposal("x".to_string());
+    step("Create single-character description", || {
+        let _ = contract.create_proposal("x".to_string());
+    });
 }
 

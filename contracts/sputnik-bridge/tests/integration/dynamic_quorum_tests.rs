@@ -32,8 +32,11 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
         "Initial: quorum={}, threshold={:?}",
         initial_quorum, initial_threshold
     );
-    assert_eq!(initial_quorum, 0, "Initial quorum should be 0");
-    assert_eq!(initial_threshold, (1, 2), "Threshold should be 50% (1/2)");
+
+    step("Verify initial quorum and threshold", || {
+        assert_eq!(initial_quorum, 0, "Initial quorum should be 0");
+        assert_eq!(initial_threshold, (1, 2), "Threshold should be 50% (1/2)");
+    });
 
     // Add citizens and verify quorum updates
     // Expected quorum = ceil(citizen_count * 7 / 100)
@@ -62,11 +65,6 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
 
         // Verify citizen count
         let citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
-        assert_eq!(
-            citizen_count, target_count,
-            "Should have {} citizens",
-            target_count
-        );
 
         // Verify quorum was updated
         let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
@@ -75,12 +73,14 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
             "After {} citizens: quorum={}, threshold={:?}",
             target_count, quorum, threshold
         );
-        assert_eq!(
-            quorum, expected_quorum,
-            "With {} citizens, quorum should be {}",
-            target_count, expected_quorum
-        );
-        assert_eq!(threshold, (1, 2), "Threshold should remain 50% (1/2)");
+
+        let tc = target_count;
+        let eq = expected_quorum;
+        step(&format!("Verify quorum at {} citizens", tc), || {
+            assert_eq!(citizen_count, tc, "Should have {} citizens", tc);
+            assert_eq!(quorum, eq, "With {} citizens, quorum should be {}", tc, eq);
+            assert_eq!(threshold, (1, 2), "Threshold should remain 50% (1/2)");
+        });
     }
 
     Ok(())
@@ -110,7 +110,6 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
 
     // Verify setup
     let citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(citizen_count, 10, "Should have 10 citizens");
 
     let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
     let threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
@@ -123,10 +122,14 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
     let effective_threshold =
         calculate_effective_threshold(quorum, threshold, citizen_count as u64);
     println!("Effective threshold: {}", effective_threshold);
-    assert_eq!(
-        effective_threshold, 6,
-        "Effective threshold should be 6 (50% of 10 + 1)"
-    );
+
+    step("Verify setup with 10 citizens and effective threshold", || {
+        assert_eq!(citizen_count, 10, "Should have 10 citizens");
+        assert_eq!(
+            effective_threshold, 6,
+            "Effective threshold should be 6 (50% of 10 + 1)"
+        );
+    });
 
     // Create a Vote proposal
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test quorum failure")
@@ -149,12 +152,15 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
 
     // Proposal should still be InProgress (not enough votes)
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::InProgress,
-        "Proposal should be InProgress with only 2/10 YES votes (need {} for threshold)",
-        effective_threshold
-    );
+
+    step("Verify proposal InProgress with insufficient votes", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::InProgress,
+            "Proposal should be InProgress with only 2/10 YES votes (need {} for threshold)",
+            effective_threshold
+        );
+    });
 
     Ok(())
 }
@@ -235,12 +241,15 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
 
     // Proposal should be InProgress (neither YES nor NO reached threshold)
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::InProgress,
-        "Proposal should be InProgress: 5 YES and 5 NO, but need {} for threshold",
-        effective_threshold
-    );
+
+    step("Verify proposal InProgress when neither threshold met", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::InProgress,
+            "Proposal should be InProgress: 5 YES and 5 NO, but need {} for threshold",
+            effective_threshold
+        );
+    });
 
     Ok(())
 }
@@ -284,19 +293,21 @@ async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow
         quorum, threshold, effective_threshold
     );
 
-    // quorum = ceil(10 * 7 / 100) = 1
-    // threshold_weight = (10 * 1 / 2) + 1 = 6
-    // effective_threshold = max(1, 6) = 6
-    assert!(
-        effective_threshold >= quorum,
-        "Effective threshold ({}) should always >= quorum ({})",
-        effective_threshold,
-        quorum
-    );
+    step("Verify effective_threshold always >= quorum (invariant)", || {
+        // quorum = ceil(10 * 7 / 100) = 1
+        // threshold_weight = (10 * 1 / 2) + 1 = 6
+        // effective_threshold = max(1, 6) = 6
+        assert!(
+            effective_threshold >= quorum,
+            "Effective threshold ({}) should always >= quorum ({})",
+            effective_threshold,
+            quorum
+        );
 
-    // If we have 6 YES votes to meet threshold, we also have >= 1 vote (quorum)
-    // Therefore, quorum_fails && threshold_passes is logically impossible
-    // The test passes by documenting this invariant
+        // If we have 6 YES votes to meet threshold, we also have >= 1 vote (quorum)
+        // Therefore, quorum_fails && threshold_passes is logically impossible
+        // The test passes by documenting this invariant
+    });
 
     Ok(())
 }
@@ -369,12 +380,15 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
 
     // After reaching threshold, proposal should be Approved
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Approved,
-        "Proposal should be Approved after {} YES votes",
-        votes_needed
-    );
+
+    step("Verify proposal approved at threshold", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Approved,
+            "Proposal should be Approved after {} YES votes",
+            votes_needed
+        );
+    });
 
     Ok(())
 }
@@ -432,12 +446,15 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
 
     // Proposal should be Rejected
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Rejected,
-        "Proposal should be Rejected after {} NO votes",
-        votes_needed
-    );
+
+    step("Verify proposal rejected at threshold", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Rejected,
+            "Proposal should be Rejected after {} NO votes",
+            votes_needed
+        );
+    });
 
     Ok(())
 }
@@ -460,10 +477,12 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
 
     // Initial state: no citizens
     let initial_citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(initial_citizen_count, 0, "Should start with 0 citizens");
-
     let initial_quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(initial_quorum, 0, "Initial quorum should be 0 with no citizens");
+
+    step("Verify initial state with 0 citizens", || {
+        assert_eq!(initial_citizen_count, 0, "Should start with 0 citizens");
+        assert_eq!(initial_quorum, 0, "Initial quorum should be 0 with no citizens");
+    });
 
     // Add the first citizen
     let first_user = env.user(0);
@@ -477,17 +496,19 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
 
     // After first citizen: quorum should be ceil(1 * 7 / 100) = 1
     let new_citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(new_citizen_count, 1, "Should have 1 citizen after addition");
-
     let new_quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(
-        new_quorum, 1,
-        "Quorum should be 1 after first citizen (ceil(1 * 0.07) = 1)"
-    );
 
     // Verify the first citizen is actually in the role
     let is_citizen = is_account_in_role(&env.sputnik_dao, first_user.id().as_str(), "citizen").await?;
-    assert!(is_citizen, "First user should be in citizen role");
+
+    step("Verify first citizen added and quorum updated to 1", || {
+        assert_eq!(new_citizen_count, 1, "Should have 1 citizen after addition");
+        assert_eq!(
+            new_quorum, 1,
+            "Quorum should be 1 after first citizen (ceil(1 * 0.07) = 1)"
+        );
+        assert!(is_citizen, "First user should be in citizen role");
+    });
 
     // Create a vote proposal and verify single citizen can approve it
     create_proposal_via_bridge(&env.backend, &env.bridge, "First citizen vote test")
@@ -508,11 +529,14 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
     .into_result()?;
 
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal.status,
-        ProposalStatus::Approved,
-        "Single citizen vote should approve proposal when there's only 1 citizen"
-    );
+
+    step("Verify single citizen can approve proposal", || {
+        assert_eq!(
+            proposal.status,
+            ProposalStatus::Approved,
+            "Single citizen vote should approve proposal when there's only 1 citizen"
+        );
+    });
 
     Ok(())
 }
@@ -543,10 +567,13 @@ async fn test_quorum_boundary_14_to_15_citizens() -> anyhow::Result<()> {
 
     // With 14 citizens, quorum should be 1
     let quorum_at_14 = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(
-        quorum_at_14, 1,
-        "At 14 citizens, quorum should be 1 (ceil(14 * 0.07) = ceil(0.98) = 1)"
-    );
+
+    step("Verify quorum is 1 at 14 citizens", || {
+        assert_eq!(
+            quorum_at_14, 1,
+            "At 14 citizens, quorum should be 1 (ceil(14 * 0.07) = ceil(0.98) = 1)"
+        );
+    });
 
     // Add the 15th citizen
     let fifteenth_user = env.user(14);
@@ -557,18 +584,21 @@ async fn test_quorum_boundary_14_to_15_citizens() -> anyhow::Result<()> {
 
     // With 15 citizens, quorum should be 2
     let quorum_at_15 = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(
-        quorum_at_15, 2,
-        "At 15 citizens, quorum should be 2 (ceil(15 * 0.07) = ceil(1.05) = 2)"
-    );
 
-    // Verify the boundary transition
-    assert!(
-        quorum_at_15 > quorum_at_14,
-        "Quorum should increase from {} to {} when going from 14 to 15 citizens",
-        quorum_at_14,
-        quorum_at_15
-    );
+    step("Verify quorum boundary transition at 15 citizens", || {
+        assert_eq!(
+            quorum_at_15, 2,
+            "At 15 citizens, quorum should be 2 (ceil(15 * 0.07) = ceil(1.05) = 2)"
+        );
+
+        // Verify the boundary transition
+        assert!(
+            quorum_at_15 > quorum_at_14,
+            "Quorum should increase from {} to {} when going from 14 to 15 citizens",
+            quorum_at_14,
+            quorum_at_15
+        );
+    });
 
     Ok(())
 }
@@ -610,23 +640,26 @@ async fn test_quorum_calculation_with_many_citizens() -> anyhow::Result<()> {
     }
 
     let citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(citizen_count, 100, "Should have 100 citizens");
 
     // With 100 citizens, quorum = ceil(100 * 0.07) = 7
     let quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
-    assert_eq!(
-        quorum, 7,
-        "At 100 citizens, quorum should be 7 (ceil(100 * 0.07) = 7)"
-    );
 
     // Threshold = (100 * 1 / 2) + 1 = 51
     // effective_threshold = max(7, 51) = 51
     let threshold = get_vote_threshold(&env.sputnik_dao, "citizen").await?;
     let effective_threshold = calculate_effective_threshold(quorum, threshold, 100);
-    assert_eq!(
-        effective_threshold, 51,
-        "Effective threshold should be 51 for 100 citizens"
-    );
+
+    step("Verify quorum calculation at 100 citizens", || {
+        assert_eq!(citizen_count, 100, "Should have 100 citizens");
+        assert_eq!(
+            quorum, 7,
+            "At 100 citizens, quorum should be 7 (ceil(100 * 0.07) = 7)"
+        );
+        assert_eq!(
+            effective_threshold, 51,
+            "Effective threshold should be 51 for 100 citizens"
+        );
+    });
 
     Ok(())
 }
@@ -661,18 +694,20 @@ async fn test_quorum_update_atomic_with_member_addition() -> anyhow::Result<()> 
     let quorum_after = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
     let citizen_count_after = get_citizen_count(&env.sputnik_dao, "citizen").await?;
 
-    // Verify both changed together
-    assert_eq!(
-        citizen_count_after,
-        citizen_count_before + 1,
-        "Citizen count should increase by 1"
-    );
-    assert!(
-        quorum_after >= quorum_before,
-        "Quorum should increase or stay same (was {}, now {})",
-        quorum_before,
-        quorum_after
-    );
+    step("Verify citizen count and quorum updated atomically", || {
+        // Verify both changed together
+        assert_eq!(
+            citizen_count_after,
+            citizen_count_before + 1,
+            "Citizen count should increase by 1"
+        );
+        assert!(
+            quorum_after >= quorum_before,
+            "Quorum should increase or stay same (was {}, now {})",
+            quorum_before,
+            quorum_after
+        );
+    });
 
     // Check events show both operations occurred
     let logs = extract_event_logs(&result);
@@ -681,18 +716,14 @@ async fn test_quorum_update_atomic_with_member_addition() -> anyhow::Result<()> 
     let member_added = events.iter().any(|e| e.event == "member_added");
     let quorum_updated = events.iter().any(|e| e.event == "quorum_updated");
 
-    assert!(member_added, "member_added event should be emitted");
-    assert!(quorum_updated, "quorum_updated event should be emitted");
+    step("Verify both events emitted atomically", || {
+        assert!(member_added, "member_added event should be emitted");
+        assert!(quorum_updated, "quorum_updated event should be emitted");
+    });
 
     // Parse and validate the quorum_updated event data
     let quorum_event: QuorumUpdatedEvent =
         parse_typed_event(&events, "quorum_updated").expect("quorum_updated event data not found");
-
-    // Validate event data matches expected values
-    assert_eq!(
-        quorum_event.citizen_count, citizen_count_after as u64,
-        "Event citizen_count should match actual count"
-    );
 
     // Expected quorum = ceil(citizen_count * 7 / 100)
     let expected_quorum = if citizen_count_after == 0 {
@@ -700,22 +731,31 @@ async fn test_quorum_update_atomic_with_member_addition() -> anyhow::Result<()> 
     } else {
         ((citizen_count_after as u64) * 7).div_ceil(100)
     };
-    assert_eq!(
-        quorum_event.new_quorum, expected_quorum,
-        "Event new_quorum should match calculated ceil(7% * citizen_count)"
-    );
 
-    // Proposal ID should be valid (non-zero since it's for the policy update proposal)
-    assert!(
-        quorum_event.proposal_id > 0,
-        "Event proposal_id should be a valid proposal ID"
-    );
+    step("Verify quorum_updated event data matches state", || {
+        // Validate event data matches expected values
+        assert_eq!(
+            quorum_event.citizen_count, citizen_count_after as u64,
+            "Event citizen_count should match actual count"
+        );
 
-    // Verify the quorum in the DAO matches the event
-    assert_eq!(
-        quorum_after, expected_quorum,
-        "DAO quorum should match event's new_quorum"
-    );
+        assert_eq!(
+            quorum_event.new_quorum, expected_quorum,
+            "Event new_quorum should match calculated ceil(7% * citizen_count)"
+        );
+
+        // Proposal ID should be valid (non-zero since it's for the policy update proposal)
+        assert!(
+            quorum_event.proposal_id > 0,
+            "Event proposal_id should be a valid proposal ID"
+        );
+
+        // Verify the quorum in the DAO matches the event
+        assert_eq!(
+            quorum_after, expected_quorum,
+            "DAO quorum should match event's new_quorum"
+        );
+    });
 
     Ok(())
 }

@@ -17,37 +17,41 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_test]
 #[test]
 fn test_account_id_mismatch() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let different_user = accounts(3);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, different_user) = step("Initialize contract and test accounts", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let different_user = accounts(3);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user, different_user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with mismatched account_id", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: different_user, // Mismatch: signature is for accounts(3)
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: different_user, // Mismatch: signature is for accounts(3)
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user, // But we're trying to verify accounts(2)
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Signature account ID must match near_account_id",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user, // But we're trying to verify accounts(2)
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Signature account ID must match near_account_id",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -59,37 +63,41 @@ fn test_account_id_mismatch() {
 #[allure_test]
 #[test]
 fn test_recipient_mismatch() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let different_recipient = accounts(3);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, different_recipient) = step("Initialize contract and test accounts", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let different_recipient = accounts(3);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user, different_recipient)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with mismatched recipient", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: different_recipient, // Mismatch: recipient is accounts(3)
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: different_recipient, // Mismatch: recipient is accounts(3)
-            };
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user, // But we're trying to verify accounts(2)
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Signature recipient must match near_account_id",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user, // But we're trying to verify accounts(2)
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Signature recipient must match near_account_id",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -101,23 +109,27 @@ fn test_recipient_mismatch() {
 #[allure_test]
 #[test]
 fn test_batch_size_exceeded_are_accounts_verified() {
-    let backend = accounts(1);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let contract = step("Initialize contract", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        Contract::new(backend)
+    });
 
-    let contract = Contract::new(backend);
+    let too_many_accounts = step("Create batch of 101 accounts", || {
+        (0..101)
+            .map(|i| format!("account{}.near", i).parse().unwrap())
+            .collect::<Vec<near_sdk::AccountId>>()
+    });
 
-    // Create 101 accounts to exceed the limit
-    let too_many_accounts: Vec<near_sdk::AccountId> = (0..101)
-        .map(|i| format!("account{}.near", i).parse().unwrap())
-        .collect();
-
-    assert_panic_with(
-        || {
-            contract.are_accounts_verified(too_many_accounts);
-        },
-        "Batch size exceeds maximum of 100 accounts",
-    );
+    step("Attempt batch verification exceeding limit", || {
+        assert_panic_with(
+            || {
+                contract.are_accounts_verified(too_many_accounts);
+            },
+            "Batch size exceeds maximum of 100 accounts",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -129,23 +141,27 @@ fn test_batch_size_exceeded_are_accounts_verified() {
 #[allure_test]
 #[test]
 fn test_batch_size_exceeded_get_accounts() {
-    let backend = accounts(1);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let contract = step("Initialize contract", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        Contract::new(backend)
+    });
 
-    let contract = Contract::new(backend);
+    let too_many_accounts = step("Create batch of 101 accounts", || {
+        (0..101)
+            .map(|i| format!("account{}.near", i).parse().unwrap())
+            .collect::<Vec<near_sdk::AccountId>>()
+    });
 
-    // Create 101 accounts to exceed the limit
-    let too_many_accounts: Vec<near_sdk::AccountId> = (0..101)
-        .map(|i| format!("account{}.near", i).parse().unwrap())
-        .collect();
-
-    assert_panic_with(
-        || {
-            contract.get_accounts(too_many_accounts);
-        },
-        "Batch size exceeds maximum of 100 accounts",
-    );
+    step("Attempt batch get_accounts exceeding limit", || {
+        assert_panic_with(
+            || {
+                contract.get_accounts(too_many_accounts);
+            },
+            "Batch size exceeds maximum of 100 accounts",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -157,39 +173,42 @@ fn test_batch_size_exceeded_get_accounts() {
 #[allure_test]
 #[test]
 fn test_nullifier_too_long() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with 81-char nullifier", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
+                let too_long_nullifier = "x".repeat(81);
 
-            // Create a nullifier that exceeds the 80 character limit
-            let too_long_nullifier = "x".repeat(81);
-
-            contract.store_verification(
-                too_long_nullifier,
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Nullifier exceeds maximum length of 80",
-    );
+                contract.store_verification(
+                    too_long_nullifier,
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Nullifier exceeds maximum length of 80",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -201,39 +220,42 @@ fn test_nullifier_too_long() {
 #[allure_test]
 #[test]
 fn test_attestation_id_too_long() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with 2-char attestation_id", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
+                let too_long_attestation_id = "xx".to_string();
 
-            // Create an attestation_id that exceeds the 1 character limit
-            let too_long_attestation_id = "xx".to_string();
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                too_long_attestation_id,
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Attestation ID exceeds maximum length of 1",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    too_long_attestation_id,
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Attestation ID exceeds maximum length of 1",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -245,39 +267,42 @@ fn test_attestation_id_too_long() {
 #[allure_test]
 #[test]
 fn test_user_context_data_too_long() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with 4097-char user_context_data", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
+                let too_long_user_context = "x".repeat(4097);
 
-            // Create user_context_data that exceeds the 4096 character limit
-            let too_long_user_context = "x".repeat(4097);
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                too_long_user_context,
-            );
-        },
-        "User context data exceeds maximum length of 4096",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    too_long_user_context,
+                );
+            },
+            "User context data exceeds maximum length of 4096",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -289,26 +314,31 @@ fn test_user_context_data_too_long() {
 #[allure_test]
 #[test]
 fn test_nullifier_max_length_allowed() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, sig_data) = step("Initialize contract with valid signature", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        let signer = create_signer(&user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[2; 32], &user);
+        (contract, user, sig_data)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[2; 32], &user);
+    step("Store verification with 80-char nullifier", || {
+        contract.store_verification(
+            "n".repeat(80),
+            user.clone(),
+            "9".to_string(),
+            sig_data,
+            test_self_proof(),
+            "ctx".to_string(),
+        );
+    });
 
-    contract.store_verification(
-        "n".repeat(80),
-        user.clone(),
-        "9".to_string(),
-        sig_data,
-        test_self_proof(),
-        "ctx".to_string(),
-    );
-
-    assert!(contract.is_account_verified(user));
+    step("Verify account is verified", || {
+        assert!(contract.is_account_verified(user));
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -320,26 +350,31 @@ fn test_nullifier_max_length_allowed() {
 #[allure_test]
 #[test]
 fn test_attestation_id_single_char_allowed() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, sig_data) = step("Initialize contract with valid signature", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        let signer = create_signer(&user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
+        (contract, user, sig_data)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
+    step("Store verification with single-char attestation_id", || {
+        contract.store_verification(
+            "nullifier_attestation".to_string(),
+            user.clone(),
+            "Z".to_string(),
+            sig_data,
+            test_self_proof(),
+            "ctx".to_string(),
+        );
+    });
 
-    contract.store_verification(
-        "nullifier_attestation".to_string(),
-        user.clone(),
-        "Z".to_string(),
-        sig_data,
-        test_self_proof(),
-        "ctx".to_string(),
-    );
-
-    assert!(contract.is_account_verified(user));
+    step("Verify account is verified", || {
+        assert!(contract.is_account_verified(user));
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -351,30 +386,34 @@ fn test_attestation_id_single_char_allowed() {
 #[allure_test]
 #[test]
 fn test_user_context_data_max_length_allowed() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, sig_data) = step("Initialize contract with valid signature", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        let signer = create_signer(&user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
+        (contract, user, sig_data)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
+    step("Store verification with 4096-char user_context_data", || {
+        let context_data = "c".repeat(4096);
+        contract.store_verification(
+            "nullifier_context".to_string(),
+            user.clone(),
+            "1".to_string(),
+            sig_data,
+            test_self_proof(),
+            context_data,
+        );
+    });
 
-    let context_data = "c".repeat(4096);
-
-    contract.store_verification(
-        "nullifier_context".to_string(),
-        user.clone(),
-        "1".to_string(),
-        sig_data,
-        test_self_proof(),
-        context_data.clone(),
-    );
-
-    let account = contract.get_account(user.clone()).unwrap();
-    assert_eq!(account.attestation_id, "1");
-    assert_eq!(account.near_account_id, user);
-    assert_eq!(account.nullifier, "nullifier_context");
-    assert_eq!(contract.get_verified_count(), 1);
+    step("Verify account data is stored correctly", || {
+        let account = contract.get_account(user.clone()).unwrap();
+        assert_eq!(account.attestation_id, "1");
+        assert_eq!(account.near_account_id, user);
+        assert_eq!(account.nullifier, "nullifier_context");
+        assert_eq!(contract.get_verified_count(), 1);
+    });
 }

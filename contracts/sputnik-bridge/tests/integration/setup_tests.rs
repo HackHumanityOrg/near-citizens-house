@@ -16,20 +16,23 @@ use allure_rs::prelude::*;
 async fn test_full_setup() -> anyhow::Result<()> {
     let env = setup().await?;
 
-    // Verify all contracts are deployed
-    assert!(!env.sputnik_dao.id().to_string().is_empty());
-    assert!(!env.verified_accounts.id().to_string().is_empty());
-    assert!(!env.bridge.id().to_string().is_empty());
+    step("Verify all contracts are deployed", || {
+        assert!(!env.sputnik_dao.id().to_string().is_empty());
+        assert!(!env.verified_accounts.id().to_string().is_empty());
+        assert!(!env.bridge.id().to_string().is_empty());
+    });
 
-    // Verify bridge initialization
     let info: BridgeInfo = env.bridge.view("get_info").await?.json()?;
-    assert_eq!(info.backend_wallet, env.backend.id().to_string());
-    assert_eq!(info.sputnik_dao, env.sputnik_dao.id().to_string());
-    assert_eq!(
-        info.verified_accounts_contract,
-        env.verified_accounts.id().to_string()
-    );
-    assert_eq!(info.citizen_role, "citizen");
+
+    step("Verify bridge initialization", || {
+        assert_eq!(info.backend_wallet, env.backend.id().to_string());
+        assert_eq!(info.sputnik_dao, env.sputnik_dao.id().to_string());
+        assert_eq!(
+            info.verified_accounts_contract,
+            env.verified_accounts.id().to_string()
+        );
+        assert_eq!(info.citizen_role, "citizen");
+    });
 
     Ok(())
 }
@@ -45,10 +48,12 @@ async fn test_full_setup() -> anyhow::Result<()> {
 async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
     let env = setup().await?;
 
-    // Verify DAO policy has bridge in bridge role (matches production dao-policy.json)
     let is_in_bridge_role =
         is_account_in_role(&env.sputnik_dao, env.bridge.id().as_str(), "bridge").await?;
-    assert!(is_in_bridge_role, "Bridge should be in bridge role");
+
+    step("Verify bridge is in bridge role", || {
+        assert!(is_in_bridge_role, "Bridge should be in bridge role");
+    });
 
     Ok(())
 }
@@ -63,22 +68,23 @@ async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
     let env = setup().await?;
-
     let policy = get_dao_policy(&env.sputnik_dao).await?;
 
-    // Verify proposal period is short (10 seconds)
-    let proposal_period = policy
-        .get("proposal_period")
-        .and_then(|p| p.as_str())
-        .unwrap();
-    assert_eq!(proposal_period, PROPOSAL_PERIOD_NS.to_string());
+    step("Verify proposal period is 10 seconds", || {
+        let proposal_period = policy
+            .get("proposal_period")
+            .and_then(|p| p.as_str())
+            .unwrap();
+        assert_eq!(proposal_period, PROPOSAL_PERIOD_NS.to_string());
+    });
 
-    // Verify citizen role exists
-    let roles = policy.get("roles").and_then(|r| r.as_array()).unwrap();
-    let citizen_role = roles
-        .iter()
-        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("citizen"));
-    assert!(citizen_role.is_some(), "Citizen role should exist");
+    step("Verify citizen role exists", || {
+        let roles = policy.get("roles").and_then(|r| r.as_array()).unwrap();
+        let citizen_role = roles
+            .iter()
+            .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("citizen"));
+        assert!(citizen_role.is_some(), "Citizen role should exist");
+    });
 
     Ok(())
 }
@@ -94,33 +100,37 @@ async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_dao_init_with_citizen_role() -> anyhow::Result<()> {
     let env = setup().await?;
-
     let policy = get_dao_policy(&env.sputnik_dao).await?;
-    let roles = policy
-        .get("roles")
-        .and_then(|r| r.as_array())
-        .expect("Policy should have roles");
 
-    let citizen_role = roles
-        .iter()
-        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("citizen"))
-        .expect("Citizen role should exist");
+    let citizen_role = step("Find citizen role in policy", || {
+        let roles = policy
+            .get("roles")
+            .and_then(|r| r.as_array())
+            .expect("Policy should have roles");
+        roles
+            .iter()
+            .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("citizen"))
+            .expect("Citizen role should exist")
+            .clone()
+    });
 
-    // Verify it's a Group kind with empty members
-    let kind = citizen_role.get("kind").expect("Role should have kind");
-    let group = kind.get("Group").expect("Citizen role should be a Group");
-    let members = group.as_array().expect("Group should be an array");
-    assert!(members.is_empty(), "Citizen role should be empty initially");
+    step("Verify citizen role is empty Group initially", || {
+        let kind = citizen_role.get("kind").expect("Role should have kind");
+        let group = kind.get("Group").expect("Citizen role should be a Group");
+        let members = group.as_array().expect("Group should be an array");
+        assert!(members.is_empty(), "Citizen role should be empty initially");
+    });
 
-    // Verify citizens can vote when added
-    let permissions = citizen_role
-        .get("permissions")
-        .and_then(|p| p.as_array())
-        .expect("Role should have permissions");
-    let has_vote_permissions = permissions
-        .iter()
-        .any(|p| p.as_str().map(|s| s.contains("VoteApprove") || s.contains("VoteReject")).unwrap_or(false));
-    assert!(has_vote_permissions, "Citizen role should have vote permissions");
+    step("Verify citizens have vote permissions", || {
+        let permissions = citizen_role
+            .get("permissions")
+            .and_then(|p| p.as_array())
+            .expect("Role should have permissions");
+        let has_vote_permissions = permissions
+            .iter()
+            .any(|p| p.as_str().map(|s| s.contains("VoteApprove") || s.contains("VoteReject")).unwrap_or(false));
+        assert!(has_vote_permissions, "Citizen role should have vote permissions");
+    });
 
     Ok(())
 }
@@ -136,44 +146,45 @@ async fn test_dao_init_with_citizen_role() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_dao_init_bridge_has_add_member_permission() -> anyhow::Result<()> {
     let env = setup().await?;
-
     let policy = get_dao_policy(&env.sputnik_dao).await?;
-    let roles = policy
-        .get("roles")
-        .and_then(|r| r.as_array())
-        .expect("Policy should have roles");
 
-    let bridge_role = roles
-        .iter()
-        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
-        .expect("Bridge role should exist");
+    let perm_strings = step("Extract bridge role permissions", || {
+        let roles = policy
+            .get("roles")
+            .and_then(|r| r.as_array())
+            .expect("Policy should have roles");
+        let bridge_role = roles
+            .iter()
+            .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
+            .expect("Bridge role should exist");
+        let permissions = bridge_role
+            .get("permissions")
+            .and_then(|p| p.as_array())
+            .expect("Role should have permissions");
+        permissions.iter().filter_map(|p| p.as_str()).map(String::from).collect::<Vec<_>>()
+    });
 
-    let permissions = bridge_role
-        .get("permissions")
-        .and_then(|p| p.as_array())
-        .expect("Role should have permissions");
+    step("Verify bridge has add_member_to_role:AddProposal", || {
+        let has_add_proposal = perm_strings
+            .iter()
+            .any(|p| p.contains("add_member_to_role") && p.contains("AddProposal"));
+        assert!(
+            has_add_proposal,
+            "Bridge should have add_member_to_role:AddProposal. Found: {:?}",
+            perm_strings
+        );
+    });
 
-    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
-
-    // Check for AddProposal permission
-    let has_add_proposal = perm_strings
-        .iter()
-        .any(|p| p.contains("add_member_to_role") && p.contains("AddProposal"));
-    assert!(
-        has_add_proposal,
-        "Bridge should have add_member_to_role:AddProposal. Found: {:?}",
-        perm_strings
-    );
-
-    // Check for VoteApprove permission for auto-approval
-    let has_vote_approve = perm_strings
-        .iter()
-        .any(|p| p.contains("add_member_to_role") && p.contains("VoteApprove"));
-    assert!(
-        has_vote_approve,
-        "Bridge should have add_member_to_role:VoteApprove for auto-approval. Found: {:?}",
-        perm_strings
-    );
+    step("Verify bridge has add_member_to_role:VoteApprove", || {
+        let has_vote_approve = perm_strings
+            .iter()
+            .any(|p| p.contains("add_member_to_role") && p.contains("VoteApprove"));
+        assert!(
+            has_vote_approve,
+            "Bridge should have add_member_to_role:VoteApprove for auto-approval. Found: {:?}",
+            perm_strings
+        );
+    });
 
     Ok(())
 }
@@ -189,43 +200,45 @@ async fn test_dao_init_bridge_has_add_member_permission() -> anyhow::Result<()> 
 #[tokio::test]
 async fn test_dao_init_bridge_has_policy_update_permission() -> anyhow::Result<()> {
     let env = setup().await?;
-
     let policy = get_dao_policy(&env.sputnik_dao).await?;
-    let roles = policy
-        .get("roles")
-        .and_then(|r| r.as_array())
-        .expect("Policy should have roles");
 
-    let bridge_role = roles
-        .iter()
-        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
-        .expect("Bridge role should exist");
+    let perm_strings = step("Extract bridge role permissions", || {
+        let roles = policy
+            .get("roles")
+            .and_then(|r| r.as_array())
+            .expect("Policy should have roles");
+        let bridge_role = roles
+            .iter()
+            .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
+            .expect("Bridge role should exist");
+        let permissions = bridge_role
+            .get("permissions")
+            .and_then(|p| p.as_array())
+            .expect("Role should have permissions");
+        permissions.iter().filter_map(|p| p.as_str()).map(String::from).collect::<Vec<_>>()
+    });
 
-    let permissions = bridge_role
-        .get("permissions")
-        .and_then(|p| p.as_array())
-        .expect("Role should have permissions");
+    step("Verify bridge has policy_add_or_update_role:AddProposal", || {
+        let has_policy_add_proposal = perm_strings
+            .iter()
+            .any(|p| p.contains("policy_add_or_update_role") && p.contains("AddProposal"));
+        assert!(
+            has_policy_add_proposal,
+            "Bridge should have policy_add_or_update_role:AddProposal. Found: {:?}",
+            perm_strings
+        );
+    });
 
-    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
-
-    // Check for policy_add_or_update_role permissions (both AddProposal and VoteApprove)
-    let has_policy_add_proposal = perm_strings
-        .iter()
-        .any(|p| p.contains("policy_add_or_update_role") && p.contains("AddProposal"));
-    assert!(
-        has_policy_add_proposal,
-        "Bridge should have policy_add_or_update_role:AddProposal. Found: {:?}",
-        perm_strings
-    );
-
-    let has_policy_vote_approve = perm_strings
-        .iter()
-        .any(|p| p.contains("policy_add_or_update_role") && p.contains("VoteApprove"));
-    assert!(
-        has_policy_vote_approve,
-        "Bridge should have policy_add_or_update_role:VoteApprove for quorum updates. Found: {:?}",
-        perm_strings
-    );
+    step("Verify bridge has policy_add_or_update_role:VoteApprove", || {
+        let has_policy_vote_approve = perm_strings
+            .iter()
+            .any(|p| p.contains("policy_add_or_update_role") && p.contains("VoteApprove"));
+        assert!(
+            has_policy_vote_approve,
+            "Bridge should have policy_add_or_update_role:VoteApprove for quorum updates. Found: {:?}",
+            perm_strings
+        );
+    });
 
     Ok(())
 }
@@ -241,34 +254,34 @@ async fn test_dao_init_bridge_has_policy_update_permission() -> anyhow::Result<(
 #[tokio::test]
 async fn test_dao_init_bridge_has_vote_permission() -> anyhow::Result<()> {
     let env = setup().await?;
-
     let policy = get_dao_policy(&env.sputnik_dao).await?;
-    let roles = policy
-        .get("roles")
-        .and_then(|r| r.as_array())
-        .expect("Policy should have roles");
 
-    let bridge_role = roles
-        .iter()
-        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
-        .expect("Bridge role should exist");
+    let perm_strings = step("Extract bridge role permissions", || {
+        let roles = policy
+            .get("roles")
+            .and_then(|r| r.as_array())
+            .expect("Policy should have roles");
+        let bridge_role = roles
+            .iter()
+            .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("bridge"))
+            .expect("Bridge role should exist");
+        let permissions = bridge_role
+            .get("permissions")
+            .and_then(|p| p.as_array())
+            .expect("Role should have permissions");
+        permissions.iter().filter_map(|p| p.as_str()).map(String::from).collect::<Vec<_>>()
+    });
 
-    let permissions = bridge_role
-        .get("permissions")
-        .and_then(|p| p.as_array())
-        .expect("Role should have permissions");
-
-    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
-
-    // Check for vote:AddProposal permission
-    let has_vote_add_proposal = perm_strings
-        .iter()
-        .any(|p| p.contains("vote") && p.contains("AddProposal"));
-    assert!(
-        has_vote_add_proposal,
-        "Bridge should have vote:AddProposal permission. Found: {:?}",
-        perm_strings
-    );
+    step("Verify bridge has vote:AddProposal permission", || {
+        let has_vote_add_proposal = perm_strings
+            .iter()
+            .any(|p| p.contains("vote") && p.contains("AddProposal"));
+        assert!(
+            has_vote_add_proposal,
+            "Bridge should have vote:AddProposal permission. Found: {:?}",
+            perm_strings
+        );
+    });
 
     Ok(())
 }
@@ -284,40 +297,42 @@ async fn test_dao_init_bridge_has_vote_permission() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_dao_init_all_role_can_finalize() -> anyhow::Result<()> {
     let env = setup().await?;
-
     let policy = get_dao_policy(&env.sputnik_dao).await?;
-    let roles = policy
-        .get("roles")
-        .and_then(|r| r.as_array())
-        .expect("Policy should have roles");
 
-    let all_role = roles
-        .iter()
-        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("all"))
-        .expect("'all' role should exist");
+    let all_role = step("Find 'all' role in policy", || {
+        let roles = policy
+            .get("roles")
+            .and_then(|r| r.as_array())
+            .expect("Policy should have roles");
+        roles
+            .iter()
+            .find(|r| r.get("name").and_then(|n| n.as_str()) == Some("all"))
+            .expect("'all' role should exist")
+            .clone()
+    });
 
-    // Verify it's an Everyone kind
-    let kind = all_role.get("kind").expect("Role should have kind");
-    assert!(
-        kind.as_str() == Some("Everyone"),
-        "'all' role should be Everyone kind. Got: {:?}",
-        kind
-    );
+    step("Verify 'all' role is Everyone kind", || {
+        let kind = all_role.get("kind").expect("Role should have kind");
+        assert!(
+            kind.as_str() == Some("Everyone"),
+            "'all' role should be Everyone kind. Got: {:?}",
+            kind
+        );
+    });
 
-    let permissions = all_role
-        .get("permissions")
-        .and_then(|p| p.as_array())
-        .expect("Role should have permissions");
-
-    let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
-
-    // Check for *:Finalize permission (anyone can finalize any proposal type)
-    let has_finalize = perm_strings.iter().any(|p| p.contains("Finalize"));
-    assert!(
-        has_finalize,
-        "'all' role should have Finalize permission. Found: {:?}",
-        perm_strings
-    );
+    step("Verify 'all' role has Finalize permission", || {
+        let permissions = all_role
+            .get("permissions")
+            .and_then(|p| p.as_array())
+            .expect("Role should have permissions");
+        let perm_strings: Vec<&str> = permissions.iter().filter_map(|p| p.as_str()).collect();
+        let has_finalize = perm_strings.iter().any(|p| p.contains("Finalize"));
+        assert!(
+            has_finalize,
+            "'all' role should have Finalize permission. Found: {:?}",
+            perm_strings
+        );
+    });
 
     Ok(())
 }
@@ -332,16 +347,17 @@ async fn test_dao_init_all_role_can_finalize() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_get_info() -> anyhow::Result<()> {
     let env = setup().await?;
-
     let info: BridgeInfo = env.bridge.view("get_info").await?.json()?;
 
-    assert_eq!(info.backend_wallet, env.backend.id().to_string());
-    assert_eq!(info.sputnik_dao, env.sputnik_dao.id().to_string());
-    assert_eq!(
-        info.verified_accounts_contract,
-        env.verified_accounts.id().to_string()
-    );
-    assert_eq!(info.citizen_role, "citizen");
+    step("Verify get_info returns correct configuration", || {
+        assert_eq!(info.backend_wallet, env.backend.id().to_string());
+        assert_eq!(info.sputnik_dao, env.sputnik_dao.id().to_string());
+        assert_eq!(
+            info.verified_accounts_contract,
+            env.verified_accounts.id().to_string()
+        );
+        assert_eq!(info.citizen_role, "citizen");
+    });
 
     Ok(())
 }
@@ -358,7 +374,6 @@ async fn test_get_info() -> anyhow::Result<()> {
 async fn test_init_cannot_reinitialize() -> anyhow::Result<()> {
     let env = setup().await?;
 
-    // Try to reinitialize the bridge contract - should fail
     let result = env
         .bridge
         .call("new")
@@ -371,19 +386,22 @@ async fn test_init_cannot_reinitialize() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_failure(),
-        "Reinitialization should fail. Got success instead."
-    );
+    step("Verify reinitialization fails", || {
+        assert!(
+            result.is_failure(),
+            "Reinitialization should fail. Got success instead."
+        );
+    });
 
-    // Verify error message indicates contract is already initialized
-    let failure_msg = format!("{:?}", result.failures());
-    assert!(
-        failure_msg.contains("already initialized")
-            || failure_msg.contains("The contract has already been initialized"),
-        "Expected 'already initialized' error, got: {}",
-        failure_msg
-    );
+    step("Verify error message indicates already initialized", || {
+        let failure_msg = format!("{:?}", result.failures());
+        assert!(
+            failure_msg.contains("already initialized")
+                || failure_msg.contains("The contract has already been initialized"),
+            "Expected 'already initialized' error, got: {}",
+            failure_msg
+        );
+    });
 
     Ok(())
 }
@@ -401,7 +419,6 @@ async fn test_init_with_unicode_role_name() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let backend = worker.dev_create_account().await?;
 
-    // Deploy contracts
     let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
     verified_accounts
         .call("new")
@@ -413,7 +430,6 @@ async fn test_init_with_unicode_role_name() -> anyhow::Result<()> {
     let sputnik_dao = worker.dev_deploy(SPUTNIKDAO_WASM).await?;
     let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
 
-    // Initialize DAO with unicode role name
     let policy = serde_json::json!({
         "roles": [
             {
@@ -448,7 +464,6 @@ async fn test_init_with_unicode_role_name() -> anyhow::Result<()> {
         .await?
         .into_result()?;
 
-    // Initialize bridge with unicode role name
     let result = bridge
         .call("new")
         .args_json(serde_json::json!({
@@ -460,15 +475,19 @@ async fn test_init_with_unicode_role_name() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_success(),
-        "Init with unicode role should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify initialization with unicode role succeeds", || {
+        assert!(
+            result.is_success(),
+            "Init with unicode role should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
-    // Verify the role is stored correctly
     let info: BridgeInfo = bridge.view("get_info").await?.json()?;
-    assert_eq!(info.citizen_role, "市民");
+
+    step("Verify unicode role is stored correctly", || {
+        assert_eq!(info.citizen_role, "市民");
+    });
 
     Ok(())
 }
@@ -486,7 +505,6 @@ async fn test_init_with_nonexistent_dao() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let backend = worker.dev_create_account().await?;
 
-    // Deploy verified_accounts (real)
     let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
     verified_accounts
         .call("new")
@@ -495,13 +513,9 @@ async fn test_init_with_nonexistent_dao() -> anyhow::Result<()> {
         .await?
         .into_result()?;
 
-    // Deploy bridge
     let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
-
-    // Create a fake DAO account ID that doesn't have any contract deployed
     let fake_dao_id = "nonexistent-dao.near";
 
-    // Initialize bridge with nonexistent DAO - should succeed
     let result = bridge
         .call("new")
         .args_json(serde_json::json!({
@@ -513,15 +527,19 @@ async fn test_init_with_nonexistent_dao() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_success(),
-        "Init with nonexistent DAO should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify initialization with nonexistent DAO succeeds", || {
+        assert!(
+            result.is_success(),
+            "Init with nonexistent DAO should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
-    // Verify the DAO address is stored correctly
     let info: BridgeInfo = bridge.view("get_info").await?.json()?;
-    assert_eq!(info.sputnik_dao, fake_dao_id);
+
+    step("Verify DAO address is stored correctly", || {
+        assert_eq!(info.sputnik_dao, fake_dao_id);
+    });
 
     Ok(())
 }
@@ -539,10 +557,7 @@ async fn test_init_with_nonexistent_verified_accounts() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let backend = worker.dev_create_account().await?;
 
-    // Deploy DAO (real)
     let sputnik_dao = worker.dev_deploy(SPUTNIKDAO_WASM).await?;
-
-    // Initialize DAO with minimal policy
     let policy = serde_json::json!({
         "roles": [],
         "default_vote_policy": {
@@ -570,13 +585,9 @@ async fn test_init_with_nonexistent_verified_accounts() -> anyhow::Result<()> {
         .await?
         .into_result()?;
 
-    // Deploy bridge
     let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
-
-    // Create a fake verified-accounts ID that doesn't have any contract deployed
     let fake_verified_accounts_id = "nonexistent-verified.near";
 
-    // Initialize bridge with nonexistent verified-accounts - should succeed
     let result = bridge
         .call("new")
         .args_json(serde_json::json!({
@@ -588,15 +599,19 @@ async fn test_init_with_nonexistent_verified_accounts() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_success(),
-        "Init with nonexistent verified-accounts should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify initialization with nonexistent verified-accounts succeeds", || {
+        assert!(
+            result.is_success(),
+            "Init with nonexistent verified-accounts should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
-    // Verify the verified-accounts address is stored correctly
     let info: BridgeInfo = bridge.view("get_info").await?.json()?;
-    assert_eq!(info.verified_accounts_contract, fake_verified_accounts_id);
+
+    step("Verify verified-accounts address is stored correctly", || {
+        assert_eq!(info.verified_accounts_contract, fake_verified_accounts_id);
+    });
 
     Ok(())
 }
@@ -614,7 +629,6 @@ async fn test_init_with_special_chars_role() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let backend = worker.dev_create_account().await?;
 
-    // Deploy contracts
     let verified_accounts = worker.dev_deploy(VERIFIED_ACCOUNTS_WASM).await?;
     verified_accounts
         .call("new")
@@ -626,7 +640,6 @@ async fn test_init_with_special_chars_role() -> anyhow::Result<()> {
     let sputnik_dao = worker.dev_deploy(SPUTNIKDAO_WASM).await?;
     let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
 
-    // Initialize DAO with special chars role name
     let policy = serde_json::json!({
         "roles": [
             {
@@ -661,7 +674,6 @@ async fn test_init_with_special_chars_role() -> anyhow::Result<()> {
         .await?
         .into_result()?;
 
-    // Initialize bridge with special chars role name
     let result = bridge
         .call("new")
         .args_json(serde_json::json!({
@@ -673,15 +685,19 @@ async fn test_init_with_special_chars_role() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_success(),
-        "Init with special chars role should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify initialization with special chars role succeeds", || {
+        assert!(
+            result.is_success(),
+            "Init with special chars role should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
-    // Verify the role is stored correctly
     let info: BridgeInfo = bridge.view("get_info").await?.json()?;
-    assert_eq!(info.citizen_role, "verified-citizen_v2.0");
+
+    step("Verify special chars role is stored correctly", || {
+        assert_eq!(info.citizen_role, "verified-citizen_v2.0");
+    });
 
     Ok(())
 }

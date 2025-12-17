@@ -35,11 +35,13 @@ async fn test_create_vote_proposal_success() -> anyhow::Result<()> {
         "Test proposal description",
     ).await?;
 
-    assert!(
-        result.is_success(),
-        "Create proposal should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify proposal creation succeeds", || {
+        assert!(
+            result.is_success(),
+            "Create proposal should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -70,7 +72,10 @@ async fn test_create_proposal_returns_id() -> anyhow::Result<()> {
         .into_result()?;
 
     let new_id = get_last_proposal_id(&env.sputnik_dao).await?;
-    assert!(new_id > initial_id, "Proposal ID should increase");
+
+    step("Verify proposal ID increased", || {
+        assert!(new_id > initial_id, "Proposal ID should increase");
+    });
 
     // Verify proposal exists and is a Vote type
     let proposal = get_proposal(
@@ -80,11 +85,14 @@ async fn test_create_proposal_returns_id() -> anyhow::Result<()> {
             .expect("new_id should be >= 1 after assertion"),
     )
     .await?;
-    assert!(
-        proposal.kind.as_str() == Some("Vote") || proposal.kind.get("Vote").is_some(),
-        "Proposal should be Vote type. Kind: {:?}",
-        proposal.kind
-    );
+
+    step("Verify proposal is Vote type", || {
+        assert!(
+            proposal.kind.as_str() == Some("Vote") || proposal.kind.get("Vote").is_some(),
+            "Proposal should be Vote type. Kind: {:?}",
+            proposal.kind
+        );
+    });
 
     Ok(())
 }
@@ -119,8 +127,10 @@ async fn test_create_proposal_unauthorized() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(result.is_failure());
-    assert!(contains_error(&result, "Only backend wallet"));
+    step("Verify unauthorized proposal creation is rejected", || {
+        assert!(result.is_failure());
+        assert!(contains_error(&result, "Only backend wallet"));
+    });
 
     Ok(())
 }
@@ -145,8 +155,10 @@ async fn test_create_proposal_empty_description() -> anyhow::Result<()> {
 
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, "").await?;
 
-    assert!(result.is_failure());
-    assert!(contains_error(&result, "cannot be empty"));
+    step("Verify empty description is rejected", || {
+        assert!(result.is_failure());
+        assert!(contains_error(&result, "cannot be empty"));
+    });
 
     Ok(())
 }
@@ -173,8 +185,10 @@ async fn test_create_proposal_too_long() -> anyhow::Result<()> {
 
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, &long_description).await?;
 
-    assert!(result.is_failure());
-    assert!(contains_error(&result, "exceeds maximum"));
+    step("Verify too-long description is rejected", || {
+        assert!(result.is_failure());
+        assert!(contains_error(&result, "exceeds maximum"));
+    });
 
     Ok(())
 }
@@ -203,12 +217,14 @@ async fn test_create_proposal_exactly_max_length() -> anyhow::Result<()> {
 
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, &max_description).await?;
 
-    // Should succeed at exactly the boundary
-    assert!(
-        result.is_success(),
-        "Proposal with exactly max length should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify exactly max length description succeeds", || {
+        // Should succeed at exactly the boundary
+        assert!(
+            result.is_success(),
+            "Proposal with exactly max length should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -235,12 +251,14 @@ async fn test_create_proposal_single_char_description() -> anyhow::Result<()> {
     // Create proposal with minimum valid description (1 character)
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, "x").await?;
 
-    // Should succeed - single character is valid
-    assert!(
-        result.is_success(),
-        "Proposal with single char description should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify single character description succeeds", || {
+        // Should succeed - single character is valid
+        assert!(
+            result.is_success(),
+            "Proposal with single char description should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -267,16 +285,18 @@ async fn test_create_proposal_whitespace_only_description() -> anyhow::Result<()
     // Create proposal with only whitespace (spaces, tabs, newlines)
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, "   \t\n   ").await?;
 
-    // Contract should reject whitespace-only descriptions as effectively empty
-    assert!(
-        result.is_failure(),
-        "Whitespace-only description should be rejected"
-    );
-    assert!(
-        contains_error(&result, "cannot be empty"),
-        "Should fail with 'cannot be empty' error. Actual failures: {:?}",
-        result.failures()
-    );
+    step("Verify whitespace-only description is rejected", || {
+        // Contract should reject whitespace-only descriptions as effectively empty
+        assert!(
+            result.is_failure(),
+            "Whitespace-only description should be rejected"
+        );
+        assert!(
+            contains_error(&result, "cannot be empty"),
+            "Should fail with 'cannot be empty' error. Actual failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -304,12 +324,14 @@ async fn test_create_proposal_unicode_description() -> anyhow::Result<()> {
 
     let result = create_proposal_via_bridge(&env.backend, &env.bridge, unicode_description).await?;
 
-    // Should succeed - unicode is valid text
-    assert!(
-        result.is_success(),
-        "Proposal with unicode description should succeed. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify unicode description is accepted", || {
+        // Should succeed - unicode is valid text
+        assert!(
+            result.is_success(),
+            "Proposal with unicode description should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     // Verify the proposal was created with correct description
     let proposal_id = get_last_proposal_id(&env.sputnik_dao)
@@ -317,10 +339,13 @@ async fn test_create_proposal_unicode_description() -> anyhow::Result<()> {
         .checked_sub(1)
         .expect("expected at least one proposal");
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert!(
-        proposal.description.contains("🗳️") && proposal.description.contains("提案"),
-        "Description should preserve unicode characters"
-    );
+
+    step("Verify unicode characters are preserved", || {
+        assert!(
+            proposal.description.contains("🗳️") && proposal.description.contains("提案"),
+            "Description should preserve unicode characters"
+        );
+    });
 
     Ok(())
 }
@@ -353,21 +378,23 @@ async fn test_create_proposal_insufficient_deposit() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Should fail due to insufficient proposal bond
-    assert!(
-        result.is_failure(),
-        "Create proposal with insufficient deposit should fail"
-    );
+    step("Verify insufficient deposit is rejected", || {
+        // Should fail due to insufficient proposal bond
+        assert!(
+            result.is_failure(),
+            "Create proposal with insufficient deposit should fail"
+        );
 
-    // Verify error message mentions insufficient deposit/bond
-    let has_deposit_error = contains_error(&result, "Not enough deposit")
-        || contains_error(&result, "ERR_MIN_BOND")
-        || contains_error(&result, "insufficient");
-    assert!(
-        has_deposit_error,
-        "Error should mention insufficient deposit. Failures: {:?}",
-        result.failures()
-    );
+        // Verify error message mentions insufficient deposit/bond
+        let has_deposit_error = contains_error(&result, "Not enough deposit")
+            || contains_error(&result, "ERR_MIN_BOND")
+            || contains_error(&result, "insufficient");
+        assert!(
+            has_deposit_error,
+            "Error should mention insufficient deposit. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }

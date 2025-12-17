@@ -17,36 +17,40 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_test]
 #[test]
 fn test_invalid_signature() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with invalid signature bytes", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Invalid NEAR signature - NEP-413 verification failed",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Invalid NEAR signature - NEP-413 verification failed",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -58,36 +62,40 @@ fn test_invalid_signature() {
 #[allure_test]
 #[test]
 fn test_invalid_nonce_length() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with 16-byte nonce", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "test".to_string(),
+                    nonce: vec![0; 16],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "test".to_string(),
-                nonce: vec![0; 16],
-                recipient: user.clone(),
-            };
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Nonce must be exactly 32 bytes",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Nonce must be exactly 32 bytes",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -99,36 +107,40 @@ fn test_invalid_nonce_length() {
 #[allure_test]
 #[test]
 fn test_invalid_signature_length() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with 32-byte signature", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 32],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "test".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 32],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "test".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Signature must be 64 bytes",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Signature must be 64 bytes",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -140,36 +152,40 @@ fn test_invalid_signature_length() {
 #[allure_test]
 #[test]
 fn test_nonce_too_long() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with 33-byte nonce", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "test".to_string(),
+                    nonce: vec![0; 33],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "test".to_string(),
-                nonce: vec![0; 33], // Too long - should be exactly 32 bytes
-                recipient: user.clone(),
-            };
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Nonce must be exactly 32 bytes",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Nonce must be exactly 32 bytes",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -181,36 +197,40 @@ fn test_nonce_too_long() {
 #[allure_test]
 #[test]
 fn test_signature_too_long() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Attempt verification with 65-byte signature", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 65],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "test".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
 
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 65], // Too long - should be exactly 64 bytes
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "test".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "Signature must be 64 bytes",
-    );
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Signature must be 64 bytes",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -222,36 +242,37 @@ fn test_signature_too_long() {
 #[allure_test]
 #[test]
 fn test_signature_from_different_key_rejected() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let other = accounts(3);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, other) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let other = accounts(3);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user, other)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Create signature with other's key but user's public key", || {
+        let signer_other = create_signer(&other);
+        let mut sig_data =
+            create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &user);
+        let user_pk = create_signer(&user).public_key();
+        sig_data.public_key = user_pk.to_string().parse().unwrap();
 
-    // Sign with a different key but claim it belongs to `user`
-    let signer_other = create_signer(&other);
-    let mut sig_data =
-        create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &user);
-    // Tamper public key to a different key than the one that produced the signature
-    let user_pk = create_signer(&user).public_key();
-    sig_data.public_key = user_pk.to_string().parse().unwrap();
-
-    // Signature bytes are for `other`, not `user`
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "nullifier_wrong_key".to_string(),
-                user.clone(),
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Invalid NEAR signature - NEP-413 verification failed",
-    );
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier_wrong_key".to_string(),
+                    user.clone(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Invalid NEAR signature - NEP-413 verification failed",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -263,32 +284,35 @@ fn test_signature_from_different_key_rejected() {
 #[allure_test]
 #[test]
 fn test_signature_wrong_nonce_rejected() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let mut sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[10; 32], &user);
+    step("Create valid signature then tamper nonce", || {
+        let signer = create_signer(&user);
+        let mut sig_data =
+            create_valid_signature(&signer, &user, "Identify myself", &[10; 32], &user);
+        sig_data.nonce = vec![42u8; 32];
 
-    // Tamper with nonce after signing
-    sig_data.nonce = vec![42u8; 32];
-
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "nullifier_wrong_nonce".to_string(),
-                user.clone(),
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Invalid NEAR signature - NEP-413 verification failed",
-    );
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier_wrong_nonce".to_string(),
+                    user.clone(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Invalid NEAR signature - NEP-413 verification failed",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -300,33 +324,36 @@ fn test_signature_wrong_nonce_rejected() {
 #[allure_test]
 #[test]
 fn test_signature_wrong_recipient_rejected() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let other = accounts(3);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user, other) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let other = accounts(3);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user, other)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let mut sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[11; 32], &user);
+    step("Create valid signature then tamper recipient", || {
+        let signer = create_signer(&user);
+        let mut sig_data =
+            create_valid_signature(&signer, &user, "Identify myself", &[11; 32], &user);
+        sig_data.recipient = other.clone();
 
-    // Tamper recipient after signing
-    sig_data.recipient = other.clone();
-
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "nullifier_wrong_recipient".to_string(),
-                user.clone(),
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Signature recipient must match near_account_id",
-    );
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier_wrong_recipient".to_string(),
+                    user.clone(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Signature recipient must match near_account_id",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -338,32 +365,35 @@ fn test_signature_wrong_recipient_rejected() {
 #[allure_test]
 #[test]
 fn test_signature_wrong_challenge_rejected() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let mut sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[12; 32], &user);
+    step("Create valid signature then tamper challenge", || {
+        let signer = create_signer(&user);
+        let mut sig_data =
+            create_valid_signature(&signer, &user, "Identify myself", &[12; 32], &user);
+        sig_data.challenge = "Different message".to_string();
 
-    // Tamper challenge after signing
-    sig_data.challenge = "Different message".to_string();
-
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "nullifier_wrong_challenge".to_string(),
-                user.clone(),
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Invalid NEAR signature - NEP-413 verification failed",
-    );
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "nullifier_wrong_challenge".to_string(),
+                    user.clone(),
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Invalid NEAR signature - NEP-413 verification failed",
+        );
+    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -375,30 +405,33 @@ fn test_signature_wrong_challenge_rejected() {
 #[allure_test]
 #[test]
 fn test_invalid_signature_contents() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend);
+        (contract, user)
+    });
 
-    let mut contract = Contract::new(backend);
+    step("Create valid signature then flip a byte", || {
+        let signer = create_signer(&user);
+        let mut sig_data =
+            create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &user);
+        sig_data.signature[0] ^= 0xFF;
 
-    // Create a valid signature, then tamper with it
-    let signer = create_signer(&user);
-    let mut sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &user);
-    sig_data.signature[0] ^= 0xFF; // flip a byte to invalidate signature
-
-    assert_panic_with(
-        || {
-            contract.store_verification(
-                "tampered".to_string(),
-                user,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "ctx".to_string(),
-            );
-        },
-        "Invalid NEAR signature - NEP-413 verification failed",
-    );
+        assert_panic_with(
+            || {
+                contract.store_verification(
+                    "tampered".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "ctx".to_string(),
+                );
+            },
+            "Invalid NEAR signature - NEP-413 verification failed",
+        );
+    });
 }

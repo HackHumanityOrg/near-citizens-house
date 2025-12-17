@@ -27,11 +27,13 @@ async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    assert!(
-        result.is_failure(),
-        "Unauthorized user should not be able to update backend wallet"
-    );
-    assert!(contains_error(&result, "Only backend wallet"));
+    step("Verify unauthorized wallet update is rejected", || {
+        assert!(
+            result.is_failure(),
+            "Unauthorized user should not be able to update backend wallet"
+        );
+        assert!(contains_error(&result, "Only backend wallet"));
+    });
 
     Ok(())
 }
@@ -57,7 +59,10 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
 
     // Verify user is a citizen
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
-    assert!(is_citizen, "User should be a citizen");
+
+    step("Verify user is a citizen", || {
+        assert!(is_citizen, "User should be a citizen");
+    });
 
     // Citizen tries to add a proposal directly to DAO (bypassing bridge)
     let result = user
@@ -73,11 +78,13 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
         .transact()
         .await?;
 
-    // Should fail because citizens don't have AddProposal permission in production policy
-    assert!(
-        result.is_failure(),
-        "Citizen should not be able to add proposals directly to DAO"
-    );
+    step("Verify citizen cannot bypass bridge to add proposals", || {
+        // Should fail because citizens don't have AddProposal permission in production policy
+        assert!(
+            result.is_failure(),
+            "Citizen should not be able to add proposals directly to DAO"
+        );
+    });
 
     Ok(())
 }
@@ -109,11 +116,13 @@ async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> 
         .transact()
         .await?;
 
-    // Should fail because only bridge role can add proposals
-    assert!(
-        result.is_failure(),
-        "Random account should not be able to add proposals to DAO"
-    );
+    step("Verify random account cannot add proposal to DAO", || {
+        // Should fail because only bridge role can add proposals
+        assert!(
+            result.is_failure(),
+            "Random account should not be able to add proposals to DAO"
+        );
+    });
 
     Ok(())
 }
@@ -153,11 +162,13 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
     )
     .await?;
 
-    // Should fail because citizens only have VoteApprove and VoteReject
-    assert!(
-        result.is_failure(),
-        "Citizen should not be able to VoteRemove"
-    );
+    step("Verify citizen cannot use VoteRemove action", || {
+        // Should fail because citizens only have VoteApprove and VoteReject
+        assert!(
+            result.is_failure(),
+            "Citizen should not be able to VoteRemove"
+        );
+    });
 
     Ok(())
 }
@@ -183,11 +194,14 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
 
     // Verify proposal is InProgress before finalization
     let proposal_before = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal_before.status,
-        ProposalStatus::InProgress,
-        "Proposal should be InProgress initially"
-    );
+
+    step("Verify proposal is InProgress initially", || {
+        assert_eq!(
+            proposal_before.status,
+            ProposalStatus::InProgress,
+            "Proposal should be InProgress initially"
+        );
+    });
 
     // Advance time past proposal period to make it finalizable
     env.worker.fast_forward(100).await?;
@@ -206,20 +220,25 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    // Finalize should succeed (per "all" role permissions)
-    assert!(
-        result.is_success(),
-        "Random account should be able to finalize proposals. Failures: {:?}",
-        result.failures()
-    );
+    step("Verify anyone can finalize expired proposals", || {
+        // Finalize should succeed (per "all" role permissions)
+        assert!(
+            result.is_success(),
+            "Random account should be able to finalize proposals. Failures: {:?}",
+            result.failures()
+        );
+    });
 
     // Proposal should now be Expired (finalized with no votes after period)
     let proposal_after = get_proposal(&env.sputnik_dao, proposal_id).await?;
-    assert_eq!(
-        proposal_after.status,
-        ProposalStatus::Expired,
-        "Proposal should be Expired after finalization with no votes"
-    );
+
+    step("Verify proposal is Expired after finalization", || {
+        assert_eq!(
+            proposal_after.status,
+            ProposalStatus::Expired,
+            "Proposal should be Expired after finalization with no votes"
+        );
+    });
 
     Ok(())
 }
@@ -247,22 +266,24 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
         .transact()
         .await?;
 
-    assert!(
-        result.is_failure(),
-        "External call to callback_add_member should fail"
-    );
+    step("Verify callback_add_member is protected from external calls", || {
+        assert!(
+            result.is_failure(),
+            "External call to callback_add_member should fail"
+        );
 
-    // Verify it fails due to #[private] macro protection (predecessor != current_account)
-    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-    assert!(
-        contains_any_error(
-            &result,
-            &["predecessor", "Method callback_add_member is private", "private"],
-            "private callback"
-        ),
-        "Should fail due to #[private] macro protection. Actual failures: {:?}",
-        result.failures()
-    );
+        // Verify it fails due to #[private] macro protection (predecessor != current_account)
+        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+        assert!(
+            contains_any_error(
+                &result,
+                &["predecessor", "Method callback_add_member is private", "private"],
+                "private callback"
+            ),
+            "Should fail due to #[private] macro protection. Actual failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -288,22 +309,24 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
         .transact()
         .await?;
 
-    assert!(
-        result.is_failure(),
-        "External call to callback_proposal_created should fail"
-    );
+    step("Verify callback_proposal_created is protected from external calls", || {
+        assert!(
+            result.is_failure(),
+            "External call to callback_proposal_created should fail"
+        );
 
-    // Verify it fails due to #[private] macro protection
-    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-    assert!(
-        contains_any_error(
-            &result,
-            &["predecessor", "Method callback_proposal_created is private", "private"],
-            "private callback"
-        ),
-        "Should fail due to #[private] macro protection. Actual failures: {:?}",
-        result.failures()
-    );
+        // Verify it fails due to #[private] macro protection
+        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+        assert!(
+            contains_any_error(
+                &result,
+                &["predecessor", "Method callback_proposal_created is private", "private"],
+                "private callback"
+            ),
+            "Should fail due to #[private] macro protection. Actual failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -332,22 +355,24 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
         .transact()
         .await?;
 
-    assert!(
-        result.is_failure(),
-        "External call to callback_member_added should fail"
-    );
+    step("Verify callback_member_added is protected from external calls", || {
+        assert!(
+            result.is_failure(),
+            "External call to callback_member_added should fail"
+        );
 
-    // Verify it fails due to #[private] macro protection
-    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-    assert!(
-        contains_any_error(
-            &result,
-            &["predecessor", "Method callback_member_added is private", "private"],
-            "private callback"
-        ),
-        "Should fail due to #[private] macro protection. Actual failures: {:?}",
-        result.failures()
-    );
+        // Verify it fails due to #[private] macro protection
+        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+        assert!(
+            contains_any_error(
+                &result,
+                &["predecessor", "Method callback_member_added is private", "private"],
+                "private callback"
+            ),
+            "Should fail due to #[private] macro protection. Actual failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }
@@ -373,22 +398,24 @@ async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> an
         .transact()
         .await?;
 
-    assert!(
-        result.is_failure(),
-        "External call to callback_vote_proposal_created should fail"
-    );
+    step("Verify callback_vote_proposal_created is protected from external calls", || {
+        assert!(
+            result.is_failure(),
+            "External call to callback_vote_proposal_created should fail"
+        );
 
-    // Verify it fails due to #[private] macro protection
-    // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-    assert!(
-        contains_any_error(
-            &result,
-            &["predecessor", "Method callback_vote_proposal_created is private", "private"],
-            "private callback"
-        ),
-        "Should fail due to #[private] macro protection. Actual failures: {:?}",
-        result.failures()
-    );
+        // Verify it fails due to #[private] macro protection
+        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+        assert!(
+            contains_any_error(
+                &result,
+                &["predecessor", "Method callback_vote_proposal_created is private", "private"],
+                "private callback"
+            ),
+            "Should fail due to #[private] macro protection. Actual failures: {:?}",
+            result.failures()
+        );
+    });
 
     Ok(())
 }

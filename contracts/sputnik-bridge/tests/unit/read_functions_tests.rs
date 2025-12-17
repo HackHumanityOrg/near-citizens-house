@@ -15,15 +15,29 @@ use sputnik_bridge::SputnikBridge;
 #[allure_test]
 #[test]
 fn test_get_info() {
-    let context = get_context(accounts(0));
-    testing_env!(context.build());
+    let contract = step("Initialize contract", || {
+        let context = get_context(accounts(0));
+        testing_env!(context.build());
+        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+    });
 
-    let contract =
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+    let info = step("Call get_info()", || {
+        contract.get_info()
+    });
 
-    let info = contract.get_info();
-    assert_eq!(info.backend_wallet, accounts(0));
-    assert_eq!(info.sputnik_dao, accounts(1));
-    assert_eq!(info.verified_accounts_contract, accounts(2));
-    assert_eq!(info.citizen_role, "citizen");
+    step("Verify backend_wallet in info", || {
+        assert_eq!(info.backend_wallet, accounts(0));
+    });
+
+    step("Verify sputnik_dao in info", || {
+        assert_eq!(info.sputnik_dao, accounts(1));
+    });
+
+    step("Verify verified_accounts_contract in info", || {
+        assert_eq!(info.verified_accounts_contract, accounts(2));
+    });
+
+    step("Verify citizen_role in info", || {
+        assert_eq!(info.citizen_role, "citizen");
+    });
 }
