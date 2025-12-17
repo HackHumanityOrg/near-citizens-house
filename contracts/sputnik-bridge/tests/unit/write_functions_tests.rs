@@ -126,7 +126,7 @@ fn test_create_proposal_schedules_add_proposal() {
         assert_eq!(
             attached_deposit.as_yoctonear(),
             0,
-            "Vote proposal should forward the caller's attached deposit (default 0)"
+            "create_proposal should forward the caller's attached deposit (default 0)"
         );
         assert_eq!(
             prepaid_gas.as_gas(),

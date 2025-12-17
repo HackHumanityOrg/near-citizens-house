@@ -78,6 +78,36 @@ fn test_unauthorized_update_backend_wallet() {
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
 #[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("critical")]
+#[allure_tags("unit", "security", "yocto")]
+#[allure_description("Verifies that update_backend_wallet requires exactly 1 yoctoNEAR attached deposit.")]
+#[allure_test]
+#[test]
+fn test_update_backend_wallet_requires_one_yocto() {
+    let (mut contract, backend) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = Contract::new(backend.clone());
+        (contract, backend)
+    });
+
+    step("Attempt update_backend_wallet without yoctoNEAR", || {
+        // Create context with zero deposit
+        let mut context = get_context(backend);
+        context.attached_deposit(NearToken::from_yoctonear(0));
+        testing_env!(context.build());
+
+        assert_panic_with(
+            || contract.update_backend_wallet(accounts(2)),
+            "Requires attached deposit of exactly 1 yoctoNEAR",
+        );
+    });
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "admin", "wallet", "alias")]
 #[allure_description("Alias test to align documentation naming; asserts backend wallet update succeeds and persists.")]
