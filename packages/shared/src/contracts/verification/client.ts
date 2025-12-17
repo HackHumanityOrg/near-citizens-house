@@ -132,7 +132,7 @@ export class NearContractDatabase implements IVerificationDatabase {
               user_context_data: userContextData,
             },
             BigInt("30000000000000"), // 30 TGas
-            BigInt("0"), // 0 NEAR deposit
+            BigInt("1"), // 1 yoctoNEAR deposit (required by assert_one_yocto)
           ),
         ],
       })
