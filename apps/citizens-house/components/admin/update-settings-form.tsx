@@ -15,16 +15,13 @@ import {
   Label,
   Alert,
 } from "@near-citizens/ui"
-import { type BridgeInfo } from "@near-citizens/shared"
+import { type BridgeInfo, nearAccountIdSchema } from "@near-citizens/shared"
 import { useAdminActions } from "@/hooks/admin-actions"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 import { Loader2, Settings, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react"
 
 const updateBackendWalletSchema = z.object({
-  newBackendWallet: z
-    .string()
-    .min(1, "Account ID is required")
-    .regex(/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/, "Invalid NEAR account ID format"),
+  newBackendWallet: nearAccountIdSchema,
 })
 
 const updateCitizenRoleSchema = z.object({
@@ -53,9 +50,11 @@ export function UpdateSettingsForm() {
     async function fetchInfo() {
       try {
         const bridgeInfo = await getBridgeInfo()
-        setInfo(bridgeInfo)
-        backendWalletForm.setValue("newBackendWallet", bridgeInfo.backendWallet)
-        citizenRoleForm.setValue("newRole", bridgeInfo.citizenRole)
+        if (bridgeInfo) {
+          setInfo(bridgeInfo)
+          backendWalletForm.setValue("newBackendWallet", bridgeInfo.backendWallet)
+          citizenRoleForm.setValue("newRole", bridgeInfo.citizenRole)
+        }
       } catch (err) {
         console.error("Error fetching bridge info:", err)
       } finally {

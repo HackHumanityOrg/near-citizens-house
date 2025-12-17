@@ -3,7 +3,6 @@
 //! Provides helpers for deploying contracts, creating verified users,
 //! generating NEP-413 signatures, and manipulating test time.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![allow(dead_code)] // Shared helpers - not all functions used by every test file
 
 use borsh::BorshSerialize;
@@ -19,18 +18,18 @@ use std::str::FromStr;
 // ==================== WASM BYTECODE ====================
 
 /// Bridge contract WASM
-pub const BRIDGE_WASM: &[u8] = include_bytes!("../target/near/sputnik_bridge.wasm");
+pub const BRIDGE_WASM: &[u8] = include_bytes!("../../target/near/sputnik_bridge.wasm");
 
 /// Verified accounts contract WASM
 pub const VERIFIED_ACCOUNTS_WASM: &[u8] =
-    include_bytes!("../../verified-accounts/target/near/verified_accounts.wasm");
+    include_bytes!("../../../verified-accounts/target/near/verified_accounts.wasm");
 
 /// SputnikDAO v2 contract WASM
 pub const SPUTNIKDAO_WASM: &[u8] =
-    include_bytes!("../../sputnik-dao-contract/sputnikdao2/res/sputnikdao2.wasm");
+    include_bytes!("../../../sputnik-dao-contract/sputnikdao2/res/sputnikdao2.wasm");
 
 /// Test policy JSON - mirrors production dao-policy.json but with fast periods
-pub const TEST_POLICY_JSON: &str = include_str!("../dao-policy.test.json");
+pub const TEST_POLICY_JSON: &str = include_str!("../../dao-policy.test.json");
 
 // ==================== CONSTANTS ====================
 
@@ -260,10 +259,8 @@ pub fn create_policy_without_autoapprove(bridge_account_id: &str) -> serde_json:
         for role in roles.iter_mut() {
             if role.get("name").and_then(|n| n.as_str()) == Some("bridge") {
                 // Replace permissions with limited set (no VoteApprove)
-                role["permissions"] = json!([
-                    "add_member_to_role:AddProposal",
-                    "vote:AddProposal"
-                ]);
+                role["permissions"] = json!(["add_member_to_role:AddProposal", "vote:AddProposal"]);
+                break;
             }
         }
     }
@@ -309,7 +306,8 @@ where
     let backend = worker.dev_create_account().await?;
 
     // Deploy verified-accounts contract (optionally uninitialized)
-    let verified_accounts = deploy_verified_accounts(&worker, &backend, initialize_verified).await?;
+    let verified_accounts =
+        deploy_verified_accounts(&worker, &backend, initialize_verified).await?;
 
     // Deploy bridge contract first (we need its ID for DAO policy)
     let bridge = worker.dev_deploy(BRIDGE_WASM).await?;
@@ -406,7 +404,20 @@ pub async fn verify_user(
     user: &Account,
     index: usize,
 ) -> anyhow::Result<()> {
-    let nonce: [u8; 32] = [index as u8; 32];
+    // Create a unique nonce from the index by spreading bytes across the array
+    // This handles index > 255 correctly by using all 8 bytes of the usize
+    let index_bytes = index.to_le_bytes();
+    let mut nonce = [0u8; 32];
+    for (i, chunk) in nonce.chunks_mut(8).enumerate() {
+        // XOR with position to make each section unique
+        for (j, byte) in chunk.iter_mut().enumerate() {
+            *byte = index_bytes
+                .get(j)
+                .copied()
+                .unwrap_or(0)
+                .wrapping_add(i as u8);
+        }
+    }
     let challenge = "Identify myself";
     let recipient = user.id().to_string();
 
@@ -414,10 +425,10 @@ pub async fn verify_user(
 
     backend
         .call(verified_accounts.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": format!("test_nullifier_{}", index),
             "near_account_id": user.id(),
-            "user_id": format!("user_{}", index),
             "attestation_id": format!("{}", index % 10),
             "signature_data": {
                 "account_id": user.id(),
@@ -631,19 +642,32 @@ pub async fn get_vote_threshold(dao: &Contract, role_name: &str) -> anyhow::Resu
 /// Calculate the effective threshold for a proposal
 /// effective_threshold = max(quorum, (num * citizen_count / denom) + 1)
 /// Note: SputnikDAO uses (num * weight / denom) + 1, NOT ceiling division
-pub fn calculate_effective_threshold(quorum: u64, threshold: (u64, u64), citizen_count: u64) -> u64 {
+pub fn calculate_effective_threshold(
+    quorum: u64,
+    threshold: (u64, u64),
+    citizen_count: u64,
+) -> u64 {
     let threshold_weight = if threshold.1 == 0 {
         // Fixed weight
         threshold.0
     } else {
         // Ratio: (num * citizen_count / denom) + 1 (SputnikDAO formula)
-        (threshold.0 * citizen_count / threshold.1) + 1
+        // Use expect() for fail-fast in tests - overflow indicates invalid test setup
+        (threshold
+            .0
+            .checked_mul(citizen_count)
+            .expect("Threshold calculation overflow - invalid test setup")
+            / threshold.1)
+            .saturating_add(1)
     };
 
     std::cmp::max(quorum, threshold_weight)
 }
 
 // ==================== EVENT PARSING ====================
+
+// Re-export event types from the contract for test use
+pub use sputnik_bridge::{MemberAddedEvent, ProposalCreatedEvent, QuorumUpdatedEvent};
 
 /// Event wrapper structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -652,6 +676,21 @@ pub struct EventWrapper {
     pub version: String,
     pub event: String,
     pub data: serde_json::Value,
+}
+
+/// Parse a typed event from event wrappers by event name
+pub fn parse_typed_event<T: serde::de::DeserializeOwned>(
+    events: &[EventWrapper],
+    event_name: &str,
+) -> Option<T> {
+    for event in events {
+        if event.event == event_name {
+            if let Ok(data) = serde_json::from_value(event.data.clone()) {
+                return Some(data);
+            }
+        }
+    }
+    None
 }
 
 /// Extract EVENT_JSON logs from execution result
@@ -691,4 +730,85 @@ pub fn contains_error(result: &ExecutionFinalResult, expected: &str) -> bool {
     }
 
     false
+}
+
+/// Check if result contains any of the expected error messages.
+/// Use this for external contract errors (like SputnikDAO) where the exact
+/// message may vary between versions.
+///
+/// # Arguments
+/// * `result` - The execution result to check
+/// * `expected_messages` - Slice of possible error messages (any match succeeds)
+/// * `error_category` - Human-readable description of what kind of error is expected
+///
+/// # Returns
+/// `true` if any expected message is found, `false` otherwise
+pub fn contains_any_error(
+    result: &ExecutionFinalResult,
+    expected_messages: &[&str],
+    error_category: &str,
+) -> bool {
+    if result.is_success() {
+        return false;
+    }
+
+    for failure in result.failures() {
+        let failure_str = format!("{:?}", failure);
+        for expected in expected_messages {
+            if failure_str.contains(expected) {
+                return true;
+            }
+        }
+    }
+
+    // Log helpful debug info when no match found
+    eprintln!(
+        "Expected {} error containing one of {:?}, but got: {:?}",
+        error_category,
+        expected_messages,
+        result.failures()
+    );
+    false
+}
+
+/// Assert that a result failed with a specific error message.
+/// Provides clear panic message on failure.
+///
+/// # Panics
+/// Panics if result is success or doesn't contain expected error
+pub fn assert_error_contains(result: &ExecutionFinalResult, expected: &str, context: &str) {
+    assert!(
+        result.is_failure(),
+        "{}: Expected failure but got success",
+        context
+    );
+    assert!(
+        contains_error(result, expected),
+        "{}: Expected error containing '{}', but got: {:?}",
+        context,
+        expected,
+        result.failures()
+    );
+}
+
+// ==================== FUNDING HELPERS ====================
+
+/// Fund an account with additional NEAR from the root account.
+/// Useful for tests that require many transactions (e.g., adding 100 members).
+///
+/// # Arguments
+/// * `env` - The test environment
+/// * `account` - The account to fund
+/// * `amount_near` - Amount of NEAR to transfer
+pub async fn fund_account(
+    env: &TestEnv,
+    account: &Account,
+    amount_near: u128,
+) -> anyhow::Result<()> {
+    env.worker
+        .root_account()?
+        .transfer_near(account.id(), NearToken::from_near(amount_near))
+        .await?
+        .into_result()?;
+    Ok(())
 }

@@ -45,7 +45,7 @@ function VerifyCallbackContent() {
     }
 
     try {
-      const response = await fetch(`/api/verify-status?sessionId=${sessionId}`)
+      const response = await fetch(`/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`)
       const data = await response.json()
 
       if (data.status === "success") {
@@ -95,27 +95,115 @@ function VerifyCallbackContent() {
       return
     }
 
+    // Track mounted state, abort controller, and timeout for cleanup
+    let isMounted = true
+    let abortController: AbortController | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    /**
+     * Check verification status with abort support.
+     * Returns early without updating state if aborted or unmounted.
+     */
+    const checkVerificationStatus = async (): Promise<boolean> => {
+      // Create new abort controller for this request
+      abortController = new AbortController()
+
+      try {
+        const response = await fetch(`/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`, {
+          signal: abortController.signal,
+        })
+
+        // Check mounted before processing response
+        if (!isMounted) return false
+
+        // Handle non-OK responses explicitly
+        if (!response.ok) {
+          // 4xx = client error (invalid/expired session) - terminal, stop polling
+          if (response.status >= 400 && response.status < 500) {
+            setStatus("error")
+            setErrorMessage("Invalid or expired verification session. Please try again.")
+            return true
+          }
+          // 5xx = server error - keep retrying
+          console.error(`[VerifyCallback] Server error: ${response.status}`)
+          return false
+        }
+
+        const data = await response.json()
+
+        // Check mounted again before updating state
+        if (!isMounted) return false
+
+        if (data.status === "success") {
+          setStatus("success")
+          setAccountId(data.accountId)
+          // Clean up localStorage (wrapped in try/catch for restricted environments)
+          try {
+            localStorage.removeItem(`self-session-${sessionId}`)
+          } catch {
+            // Ignore storage errors (e.g., incognito mode, storage disabled)
+          }
+          return true
+        } else if (data.status === "error") {
+          setStatus("error")
+          setErrorMessage(getErrorMessage(data.error))
+          return true
+        } else if (data.status === "expired") {
+          setStatus("expired")
+          setErrorMessage("Session expired. Please try again.")
+          return true
+        }
+        // Still pending
+        return false
+      } catch (error) {
+        // Ignore abort errors, don't update state
+        if (error instanceof Error && error.name === "AbortError") {
+          return false
+        }
+        // Log unexpected errors for debugging
+        console.error("[VerifyCallback] Polling error:", error)
+        // Network error - keep polling (but only if still mounted)
+        return false
+      }
+    }
+
     // Poll for verification status
     let pollCount = 0
     const maxPolls = 60 // 60 * 2s = 2 minutes max
 
     const poll = async () => {
+      if (!isMounted) return
+
       const done = await checkVerificationStatus()
-      if (done) return
+      if (!isMounted || done) return
 
       pollCount++
       if (pollCount >= maxPolls) {
-        setStatus("expired")
-        setErrorMessage("Verification timed out. Please try again.")
+        if (isMounted) {
+          setStatus("expired")
+          setErrorMessage("Verification timed out. Please try again.")
+        }
         return
       }
 
       // Continue polling
-      setTimeout(poll, 2000)
+      timeoutId = setTimeout(poll, 2000)
     }
 
     poll()
-  }, [sessionId, checkVerificationStatus])
+
+    // Cleanup: abort pending fetch and clear timeout to prevent state updates after unmount
+    return () => {
+      isMounted = false
+      if (abortController) {
+        abortController.abort()
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+        timeoutId = null
+      }
+    }
+  }, [sessionId])
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-background to-background/80">

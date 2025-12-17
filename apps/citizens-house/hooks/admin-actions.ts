@@ -1,16 +1,8 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { useNearWallet, NEAR_CONFIG } from "@near-citizens/shared"
+import { useNearWallet, NEAR_CONFIG, nearAccountIdSchema } from "@near-citizens/shared"
 import { z } from "zod"
-
-// NEAR account ID: 2-64 chars, lowercase alphanumeric + separators (._-), cannot start/end with separator
-const nearAccountIdSchema = z
-  .string()
-  .min(2)
-  .max(64)
-  .regex(/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/)
-  .refine((s) => !/[._-]{2}/.test(s), "Cannot have consecutive separators")
 
 const yoctoNearSchema = z
   .string()
@@ -74,11 +66,14 @@ function parseContractError(error: unknown): string {
 
 /**
  * Extract return value from transaction result
+ * Uses browser-compatible base64 decoding (atob + TextDecoder)
  */
 function extractReturnValue<T>(result: TransactionResult): T | null {
   if (result.status.SuccessValue) {
     try {
-      const decoded = Buffer.from(result.status.SuccessValue, "base64").toString()
+      const binaryString = atob(result.status.SuccessValue)
+      const bytes = Uint8Array.from(binaryString, (c) => c.charCodeAt(0))
+      const decoded = new TextDecoder().decode(bytes)
       return JSON.parse(decoded) as T
     } catch {
       return null
@@ -168,7 +163,12 @@ export function useAdminActions(): UseAdminActionsResult {
         })
 
         // Return transaction hash
-        return (txResult as { transaction: { hash: string } }).transaction?.hash ?? ""
+        const txHash = (txResult as { transaction: { hash: string } }).transaction?.hash
+        if (!txHash) {
+          console.warn("Transaction hash missing from result", txResult)
+          throw new Error("Transaction completed but hash is missing")
+        }
+        return txHash
       } catch (err) {
         const errorMsg = parseContractError(err)
         setError(errorMsg)
@@ -224,8 +224,10 @@ export function useAdminActions(): UseAdminActionsResult {
         // Parse proposal ID from return value
         const proposalId = extractReturnValue<number>(txResult as unknown as TransactionResult)
         if (proposalId === null) {
-          console.warn("Failed to get proposal ID from contract response")
-          return -1
+          const errorMsg = "Failed to extract proposal ID from contract response"
+          console.warn(errorMsg, txResult)
+          setError(errorMsg)
+          throw new Error(errorMsg)
         }
 
         return proposalId

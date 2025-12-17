@@ -1,0 +1,582 @@
+//! Edge case and deposit/bond tests for sputnik-bridge contract
+
+use super::helpers::*;
+use allure_rs::prelude::*;
+use near_workspaces::types::{Gas, NearToken};
+use serde_json::json;
+
+// ==================== DEPOSIT/BOND TESTS ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "edge-case", "deposit")]
+#[allure_description("Verifies that adding a member with insufficient deposit (below DAO proposal bond) fails with appropriate error.")]
+
+#[allure_test]
+#[tokio::test]
+async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Verify user first
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+
+    // Try to add member with insufficient deposit (0.1 NEAR instead of 1 NEAR)
+    let result = env
+        .backend
+        .call(env.bridge.id(), "add_member")
+        .args_json(json!({ "near_account_id": user.id() }))
+        .deposit(NearToken::from_millinear(100)) // 0.1 NEAR
+        .gas(Gas::from_tgas(300))
+        .transact()
+        .await?;
+
+    step("Verify insufficient deposit is rejected", || {
+        // Should fail due to insufficient proposal bond
+        assert!(
+            result.is_failure(),
+            "Add member with insufficient deposit should fail"
+        );
+
+        // Verify error message mentions insufficient deposit/bond
+        // Note: SputnikDAO may return different error messages in different versions,
+        // so we accept multiple possible messages for external contract errors
+        assert!(
+            contains_any_error(
+                &result,
+                &["Not enough deposit", "ERR_MIN_BOND"],
+                "insufficient deposit"
+            ),
+            "Error should mention insufficient deposit. Failures: {:?}",
+            result.failures()
+        );
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "edge-case", "deposit")]
+#[allure_description("Verifies that adding a member with zero deposit fails as expected.")]
+
+#[allure_test]
+#[tokio::test]
+async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Verify user first
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+
+    // Try to add member with zero deposit
+    let result = env
+        .backend
+        .call(env.bridge.id(), "add_member")
+        .args_json(json!({ "near_account_id": user.id() }))
+        .deposit(NearToken::from_yoctonear(0))
+        .gas(Gas::from_tgas(300))
+        .transact()
+        .await?;
+
+    step("Verify zero deposit is rejected", || {
+        // Should fail due to zero deposit
+        assert!(
+            result.is_failure(),
+            "Add member with zero deposit should fail"
+        );
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "edge-case", "deposit")]
+#[allure_description(r#"
+## Purpose
+Verifies that adding a member with exactly the required bond (1 NEAR) succeeds.
+
+## Test 11.1.2 - add_member_with_exact_bond_succeeds
+
+## Expected
+Transaction succeeds with exactly 1 NEAR deposit.
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_add_member_with_exact_bond_succeeds() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Verify user first
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+
+    // Add member with exactly 1 NEAR (the proposal bond)
+    let result = env
+        .backend
+        .call(env.bridge.id(), "add_member")
+        .args_json(json!({ "near_account_id": user.id() }))
+        .deposit(NearToken::from_near(1)) // Exactly 1 NEAR
+        .gas(Gas::from_tgas(300))
+        .transact()
+        .await?;
+
+    step("Verify exact bond succeeds", || {
+        // Should succeed with exact bond amount
+        assert!(
+            result.is_success(),
+            "Add member with exact 1 NEAR bond should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
+
+    // Verify user was added as citizen
+    let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+
+    step("Verify user is citizen after exact bond deposit", || {
+        assert!(is_citizen, "User should be in citizen role");
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "edge-case", "deposit")]
+#[allure_description(r#"
+## Purpose
+Verifies that adding a member with more than the required bond (2 NEAR) fails.
+SputnikDAO v2 requires EXACTLY the bond amount, not "at least".
+
+## Test 11.1.3 - add_member_with_excess_deposit
+
+## Expected
+Transaction fails - SputnikDAO requires exact bond amount.
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_add_member_with_excess_deposit_fails() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Verify user first
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+
+    // Add member with more than required (2 NEAR instead of 1 NEAR)
+    let result = env
+        .backend
+        .call(env.bridge.id(), "add_member")
+        .args_json(json!({ "near_account_id": user.id() }))
+        .deposit(NearToken::from_near(2)) // 2 NEAR (excess)
+        .gas(Gas::from_tgas(300))
+        .transact()
+        .await?;
+
+    step("Verify excess deposit is rejected (DAO requires exact bond)", || {
+        // SputnikDAO v2 requires EXACT bond amount, not minimum
+        // This fails with ERR_MIN_BOND (misleading name but checks equality)
+        assert!(
+            result.is_failure(),
+            "Add member with excess deposit should fail - DAO requires exact bond"
+        );
+
+        // Verify error mentions bond
+        assert!(
+            contains_any_error(&result, &["ERR_MIN_BOND", "bond"], "bond error"),
+            "Error should mention bond. Failures: {:?}",
+            result.failures()
+        );
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "edge-case", "deposit")]
+#[allure_description(r#"
+## Purpose
+Verifies that creating a proposal with exactly the required bond (1 NEAR) succeeds.
+
+## Test 11.1.5 - create_proposal_with_exact_bond
+
+## Expected
+Transaction succeeds with exactly 1 NEAR deposit.
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_create_proposal_with_exact_bond() -> anyhow::Result<()> {
+    let env = setup().await?;
+
+    // Create proposal with exactly 1 NEAR (the proposal bond)
+    let result = env
+        .backend
+        .call(env.bridge.id(), "create_proposal")
+        .args_json(json!({ "description": "Test with exact bond" }))
+        .deposit(NearToken::from_near(1)) // Exactly 1 NEAR
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify create proposal with exact bond succeeds", || {
+        // Should succeed with exact bond amount
+        assert!(
+            result.is_success(),
+            "Create proposal with exact 1 NEAR bond should succeed. Failures: {:?}",
+            result.failures()
+        );
+    });
+
+    // Verify proposal was created
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?;
+
+    step("Verify proposal was created", || {
+        assert!(proposal_id > 0, "Proposal should have been created");
+    });
+
+    Ok(())
+}
+
+// ==================== PAUSE HANDLING TESTS ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Cross-Contract Integration")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "pause", "cross-contract")]
+#[allure_description(r#"
+## Purpose
+Verifies that the bridge can still query verification status from the verified-accounts
+contract when it is paused, because read operations (like is_account_verified) are
+allowed even when the contract is paused.
+
+## Test 4.1.4 - bridge_handles_verification_contract_pause
+
+## Scenario
+1. User is verified before pause
+2. Verified-accounts contract is paused
+3. Bridge calls add_member (which queries is_account_verified)
+4. Verification check succeeds because reads work when paused
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_bridge_handles_verification_contract_pause() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // First verify the user BEFORE pausing
+    verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
+
+    // Confirm user is verified
+    let is_verified = is_user_verified(&env.verified_accounts, user).await?;
+    assert!(is_verified, "User should be verified");
+
+    // Now pause the verified-accounts contract
+    let pause_result = env
+        .backend
+        .call(env.verified_accounts.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify pause succeeds", || {
+        assert!(
+            pause_result.is_success(),
+            "Pause should succeed. Failures: {:?}",
+            pause_result.failures()
+        );
+    });
+
+    // Bridge should still be able to add member - read operations work when paused
+    let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+
+    step("Verify add_member works when verified-accounts is paused", || {
+        assert!(
+            result.is_success(),
+            "Add member should succeed even when verified-accounts is paused (reads work). Failures: {:?}",
+            result.failures()
+        );
+    });
+
+    // Verify user was added as citizen
+    let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+
+    step("Verify user is citizen after paused contract operation", || {
+        assert!(
+            is_citizen,
+            "User should be in citizen role after add_member with paused verified-accounts"
+        );
+    });
+
+    Ok(())
+}
+
+// ==================== CONCURRENT OPERATIONS TESTS ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "edge-case", "sequential")]
+#[allure_description(
+    "Verifies that multiple members can be added in rapid succession without state corruption. \
+     Note: Additions are sequential (not truly concurrent) due to blockchain transaction ordering, \
+     but rapid succession still tests for race conditions in state management."
+)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_rapid_sequential_member_additions() -> anyhow::Result<()> {
+    let env = setup_with_users(5).await?;
+
+    // Verify all users first
+    for (i, user) in env.users.iter().enumerate() {
+        verify_user(&env.backend, &env.verified_accounts, user, i).await?;
+    }
+
+    // Add all members in rapid succession (simulating concurrent additions)
+    let mut results = Vec::new();
+    for user in &env.users {
+        let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
+        results.push((user.id().to_string(), result.is_success()));
+    }
+
+    step("Verify all rapid additions succeeded", || {
+        // All additions should succeed
+        for (user_id, success) in &results {
+            assert!(success, "Adding user {} should succeed", user_id);
+        }
+    });
+
+    // Verify all users are citizens
+    for user in &env.users {
+        let is_citizen =
+            is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
+        assert!(is_citizen, "User {} should be in citizen role", user.id());
+    }
+
+    // Verify correct number of proposals were created (one per user)
+    let proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
+
+    step("Verify all users are citizens with correct proposal count", || {
+        assert!(
+            proposal_count >= env.users.len() as u64,
+            "Should have at least {} proposals, got {}",
+            env.users.len(),
+            proposal_count
+        );
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "edge-case", "voting")]
+#[allure_description("Verifies that sequential voting correctly auto-approves when threshold is reached and rejects late votes on approved proposals.")]
+
+#[allure_test]
+#[tokio::test]
+async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
+    // This test verifies sequential voting behavior when threshold is reached mid-voting.
+    // With 5 citizens and 50% threshold, 3 approve votes (60%) triggers auto-approval.
+    // Subsequent votes on an approved proposal should fail gracefully.
+    let env = setup_with_users(5).await?;
+
+    // Setup: Verify and add all users as citizens
+    for (i, user) in env.users.iter().enumerate() {
+        verify_user(&env.backend, &env.verified_accounts, user, i).await?;
+        add_member_via_bridge(&env.backend, &env.bridge, user)
+            .await?
+            .into_result()?;
+    }
+
+    // Create a Vote proposal
+    create_proposal_via_bridge(&env.backend, &env.bridge, "Sequential voting test")
+        .await?
+        .into_result()?;
+    let last_id = get_last_proposal_id(&env.sputnik_dao).await?;
+    let proposal_id = last_id
+        .checked_sub(1)
+        .expect("expected last proposal id > 0");
+
+    // Vote sequentially - first 3 approve, then check status before remaining votes
+    // With 5 citizens and >50% threshold: need >2.5 votes, so 3 votes (60%) is sufficient
+    for i in 0..3 {
+        let user = env.user(i);
+        let result =
+            vote_on_proposal(user, &env.sputnik_dao, proposal_id, "VoteApprove", json!("Vote"))
+                .await?;
+        assert!(
+            result.is_success(),
+            "Vote {} should succeed. Failures: {:?}",
+            i,
+            result.failures()
+        );
+    }
+
+    // After 3 approve votes, proposal should be approved
+    let proposal_after_approvals = get_proposal(&env.sputnik_dao, proposal_id).await?;
+
+    step("Verify proposal approved after 3/5 (60%) votes", || {
+        assert_eq!(
+            proposal_after_approvals.status,
+            ProposalStatus::Approved,
+            "Proposal should be approved after 3/5 (60%) approval votes"
+        );
+    });
+
+    // Verify that voting on an already-approved proposal fails
+    let late_vote_result = vote_on_proposal(
+        env.user(3),
+        &env.sputnik_dao,
+        proposal_id,
+        "VoteReject",
+        json!("Vote"),
+    )
+    .await?;
+
+    step("Verify late vote on approved proposal fails", || {
+        // Late votes on approved proposals should fail
+        assert!(
+            late_vote_result.is_failure(),
+            "Voting on an already-approved proposal should fail"
+        );
+    });
+
+    // Final verification - proposal is still approved
+    let final_proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
+
+    step("Verify proposal remains approved after late vote attempt", || {
+        assert_eq!(
+            final_proposal.status,
+            ProposalStatus::Approved,
+            "Proposal should remain approved"
+        );
+    });
+
+    Ok(())
+}
+
+// ==================== YOCTO DEPOSIT TESTS ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "deposit", "yocto")]
+#[allure_description(r#"
+## Purpose
+Verifies that storing a verification in the verified-accounts contract requires exactly
+1 yoctoNEAR deposit. This is a security measure to prevent accidental calls.
+
+## Test - store_verification_requires_one_yocto_in_verified_accounts
+
+## Expected
+Calling store_verification without 1 yoctoNEAR deposit fails with appropriate error.
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_store_verification_requires_one_yocto_in_verified_accounts() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Create a unique nonce
+    let nonce: [u8; 32] = [42u8; 32];
+    let challenge = "Identify myself";
+    let recipient = user.id().to_string();
+
+    let (signature, public_key) = generate_nep413_signature(user, challenge, &nonce, &recipient);
+
+    // Try to store verification without any deposit (should fail)
+    let result_no_deposit = env
+        .backend
+        .call(env.verified_accounts.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "test_yocto_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature.clone(),
+                "public_key": public_key.clone(),
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient.clone()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "test_context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify store_verification fails without 1 yoctoNEAR deposit", || {
+        assert!(
+            result_no_deposit.is_failure(),
+            "store_verification should fail without deposit"
+        );
+        let failure_msg = format!("{:?}", result_no_deposit.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    // Try with 2 yoctoNEAR (should also fail - must be exactly 1)
+    let result_too_much = env
+        .backend
+        .call(env.verified_accounts.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(2))
+        .args_json(json!({
+            "nullifier": "test_yocto_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "test_context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify store_verification fails with 2 yoctoNEAR deposit", || {
+        assert!(
+            result_too_much.is_failure(),
+            "store_verification should fail with 2 yoctoNEAR (not exactly 1)"
+        );
+        let failure_msg = format!("{:?}", result_too_much.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    Ok(())
+}

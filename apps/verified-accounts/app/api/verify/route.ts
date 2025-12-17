@@ -82,12 +82,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Self.xyz's isOfacValid: true = user IS ON OFAC sanctions list (blocked), false = NOT on list (allowed)
+    // See SDK source: "isOfacValid is true when a person is in OFAC list"
     const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
 
     console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
 
-    // Note: isOfacValid === true means user IS on OFAC list
     const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
+
+    // Type guards: ensure SDK returned expected boolean fields
+    // When OFAC is enabled, isOfacValid must also be a boolean
+    if (
+      typeof isValid !== "boolean" ||
+      typeof isMinimumAgeValid !== "boolean" ||
+      (ofacEnabled && typeof isOfacValid !== "boolean")
+    ) {
+      return NextResponse.json(
+        createVerificationError(
+          "VERIFICATION_FAILED",
+          "Invalid verifier response structure",
+        ) satisfies SelfVerificationResult,
+        { status: 502 },
+      )
+    }
     const ofacCheckFailed = ofacEnabled && isOfacValid === true
 
     if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
@@ -222,7 +239,6 @@ export async function POST(request: NextRequest) {
       await verificationDb.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
-        userId: selfVerificationResult.userData?.userIdentifier || "unknown",
         attestationId: attestationId.toString(),
         signatureData: nearSignature,
         selfProofData,
@@ -246,9 +262,8 @@ export async function POST(request: NextRequest) {
         console.log(`[Verify] Updated session ${sessionId} with status: success`)
       }
     } catch (error) {
-      // Check for duplicate passport error from contract
       const errorMessage = error instanceof Error ? error.message : ""
-      const errorCode = errorMessage.includes("already been registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
+      const errorCode = errorMessage.includes("already registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
 
       // Update session status for deep link callback
       const sessionId = selfVerificationResult.userData?.userIdentifier

@@ -31,7 +31,7 @@ export function ProposalList({ initialProposals, initialHasMore, showAllKinds = 
   // Filter proposals by category (or vote-only when showAllKinds is false)
   const filteredProposals = useMemo(() => {
     if (!showAllKinds) {
-      // Only show Vote proposals
+      // Only show Vote proposals (explicit check, not category mapping which has fallbacks)
       return proposals.filter((p) => p.kind === "Vote")
     }
     if (activeCategory === "all") {
@@ -61,7 +61,12 @@ export function ProposalList({ initialProposals, initialHasMore, showAllKinds = 
     setIsLoading(true)
     try {
       const result = await getProposalsReversed(page, 10)
-      setProposals((prev) => [...prev, ...result.proposals])
+      // Deduplicate proposals by ID when merging
+      setProposals((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id))
+        const newProposals = result.proposals.filter((p) => !existingIds.has(p.id))
+        return [...prev, ...newProposals]
+      })
       setHasMore(result.hasMore)
       setPage((p) => p + 1)
     } catch (error) {
@@ -71,14 +76,7 @@ export function ProposalList({ initialProposals, initialHasMore, showAllKinds = 
     }
   }
 
-  if (proposals.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p className="text-lg mb-2">No proposals yet</p>
-        <p className="text-sm">Proposals will appear here when created.</p>
-      </div>
-    )
-  }
+  // Note: Removed early return for empty proposals to allow Load More to still work if hasMore is true
 
   const proposalGrid = (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

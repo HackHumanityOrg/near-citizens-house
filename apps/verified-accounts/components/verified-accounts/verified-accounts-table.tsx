@@ -129,7 +129,6 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                         <TableRow>
                           <TableHead className="min-w-[180px]">NEAR Account</TableHead>
                           <TableHead className="min-w-[120px]">Attestation Type</TableHead>
-                          <TableHead className="min-w-[140px]">User ID</TableHead>
                           <TableHead className="min-w-[120px]">Nullifier</TableHead>
                           <TableHead className="min-w-[180px]">Verified At</TableHead>
                           <TableHead className="min-w-[100px]">Verify</TableHead>
@@ -152,9 +151,6 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                                 </a>
                               </TableCell>
                               <TableCell className="font-medium">{getAttestationType(account.attestationId)}</TableCell>
-                              <TableCell className="font-mono text-xs text-muted-foreground" title={account.userId}>
-                                {truncate(account.userId, 20)}
-                              </TableCell>
                               <TableCell className="font-mono text-xs text-muted-foreground" title={account.nullifier}>
                                 {truncate(account.nullifier, 16)}
                               </TableCell>

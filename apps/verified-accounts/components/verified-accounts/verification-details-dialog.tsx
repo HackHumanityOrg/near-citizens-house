@@ -40,7 +40,7 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl overflow-hidden">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
@@ -103,7 +103,6 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
                 publicSignals: proofData.publicSignals,
                 nullifier: proofData.nullifier,
                 attestationId: proofData.attestationId,
-                userId: proofData.userId,
                 verifiedAt: proofData.verifiedAt,
                 nearAccountId: account.nearAccountId,
               }
@@ -123,7 +122,6 @@ interface VerificationResult {
 interface AccountData {
   nearAccountId: string
   nullifier: string
-  userId: string
   attestationId: string
   verifiedAt: number
   selfProof: {
@@ -139,7 +137,6 @@ interface AccountData {
 
 interface ProofDataType {
   nullifier: string
-  userId: string
   attestationId: string
   verifiedAt: number
   zkProof: {
@@ -202,7 +199,7 @@ function buildTerminalOutput(
     lines.push(`    ✓ NEP-413 signature verified for ${account.nearAccountId}`)
   } else {
     lines.push(`    ✗ Signature verification failed`)
-    if (verification.error && !verification.zkValid === false) {
+    if (verification.error && verification.zkValid) {
       lines.push(`    Error: ${verification.error}`)
     }
   }
@@ -217,7 +214,6 @@ function buildTerminalOutput(
     lines.push("════════════════════════════════════════════════════════════════════════════════")
     lines.push("")
     lines.push(`  nullifier: ${p.nullifier}`)
-    lines.push(`  user_id: ${p.userId}`)
     lines.push(`  attestation_id: ${p.attestationId}`)
     lines.push(`  verified_at: ${p.verifiedAt}`)
     lines.push(`  verified_at_iso: ${new Date(p.verifiedAt).toISOString()}`)

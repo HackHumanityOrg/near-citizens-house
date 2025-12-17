@@ -15,16 +15,13 @@ import {
   Label,
   Alert,
 } from "@near-citizens/ui"
-import { type TransformedPolicy, formatProposalBond } from "@near-citizens/shared"
+import { type TransformedPolicy, formatProposalBond, nearAccountIdSchema } from "@near-citizens/shared"
 import { useAdminActions } from "@/hooks/admin-actions"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
 import { Loader2, UserPlus, CheckCircle, AlertCircle } from "lucide-react"
 
 const addMemberSchema = z.object({
-  accountId: z
-    .string()
-    .min(1, "Account ID is required")
-    .regex(/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/, "Invalid NEAR account ID format"),
+  accountId: nearAccountIdSchema,
 })
 
 type AddMemberFormData = z.infer<typeof addMemberSchema>
@@ -45,15 +42,23 @@ export function AddMemberForm() {
 
   // Fetch policy to get proposal bond
   useEffect(() => {
+    let isMounted = true
+
     async function fetchPolicy() {
       try {
         const daoPolicy = await getPolicy()
-        setPolicy(daoPolicy)
+        if (isMounted) {
+          setPolicy(daoPolicy)
+        }
       } catch (err) {
         console.error("Error fetching policy:", err)
       }
     }
     fetchPolicy()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const onSubmit = async (data: AddMemberFormData) => {
@@ -66,7 +71,8 @@ export function AddMemberForm() {
       const bondYocto = policy?.proposalBond || "100000000000000000000000"
 
       const txHash = await addMember(data.accountId, bondYocto)
-      setSuccess(`Member ${data.accountId} added successfully! Transaction: ${txHash.slice(0, 8)}...`)
+      const txHashDisplay = typeof txHash === "string" && txHash.length > 0 ? `${txHash.slice(0, 8)}...` : "unknown"
+      setSuccess(`Member ${data.accountId} added successfully! Transaction: ${txHashDisplay}`)
       reset()
     } catch {
       // Error is set by hook
