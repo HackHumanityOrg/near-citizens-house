@@ -195,19 +195,19 @@ impl Contract {
             backend_wallet,
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
             accounts: UnorderedMap::new(StorageKey::Accounts),
-            paused: false,
             used_signatures: LookupSet::new(StorageKey::UsedSignatures),
+            paused: false,
         }
     }
 
-    /// Update the backend wallet address (only callable by current backend wallet)
+    /// Update the backend wallet address (only callable by backend wallet)
     #[payable]
     pub fn update_backend_wallet(&mut self, new_backend_wallet: AccountId) {
         assert_one_yocto();
         assert_eq!(
             env::predecessor_account_id(),
             self.backend_wallet,
-            "Only current backend wallet can update backend wallet"
+            "Only backend wallet can update backend wallet"
         );
         let old_wallet = self.backend_wallet.clone();
         self.backend_wallet = new_backend_wallet.clone();
@@ -266,6 +266,7 @@ impl Contract {
     }
 
     /// Store a verified account with NEAR signature verification (only callable by backend wallet)
+    #[payable]
     pub fn store_verification(
         &mut self,
         nullifier: String,
@@ -275,6 +276,8 @@ impl Contract {
         self_proof: SelfProofData,
         user_context_data: String,
     ) {
+        assert_one_yocto();
+
         // Check if contract is paused
         assert!(
             !self.paused,

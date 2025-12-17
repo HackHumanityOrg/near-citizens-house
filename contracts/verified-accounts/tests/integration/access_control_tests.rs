@@ -22,6 +22,7 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
     // Try to store verification from unauthorized account
     let result = unauthorized
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
@@ -125,6 +126,84 @@ async fn test_authorized_pause_unpause() -> anyhow::Result<()> {
 
     step("Verify contract is unpaused", || {
         assert!(!is_paused);
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "deposit", "yocto")]
+#[allure_description("Verifies that store_verification requires exactly 1 yoctoNEAR deposit. This prevents accidental calls and provides a small security measure.")]
+#[allure_test]
+#[tokio::test]
+async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init().await?;
+    let user = worker.dev_create_account().await?;
+
+    // Try to store verification without any deposit
+    let result_no_deposit = backend
+        .call(contract.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "test_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": vec![0u8; 64],
+                "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
+                "challenge": "Identify myself",
+                "nonce": vec![0u8; 32],
+                "recipient": user.id()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "test"
+        }))
+        .transact()
+        .await?;
+
+    step("Verify store_verification fails without deposit", || {
+        assert!(result_no_deposit.is_failure());
+        let failure_msg = format!("{:?}", result_no_deposit.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    // Try with 2 yoctoNEAR (too much)
+    let result_too_much = backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(2))
+        .args_json(json!({
+            "nullifier": "test_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": vec![0u8; 64],
+                "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
+                "challenge": "Identify myself",
+                "nonce": vec![0u8; 32],
+                "recipient": user.id()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "test"
+        }))
+        .transact()
+        .await?;
+
+    step("Verify store_verification fails with 2 yoctoNEAR", || {
+        assert!(result_too_much.is_failure());
+        let failure_msg = format!("{:?}", result_too_much.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
     });
 
     Ok(())

@@ -31,6 +31,7 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
     // Try to store verification - should fail
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
@@ -79,6 +80,7 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
 
     backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "pause_read_test_nullifier",
             "near_account_id": user.id(),

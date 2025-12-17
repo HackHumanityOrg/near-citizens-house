@@ -2,6 +2,7 @@
 
 use crate::helpers::{init, test_self_proof};
 use allure_rs::prelude::*;
+use near_workspaces::types::NearToken;
 use serde_json::json;
 
 #[allure_parent_suite("Near Citizens House")]
@@ -18,6 +19,7 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
@@ -59,6 +61,7 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
@@ -101,6 +104,7 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(), // Trying to verify this account
@@ -143,6 +147,7 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),

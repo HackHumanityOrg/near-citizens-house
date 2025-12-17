@@ -148,8 +148,6 @@ Interested in integrating this verification system or contributing to the projec
 
 Questions or issues? Open an issue on [GitHub](https://github.com/HackHumanityOrg/near-citizens-house/issues) or reach out to the team.
 
-
-
 ---
 
 **Created by** [HackHumanity](https://hackhumanity.com) • **Powered by** [Self.xyz](https://self.xyz) • **License:** MIT

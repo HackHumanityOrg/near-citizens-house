@@ -327,12 +327,12 @@ async fn test_dao_proposal_counting() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    let id1: u64 = result1.json()?;
-
     step("Verify first proposal created with ID 0", || {
         assert!(result1.is_success(), "First proposal should succeed");
-        assert_eq!(id1, 0, "First proposal ID should be 0");
     });
+
+    let id1: u64 = result1.json()?;
+    assert_eq!(id1, 0, "First proposal ID should be 0");
 
     // Create second proposal
     let result2 = council
@@ -348,12 +348,12 @@ async fn test_dao_proposal_counting() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    let id2: u64 = result2.json()?;
-
     step("Verify second proposal created with ID 1", || {
         assert!(result2.is_success(), "Second proposal should succeed");
-        assert_eq!(id2, 1, "Second proposal ID should be 1");
     });
+
+    let id2: u64 = result2.json()?;
+    assert_eq!(id2, 1, "Second proposal ID should be 1");
 
     // Verify last proposal ID updated
     let final_id: u64 = dao.view("get_last_proposal_id").await?.json()?;

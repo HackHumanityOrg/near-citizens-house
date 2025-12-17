@@ -62,14 +62,6 @@ export function BridgeInfoCard() {
   }
 
   if (error || !info || !info.backendWallet) {
-    // Log diagnostic info for debugging, but don't expose details to UI
-    if (error) {
-      console.error("[BridgeInfoCard] Failed to load bridge info:", error)
-    } else if (!info) {
-      console.warn("[BridgeInfoCard] Bridge info missing (info is null/undefined)")
-    } else if (!info.backendWallet) {
-      console.warn("[BridgeInfoCard] Bridge info missing backendWallet", { info })
-    }
     return (
       <Card>
         <CardContent className="py-6">

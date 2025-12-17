@@ -33,14 +33,7 @@ export function IdentityVerificationFlow() {
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
   const trackedWalletRef = useRef<string | null>(null)
 
-  // Generate stable session ID for Self.xyz verification
-  const [sessionId] = useState(() => {
-    if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
-      // Fallback for older environments
-      return Math.random().toString(36).substring(2) + Date.now().toString(36)
-    }
-    return crypto.randomUUID()
-  })
+  const [sessionId] = useState(() => crypto.randomUUID())
 
   // Track wallet connection
   useEffect(() => {

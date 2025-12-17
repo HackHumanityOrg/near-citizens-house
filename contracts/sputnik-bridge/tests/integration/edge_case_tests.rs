@@ -469,3 +469,110 @@ async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// ==================== YOCTO DEPOSIT TESTS ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Edge Cases")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "deposit", "yocto")]
+#[allure_description(r#"
+## Purpose
+Verifies that storing a verification in the verified-accounts contract requires exactly
+1 yoctoNEAR deposit. This is a security measure to prevent accidental calls.
+
+## Test - store_verification_requires_one_yocto_in_verified_accounts
+
+## Expected
+Calling store_verification without 1 yoctoNEAR deposit fails with appropriate error.
+"#)]
+
+#[allure_test]
+#[tokio::test]
+async fn test_store_verification_requires_one_yocto_in_verified_accounts() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let user = env.user(0);
+
+    // Create a unique nonce
+    let nonce: [u8; 32] = [42u8; 32];
+    let challenge = "Identify myself";
+    let recipient = user.id().to_string();
+
+    let (signature, public_key) = generate_nep413_signature(user, challenge, &nonce, &recipient);
+
+    // Try to store verification without any deposit (should fail)
+    let result_no_deposit = env
+        .backend
+        .call(env.verified_accounts.id(), "store_verification")
+        .args_json(json!({
+            "nullifier": "test_yocto_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature.clone(),
+                "public_key": public_key.clone(),
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient.clone()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "test_context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify store_verification fails without 1 yoctoNEAR deposit", || {
+        assert!(
+            result_no_deposit.is_failure(),
+            "store_verification should fail without deposit"
+        );
+        let failure_msg = format!("{:?}", result_no_deposit.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    // Try with 2 yoctoNEAR (should also fail - must be exactly 1)
+    let result_too_much = env
+        .backend
+        .call(env.verified_accounts.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(2))
+        .args_json(json!({
+            "nullifier": "test_yocto_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "test_context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify store_verification fails with 2 yoctoNEAR deposit", || {
+        assert!(
+            result_too_much.is_failure(),
+            "store_verification should fail with 2 yoctoNEAR (not exactly 1)"
+        );
+        let failure_msg = format!("{:?}", result_too_much.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    Ok(())
+}

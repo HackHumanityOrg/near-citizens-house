@@ -425,10 +425,10 @@ pub async fn verify_user(
 
     backend
         .call(verified_accounts.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": format!("test_nullifier_{}", index),
             "near_account_id": user.id(),
-            "user_id": format!("user_{}", index),
             "attestation_id": format!("{}", index % 10),
             "signature_data": {
                 "account_id": user.id(),

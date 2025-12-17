@@ -2,7 +2,7 @@
 
 use crate::helpers::{generate_nep413_signature, init, test_self_proof};
 use allure_rs::prelude::*;
-use near_workspaces::types::Gas;
+use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 #[allure_parent_suite("Near Citizens House")]
@@ -20,6 +20,7 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
     // This should fail because the signature doesn't match the message
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
@@ -69,6 +70,7 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
     // Store verification with valid signature
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "valid_test_nullifier",
             "near_account_id": user.id(),
@@ -143,6 +145,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
     // First verification should succeed
     let first_result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "duplicate_test_nullifier",
             "near_account_id": user1.id(),
@@ -173,6 +176,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
     // Second verification with same nullifier should fail
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "duplicate_test_nullifier", // Same nullifier!
             "near_account_id": user2.id(),
@@ -227,6 +231,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
     // First verification should succeed
     let first_result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "first_nullifier",
             "near_account_id": user.id(),
@@ -257,6 +262,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
     // Second verification for same account should fail
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "second_nullifier", // Different nullifier
             "near_account_id": user.id(),    // Same account!
@@ -307,6 +313,7 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
     // Store verification
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "data_test_nullifier",
             "near_account_id": user.id(),
@@ -383,6 +390,7 @@ async fn test_get_verified_accounts_pagination() -> anyhow::Result<()> {
 
         let result = backend
             .call(contract.id(), "store_verification")
+            .deposit(NearToken::from_yoctonear(1))
             .args_json(json!({
                 "nullifier": format!("pagination_nullifier_{}", i),
                 "near_account_id": user.id(),
@@ -469,6 +477,7 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
     // First verification with attestation_id "1"
     let first_result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "attestation_test_nullifier_1",
             "near_account_id": user1.id(),
@@ -499,6 +508,7 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
     // Second verification with same attestation_id but different account
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "attestation_test_nullifier_2",  // Different nullifier
             "near_account_id": user2.id(),                 // Different account

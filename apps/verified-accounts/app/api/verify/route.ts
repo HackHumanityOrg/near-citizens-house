@@ -17,11 +17,6 @@ import { updateSession } from "@/lib/session-store"
 // Extended to allow time for Self app ID verification process
 const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
 
-// Pattern to detect duplicate passport errors from the contract
-// Note: This relies on the contract's error message format - if the contract changes
-// its error messages, this detection may break. Ideally, the contract would return structured errors.
-const DUPLICATE_PASSPORT_ERROR_PATTERN = "already registered"
-
 function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
   if (!userDefinedDataRaw) return null
 
@@ -267,11 +262,8 @@ export async function POST(request: NextRequest) {
         console.log(`[Verify] Updated session ${sessionId} with status: success`)
       }
     } catch (error) {
-      // Check for duplicate passport error from contract
       const errorMessage = error instanceof Error ? error.message : ""
-      const errorCode = errorMessage.includes(DUPLICATE_PASSPORT_ERROR_PATTERN)
-        ? "DUPLICATE_PASSPORT"
-        : "STORAGE_FAILED"
+      const errorCode = errorMessage.includes("already registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
 
       // Update session status for deep link callback
       const sessionId = selfVerificationResult.userData?.userIdentifier

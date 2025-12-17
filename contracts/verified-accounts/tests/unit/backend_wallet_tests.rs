@@ -70,7 +70,7 @@ fn test_unauthorized_update_backend_wallet() {
     step("Attempt update_backend_wallet from unauthorized account", || {
         assert_panic_with(
             || contract.update_backend_wallet(accounts(3)),
-            "Only current backend wallet can update backend wallet",
+            "Only backend wallet can update backend wallet",
         );
     });
 }

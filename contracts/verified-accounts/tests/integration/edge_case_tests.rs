@@ -2,7 +2,7 @@
 
 use crate::helpers::{generate_nep413_signature, init, test_self_proof};
 use allure_rs::prelude::*;
-use near_workspaces::types::Gas;
+use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 #[allure_parent_suite("Near Citizens House")]
@@ -28,6 +28,7 @@ async fn test_max_length_user_context_data() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "max_context_nullifier",
             "near_account_id": user.id(),
@@ -81,6 +82,7 @@ async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "unicode_context_nullifier",
             "near_account_id": user.id(),
@@ -146,6 +148,7 @@ async fn test_nonce_all_zeros() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "zero_nonce_nullifier",
             "near_account_id": user.id(),
@@ -199,6 +202,7 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
 
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "max_nonce_nullifier",
             "near_account_id": user.id(),

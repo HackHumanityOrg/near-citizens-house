@@ -2,31 +2,8 @@
 
 use crate::helpers::{generate_nep413_signature, init, test_self_proof};
 use allure_rs::prelude::*;
-use near_workspaces::types::Gas;
+use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Integration Tests")]
-#[allure_sub_suite("Pagination")]
-#[allure_severity("normal")]
-#[allure_tags("integration", "performance", "gas")]
-#[allure_description("Verifies that view functions complete quickly and don't consume excessive gas.")]
-#[allure_test]
-#[tokio::test]
-async fn test_view_function_gas_usage() -> anyhow::Result<()> {
-    let (_worker, contract, _backend) = init().await?;
-
-    // These should be fast view calls with minimal gas
-    let _count: u64 = contract.view("get_verified_count").await?.json()?;
-    let _paused: bool = contract.view("is_paused").await?.json()?;
-
-    step("Verify view functions complete quickly", || {
-        // View calls don't consume gas from the user, so we're mainly
-        // checking they complete without timeout
-    });
-
-    Ok(())
-}
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Integration Tests")]
@@ -51,6 +28,7 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
 
         backend
             .call(contract.id(), "store_verification")
+            .deposit(NearToken::from_yoctonear(1))
             .args_json(json!({
                 "nullifier": format!("pagination_cap_nullifier_{}", i),
                 "near_account_id": user.id(),

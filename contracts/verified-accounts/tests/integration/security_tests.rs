@@ -4,7 +4,7 @@
 
 use crate::helpers::{generate_nep413_signature, init, test_self_proof};
 use allure_rs::prelude::*;
-use near_workspaces::types::Gas;
+use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
 #[allure_parent_suite("Near Citizens House")]
@@ -29,6 +29,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
     // First verification should succeed
     let first_result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "replay_test_nullifier_1",
             "near_account_id": user.id(),
@@ -62,6 +63,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
     // already verified") will catch this first, but signature tracking adds defense-in-depth.
     let result = backend
         .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "replay_test_nullifier_2", // Different nullifier - trying to bypass nullifier check
             "near_account_id": user.id(),           // Same account

@@ -13,9 +13,11 @@ pub use verified_accounts::{
 };
 
 /// Create a test context with the given predecessor account
+/// Includes 1 yoctoNEAR attached deposit by default for payable functions
 pub fn get_context(predecessor: AccountId) -> VMContextBuilder {
     let mut builder = VMContextBuilder::new();
     builder.predecessor_account_id(predecessor);
+    builder.attached_deposit(near_sdk::NearToken::from_yoctonear(1));
     builder
 }
 
