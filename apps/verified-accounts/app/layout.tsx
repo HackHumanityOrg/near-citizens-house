@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { VercelToolbar } from "@vercel/toolbar/next"
 import { ThemeProvider, Footer } from "@near-citizens/ui"
+import { UserJotWidget } from "@near-citizens/shared"
 import { Header } from "@/components/shared/header"
 import { BetaBanner } from "@/components/shared/beta-banner"
 import { Providers } from "./providers"
@@ -67,6 +68,7 @@ export default function RootLayout({
         </ThemeProvider>
         <Analytics />
         <VercelToolbar />
+        <UserJotWidget />
       </body>
     </html>
   )

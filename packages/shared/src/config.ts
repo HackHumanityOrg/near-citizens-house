@@ -157,6 +157,14 @@ export const CELO_CONFIG = {
   })(),
 }
 
+// UserJot Configuration (Feedback Widget)
+export const USERJOT_CONFIG = {
+  projectId: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID || "",
+  get enabled() {
+    return !!this.projectId
+  },
+}
+
 // Application Constants
 export const CONSTANTS = {
   SIGNING_MESSAGE: "Identify myself",

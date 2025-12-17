@@ -15,6 +15,9 @@ export * from "./contracts/bridge"
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"
 
+// UserJot feedback widget
+export { UserJotWidget, identifyUserJotUser } from "./userjot-provider"
+
 // Verification utilities
 export * from "./verification"
 export * from "./self-verifier"
