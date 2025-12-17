@@ -620,23 +620,6 @@ impl SputnikBridge {
         self.backend_wallet = new_backend_wallet;
     }
 
-    /// Update the citizen role name
-    ///
-    /// # Arguments
-    /// * `new_role` - New role name
-    ///
-    /// # Panics
-    /// * If caller is not backend_wallet
-    /// * If new_role is empty
-    #[payable]
-    pub fn update_citizen_role(&mut self, new_role: String) {
-        assert_one_yocto();
-        self.assert_backend_wallet();
-        let new_role_trimmed = new_role.trim().to_string();
-        assert!(!new_role_trimmed.is_empty(), "new_role must be non-empty");
-        self.citizen_role = new_role_trimmed;
-    }
-
     // ==================== VIEW METHODS ====================
 
     /// Get bridge contract info

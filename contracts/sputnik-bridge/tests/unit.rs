@@ -17,9 +17,6 @@ mod read_functions_tests;
 #[path = "unit/backend_wallet_tests.rs"]
 mod backend_wallet_tests;
 
-#[path = "unit/citizen_role_tests.rs"]
-mod citizen_role_tests;
-
 #[path = "unit/quorum_tests.rs"]
 mod quorum_tests;
 
