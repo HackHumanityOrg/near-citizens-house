@@ -273,6 +273,25 @@ jobs:
         working-directory: contracts/sputnik-bridge
         run: RUSTFLAGS="--cfg clippy" cargo clippy --lib -- -D warnings
 
+      # Create executor.json for Allure history tracking
+      # This file is CRITICAL for history accumulation - it provides buildOrder
+      # and reportUrl that Allure uses to link reports together across runs
+      - name: Create executor.json
+        if: always()
+        run: |
+          cat > allure-results/executor.json << EOF
+          {
+            "name": "GitHub Actions",
+            "type": "github",
+            "url": "https://github.com/${{ github.repository }}",
+            "buildOrder": ${{ github.run_number }},
+            "buildName": "${{ github.workflow }} #${{ github.run_number }}",
+            "buildUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "reportUrl": "https://HackHumanityOrg.github.io/near-citizens-house/${{ github.run_number }}",
+            "reportName": "Allure Report #${{ github.run_number }}"
+          }
+          EOF
+
       # Collect allure results from all contract directories
       # allure-rs outputs to ./allure-results relative to working directory,
       # so we need to copy results from each contract dir to the root
