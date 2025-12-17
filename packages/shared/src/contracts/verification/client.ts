@@ -99,12 +99,14 @@ export class NearContractDatabase implements IVerificationDatabase {
       const { signatureData, selfProofData, userContextData, ...verificationData } = data
 
       // Convert signature data to contract format
+      // Use .map(Number) to ensure arrays contain actual numbers, not strings
+      // (string arrays can occur due to JSON serialization edge cases)
       const nearSigData: ContractSignatureInput = {
         account_id: signatureData.accountId,
-        signature: Array.from(Buffer.from(signatureData.signature, "base64")),
+        signature: Array.from(Buffer.from(signatureData.signature, "base64")).map(Number),
         public_key: signatureData.publicKey,
         challenge: signatureData.challenge,
-        nonce: signatureData.nonce, // Already an array
+        nonce: signatureData.nonce.map(Number),
         recipient: signatureData.recipient,
       }
 
