@@ -12,7 +12,6 @@ import { z } from "zod"
 // ============================================================================
 export const SIZE_LIMITS = {
   NULLIFIER: 80, // MAX_NULLIFIER_LEN - uint256 max = 77 decimal digits
-  USER_ID: 80, // MAX_USER_ID_LEN - uint256 max = 77 decimal digits
   ATTESTATION_ID: 1, // MAX_ATTESTATION_ID_LEN - Self.xyz uses "1", "2", "3"
   USER_CONTEXT_DATA: 4096, // MAX_USER_CONTEXT_DATA_LEN
   PUBLIC_SIGNALS_COUNT: 21, // MAX_PUBLIC_SIGNALS_COUNT - Passport proofs have 21 signals
@@ -186,7 +185,6 @@ export type SelfVerificationResult = z.infer<typeof selfVerificationResultSchema
 export const verificationDataSchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
   nearAccountId: z.string(),
-  userId: z.string().max(SIZE_LIMITS.USER_ID),
   attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
 })
 
@@ -205,7 +203,6 @@ export type VerificationDataWithSignature = z.infer<typeof verificationDataWithS
 export const verifiedAccountSchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER), // Unique passport identifier (prevents duplicate registrations)
   nearAccountId: z.string(), // Associated NEAR wallet
-  userId: z.string().max(SIZE_LIMITS.USER_ID),
   attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
   verifiedAt: z.number(),
   selfProof: selfProofDataSchema, // Self.xyz ZK proof for async verification
@@ -231,7 +228,6 @@ export type ParsedSignatureData = z.infer<typeof parsedSignatureDataSchema>
 // Proof data for verification (combines nullifier, user info, and ZK proof)
 export const proofDataSchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
-  userId: z.string().max(SIZE_LIMITS.USER_ID),
   attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
   verifiedAt: z.number(),
   zkProof: zkProofSchema,
@@ -300,7 +296,6 @@ export const contractVerifiedAccountSchema = z
   .object({
     nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
     near_account_id: z.string(),
-    user_id: z.string().max(SIZE_LIMITS.USER_ID),
     attestation_id: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
     verified_at: z.number(), // nanoseconds
     self_proof: z.object({
@@ -312,7 +307,6 @@ export const contractVerifiedAccountSchema = z
   .transform((data) => ({
     nullifier: data.nullifier,
     nearAccountId: data.near_account_id,
-    userId: data.user_id,
     attestationId: data.attestation_id,
     verifiedAt: Math.floor(data.verified_at / 1_000_000), // Convert nanoseconds to milliseconds
     selfProof: {

@@ -308,7 +308,6 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -450,7 +449,6 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -485,7 +483,6 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -518,7 +515,6 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -552,7 +548,6 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(), // Trying to verify this account
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": different_user.id(), // But signature is for different account
@@ -586,7 +581,6 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -622,7 +616,6 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -663,7 +656,6 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "valid_test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -723,7 +715,6 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "duplicate_test_nullifier",
             "near_account_id": user1.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user1.id(),
@@ -752,7 +743,6 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "duplicate_test_nullifier", // Same nullifier!
             "near_account_id": user2.id(),
-            "user_id": "user2",
             "attestation_id": "2",
             "signature_data": {
                 "account_id": user2.id(),
@@ -798,7 +788,6 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "first_nullifier",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -827,7 +816,6 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "second_nullifier", // Different nullifier
             "near_account_id": user.id(),    // Same account!
-            "user_id": "user1",
             "attestation_id": "2",
             "signature_data": {
                 "account_id": user.id(),
@@ -869,7 +857,6 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "data_test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "test_user_id",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -900,10 +887,6 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
         .json()?;
 
     // Verify the returned data
-    assert_eq!(
-        account_data.get("user_id"),
-        Some(&serde_json::json!("test_user_id"))
-    );
     assert_eq!(
         account_data.get("attestation_id"),
         Some(&serde_json::json!("1"))
@@ -939,7 +922,6 @@ async fn test_get_verified_accounts_pagination() -> anyhow::Result<()> {
             .args_json(json!({
                 "nullifier": format!("pagination_nullifier_{}", i),
                 "near_account_id": user.id(),
-                "user_id": format!("user_{}", i),
                 "attestation_id": format!("{}", i),
                 "signature_data": {
                     "account_id": user.id(),
@@ -1024,7 +1006,6 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
             .args_json(json!({
                 "nullifier": format!("pagination_cap_nullifier_{}", i),
                 "near_account_id": user.id(),
-                "user_id": format!("user_{}", i),
                 "attestation_id": format!("{}", i % 10),
                 "signature_data": {
                     "account_id": user.id(),
@@ -1109,7 +1090,6 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "replay_test_nullifier_1",
             "near_account_id": user.id(),
-            "user_id": "user1",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -1141,7 +1121,6 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "replay_test_nullifier_2", // Different nullifier - trying to bypass nullifier check
             "near_account_id": user.id(),           // Same account
-            "user_id": "user1",
             "attestation_id": "2",
             "signature_data": {
                 "account_id": user.id(),            // Same account
@@ -1215,7 +1194,6 @@ async fn test_max_length_user_context_data() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "max_context_nullifier",
             "near_account_id": user.id(),
-            "user_id": "max_context_user",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
@@ -1260,7 +1238,6 @@ async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "unicode_context_nullifier",
             "near_account_id": user.id(),
-            "user_id": "unicode_context_user",
             "attestation_id": "2",
             "signature_data": {
                 "account_id": user.id(),
@@ -1315,7 +1292,6 @@ async fn test_nonce_all_zeros() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "zero_nonce_nullifier",
             "near_account_id": user.id(),
-            "user_id": "zero_nonce_user",
             "attestation_id": "3",
             "signature_data": {
                 "account_id": user.id(),
@@ -1360,7 +1336,6 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "max_nonce_nullifier",
             "near_account_id": user.id(),
-            "user_id": "max_nonce_user",
             "attestation_id": "4",
             "signature_data": {
                 "account_id": user.id(),
@@ -1388,98 +1363,6 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
 
 // ==================== UNIQUENESS CONSTRAINT TESTS ====================
 
-/// Test 2.6.4: Allow same user_id for different accounts (not a unique constraint)
-#[tokio::test]
-async fn test_allow_same_user_id_different_accounts() -> anyhow::Result<()> {
-    let (worker, contract, backend) = init().await?;
-    let user1 = worker.dev_create_account().await?;
-    let user2 = worker.dev_create_account().await?;
-
-    // Generate valid signatures for both users
-    let nonce1: [u8; 32] = [1u8; 32];
-    let nonce2: [u8; 32] = [2u8; 32];
-    let challenge = "Identify myself";
-
-    let (signature1, public_key1) =
-        generate_nep413_signature(&user1, challenge, &nonce1, user1.id().as_str());
-    let (signature2, public_key2) =
-        generate_nep413_signature(&user2, challenge, &nonce2, user2.id().as_str());
-
-    // First verification with user_id "same_user"
-    let result = backend
-        .call(contract.id(), "store_verification")
-        .args_json(json!({
-            "nullifier": "unique_nullifier_1",
-            "near_account_id": user1.id(),
-            "user_id": "same_user",  // Same user_id
-            "attestation_id": "1",
-            "signature_data": {
-                "account_id": user1.id(),
-                "signature": signature1,
-                "public_key": public_key1,
-                "challenge": challenge,
-                "nonce": nonce1.to_vec(),
-                "recipient": user1.id()
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context1"
-        }))
-        .gas(near_workspaces::types::Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    assert!(
-        result.is_success(),
-        "First verification failed: {:?}",
-        result.failures()
-    );
-
-    // Second verification with same user_id but different account
-    let result = backend
-        .call(contract.id(), "store_verification")
-        .args_json(json!({
-            "nullifier": "unique_nullifier_2",  // Different nullifier
-            "near_account_id": user2.id(),       // Different account
-            "user_id": "same_user",              // Same user_id!
-            "attestation_id": "2",
-            "signature_data": {
-                "account_id": user2.id(),
-                "signature": signature2,
-                "public_key": public_key2,
-                "challenge": challenge,
-                "nonce": nonce2.to_vec(),
-                "recipient": user2.id()
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context2"
-        }))
-        .gas(near_workspaces::types::Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    // Should succeed - user_id is not a unique constraint
-    assert!(
-        result.is_success(),
-        "Same user_id for different accounts should be allowed. Failures: {:?}",
-        result.failures()
-    );
-
-    // Verify both accounts are verified
-    let verified1: bool = contract
-        .view("is_account_verified")
-        .args_json(json!({"near_account_id": user1.id()}))
-        .await?
-        .json()?;
-    let verified2: bool = contract
-        .view("is_account_verified")
-        .args_json(json!({"near_account_id": user2.id()}))
-        .await?
-        .json()?;
-    assert!(verified1 && verified2);
-
-    Ok(())
-}
-
 /// Test 2.6.5: Allow same attestation_id for different accounts (not a unique constraint)
 #[tokio::test]
 async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<()> {
@@ -1503,7 +1386,6 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
         .args_json(json!({
             "nullifier": "attestation_test_nullifier_1",
             "near_account_id": user1.id(),
-            "user_id": "user_1",
             "attestation_id": "1",  // Same attestation_id
             "signature_data": {
                 "account_id": user1.id(),
@@ -1532,7 +1414,6 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
         .args_json(json!({
             "nullifier": "attestation_test_nullifier_2",  // Different nullifier
             "near_account_id": user2.id(),                 // Different account
-            "user_id": "user_2",
             "attestation_id": "1",                         // Same attestation_id!
             "signature_data": {
                 "account_id": user2.id(),
@@ -1577,7 +1458,6 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "pause_read_test_nullifier",
             "near_account_id": user.id(),
-            "user_id": "pause_read_user",
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),

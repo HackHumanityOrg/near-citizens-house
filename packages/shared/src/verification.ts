@@ -187,7 +187,6 @@ export function verifyNearSignature(
 export function buildProofData(
   account: {
     nullifier: string
-    userId: string
     attestationId: string
     verifiedAt: number
     selfProof: {
@@ -210,7 +209,6 @@ export function buildProofData(
 
   return {
     nullifier: account.nullifier,
-    userId: account.userId,
     attestationId: account.attestationId,
     verifiedAt: account.verifiedAt,
     zkProof: account.selfProof.proof,

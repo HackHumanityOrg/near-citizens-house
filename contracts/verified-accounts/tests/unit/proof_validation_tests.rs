@@ -53,7 +53,6 @@ fn test_public_signals_too_many() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 too_many_signals_proof,
@@ -110,7 +109,6 @@ fn test_public_signal_item_too_long() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 bad_signal_proof,
@@ -165,7 +163,6 @@ fn test_proof_component_a_too_long() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 bad_proof,
@@ -220,7 +217,6 @@ fn test_proof_component_b_too_long() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 bad_proof,
@@ -266,7 +262,6 @@ fn test_public_signals_at_max_length_allowed() {
     contract.store_verification(
         "nullifier_proof_ok".to_string(),
         user.clone(),
-        "user_proof_ok".to_string(),
         "1".to_string(),
         sig_data,
         proof,
@@ -306,7 +301,6 @@ fn test_public_signals_under_max_allowed() {
     contract.store_verification(
         "nullifier_three_signals".to_string(),
         user.clone(),
-        "user_three_signals".to_string(),
         "1".to_string(),
         sig_data,
         proof,
@@ -349,7 +343,6 @@ fn test_proof_components_at_max_length_allowed() {
     contract.store_verification(
         "nullifier_component_ok".to_string(),
         user.clone(),
-        "user_component_ok".to_string(),
         "1".to_string(),
         sig_data,
         proof,
@@ -403,7 +396,6 @@ fn test_proof_component_c_too_long() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 bad_proof,

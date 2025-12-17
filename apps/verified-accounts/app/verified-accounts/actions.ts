@@ -107,7 +107,6 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
           account: {
             nearAccountId: account.nearAccountId,
             nullifier: account.nullifier,
-            userId: account.userId,
             attestationId: account.attestationId,
             verifiedAt: account.verifiedAt,
             selfProof: account.selfProof,
@@ -130,7 +129,6 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
           account: {
             nearAccountId: account.nearAccountId,
             nullifier: account.nullifier,
-            userId: account.userId,
             attestationId: account.attestationId,
             verifiedAt: account.verifiedAt,
             selfProof: account.selfProof,

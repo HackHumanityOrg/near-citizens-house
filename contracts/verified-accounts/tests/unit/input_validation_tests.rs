@@ -40,7 +40,6 @@ fn test_account_id_mismatch() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user, // But we're trying to verify accounts(2)
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 test_self_proof(),
@@ -83,7 +82,6 @@ fn test_recipient_mismatch() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user, // But we're trying to verify accounts(2)
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 test_self_proof(),
@@ -184,7 +182,6 @@ fn test_nullifier_too_long() {
             contract.store_verification(
                 too_long_nullifier,
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 test_self_proof(),
@@ -192,51 +189,6 @@ fn test_nullifier_too_long() {
             );
         },
         "Nullifier exceeds maximum length of 80",
-    );
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Input Validation")]
-#[allure_severity("critical")]
-#[allure_tags("unit", "validation", "user-id")]
-#[allure_description("Verifies that store_verification rejects user_id strings exceeding 80 character maximum length.")]
-#[allure_test]
-#[test]
-fn test_user_id_too_long() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
-
-    let mut contract = Contract::new(backend);
-
-    assert_panic_with(
-        || {
-            let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-            let sig_data = NearSignatureData {
-                account_id: user.clone(),
-                signature: vec![0; 64],
-                public_key: public_key_str.parse().unwrap(),
-                challenge: "Identify myself".to_string(),
-                nonce: vec![0; 32],
-                recipient: user.clone(),
-            };
-
-            // Create a user_id that exceeds the 80 character limit
-            let too_long_user_id = "x".repeat(81);
-
-            contract.store_verification(
-                "test_nullifier".to_string(),
-                user,
-                too_long_user_id,
-                "1".to_string(),
-                sig_data,
-                test_self_proof(),
-                "test_user_context_data".to_string(),
-            );
-        },
-        "User ID exceeds maximum length of 80",
     );
 }
 
@@ -274,7 +226,6 @@ fn test_attestation_id_too_long() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user,
-                "user1".to_string(),
                 too_long_attestation_id,
                 sig_data,
                 test_self_proof(),
@@ -319,7 +270,6 @@ fn test_user_context_data_too_long() {
             contract.store_verification(
                 "test_nullifier".to_string(),
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig_data,
                 test_self_proof(),
@@ -352,39 +302,6 @@ fn test_nullifier_max_length_allowed() {
     contract.store_verification(
         "n".repeat(80),
         user.clone(),
-        "user1".to_string(),
-        "9".to_string(),
-        sig_data,
-        test_self_proof(),
-        "ctx".to_string(),
-    );
-
-    assert!(contract.is_account_verified(user));
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Input Validation")]
-#[allure_severity("normal")]
-#[allure_tags("unit", "validation", "user-id", "boundary")]
-#[allure_description("Verifies that a user_id exactly 80 characters long is accepted.")]
-#[allure_test]
-#[test]
-fn test_user_id_max_length_allowed() {
-    let backend = accounts(1);
-    let user = accounts(2);
-    let context = get_context(backend.clone());
-    testing_env!(context.build());
-
-    let mut contract = Contract::new(backend);
-    let signer = create_signer(&user);
-    let sig_data =
-        create_valid_signature(&signer, &user, "Identify myself", &[3; 32], &user);
-
-    contract.store_verification(
-        "nullifier_ok".to_string(),
-        user.clone(),
-        "u".repeat(80),
         "9".to_string(),
         sig_data,
         test_self_proof(),
@@ -416,7 +333,6 @@ fn test_attestation_id_single_char_allowed() {
     contract.store_verification(
         "nullifier_attestation".to_string(),
         user.clone(),
-        "user_id_ok".to_string(),
         "Z".to_string(),
         sig_data,
         test_self_proof(),
@@ -450,7 +366,6 @@ fn test_user_context_data_max_length_allowed() {
     contract.store_verification(
         "nullifier_context".to_string(),
         user.clone(),
-        "user_context".to_string(),
         "1".to_string(),
         sig_data,
         test_self_proof(),
@@ -458,7 +373,6 @@ fn test_user_context_data_max_length_allowed() {
     );
 
     let account = contract.get_account(user.clone()).unwrap();
-    assert_eq!(account.user_id, "user_context");
     assert_eq!(account.attestation_id, "1");
     assert_eq!(account.near_account_id, user);
     assert_eq!(account.nullifier, "nullifier_context");

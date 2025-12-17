@@ -724,7 +724,6 @@ describe("Near Citizens House", () => {
         // Sample account data
         const sampleAccount = {
           nullifier: "12345678901234567890",
-          userId: "user-id-123",
           attestationId: "1",
           verifiedAt: Date.now(),
           selfProof: {
@@ -756,7 +755,6 @@ describe("Near Citizens House", () => {
 
             expect(result).not.toBeNull()
             expect(result?.nullifier).toBe(sampleAccount.nullifier)
-            expect(result?.userId).toBe(sampleAccount.userId)
             expect(result?.attestationId).toBe(sampleAccount.attestationId)
           })
 
@@ -823,7 +821,6 @@ describe("Near Citizens House", () => {
             const minAccount = {
               ...sampleAccount,
               nullifier: "1",
-              userId: "1",
               selfProof: {
                 proof: {
                   a: ["0", "0"] as [string, string],

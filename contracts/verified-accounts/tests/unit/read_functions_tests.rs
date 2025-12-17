@@ -62,7 +62,6 @@ fn test_read_functions_with_verified_accounts() {
     contract.store_verification(
         "nullifier_a".to_string(),
         user_a,
-        "userA".to_string(),
         "1".to_string(),
         sig_a,
         test_self_proof(),
@@ -75,7 +74,6 @@ fn test_read_functions_with_verified_accounts() {
     contract.store_verification(
         "nullifier_b".to_string(),
         user_b,
-        "userB".to_string(),
         "1".to_string(),
         sig_b,
         test_self_proof(),

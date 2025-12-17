@@ -31,8 +31,7 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
 
 /// Maximum length for string inputs
-const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 77 decimal digits
-const MAX_USER_ID_LEN: usize = 80; // uint256 max = 77 decimal digits
+const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 78 decimal digits
 const MAX_ATTESTATION_ID_LEN: usize = 1; // Self.xyz uses "1", "2", "3"
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
 const MAX_PUBLIC_SIGNALS_COUNT: usize = 21; // Passport proofs have 21 signals
@@ -80,7 +79,6 @@ pub struct SelfProofData {
 pub struct VerifiedAccount {
     pub nullifier: String,
     pub near_account_id: AccountId,
-    pub user_id: String,
     pub attestation_id: String,
     pub verified_at: u64,
     pub self_proof: SelfProofData,
@@ -266,7 +264,6 @@ impl Contract {
         &mut self,
         nullifier: String,
         near_account_id: AccountId,
-        user_id: String,
         attestation_id: String,
         signature_data: NearSignatureData,
         self_proof: SelfProofData,
@@ -283,11 +280,6 @@ impl Contract {
             nullifier.len() <= MAX_NULLIFIER_LEN,
             "Nullifier exceeds maximum length of {}",
             MAX_NULLIFIER_LEN
-        );
-        assert!(
-            user_id.len() <= MAX_USER_ID_LEN,
-            "User ID exceeds maximum length of {}",
-            MAX_USER_ID_LEN
         );
         assert!(
             attestation_id.len() <= MAX_ATTESTATION_ID_LEN,
@@ -353,27 +345,26 @@ impl Contract {
         // Early storage cost estimation based on actual data structures:
         //
         // VerifiedAccount struct (Borsh serialized):
-        //   - nullifier: ~64 bytes (hex string)
-        //   - near_account_id: ~64 bytes max
-        //   - user_id: ~256 bytes max
-        //   - attestation_id: ~256 bytes max
+        //   - nullifier: ~84 bytes (80 char max + 4-byte length prefix)
+        //   - near_account_id: ~68 bytes (64 char max + 4-byte length prefix)
+        //   - attestation_id: ~5 bytes (1 char + 4-byte length prefix)
         //   - verified_at: 8 bytes (u64)
-        //   - user_context_data: ~4096 bytes max
+        //   - user_context_data: ~4100 bytes (4096 max + 4-byte length prefix)
         //   - self_proof.proof (Groth16 BN254):
-        //       - a: 2 × ~77 bytes (256-bit field elements as decimal strings) = ~154 bytes
-        //       - b: 4 × ~77 bytes = ~308 bytes
-        //       - c: 2 × ~77 bytes = ~154 bytes
-        //   - self_proof.public_signals: 21 × ~77 bytes = ~1617 bytes
-        //   Subtotal: ~7,000 bytes worst case
+        //       - a: 2 × ~84 bytes (77-digit field elements + length prefix) = ~168 bytes
+        //       - b: 4 × ~84 bytes = ~336 bytes
+        //       - c: 2 × ~84 bytes = ~168 bytes
+        //   - self_proof.public_signals: 21 × ~84 bytes + vec prefix = ~1768 bytes
+        //   Subtotal: ~6,700 bytes worst case
         //
         // Additional collections storage:
-        //   - used_signatures LookupSet: 64 bytes + ~40 bytes key overhead
-        //   - nullifiers LookupSet: ~64 bytes + ~40 bytes key overhead
-        //   - accounts UnorderedMap: ~64 bytes key + ~40 bytes overhead
-        //   Subtotal: ~300 bytes
+        //   - used_signatures LookupSet: 64 bytes + ~40 bytes key overhead = ~104 bytes
+        //   - nullifiers LookupSet: ~84 bytes + ~40 bytes key overhead = ~124 bytes
+        //   - accounts UnorderedMap: ~68 bytes key + ~40 bytes overhead = ~108 bytes
+        //   Subtotal: ~336 bytes
         //
-        // Total with Borsh overhead (~10%): ~8,000 bytes
-        // Using 10KB (10,240 bytes) as conservative estimate
+        // Total: ~7,036 bytes
+        // Using 10KB (10,240 bytes) as conservative estimate with ~45% margin
         //
         // NEAR storage cost: 1e19 yoctoNEAR per byte (100KB = 1 NEAR)
         // 10KB = 0.1 NEAR = 1e23 yoctoNEAR
@@ -426,7 +417,6 @@ impl Contract {
         let account = VerifiedAccount {
             nullifier: nullifier.clone(),
             near_account_id: near_account_id.clone(),
-            user_id,
             attestation_id: attestation_id.clone(),
             verified_at: env::block_timestamp(),
             self_proof,
@@ -550,7 +540,6 @@ impl Contract {
             verified_accounts_interface::VerifiedAccountInfo {
                 nullifier: v.nullifier,
                 near_account_id: v.near_account_id,
-                user_id: v.user_id,
                 attestation_id: v.attestation_id,
                 verified_at: v.verified_at,
             }

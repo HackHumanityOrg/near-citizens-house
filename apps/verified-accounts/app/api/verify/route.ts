@@ -244,7 +244,6 @@ export async function POST(request: NextRequest) {
       await verificationDb.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
-        userId: selfVerificationResult.userData?.userIdentifier || "unknown",
         attestationId: attestationId.toString(),
         signatureData: nearSignature,
         selfProofData,

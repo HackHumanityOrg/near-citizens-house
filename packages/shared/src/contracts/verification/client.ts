@@ -126,7 +126,6 @@ export class NearContractDatabase implements IVerificationDatabase {
             {
               nullifier: verificationData.nullifier,
               near_account_id: verificationData.nearAccountId,
-              user_id: verificationData.userId,
               attestation_id: verificationData.attestationId,
               signature_data: nearSigData,
               self_proof: selfProof,

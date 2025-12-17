@@ -83,8 +83,6 @@ pub struct VerifiedAccountInfo {
     pub nullifier: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
-    /// User identifier from the identity provider
-    pub user_id: String,
     /// Attestation ID from the identity provider
     pub attestation_id: String,
     /// Unix timestamp (nanoseconds) when verification was recorded
@@ -103,8 +101,6 @@ pub struct VerifiedAccount {
     pub nullifier: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
-    /// User identifier from the identity provider
-    pub user_id: String,
     /// Attestation ID from the identity provider
     pub attestation_id: String,
     /// Unix timestamp (nanoseconds) when verification was recorded
@@ -155,7 +151,7 @@ pub trait VerifiedAccounts {
     /// Get account verification info (without ZK proof).
     ///
     /// **Use this for:** Most cross-contract calls that need verification details.
-    /// Returns all essential data (nullifier, user_id, attestation_id, timestamp)
+    /// Returns all essential data (nullifier, attestation_id, timestamp)
     /// without the large ZK proof, keeping gas costs low.
     ///
     /// Returns `None` if the account is not verified.

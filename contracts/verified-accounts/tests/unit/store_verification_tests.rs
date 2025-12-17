@@ -56,7 +56,6 @@ fn test_happy_path_store_verification() {
         contract.store_verification(
             "test_nullifier".to_string(),
             user.clone(),
-            "user1".to_string(),
             "1".to_string(),
             sig_data,
             test_self_proof(),
@@ -108,7 +107,6 @@ fn test_signature_replay_rejected() {
     contract.store_verification(
         "nullifier_one".to_string(),
         user.clone(),
-        "user1".to_string(),
         "1".to_string(),
         sig_data,
         test_self_proof(),
@@ -129,7 +127,6 @@ fn test_signature_replay_rejected() {
             contract.store_verification(
                 "nullifier_two".to_string(),
                 user.clone(),
-                "user1".to_string(),
                 "1".to_string(),
                 replay_sig,
                 test_self_proof(),
@@ -164,7 +161,6 @@ fn test_verification_timestamp_matches_block_time() {
     contract.store_verification(
         "timestamp_nullifier".to_string(),
         user.clone(),
-        "ts_user".to_string(),
         "1".to_string(),
         sig_data,
         test_self_proof(),
@@ -209,7 +205,6 @@ fn test_nullifier_reuse_rejected() {
     contract.store_verification(
         "shared_nullifier".to_string(),
         user_a,
-        "userA".to_string(),
         "1".to_string(),
         sig_a,
         test_self_proof(),
@@ -231,7 +226,6 @@ fn test_nullifier_reuse_rejected() {
             contract.store_verification(
                 "shared_nullifier".to_string(),
                 user_b,
-                "userB".to_string(),
                 "1".to_string(),
                 sig_b,
                 test_self_proof(),
@@ -263,7 +257,6 @@ fn test_double_verification_rejected() {
     contract.store_verification(
         "n1".to_string(),
         user.clone(),
-        "user1".to_string(),
         "1".to_string(),
         sig_one,
         test_self_proof(),
@@ -276,7 +269,6 @@ fn test_double_verification_rejected() {
             contract.store_verification(
                 "n2".to_string(),
                 user.clone(),
-                "user1".to_string(),
                 "1".to_string(),
                 sig_two,
                 test_self_proof(),
@@ -312,7 +304,6 @@ fn test_insufficient_balance_rejected() {
             contract.store_verification(
                 "low_balance".to_string(),
                 user,
-                "user1".to_string(),
                 "1".to_string(),
                 sig,
                 test_self_proof(),
