@@ -587,7 +587,6 @@ pub async fn get_vote_quorum(dao: &Contract, role_name: &str) -> anyhow::Result<
         .and_then(|r| r.as_array())
         .ok_or_else(|| anyhow!("DAO policy missing roles array"))?;
 
-                                return Ok(q_str.parse().unwrap_or(0));
     let role = roles
         .iter()
         .find(|r| r.get("name").and_then(|n| n.as_str()) == Some(role_name))
