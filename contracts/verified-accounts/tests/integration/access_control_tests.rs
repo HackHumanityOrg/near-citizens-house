@@ -213,6 +213,59 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
 #[allure_suite_label("Verified Accounts Integration Tests")]
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
+#[allure_tags("integration", "security", "deposit", "yocto")]
+#[allure_description("Verifies that update_backend_wallet requires exactly 1 yoctoNEAR deposit.")]
+#[allure_test]
+#[tokio::test]
+async fn test_update_backend_wallet_requires_one_yocto() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init().await?;
+    let new_backend = worker.dev_create_account().await?;
+
+    let result_no_deposit = backend
+        .call(contract.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": new_backend.id() }))
+        .transact()
+        .await?;
+
+    step("Verify update_backend_wallet fails without deposit", || {
+        assert!(result_no_deposit.is_failure());
+        let failure_msg = format!("{:?}", result_no_deposit.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    let result_too_much = backend
+        .call(contract.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": new_backend.id() }))
+        .deposit(NearToken::from_yoctonear(2))
+        .transact()
+        .await?;
+
+    step("Verify update_backend_wallet fails with 2 yoctoNEAR", || {
+        assert!(result_too_much.is_failure());
+        let failure_msg = format!("{:?}", result_too_much.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    let current_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
+    step("Verify backend wallet unchanged after failed updates", || {
+        assert_eq!(current_backend, *backend.id());
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Access Control")]
+#[allure_severity("critical")]
 #[allure_tags("integration", "admin", "backend-wallet")]
 #[allure_description("Verifies that the backend wallet can be updated and the new wallet gains proper permissions.")]
 #[allure_test]

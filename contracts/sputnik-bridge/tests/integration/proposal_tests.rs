@@ -65,7 +65,7 @@ Verifies that creating a proposal returns an incrementing ID and the proposal is
 async fn test_create_proposal_returns_id() -> anyhow::Result<()> {
     let env = setup().await?;
 
-    let initial_id = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let initial_id = get_last_proposal_id(&env.sputnik_dao).await?;
 
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal")
         .await?

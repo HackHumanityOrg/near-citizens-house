@@ -63,6 +63,108 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
 #[allure_suite_label("Verified Accounts Integration Tests")]
 #[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
+#[allure_tags("integration", "security", "yocto")]
+#[allure_description("Verifies that pause requires exactly 1 yoctoNEAR deposit.")]
+#[allure_test]
+#[tokio::test]
+async fn test_pause_requires_one_yocto() -> anyhow::Result<()> {
+    let (_worker, contract, backend) = init().await?;
+
+    let no_deposit = backend.call(contract.id(), "pause").transact().await?;
+
+    step("Verify pause fails without deposit", || {
+        assert!(no_deposit.is_failure());
+        let failure_msg = format!("{:?}", no_deposit.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    let too_much = backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(2))
+        .transact()
+        .await?;
+
+    step("Verify pause fails with 2 yoctoNEAR", || {
+        assert!(too_much.is_failure());
+        let failure_msg = format!("{:?}", too_much.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    let is_paused: bool = contract.view("is_paused").await?.json()?;
+    step("Verify contract remains unpaused after failed attempts", || {
+        assert!(!is_paused);
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Pause/Unpause")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "yocto")]
+#[allure_description("Verifies that unpause requires exactly 1 yoctoNEAR deposit.")]
+#[allure_test]
+#[tokio::test]
+async fn test_unpause_requires_one_yocto() -> anyhow::Result<()> {
+    let (_worker, contract, backend) = init().await?;
+
+    // Pause first with correct deposit
+    backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let no_deposit = backend.call(contract.id(), "unpause").transact().await?;
+
+    step("Verify unpause fails without deposit", || {
+        assert!(no_deposit.is_failure());
+        let failure_msg = format!("{:?}", no_deposit.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    let too_much = backend
+        .call(contract.id(), "unpause")
+        .deposit(NearToken::from_yoctonear(2))
+        .transact()
+        .await?;
+
+    step("Verify unpause fails with 2 yoctoNEAR", || {
+        assert!(too_much.is_failure());
+        let failure_msg = format!("{:?}", too_much.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    let is_paused: bool = contract.view("is_paused").await?.json()?;
+    step("Verify contract remains paused after failed unpause attempts", || {
+        assert!(is_paused);
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Pause/Unpause")]
+#[allure_severity("critical")]
 #[allure_tags("integration", "security", "pause")]
 #[allure_description("Test 2.7.2: Verifies that read operations (is_account_verified, get_verified_count, get_verified_accounts) still work when the contract is paused.")]
 #[allure_test]

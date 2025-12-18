@@ -5,6 +5,7 @@
 
 #![allow(dead_code)] // Shared helpers - not all functions used by every test file
 
+use anyhow::{anyhow, Context};
 use borsh::BorshSerialize;
 use near_workspaces::result::ExecutionFinalResult;
 use near_workspaces::types::{Gas, NearToken};
@@ -581,62 +582,83 @@ pub async fn get_citizen_count(dao: &Contract, role_name: &str) -> anyhow::Resul
 /// Get the quorum value for Vote proposals from the citizen role's vote_policy
 pub async fn get_vote_quorum(dao: &Contract, role_name: &str) -> anyhow::Result<u64> {
     let policy: serde_json::Value = get_dao_policy(dao).await?;
+    let roles = policy
+        .get("roles")
+        .and_then(|r| r.as_array())
+        .ok_or_else(|| anyhow!("DAO policy missing roles array"))?;
 
-    if let Some(roles) = policy.get("roles").and_then(|r| r.as_array()) {
-        for role in roles {
-            if role.get("name").and_then(|n| n.as_str()) == Some(role_name) {
-                if let Some(vote_policy) = role.get("vote_policy") {
-                    if let Some(vote) = vote_policy.get("vote") {
-                        if let Some(quorum) = vote.get("quorum") {
-                            // Quorum can be a string or number depending on serialization
-                            if let Some(q_str) = quorum.as_str() {
                                 return Ok(q_str.parse().unwrap_or(0));
-                            }
-                            if let Some(q_num) = quorum.as_u64() {
-                                return Ok(q_num);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    let role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some(role_name))
+        .ok_or_else(|| anyhow!("Role '{}' not found in DAO policy", role_name))?;
+
+    let quorum_value = role
+        .get("vote_policy")
+        .and_then(|vp| vp.get("vote"))
+        .and_then(|vote| vote.get("quorum"))
+        .ok_or_else(|| anyhow!("Vote quorum missing for role '{}'", role_name))?;
+
+    if let Some(q_str) = quorum_value.as_str() {
+        return q_str
+            .parse::<u64>()
+            .context(format!("Failed to parse quorum for role '{}'", role_name));
+    }
+    if let Some(q_num) = quorum_value.as_u64() {
+        return Ok(q_num);
     }
 
-    Ok(0)
+    Err(anyhow!(
+        "Quorum value for role '{}' is neither string nor number",
+        role_name
+    ))
 }
 
 /// Get the threshold for Vote proposals from the citizen role's vote_policy
 /// Returns (numerator, denominator) for ratio threshold, or (weight, 0) for fixed weight
 pub async fn get_vote_threshold(dao: &Contract, role_name: &str) -> anyhow::Result<(u64, u64)> {
     let policy: serde_json::Value = get_dao_policy(dao).await?;
+    let roles = policy
+        .get("roles")
+        .and_then(|r| r.as_array())
+        .ok_or_else(|| anyhow!("DAO policy missing roles array"))?;
 
-    if let Some(roles) = policy.get("roles").and_then(|r| r.as_array()) {
-        for role in roles {
-            if role.get("name").and_then(|n| n.as_str()) == Some(role_name) {
-                if let Some(vote_policy) = role.get("vote_policy") {
-                    if let Some(vote) = vote_policy.get("vote") {
-                        if let Some(threshold) = vote.get("threshold") {
-                            // Threshold can be a ratio [num, denom] or a fixed weight
-                            if let Some(arr) = threshold.as_array() {
-                                if arr.len() == 2 {
-                                    let num = arr.first().and_then(|v| v.as_u64()).unwrap_or(0);
-                                    let denom = arr.get(1).and_then(|v| v.as_u64()).unwrap_or(1);
-                                    return Ok((num, denom));
-                                }
-                            }
-                            // Fixed weight (U128 as string)
-                            if let Some(w_str) = threshold.as_str() {
-                                return Ok((w_str.parse().unwrap_or(0), 0));
-                            }
-                        }
-                    }
-                }
-            }
+    let role = roles
+        .iter()
+        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some(role_name))
+        .ok_or_else(|| anyhow!("Role '{}' not found in DAO policy", role_name))?;
+
+    let threshold_value = role
+        .get("vote_policy")
+        .and_then(|vp| vp.get("vote"))
+        .and_then(|vote| vote.get("threshold"))
+        .ok_or_else(|| anyhow!("Vote threshold missing for role '{}'", role_name))?;
+
+    if let Some(arr) = threshold_value.as_array() {
+        if arr.len() == 2 {
+            let num = arr
+                .first()
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Threshold numerator missing for role '{}'", role_name))?;
+            let denom = arr
+                .get(1)
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Threshold denominator missing for role '{}'", role_name))?;
+            return Ok((num, denom));
         }
     }
 
-    // Return default 50% threshold if not found
-    Ok((1, 2))
+    if let Some(w_str) = threshold_value.as_str() {
+        let weight = w_str
+            .parse::<u64>()
+            .context(format!("Failed to parse fixed threshold for role '{}'", role_name))?;
+        return Ok((weight, 0));
+    }
+
+    Err(anyhow!(
+        "Threshold for role '{}' is neither ratio array nor string weight",
+        role_name
+    ))
 }
 
 /// Calculate the effective threshold for a proposal

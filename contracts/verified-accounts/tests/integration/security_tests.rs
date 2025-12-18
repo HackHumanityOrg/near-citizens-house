@@ -87,13 +87,9 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         // This should fail - the signature tracking or account check will catch it
         assert!(result.is_failure());
         let failure_msg = format!("{:?}", result.failures());
-        // Multiple layers of defense - any of these would block the replay:
-        // - "Signature already used" (signature tracking - our new defense)
-        // - "NEAR account already verified" (existing account check)
         assert!(
-            failure_msg.contains("Signature already used")
-                || failure_msg.contains("NEAR account already verified"),
-            "Expected replay to be rejected by defense-in-depth, got: {}",
+            failure_msg.contains("Signature already used"),
+            "Expected replay to be rejected by signature tracking, got: {}",
             failure_msg
         );
     });

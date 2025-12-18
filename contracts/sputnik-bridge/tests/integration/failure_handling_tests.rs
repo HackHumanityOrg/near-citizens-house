@@ -28,7 +28,7 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
     // which triggers a panic in callback_add_member
 
     // Get initial state
-    let initial_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let initial_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
     // Try to add unverified member
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
@@ -39,7 +39,7 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
     });
 
     // Verify NO proposal was created in DAO (state unchanged)
-    let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
     step("Verify no proposal was created", || {
         assert_eq!(
@@ -141,7 +141,7 @@ async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
         );
     });
 
-    let proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
     step("Verify no proposals created after promise failure", || {
         assert_eq!(
@@ -275,15 +275,24 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
     let env = setup_with_users(3).await?;
 
     // Get initial state
-    let initial_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let initial_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
     // Attempt multiple operations that will fail
 
     // 1. Unverified user
-    let _result1 = add_member_via_bridge(&env.backend, &env.bridge, env.user(0)).await?;
+    let result1 = add_member_via_bridge(&env.backend, &env.bridge, env.user(0)).await?;
+    step("Unverified user add_member should fail", || {
+        assert!(result1.is_failure(), "Unverified user call must fail");
+        assert!(
+            contains_error(&result1, "not verified")
+                || contains_error(&result1, "Account is not verified"),
+            "Failure should mention verification; got {:?}",
+            result1.failures()
+        );
+    });
 
     // 2. Insufficient deposit
-    let _result2 = env
+    let result2 = env
         .backend
         .call(env.bridge.id(), "add_member")
         .args_json(json!({ "near_account_id": env.user(1).id() }))
@@ -291,12 +300,23 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
         .gas(Gas::from_tgas(300))
         .transact()
         .await?;
+    step("Insufficient deposit should fail", || {
+        assert!(result2.is_failure(), "Low bond call must fail");
+    });
 
     // 3. Empty description proposal
-    let _result3 = create_proposal_via_bridge(&env.backend, &env.bridge, "").await?;
+    let result3 = create_proposal_via_bridge(&env.backend, &env.bridge, "").await?;
+    step("Empty description proposal should fail", || {
+        assert!(result3.is_failure(), "Empty description must be rejected");
+        assert!(
+            contains_error(&result3, "cannot be empty"),
+            "Expected empty description error, got {:?}",
+            result3.failures()
+        );
+    });
 
     // Verify state is still consistent
-    let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
     step("Verify no proposals created after multiple failures", || {
         assert_eq!(

@@ -102,6 +102,62 @@ async fn test_backend_wallet_rotation_enforced() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Sputnik Bridge Integration Tests")]
+#[allure_sub_suite("Backend Wallet Management")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "security", "yocto")]
+#[allure_description("Verifies update_backend_wallet enforces exactly 1 yoctoNEAR deposit (rejects missing or excess deposit).")]
+#[allure_test]
+#[tokio::test]
+async fn test_update_backend_wallet_requires_exact_yocto() -> anyhow::Result<()> {
+    let env = setup_with_users(1).await?;
+    let new_backend = env.user(0);
+
+    let no_deposit = env
+        .backend
+        .call(env.bridge.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": new_backend.id() }))
+        .transact()
+        .await?;
+
+    step("Verify update_backend_wallet fails without deposit", || {
+        assert!(no_deposit.is_failure(), "Call without yocto should fail");
+        let failure_msg = format!("{:?}", no_deposit.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    let too_much = env
+        .backend
+        .call(env.bridge.id(), "update_backend_wallet")
+        .args_json(json!({ "new_backend_wallet": new_backend.id() }))
+        .deposit(NearToken::from_yoctonear(2))
+        .transact()
+        .await?;
+
+    step("Verify update_backend_wallet fails with >1 yocto", || {
+        assert!(too_much.is_failure(), "Call with extra yocto should fail");
+        let failure_msg = format!("{:?}", too_much.failures());
+        assert!(
+            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+            "Expected yoctoNEAR error, got: {}",
+            failure_msg
+        );
+    });
+
+    // Confirm backend wallet unchanged
+    let backend_wallet: String = env.bridge.view("get_backend_wallet").await?.json()?;
+    step("Verify backend wallet remains unchanged after failed attempts", || {
+        assert_eq!(backend_wallet, env.backend.id().to_string());
+    });
+
+    Ok(())
+}
+
 // ==================== EVENT TESTS ====================
 
 #[allure_parent_suite("Near Citizens House")]

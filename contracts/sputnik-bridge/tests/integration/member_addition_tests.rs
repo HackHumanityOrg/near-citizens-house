@@ -71,7 +71,7 @@ async fn test_add_member_creates_proposal() -> anyhow::Result<()> {
 
     verify_user(&env.backend, &env.verified_accounts, user, 0).await?;
 
-    let initial_id = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let initial_id = get_last_proposal_id(&env.sputnik_dao).await?;
 
     add_member_via_bridge(&env.backend, &env.bridge, user)
         .await?

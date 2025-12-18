@@ -230,7 +230,7 @@ async fn test_proposal_count_consistency() -> anyhow::Result<()> {
     let env = setup_with_users(2).await?;
 
     // Get initial proposal count
-    let initial_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let initial_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
     // Add 2 citizens (each creates 2 proposals: add_member + quorum_update)
     for (i, user) in env.users.iter().enumerate() {
@@ -297,7 +297,7 @@ async fn test_failed_add_member_leaves_dao_unchanged() -> anyhow::Result<()> {
     let user = env.user(0);
 
     // Get initial state
-    let initial_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let initial_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
     let initial_citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
 
     // Try to add unverified user (will fail at verification step)
@@ -308,7 +308,7 @@ async fn test_failed_add_member_leaves_dao_unchanged() -> anyhow::Result<()> {
     });
 
     // Verify DAO state is unchanged
-    let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await.unwrap_or(0);
+    let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
     let final_citizen_count = get_citizen_count(&env.sputnik_dao, "citizen").await?;
 
     step("Verify proposal count unchanged after failure", || {

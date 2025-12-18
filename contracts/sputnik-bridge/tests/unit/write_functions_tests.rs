@@ -15,9 +15,11 @@ use sputnik_bridge::{GAS_FOR_ADD_PROPOSAL, GAS_FOR_VERIFICATION, SputnikBridge};
 #[allure_test]
 #[test]
 fn test_add_member_schedules_verification_call() {
-    let mut contract = step("Initialize contract with backend wallet", || {
+    let mut contract = step("Initialize contract with backend wallet and deposit", || {
         let mut context = VMContextBuilder::new();
         context.predecessor_account_id(accounts(0));
+        // Simulate caller attaching a non-zero deposit that must be forwarded
+        context.attached_deposit(near_sdk::NearToken::from_yoctonear(42));
         testing_env!(context.build());
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
@@ -80,9 +82,10 @@ fn test_add_member_schedules_verification_call() {
 #[allure_test]
 #[test]
 fn test_create_proposal_schedules_add_proposal() {
-    let mut contract = step("Initialize contract with backend wallet", || {
+    let mut contract = step("Initialize contract with backend wallet and deposit", || {
         let mut context = VMContextBuilder::new();
         context.predecessor_account_id(accounts(0));
+        context.attached_deposit(near_sdk::NearToken::from_yoctonear(42));
         testing_env!(context.build());
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
@@ -125,8 +128,8 @@ fn test_create_proposal_schedules_add_proposal() {
         assert_eq!(method, "add_proposal");
         assert_eq!(
             attached_deposit.as_yoctonear(),
-            0,
-            "create_proposal should forward the caller's attached deposit (default 0)"
+            42,
+            "create_proposal should forward the caller's attached deposit unchanged"
         );
         assert_eq!(
             prepaid_gas.as_gas(),
