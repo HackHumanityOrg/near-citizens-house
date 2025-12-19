@@ -42,10 +42,11 @@ export function UserJotWidget() {
       (new Proxy(
         {},
         {
-          get: (_, prop: string) =>
+          get:
+            (_, prop: string) =>
             (...args: unknown[]) =>
               window.$ujq.push([prop, ...args]),
-        }
+        },
       ) as Window["uj"])
 
     // Load UserJot SDK

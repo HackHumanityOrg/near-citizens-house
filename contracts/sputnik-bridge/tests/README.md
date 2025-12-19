@@ -88,20 +88,17 @@ The tests use `near-workspaces` to deploy three contracts:
 
 ### G. Admin Tests (5 tests)
 
-| Test                                                     | Description                                                                          |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `test_update_backend_wallet`                             | Backend can update the backend_wallet address                                        |
-| `test_backend_wallet_rotation_enforced`                  | Rotating backend blocks the old wallet and authorizes the new one for bridge actions |
-| `test_update_citizen_role`                               | Backend can update the citizen_role name                                             |
-| `test_update_citizen_role_applies_to_members_and_events` | Updated role is used when adding members and reflected in emitted events             |
-| `test_get_info`                                          | get_info returns correct contract configuration                                      |
+| Test                                    | Description                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `test_update_backend_wallet`            | Backend can update the backend_wallet address                                        |
+| `test_backend_wallet_rotation_enforced` | Rotating backend blocks the old wallet and authorizes the new one for bridge actions |
+| `test_get_info`                         | get_info returns correct contract configuration                                      |
 
 ### H. Access Control Security Tests (6 tests)
 
 | Test                                               | Description                                                                                    |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `test_update_backend_wallet_unauthorized`          | Non-backend cannot update backend wallet                                                       |
-| `test_update_citizen_role_unauthorized`            | Non-backend cannot update citizen role                                                         |
 | `test_citizen_cannot_add_proposal_to_dao_directly` | Citizens cannot bypass bridge to add proposals directly to DAO                                 |
 | `test_random_account_cannot_add_proposal_to_dao`   | Random accounts are blocked by DAO policy from adding proposals                                |
 | `test_citizen_cannot_vote_remove`                  | Citizens lack VoteRemove permission (only VoteApprove/VoteReject)                              |

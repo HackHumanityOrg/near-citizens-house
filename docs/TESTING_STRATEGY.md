@@ -202,8 +202,6 @@ _Admin Functions:_
 - Update backend wallet succeeds
 - Old backend blocked after rotation
 - New backend authorized after rotation
-- Update citizen role succeeds
-- Members added to updated role name
 - Unauthorized admin calls fail
 
 _Security:_

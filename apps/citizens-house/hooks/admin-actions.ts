@@ -23,10 +23,6 @@ const updateBackendWalletInputSchema = z.object({
   newWallet: nearAccountIdSchema,
 })
 
-const updateCitizenRoleInputSchema = z.object({
-  newRole: z.string().min(1, "Role name required").max(100, "Role name too long"),
-})
-
 // Gas constants (as strings for wallet compatibility)
 // add_member creates 2 proposals (member + quorum update) with 7 cross-contract calls
 const ADD_MEMBER_GAS = "300000000000000" // 300 TGas (max allowed, needed for full chain)
@@ -89,8 +85,6 @@ export interface UseAdminActionsResult {
   createProposal: (description: string, proposalBondYocto: string) => Promise<number>
   /** Update the backend wallet address */
   updateBackendWallet: (newWallet: string) => Promise<void>
-  /** Update the citizen role name */
-  updateCitizenRole: (newRole: string) => Promise<void>
   /** Loading state for transaction operations */
   isLoading: boolean
   /** Error message from last operation */
@@ -291,60 +285,10 @@ export function useAdminActions(): UseAdminActionsResult {
     [signAndSendTransaction, isConnected],
   )
 
-  const updateCitizenRole = useCallback(
-    async (newRole: string): Promise<void> => {
-      // Validate inputs with safeParse
-      const result = updateCitizenRoleInputSchema.safeParse({ newRole })
-      if (!result.success) {
-        const firstError = result.error.issues[0]
-        throw new Error(`Invalid role name: ${firstError?.message}`)
-      }
-
-      if (!isConnected) {
-        throw new Error("Wallet not connected")
-      }
-
-      if (!NEAR_CONFIG.bridgeContractId) {
-        throw new Error("Bridge contract ID not configured")
-      }
-
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const { newRole: validRole } = result.data
-        await signAndSendTransaction({
-          receiverId: NEAR_CONFIG.bridgeContractId,
-          actions: [
-            {
-              type: "FunctionCall",
-              params: {
-                methodName: "update_citizen_role",
-                args: {
-                  new_role: validRole,
-                },
-                gas: UPDATE_GAS,
-                deposit: ONE_YOCTO,
-              },
-            },
-          ],
-        })
-      } catch (err) {
-        const errorMsg = parseContractError(err)
-        setError(errorMsg)
-        throw new Error(errorMsg)
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [signAndSendTransaction, isConnected],
-  )
-
   return {
     addMember,
     createProposal,
     updateBackendWallet,
-    updateCitizenRole,
     isLoading,
     error,
     clearError,

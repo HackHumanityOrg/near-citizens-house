@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, Suspense, useRef } from "react"
+import { useEffect, useState, Suspense, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAnalytics } from "@/lib/analytics"
 import {
@@ -36,40 +36,6 @@ function VerifyCallbackContent() {
   const [accountId, setAccountId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const trackedResultRef = useRef(false)
-
-  const checkVerificationStatus = useCallback(async () => {
-    if (!sessionId) {
-      setStatus("error")
-      setErrorMessage("Missing session ID")
-      return false
-    }
-
-    try {
-      const response = await fetch(`/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`)
-      const data = await response.json()
-
-      if (data.status === "success") {
-        setStatus("success")
-        setAccountId(data.accountId)
-        // Clean up localStorage
-        localStorage.removeItem(`self-session-${sessionId}`)
-        return true
-      } else if (data.status === "error") {
-        setStatus("error")
-        setErrorMessage(getErrorMessage(data.error))
-        return true
-      } else if (data.status === "expired") {
-        setStatus("expired")
-        setErrorMessage("Session expired. Please try again.")
-        return true
-      }
-      // Still pending
-      return false
-    } catch {
-      // Network error - keep polling
-      return false
-    }
-  }, [sessionId])
 
   // Track verification result when status changes
   useEffect(() => {

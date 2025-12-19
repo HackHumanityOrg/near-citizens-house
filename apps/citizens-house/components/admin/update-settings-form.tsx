@@ -15,7 +15,7 @@ import {
   Label,
   Alert,
 } from "@near-citizens/ui"
-import { type BridgeInfo, nearAccountIdSchema } from "@near-citizens/shared"
+import { nearAccountIdSchema } from "@near-citizens/shared"
 import { useAdminActions } from "@/hooks/admin-actions"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 import { Loader2, Settings, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react"
@@ -24,25 +24,15 @@ const updateBackendWalletSchema = z.object({
   newBackendWallet: nearAccountIdSchema,
 })
 
-const updateCitizenRoleSchema = z.object({
-  newRole: z.string().min(1, "Role name is required").max(100, "Role name too long"),
-})
-
 type UpdateBackendWalletData = z.infer<typeof updateBackendWalletSchema>
-type UpdateCitizenRoleData = z.infer<typeof updateCitizenRoleSchema>
 
 export function UpdateSettingsForm() {
-  const { updateBackendWallet, updateCitizenRole, isLoading, error, clearError } = useAdminActions()
-  const [info, setInfo] = useState<BridgeInfo | null>(null)
+  const { updateBackendWallet, isLoading, error, clearError } = useAdminActions()
   const [success, setSuccess] = useState<string | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(true)
 
   const backendWalletForm = useForm<UpdateBackendWalletData>({
     resolver: zodResolver(updateBackendWalletSchema),
-  })
-
-  const citizenRoleForm = useForm<UpdateCitizenRoleData>({
-    resolver: zodResolver(updateCitizenRoleSchema),
   })
 
   // Fetch current info
@@ -51,9 +41,7 @@ export function UpdateSettingsForm() {
       try {
         const bridgeInfo = await getBridgeInfo()
         if (bridgeInfo) {
-          setInfo(bridgeInfo)
           backendWalletForm.setValue("newBackendWallet", bridgeInfo.backendWallet)
-          citizenRoleForm.setValue("newRole", bridgeInfo.citizenRole)
         }
       } catch (err) {
         console.error("Error fetching bridge info:", err)
@@ -62,7 +50,7 @@ export function UpdateSettingsForm() {
       }
     }
     fetchInfo()
-  }, [backendWalletForm, citizenRoleForm])
+  }, [backendWalletForm])
 
   const handleUpdateBackendWallet = async (data: UpdateBackendWalletData) => {
     clearError()
@@ -71,20 +59,6 @@ export function UpdateSettingsForm() {
     try {
       await updateBackendWallet(data.newBackendWallet)
       setSuccess(`Backend wallet updated to ${data.newBackendWallet}`)
-      setInfo((prev) => (prev ? { ...prev, backendWallet: data.newBackendWallet } : null))
-    } catch {
-      // Error is set by hook
-    }
-  }
-
-  const handleUpdateCitizenRole = async (data: UpdateCitizenRoleData) => {
-    clearError()
-    setSuccess(null)
-
-    try {
-      await updateCitizenRole(data.newRole)
-      setSuccess(`Citizen role updated to ${data.newRole}`)
-      setInfo((prev) => (prev ? { ...prev, citizenRole: data.newRole } : null))
     } catch {
       // Error is set by hook
     }
@@ -146,42 +120,6 @@ export function UpdateSettingsForm() {
                 </>
               ) : (
                 "Update Backend Wallet"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Update Citizen Role */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Update Citizen Role
-          </CardTitle>
-          <CardDescription>
-            Change the role name used for citizens. Current role:{" "}
-            <code className="bg-muted px-1 rounded">{info?.citizenRole}</code>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={citizenRoleForm.handleSubmit(handleUpdateCitizenRole)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="newRole">New Role Name</Label>
-              <Input id="newRole" placeholder="citizen" {...citizenRoleForm.register("newRole")} disabled={isLoading} />
-              {citizenRoleForm.formState.errors.newRole && (
-                <p className="text-sm text-destructive">{citizenRoleForm.formState.errors.newRole.message}</p>
-              )}
-            </div>
-
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update Citizen Role"
               )}
             </Button>
           </form>
