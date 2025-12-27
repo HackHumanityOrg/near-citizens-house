@@ -21,7 +21,7 @@ jobs:
   # Build WASM contracts (shared by integration tests)
   build:
     name: Build Contracts
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
         with:
@@ -76,7 +76,7 @@ jobs:
   # Run all Rust unit tests in parallel
   unit-tests-rust:
     name: Rust Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts.outputs.failed }}
@@ -187,7 +187,7 @@ jobs:
   # Run TypeScript tests in parallel
   unit-tests-typescript:
     name: TypeScript Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       passed: ${{ steps.test_typescript.outputs.passed }}
       failed: ${{ steps.test_typescript.outputs.failed }}
@@ -240,7 +240,7 @@ jobs:
   # Run integration tests (requires built WASM contracts)
   integration-tests:
     name: Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: build
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts_integration.outputs.passed }}
@@ -321,7 +321,7 @@ jobs:
   # Collect results and publish Allure report
   report:
     name: Publish Report
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [unit-tests-rust, unit-tests-typescript, integration-tests]
     if: always()
     steps:
