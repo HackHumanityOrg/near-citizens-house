@@ -34,6 +34,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       # Persistent cargo caching via stickydisk (22x faster than actions/cache)
+      # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
       - name: Mount Cargo Registry Cache
         uses: useblacksmith/stickydisk@v1
         with:
@@ -45,12 +46,6 @@ jobs:
         with:
           key: ${{ github.repository }}-cargo-git
           path: ~/.cargo/git
-
-      - name: Mount Cargo Bin Cache
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-bin
-          path: ~/.cargo/bin
 
       # Smart Rust caching for target directories
       - name: Cache Rust dependencies
@@ -120,6 +115,7 @@ jobs:
           components: clippy
 
       # Persistent cargo caching via stickydisk (22x faster than actions/cache)
+      # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
       - name: Mount Cargo Registry Cache
         uses: useblacksmith/stickydisk@v1
         with:
@@ -131,12 +127,6 @@ jobs:
         with:
           key: ${{ github.repository }}-cargo-git
           path: ~/.cargo/git
-
-      - name: Mount Cargo Bin Cache
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-bin
-          path: ~/.cargo/bin
 
       # Smart Rust caching for target directories
       - name: Cache Rust dependencies
@@ -301,6 +291,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       # Persistent cargo caching via stickydisk (22x faster than actions/cache)
+      # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
       - name: Mount Cargo Registry Cache
         uses: useblacksmith/stickydisk@v1
         with:
@@ -312,12 +303,6 @@ jobs:
         with:
           key: ${{ github.repository }}-cargo-git
           path: ~/.cargo/git
-
-      - name: Mount Cargo Bin Cache
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-bin
-          path: ~/.cargo/bin
 
       # Smart Rust caching for target directories
       - name: Cache Rust dependencies
