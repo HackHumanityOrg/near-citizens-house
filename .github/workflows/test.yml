@@ -33,15 +33,36 @@ jobs:
           toolchain: 1.86.0
           targets: wasm32-unknown-unknown
 
-      - name: Cache cargo
-        uses: actions/cache@v4
+      # Persistent cargo caching via stickydisk (22x faster than actions/cache)
+      - name: Mount Cargo Registry Cache
+        uses: useblacksmith/stickydisk@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            contracts/*/target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ github.repository }}-cargo-registry
+          path: ~/.cargo/registry
+
+      - name: Mount Cargo Git Cache
+        uses: useblacksmith/stickydisk@v1
+        with:
+          key: ${{ github.repository }}-cargo-git
+          path: ~/.cargo/git
+
+      - name: Mount Cargo Bin Cache
+        uses: useblacksmith/stickydisk@v1
+        with:
+          key: ${{ github.repository }}-cargo-bin
+          path: ~/.cargo/bin
+
+      # Smart Rust caching for target directories
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            contracts/verified-accounts -> target
+            contracts/sputnik-bridge -> target
+            contracts/verified-accounts-interface -> target
+            contracts/sputnik-dao-interface -> target
+          shared-key: rust-build
+          cache-on-failure: true
 
       - name: Install cargo-near
         run: |
@@ -98,15 +119,36 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy
 
-      - name: Cache cargo
-        uses: actions/cache@v4
+      # Persistent cargo caching via stickydisk (22x faster than actions/cache)
+      - name: Mount Cargo Registry Cache
+        uses: useblacksmith/stickydisk@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            contracts/*/target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ github.repository }}-cargo-registry
+          path: ~/.cargo/registry
+
+      - name: Mount Cargo Git Cache
+        uses: useblacksmith/stickydisk@v1
+        with:
+          key: ${{ github.repository }}-cargo-git
+          path: ~/.cargo/git
+
+      - name: Mount Cargo Bin Cache
+        uses: useblacksmith/stickydisk@v1
+        with:
+          key: ${{ github.repository }}-cargo-bin
+          path: ~/.cargo/bin
+
+      # Smart Rust caching for target directories
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            contracts/verified-accounts -> target
+            contracts/sputnik-bridge -> target
+            contracts/verified-accounts-interface -> target
+            contracts/sputnik-dao-interface -> target
+          shared-key: rust-build
+          cache-on-failure: true
 
       - name: Setup Allure results
         run: mkdir -p allure-results
@@ -258,15 +300,36 @@ jobs:
           toolchain: 1.86.0
           targets: wasm32-unknown-unknown
 
-      - name: Cache cargo
-        uses: actions/cache@v4
+      # Persistent cargo caching via stickydisk (22x faster than actions/cache)
+      - name: Mount Cargo Registry Cache
+        uses: useblacksmith/stickydisk@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            contracts/*/target
-          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ github.repository }}-cargo-registry
+          path: ~/.cargo/registry
+
+      - name: Mount Cargo Git Cache
+        uses: useblacksmith/stickydisk@v1
+        with:
+          key: ${{ github.repository }}-cargo-git
+          path: ~/.cargo/git
+
+      - name: Mount Cargo Bin Cache
+        uses: useblacksmith/stickydisk@v1
+        with:
+          key: ${{ github.repository }}-cargo-bin
+          path: ~/.cargo/bin
+
+      # Smart Rust caching for target directories
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            contracts/verified-accounts -> target
+            contracts/sputnik-bridge -> target
+            contracts/verified-accounts-interface -> target
+            contracts/sputnik-dao-interface -> target
+          shared-key: rust-build
+          cache-on-failure: true
 
       - name: Download WASM artifacts
         uses: actions/download-artifact@v4
