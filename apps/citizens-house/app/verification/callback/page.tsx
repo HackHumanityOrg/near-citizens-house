@@ -75,7 +75,7 @@ function VerifyCallbackContent() {
       abortController = new AbortController()
 
       try {
-        const response = await fetch(`/api/verify-status?sessionId=${encodeURIComponent(sessionId)}`, {
+        const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionId)}`, {
           signal: abortController.signal,
         })
 
@@ -84,7 +84,16 @@ function VerifyCallbackContent() {
 
         // Handle non-OK responses explicitly
         if (!response.ok) {
-          // 4xx = client error (invalid/expired session) - terminal, stop polling
+          // 404 during grace period: session may not exist yet (race condition)
+          // The verify endpoint creates the session after processing, but the callback
+          // page may load and start polling before that completes. Allow up to 15 polls
+          // (30 seconds) before treating 404 as terminal.
+          const GRACE_PERIOD_POLLS = 15
+          if (response.status === 404 && pollCount < GRACE_PERIOD_POLLS) {
+            console.log(`[VerifyCallback] Session not found yet (poll ${pollCount + 1}/${GRACE_PERIOD_POLLS}), retrying...`)
+            return false // Continue polling
+          }
+          // Other 4xx = client error (invalid/expired session) - terminal, stop polling
           if (response.status >= 400 && response.status < 500) {
             setStatus("error")
             setErrorMessage("Invalid or expired verification session. Please try again.")
@@ -211,7 +220,7 @@ function VerifyCallbackContent() {
                 </AlertDescription>
               </Alert>
 
-              <Link href="/" className="block">
+              <Link href="/verification" className="block">
                 <Button className="w-full">
                   <Home className="h-4 w-4 mr-2" />
                   Return Home
@@ -236,7 +245,7 @@ function VerifyCallbackContent() {
                 <AlertDescription>{errorMessage || "An unexpected error occurred"}</AlertDescription>
               </Alert>
 
-              <Link href="/" className="block">
+              <Link href="/verification" className="block">
                 <Button className="w-full">
                   <Home className="h-4 w-4 mr-2" />
                   Try Again

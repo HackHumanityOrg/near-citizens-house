@@ -17,8 +17,8 @@ import {
   type TransformedPolicy,
   getProposalKindLabel,
   PROPOSAL_STATUS_LABELS,
-  APP_URLS,
 } from "@near-citizens/shared"
+import Link from "next/link"
 import { ProposalStatusBadge } from "./proposal-status-badge"
 import { VoteProgress } from "./vote-progress"
 import { VoteButton } from "./vote-button"
@@ -344,14 +344,9 @@ export function ProposalDetail({
                 ) : (
                   <p className="text-sm text-muted-foreground text-center">
                     Only verified citizens can vote.{" "}
-                    <a
-                      href={APP_URLS.verification}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary font-medium underline hover:no-underline"
-                    >
+                    <Link href="/verification" className="text-primary font-medium underline hover:no-underline">
                       Get verified →
-                    </a>
+                    </Link>
                   </p>
                 )
               ) : (

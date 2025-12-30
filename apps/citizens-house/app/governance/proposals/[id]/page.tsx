@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { z } from "zod"
-import { SputnikHeader } from "@/components/shared/sputnik-header"
 import { ProposalDetailWrapper } from "@/components/proposals/proposal-detail-wrapper"
 import { getProposal, getPolicy } from "@/lib/actions/sputnik-dao"
 import { Button } from "@near-citizens/ui"
@@ -37,11 +36,9 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
 
   return (
     <div className="min-h-screen">
-      <SputnikHeader />
-
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Back Button */}
-        <Link href="/proposals">
+        <Link href="/governance/proposals">
           <Button variant="ghost" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Proposals

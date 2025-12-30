@@ -105,11 +105,8 @@ export const NEAR_CONFIG = {
   },
 }
 
-// App URLs (for cross-app navigation)
-export const APP_URLS = {
-  verification: process.env.NEXT_PUBLIC_VERIFICATION_APP_URL || "https://verification.houseofstake.dev",
-  citizensHouse: process.env.NEXT_PUBLIC_CITIZENS_HOUSE_APP_URL || "https://citizenshouse.houseofstake.dev",
-}
+// App URL (single app after merge of verification and governance)
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse.houseofstake.dev"
 
 // Self.xyz Configuration
 const DISCLOSURE_CONFIG: VerificationConfig = {
@@ -126,10 +123,10 @@ export const SELF_CONFIG = {
   // "testnet" = Mock passports for testing (no OFAC)
   networkId: selfNetworkId,
   get endpoint() {
-    return `${APP_URLS.verification}/api/verify`
+    return `${APP_URL}/api/verification/verify`
   },
   get deeplinkCallback() {
-    return `${APP_URLS.verification}/verify-callback`
+    return `${APP_URL}/verification/callback`
   },
   endpointType: "https" as const,
   logoBase64: "/self-logo.png",

@@ -2,7 +2,6 @@
 
 import { useNearWallet } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
-import { SputnikHeader } from "@/components/shared/sputnik-header"
 import { AdminNav } from "@/components/admin/admin-nav"
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@near-citizens/ui"
 import { Loader2, ShieldAlert, LogIn, Wallet } from "lucide-react"
@@ -15,7 +14,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (walletLoading || adminLoading) {
     return (
       <div className="min-h-screen">
-        <SputnikHeader />
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
         </div>
@@ -27,7 +25,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!accountId) {
     return (
       <div className="min-h-screen">
-        <SputnikHeader />
         <div className="container mx-auto px-4 py-24 max-w-md">
           <Card>
             <CardHeader className="text-center">
@@ -51,7 +48,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isAdmin) {
     return (
       <div className="min-h-screen">
-        <SputnikHeader />
         <div className="container mx-auto px-4 py-24 max-w-md">
           <Card>
             <CardHeader className="text-center">
@@ -80,7 +76,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Show admin content
   return (
     <div className="min-h-screen">
-      <SputnikHeader />
       <div className="flex">
         <AdminNav />
         <main className="flex-1 p-6">{children}</main>

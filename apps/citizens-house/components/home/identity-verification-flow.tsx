@@ -19,7 +19,7 @@ import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, LogOut } f
 import type { NearSignatureData } from "@near-citizens/shared"
 import type { VerificationStep } from "@/types/ui"
 import { CONSTANTS } from "@near-citizens/shared"
-import { isAccountVerified } from "@/app/verified-accounts/actions"
+import { isAccountVerified } from "@/app/verification/accounts/actions"
 
 export function IdentityVerificationFlow() {
   const { accountId, isConnected, connect, disconnect, signMessage, isLoading } = useNearWallet()

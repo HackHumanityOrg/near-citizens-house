@@ -12,10 +12,17 @@ export default async function VerificationsPage({ searchParams }: Props) {
   const rawPage = parseInt(params.page || "0", 10)
   const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
 
-  const { accounts, total } = await getVerifiedAccountsWithStatus(requestedPage, PAGE_SIZE)
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-  // Clamp page to valid range (in case URL has out-of-bounds page number)
-  const page = Math.min(requestedPage, Math.max(0, totalPages - 1))
+  let { accounts, total } = await getVerifiedAccountsWithStatus(requestedPage, PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  // If requested page is out of range and there's data, re-fetch the last valid page
+  const clampedPage = Math.min(requestedPage, totalPages - 1)
+  if (clampedPage !== requestedPage && total > 0) {
+    const result = await getVerifiedAccountsWithStatus(clampedPage, PAGE_SIZE)
+    accounts = result.accounts
+    total = result.total
+  }
+  const page = clampedPage
 
   return (
     <div className="min-h-screen bg-linear-to-b from-background to-background/80">

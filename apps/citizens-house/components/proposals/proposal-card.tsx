@@ -15,7 +15,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
   const isVoteProposal = proposal.kind === "Vote"
 
   return (
-    <Link href={`/proposals/${proposal.id}`}>
+    <Link href={`/governance/proposals/${proposal.id}`}>
       <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
         <CardHeader className="space-y-1">
           {/* Top row: #ID + Title (left), Status badge (right) */}

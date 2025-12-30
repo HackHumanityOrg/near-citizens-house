@@ -37,13 +37,13 @@
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
     "ethers": "^6.16.0",
-    "zod": "^4.1.13"
+    "zod": "^4.2.1"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   }
 }

@@ -25,7 +25,7 @@ export default function VerificationsLoading() {
       <div className="container mx-auto px-4 pt-4 pb-12">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center mb-2">
-            <Link href="/">
+            <Link href="/verification">
               <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
                 ← Back to Verification
               </Button>

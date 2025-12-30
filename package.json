@@ -3,12 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev:verification": "pnpm --filter verified-accounts dev",
-    "dev:governance": "pnpm --filter @near-citizens/citizens-house dev",
-    "dev:all": "pnpm --parallel --filter \"./apps/*\" dev",
-    "build:verification": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --filter verified-accounts build",
-    "build:governance": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --filter @near-citizens/citizens-house build",
-    "build:all": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --parallel --filter \"./apps/*\" build",
+    "dev": "pnpm --filter @near-citizens/citizens-house dev",
+    "build": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --filter @near-citizens/citizens-house build",
     "build:contract": "pnpm --filter verified-accounts build:contract",
     "build:contract:verification": "cd contracts/verified-accounts && cargo near build non-reproducible-wasm",
     "build:contract:bridge": "cd contracts/sputnik-bridge && cargo near build non-reproducible-wasm",
@@ -50,7 +46,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
-    "@next/eslint-plugin-next": "^16.0.10",
+    "@next/eslint-plugin-next": "^16.1.1",
     "allure-js-commons": "^3.4.3",
     "allure-vitest": "^3.4.3",
     "eslint": "^9.39.2",
@@ -59,12 +55,12 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "prettier": "^3.7.4",
     "typescript": "^5",
-    "typescript-eslint": "^8.49.0",
-    "vitest": "^4.0.15"
+    "typescript-eslint": "^8.51.0",
+    "vitest": "^4.0.16"
   },
   "engines": {
     "node": ">=18",
     "pnpm": ">=8"
   },
-  "packageManager": "pnpm@10.25.0"
+  "packageManager": "pnpm@10.26.2"
 }

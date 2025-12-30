@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Button, ThemeToggle } from "@near-citizens/ui"
-import { useNearWallet, APP_URLS } from "@near-citizens/shared"
+import { useNearWallet } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
 import { useVerification } from "@/hooks/verification"
 import { LogIn, LogOut, Loader2, ShieldCheck } from "lucide-react"
@@ -23,11 +23,17 @@ export function SputnikHeader() {
               <Image src="/logo.svg" alt="NEAR Citizens House" width={280} height={33} className="dark:invert" />
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/proposals" className="text-sm font-medium hover:text-primary transition-colors">
+              <Link href="/verification" className="text-sm font-medium hover:text-primary transition-colors">
+                Verification
+              </Link>
+              <Link href="/verification/accounts" className="text-sm font-medium hover:text-primary transition-colors">
+                Citizens
+              </Link>
+              <Link href="/governance/proposals" className="text-sm font-medium hover:text-primary transition-colors">
                 Proposals
               </Link>
               {!adminLoading && isAdmin && (
-                <Link href="/admin" className="text-sm font-medium hover:text-primary transition-colors">
+                <Link href="/governance/admin" className="text-sm font-medium hover:text-primary transition-colors">
                   Admin
                 </Link>
               )}
@@ -44,10 +50,10 @@ export function SputnikHeader() {
                 className="bg-black hover:bg-black/90 text-white border-0 shadow-md"
                 asChild
               >
-                <a href={APP_URLS.verification} target="_blank" rel="noopener noreferrer">
+                <Link href="/verification">
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   Get Verified to Vote
-                </a>
+                </Link>
               </Button>
             )}
 

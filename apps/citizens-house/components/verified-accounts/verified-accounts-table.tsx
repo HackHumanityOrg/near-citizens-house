@@ -20,7 +20,7 @@ import {
 import { NEAR_CONFIG } from "@near-citizens/shared"
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, ExternalLink, List } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
-import type { VerifiedAccountWithStatus } from "@/app/verified-accounts/actions"
+import type { VerifiedAccountWithStatus } from "@/app/verification/accounts/actions"
 
 interface Props {
   accounts: VerifiedAccountWithStatus[]
@@ -81,13 +81,6 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
     <>
       <div className="container mx-auto px-4 pt-4 pb-12">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center mb-2">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
-                ← Back to Verification
-              </Button>
-            </Link>
-          </div>
           <div className="text-center space-y-2 mb-6">
             <div className="flex items-center justify-center gap-2">
               <List className="h-8 w-8 text-primary" />
@@ -193,7 +186,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                       <div className="flex gap-2">
                         {page > 0 ? (
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/verifications?page=${page - 1}`}>
+                            <Link href={`/verification/accounts?page=${page - 1}`}>
                               <ChevronLeft className="h-4 w-4" />
                               Previous
                             </Link>
@@ -206,7 +199,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                         )}
                         {page < totalPages - 1 ? (
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/verifications?page=${page + 1}`}>
+                            <Link href={`/verification/accounts?page=${page + 1}`}>
                               Next
                               <ChevronRight className="h-4 w-4" />
                             </Link>

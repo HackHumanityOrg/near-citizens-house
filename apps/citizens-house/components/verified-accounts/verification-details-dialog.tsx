@@ -6,7 +6,7 @@ import { useAnalytics } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
 import { ProofVerifyModal } from "./proof-verify-modal"
-import type { VerifiedAccountWithStatus } from "@/app/verified-accounts/actions"
+import type { VerifiedAccountWithStatus } from "@/app/verification/accounts/actions"
 
 interface Props {
   data: VerifiedAccountWithStatus | null

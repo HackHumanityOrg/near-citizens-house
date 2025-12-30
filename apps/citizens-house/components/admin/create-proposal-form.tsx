@@ -101,7 +101,7 @@ export function CreateProposalForm() {
       // Navigate to proposal after short delay
       if (proposalId >= 0) {
         navigationTimeoutRef.current = setTimeout(() => {
-          router.push(`/proposals/${proposalId}`)
+          router.push(`/governance/proposals/${proposalId}`)
         }, 2000)
       }
     } catch {

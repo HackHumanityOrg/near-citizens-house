@@ -1,5 +1,4 @@
 import { Suspense } from "react"
-import { SputnikHeader } from "@/components/shared/sputnik-header"
 import { ProposalList } from "@/components/proposals/proposal-list"
 import { getProposalsReversed } from "@/lib/actions/sputnik-dao"
 import { Loader2 } from "lucide-react"
@@ -15,8 +14,6 @@ async function ProposalListLoader() {
 export default function ProposalsPage() {
   return (
     <div className="min-h-screen">
-      <SputnikHeader />
-
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Proposals</h1>

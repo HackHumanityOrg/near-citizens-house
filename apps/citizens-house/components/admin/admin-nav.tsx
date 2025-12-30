@@ -7,28 +7,28 @@ import { LayoutDashboard, UserPlus, FileText, Settings, List } from "lucide-reac
 
 const navItems = [
   {
-    href: "/admin",
+    href: "/governance/admin",
     label: "Dashboard",
     icon: LayoutDashboard,
     exact: true,
   },
   {
-    href: "/admin/members",
+    href: "/governance/admin/members",
     label: "Add Citizen",
     icon: UserPlus,
   },
   {
-    href: "/admin/proposals",
+    href: "/governance/admin/proposals",
     label: "Create Proposal",
     icon: FileText,
   },
   {
-    href: "/admin/all-proposals",
+    href: "/governance/admin/all-proposals",
     label: "All Proposals",
     icon: List,
   },
   {
-    href: "/admin/settings",
+    href: "/governance/admin/settings",
     label: "Settings",
     icon: Settings,
   },
