@@ -29,7 +29,7 @@ rustup target add wasm32-unknown-unknown
 
 cargo near build non-reproducible-wasm
 
-# Output: target/near/verification_db.wasm
+# Output: target/near/verified_accounts.wasm
 
 \`\`\`
 
@@ -46,7 +46,7 @@ near account create-account fund-myself CONTRACT_ID '2 NEAR' \
 # Deploy contract
 
 near contract deploy CONTRACT_ID \
- use-file target/near/verification_db.wasm \
+ use-file target/near/verified_accounts.wasm \
  without-init-call \
  network-config testnet sign-with-keychain send
 
@@ -63,27 +63,33 @@ near contract call-function as-transaction CONTRACT_ID new \
 
 ### Write Methods (Backend Only)
 
-**`store_verification`** - Store a verified passport-wallet association
+**`store_verification`** - Store a verified passport-wallet association with ZK proof
 
 \`\`\`rust
 pub fn store_verification(
-&mut self,
-nullifier: String,
-near_account_id: AccountId,
-user_id: String,
-attestation_id: String,
-merkle_root: Option<String>,
-signature_data: NearSignatureData,
+    &mut self,
+    nullifier: String,
+    near_account_id: AccountId,
+    attestation_id: String,
+    signature_data: NearSignatureData,
+    self_proof: SelfProofData,
+    user_context_data: String,
 )
 \`\`\`
 
+**`update_backend_wallet`** - Change the backend wallet address
+**`pause`** / **`unpause`** - Emergency controls
+
 ### Read Methods (Public)
 
-- `get_verified_account(near_account_id: AccountId) -> Option<VerifiedAccount>`
-- `is_nullifier_used(nullifier: String) -> bool`
-- `is_account_verified(near_account_id: AccountId) -> bool`
-- `get_backend_wallet() -> AccountId`
-- `get_verified_count() -> u64`
+- `get_account(near_account_id: AccountId) -> Option<VerifiedAccountInfo>` - Get verification info (without ZK proof)
+- `get_account_with_proof(near_account_id: AccountId) -> Option<VerifiedAccount>` - Get full data with ZK proof
+- `is_account_verified(near_account_id: AccountId) -> bool` - Simple boolean check
+- `get_backend_wallet() -> AccountId` - Get backend wallet address
+- `get_verified_count() -> u64` - Get total verified count
+- `get_verified_accounts(from_index: u64, limit: u64) -> Vec<VerifiedAccount>` - Paginated list
+- `are_accounts_verified(account_ids: Vec<AccountId>) -> Vec<bool>` - Batch verification check
+- `is_paused() -> bool` - Check if contract is paused
 
 ## Security
 
@@ -120,7 +126,7 @@ cargo test
 
 # Check contract size
 
-ls -lh target/near/verification_db.wasm
+ls -lh target/near/verified_accounts.wasm
 \`\`\`
 
 ## Deployed Contracts
