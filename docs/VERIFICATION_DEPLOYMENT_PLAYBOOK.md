@@ -39,6 +39,7 @@ near --version
 ```
 
 **Expected output:**
+
 ```
 rustup 1.28.x (or newer)
 cargo-near-near 0.x.x
@@ -75,6 +76,7 @@ near account create-account sponsor-by-faucet-service $PARENT \
 ```
 
 **Expected output:**
+
 ```
 The account "your-account.testnet" was created successfully.
 Transaction: ...
@@ -98,6 +100,7 @@ near account create-account fund-myself $BACKEND_WALLET.$PARENT '1 NEAR' \
 ```
 
 **Expected output:**
+
 ```
 New account "backend-wallet.your-account.testnet" created successfully.
 ```
@@ -109,6 +112,7 @@ cat ~/.near-credentials/testnet/$BACKEND_WALLET.$PARENT.json
 ```
 
 **Expected output:**
+
 ```json
 {
   "public_key": "ed25519:ABC...",
@@ -133,6 +137,7 @@ near account create-account fund-myself $CONTRACT.$PARENT '5 NEAR' \
 ```
 
 **Expected output:**
+
 ```
 New account "verification-v1.your-account.testnet" created successfully.
 ```
@@ -147,6 +152,7 @@ cargo near build non-reproducible-wasm
 ```
 
 **Expected output:**
+
 ```
    Compiling verified-accounts v0.1.0
     Finished release [optimized] target(s)
@@ -185,6 +191,7 @@ near contract call-function as-read-only $CONTRACT.$PARENT get_backend_wallet \
 ```
 
 **Expected output:**
+
 ```
 "backend-wallet.your-account.testnet"
 ```
@@ -200,6 +207,7 @@ Session storage requires Redis. Options:
 - **Redis Labs**: [redis.com/try-free](https://redis.com/try-free/)
 
 Connection string format:
+
 ```
 redis://default:PASSWORD@host:port
 ```
@@ -216,12 +224,12 @@ redis://default:PASSWORD@host:port
 
 ### 6.2 Build settings
 
-| Setting | Value |
-|---------|-------|
-| Framework | Next.js (auto-detected) |
-| Build Command | (leave default) |
-| Output Directory | (leave default) |
-| Install Command | (leave default) |
+| Setting          | Value                   |
+| ---------------- | ----------------------- |
+| Framework        | Next.js (auto-detected) |
+| Build Command    | (leave default)         |
+| Output Directory | (leave default)         |
+| Install Command  | (leave default)         |
 
 **Monorepo setting (important for shared packages):**
 
@@ -233,24 +241,24 @@ Vercel auto-detects pnpm workspace from the lockfile and installs all workspace 
 
 **Required:**
 
-| Variable | Example | Notes |
-|----------|---------|-------|
-| `NEXT_PUBLIC_NEAR_NETWORK` | `testnet` | or `mainnet` |
-| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | `verification-v1.your-account.testnet` | `$CONTRACT.$PARENT` |
-| `NEXT_PUBLIC_SELF_NETWORK` | `mainnet` | `mainnet` for real passports |
-| `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` | |
-| `NEAR_ACCOUNT_ID` | `backend-wallet.your-account.testnet` | `$BACKEND_WALLET.$PARENT` - Sensitive |
-| `NEAR_PRIVATE_KEY` | `ed25519:...` | Sensitive |
-| `REDIS_URL` | `redis://...` | Sensitive (auto-set if using Upstash integration) |
+| Variable                                 | Example                                | Notes                                             |
+| ---------------------------------------- | -------------------------------------- | ------------------------------------------------- |
+| `NEXT_PUBLIC_NEAR_NETWORK`               | `testnet`                              | or `mainnet`                                      |
+| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | `verification-v1.your-account.testnet` | `$CONTRACT.$PARENT`                               |
+| `NEXT_PUBLIC_SELF_NETWORK`               | `mainnet`                              | `mainnet` for real passports                      |
+| `NEXT_PUBLIC_APP_URL`                    | `https://your-app.vercel.app`          |                                                   |
+| `NEAR_ACCOUNT_ID`                        | `backend-wallet.your-account.testnet`  | `$BACKEND_WALLET.$PARENT` - Sensitive             |
+| `NEAR_PRIVATE_KEY`                       | `ed25519:...`                          | Sensitive                                         |
+| `REDIS_URL`                              | `redis://...`                          | Sensitive (auto-set if using Upstash integration) |
 
 **Optional:**
 
-| Variable | Purpose |
-|----------|---------|
-| `NEXT_PUBLIC_NEAR_RPC_URL` | Custom RPC (default: FastNear) |
-| `NEAR_RPC_API_KEY` | FastNear paid API key |
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog analytics |
-| `NEXT_PUBLIC_USERJOT_PROJECT_ID` | UserJot feedback widget |
+| Variable                         | Purpose                        |
+| -------------------------------- | ------------------------------ |
+| `NEXT_PUBLIC_NEAR_RPC_URL`       | Custom RPC (default: FastNear) |
+| `NEAR_RPC_API_KEY`               | FastNear paid API key          |
+| `NEXT_PUBLIC_POSTHOG_KEY`        | PostHog analytics              |
+| `NEXT_PUBLIC_USERJOT_PROJECT_ID` | UserJot feedback widget        |
 
 ---
 
@@ -264,12 +272,15 @@ near contract call-function as-read-only $CONTRACT.$PARENT get_verified_count \
 ```
 
 **Expected output:**
+
 ```
 0
 ```
+
 (Returns the number of verified accounts, 0 for fresh deployment)
 
 Test the frontend:
+
 1. Open your Vercel URL
 2. Connect a NEAR wallet
 3. Complete the verification flow

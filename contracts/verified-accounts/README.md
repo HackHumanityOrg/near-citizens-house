@@ -67,13 +67,13 @@ near contract call-function as-transaction CONTRACT_ID new \
 
 \`\`\`rust
 pub fn store_verification(
-    &mut self,
-    nullifier: String,
-    near_account_id: AccountId,
-    attestation_id: String,
-    signature_data: NearSignatureData,
-    self_proof: SelfProofData,
-    user_context_data: String,
+&mut self,
+nullifier: String,
+near_account_id: AccountId,
+attestation_id: String,
+signature_data: NearSignatureData,
+self_proof: SelfProofData,
+user_context_data: String,
 )
 \`\`\`
 

@@ -90,7 +90,9 @@ function VerifyCallbackContent() {
           // (30 seconds) before treating 404 as terminal.
           const GRACE_PERIOD_POLLS = 15
           if (response.status === 404 && pollCount < GRACE_PERIOD_POLLS) {
-            console.log(`[VerifyCallback] Session not found yet (poll ${pollCount + 1}/${GRACE_PERIOD_POLLS}), retrying...`)
+            console.log(
+              `[VerifyCallback] Session not found yet (poll ${pollCount + 1}/${GRACE_PERIOD_POLLS}), retrying...`,
+            )
             return false // Continue polling
           }
           // Other 4xx = client error (invalid/expired session) - terminal, stop polling
