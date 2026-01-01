@@ -2,10 +2,8 @@
 
 import { useSyncExternalStore } from "react"
 import { useTheme } from "next-themes"
-import { Button } from "./button"
 import { Moon, Sun } from "lucide-react"
 
-// Hydration-safe mounting detection using useSyncExternalStore
 const emptySubscribe = () => () => {}
 const getClientSnapshot = () => true
 const getServerSnapshot = () => false
@@ -20,20 +18,20 @@ export function ThemeToggle() {
 
   if (!hydrated) {
     return (
-      <Button variant="ghost" size="sm" aria-label="Toggle theme">
-        <Sun className="h-4 w-4" />
-      </Button>
+      <button type="button" className="text-foreground hover:opacity-70 transition-opacity" aria-label="Toggle theme">
+        <Sun className="h-6 w-6" />
+      </button>
     )
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <button
+      type="button"
+      className="text-foreground hover:opacity-70 transition-opacity"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
     >
-      {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
+      {resolvedTheme === "dark" ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
+    </button>
   )
 }

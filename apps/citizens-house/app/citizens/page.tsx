@@ -25,7 +25,7 @@ export default async function VerificationsPage({ searchParams }: Props) {
   const page = clampedPage
 
   return (
-    <div className="bg-white pt-8 pb-12 md:pt-[80px] md:pb-[80px]">
+    <div className="bg-background pt-8 pb-12 md:pt-[80px] md:pb-[80px]">
       <VerifiedAccountsTable
         accounts={accounts}
         total={total}

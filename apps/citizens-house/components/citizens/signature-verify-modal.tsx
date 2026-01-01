@@ -39,16 +39,16 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl bg-white rounded-[8px] border-none shadow-xl">
+      <DialogContent className="sm:max-w-xl bg-background rounded-[8px] border-none shadow-xl">
         <DialogHeader>
           <DialogTitle
-            className="text-[22px] leading-[28px] text-black"
+            className="text-[22px] leading-[28px] text-foreground"
             style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
           >
             Verify NEAR Signature
           </DialogTitle>
           <DialogDescription
-            className="text-[14px] leading-[1.4] text-[#828282]"
+            className="text-[14px] leading-[1.4] text-muted-foreground"
             style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
           >
             Independently verify the Ed25519 signature using Cyphr.me&apos;s online tool
@@ -57,30 +57,30 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
 
         <div className="space-y-4">
           {/* Instructions */}
-          <div className="rounded-[12px] bg-[#fafafc] p-4 space-y-2 border border-[#e0e0e0]">
+          <div className="rounded-[12px] bg-secondary p-4 space-y-2 border border-border">
             <h4
-              className="text-[14px] leading-[20px] text-black"
+              className="text-[14px] leading-[20px] text-foreground"
               style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
             >
               Instructions
             </h4>
             <ol
-              className="list-decimal list-inside text-[13px] leading-[1.5] text-[#666666] space-y-1"
+              className="list-decimal list-inside text-[13px] leading-[1.5] text-muted-foreground space-y-1"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               <li>Open the Cyphr.me Ed25519 tool (button below)</li>
               <li>
-                Set Algorithm to <strong className="text-[#040404]">Ed25519</strong> (not Ed25519ph)
+                Set Algorithm to <strong className="text-foreground">Ed25519</strong> (not Ed25519ph)
               </li>
               <li>
-                Set Message encoding to <strong className="text-[#040404]">Hex</strong>
+                Set Message encoding to <strong className="text-foreground">Hex</strong>
               </li>
               <li>
-                Set Key encoding to <strong className="text-[#040404]">Hex</strong>
+                Set Key encoding to <strong className="text-foreground">Hex</strong>
               </li>
               <li>Paste values below into Message, Public Key, and Signature fields</li>
               <li>
-                Click <strong className="text-[#040404]">Verify</strong>
+                Click <strong className="text-foreground">Verify</strong>
               </li>
             </ol>
           </div>
@@ -88,7 +88,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
           {/* Message (NEP-413 Hash) */}
           <div className="space-y-1.5">
             <label
-              className="text-[13px] leading-[1.4] text-black"
+              className="text-[13px] leading-[1.4] text-foreground"
               style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
             >
               Message (NEP-413 hash, hex)
@@ -105,7 +105,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
                 {copiedField === "hash" ? <Check className="h-4 w-4 text-[#00ec97]" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-[11px] leading-[1.4] text-[#828282]" style={{ fontFamily: "Inter, sans-serif" }}>
+            <p className="text-[11px] leading-[1.4] text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
               This is the SHA-256 hash of the NEP-413 formatted payload (tag + Borsh-serialized message)
             </p>
           </div>
@@ -113,7 +113,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
           {/* Public Key */}
           <div className="space-y-1.5">
             <label
-              className="text-[13px] leading-[1.4] text-black"
+              className="text-[13px] leading-[1.4] text-foreground"
               style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
             >
               Public Key (hex)
@@ -139,7 +139,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
           {/* Signature */}
           <div className="space-y-1.5">
             <label
-              className="text-[13px] leading-[1.4] text-black"
+              className="text-[13px] leading-[1.4] text-foreground"
               style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
             >
               Signature (hex)
@@ -165,7 +165,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
           {/* Technical Details */}
           <details className="text-sm">
             <summary
-              className="cursor-pointer text-[13px] text-[#828282] hover:text-[#040404] transition-colors"
+              className="cursor-pointer text-[13px] text-muted-foreground hover:text-foreground transition-colors"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               Technical details

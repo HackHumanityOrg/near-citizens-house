@@ -70,7 +70,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
         {/* Page Title Section */}
         <div className="flex flex-col items-center w-full px-4 md:px-0">
           <h1
-            className="text-[28px] leading-[32px] md:text-[44px] md:leading-[48px] text-center text-black"
+            className="text-[28px] leading-[32px] md:text-[44px] md:leading-[48px] text-center text-foreground"
             style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
           >
             Citizens
@@ -80,7 +80,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
         {/* Subtitle */}
         <div className="flex items-center justify-center w-full px-4 md:px-0">
           <p
-            className="text-[16px] leading-[24px] md:text-[28px] md:leading-[36px] text-black text-center"
+            className="text-[16px] leading-[24px] md:text-[28px] md:leading-[36px] text-foreground text-center"
             style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 400 }}
           >
             All NEAR accounts verified through Self.xyz passport proofs
@@ -90,12 +90,12 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
         {/* Table Card */}
         <div className="flex flex-col items-center pt-[40px] pb-[80px] w-full">
           <div className="flex flex-col items-center w-full">
-            <div className="bg-[rgba(245,245,249,0.5)] flex flex-col items-start rounded-[12px] md:rounded-[16px] w-full max-w-[1276px] mx-4 md:mx-auto">
+            <div className="bg-secondary/50 flex flex-col items-start rounded-none md:rounded-[16px] w-full max-w-[1276px] md:mx-auto">
               {/* Card Header */}
-              <div className="bg-[#fafafc] flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-tl-[12px] rounded-tr-[12px] md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
+              <div className="bg-secondary flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-none md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
                 <div className="flex items-start px-0 py-[8px]">
                   <p
-                    className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] text-black"
+                    className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] text-foreground"
                     style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
                   >
                     Verification Records
@@ -103,7 +103,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                 </div>
                 <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between w-full">
                   <p
-                    className="text-[12px] md:text-[14px] leading-[1.4] text-[#090909]"
+                    className="text-[12px] md:text-[14px] leading-[1.4] text-foreground"
                     style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
                   >
                     {accounts.length > 0
@@ -115,7 +115,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                       href={NEAR_CONFIG.explorerAccountUrl(NEAR_CONFIG.verificationContractId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[14px] md:text-[16px] leading-[24px] text-[#828282] underline hover:text-[#666666] transition-colors"
+                      className="text-[14px] md:text-[16px] leading-[24px] text-muted-foreground underline hover:text-foreground transition-colors"
                       style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
                     >
                       View contract on NearBlocks
@@ -125,28 +125,28 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
               </div>
 
               {/* Table Header - Hidden on mobile */}
-              <div className="hidden md:block bg-[#fafafc] border-b border-[#bdbdbd] px-[40px] py-[16px] w-full">
+              <div className="hidden md:block bg-secondary border-b border-border px-[40px] py-[16px] w-full">
                 <div className="grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
                   <p
-                    className="text-[16px] leading-[24px] text-black text-left"
+                    className="text-[16px] leading-[24px] text-foreground text-left"
                     style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
                   >
                     NEAR Account
                   </p>
                   <p
-                    className="text-[16px] leading-[24px] text-black text-center"
+                    className="text-[16px] leading-[24px] text-foreground text-center"
                     style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
                   >
                     Attestation Type
                   </p>
                   <p
-                    className="text-[14px] leading-[1.4] text-[#040404] text-center"
+                    className="text-[14px] leading-[1.4] text-foreground text-center"
                     style={{ fontFamily: "Inter, sans-serif", fontWeight: 700 }}
                   >
                     Verified At
                   </p>
                   <p
-                    className="text-[16px] leading-[1.4] text-[#040404] text-right"
+                    className="text-[16px] leading-[1.4] text-foreground text-right"
                     style={{ fontFamily: "Inter, sans-serif", fontWeight: 700 }}
                   >
                     Verify
@@ -157,7 +157,10 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
               {/* Table Body */}
               {accounts.length === 0 ? (
                 <div className="flex items-center justify-center w-full py-[48px]">
-                  <p className="text-[14px] md:text-[16px] text-[#828282]" style={{ fontFamily: "Inter, sans-serif" }}>
+                  <p
+                    className="text-[14px] md:text-[16px] text-muted-foreground"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
                     No verified accounts yet. Be the first to verify!
                   </p>
                 </div>
@@ -167,7 +170,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                   return (
                     <div
                       key={account.nearAccountId}
-                      className={`px-4 py-3 md:px-[40px] md:py-[16px] w-full ${!isLastRow ? "border-b border-[#bdbdbd]" : ""}`}
+                      className={`px-4 py-3 md:px-[40px] md:py-[16px] w-full ${!isLastRow ? "border-b border-border" : ""}`}
                     >
                       {/* Mobile Card Layout */}
                       <div className="md:hidden flex flex-col gap-3">
@@ -175,7 +178,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                           href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[14px] leading-[1.3] text-[#040404] tracking-[0.28px] hover:underline inline-flex items-center gap-[6px]"
+                          className="text-[14px] leading-[1.3] text-foreground tracking-[0.28px] hover:underline inline-flex items-center gap-[6px]"
                           style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
                         >
                           {account.nearAccountId}
@@ -213,7 +216,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                           </Button>
                         </div>
                         <p
-                          className="text-[12px] leading-[1.4] text-[#666666] tracking-[0.24px]"
+                          className="text-[12px] leading-[1.4] text-muted-foreground tracking-[0.24px]"
                           style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
                         >
                           {formatDate(account.verifiedAt)}
@@ -227,7 +230,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                           href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[16px] leading-[1.3] text-[#040404] tracking-[0.32px] hover:underline inline-flex items-center gap-[8px]"
+                          className="text-[16px] leading-[1.3] text-foreground tracking-[0.32px] hover:underline inline-flex items-center gap-[8px]"
                           style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
                         >
                           {account.nearAccountId}
@@ -259,7 +262,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
 
                         {/* Verified At - center aligned */}
                         <p
-                          className="text-[14px] leading-[1.4] text-black text-center tracking-[0.28px]"
+                          className="text-[14px] leading-[1.4] text-foreground text-center tracking-[0.28px]"
                           style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
                         >
                           {formatDate(account.verifiedAt)}
@@ -289,7 +292,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
           {/* Pagination */}
           <div className="flex flex-col gap-3 items-center md:flex-row md:justify-between mt-6 md:mt-[24px] w-full max-w-[1276px] px-4 md:px-0">
             <p
-              className="text-[12px] md:text-[14px] leading-[1.4] text-[#828282] order-2 md:order-1"
+              className="text-[12px] md:text-[14px] leading-[1.4] text-muted-foreground order-2 md:order-1"
               style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
             >
               Page {page + 1} of {totalPages}

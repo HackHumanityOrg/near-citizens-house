@@ -18,9 +18,12 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
         // Citizens page variants
-        "citizens-primary": "bg-[#040404] text-[#d8d8d8] hover:bg-[#1c1c1c] rounded-[4px]",
-        "citizens-outline": "border border-[#bdbdbd] bg-white text-[#040404] hover:bg-[#fafafc] rounded-[4px]",
-        "citizens-icon": "border border-[#bdbdbd] bg-white hover:bg-[#fafafc] rounded-[4px]",
+        "citizens-primary":
+          "bg-[#040404] text-[#d8d8d8] hover:bg-[#1c1c1c] rounded-[4px] dark:bg-[#fcfaf7] dark:text-[#1c1c1c] dark:hover:bg-[#e0e0e0]",
+        "citizens-outline":
+          "border border-[#bdbdbd] bg-white text-[#040404] hover:bg-[#fafafc] rounded-[4px] dark:border-[#404040] dark:bg-transparent dark:text-[#fcfaf7] dark:hover:bg-[#2a2a2a]",
+        "citizens-icon":
+          "border border-[#bdbdbd] bg-white hover:bg-[#fafafc] rounded-[4px] dark:border-[#404040] dark:bg-transparent dark:hover:bg-[#2a2a2a]",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

@@ -60,16 +60,16 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg bg-white rounded-[8px] border-none shadow-xl">
+      <DialogContent className="sm:max-w-lg bg-background rounded-[8px] border-none shadow-xl">
         <DialogHeader>
           <DialogTitle
-            className="text-[22px] leading-[28px] text-black"
+            className="text-[22px] leading-[28px] text-foreground"
             style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
           >
             Verify ZK Proof
           </DialogTitle>
           <DialogDescription
-            className="text-[14px] leading-[1.4] text-[#828282]"
+            className="text-[14px] leading-[1.4] text-muted-foreground"
             style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
           >
             Verify the Groth16 proof using snarkjs CLI
@@ -116,7 +116,7 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
             </Button>
           </div>
 
-          <hr className="border-[#e0e0e0]" />
+          <hr className="border-border" />
 
           {/* Links */}
           <div className="flex gap-3">
@@ -135,13 +135,13 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
             </Button>
           </div>
 
-          <p className="text-[12px] leading-[1.4] text-[#828282]" style={{ fontFamily: "Inter, sans-serif" }}>
+          <p className="text-[12px] leading-[1.4] text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
             The verification key is for Self.xyz&apos;s{" "}
             <a
               href="https://github.com/selfxyz/self/blob/main/contracts/contracts/verifiers/disclose/Verifier_vc_and_disclose.sol"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline text-[#040404] hover:text-[#00ec97] transition-colors"
+              className="underline text-foreground hover:text-[#00ec97] transition-colors"
             >
               vc_and_disclose circuit
             </a>{" "}

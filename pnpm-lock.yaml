@@ -253,15 +253,15 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      boring-avatars:
+        specifier: ^2.0.4
+        version: 2.0.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      jdenticon:
-        specifier: ^3.3.0
-        version: 3.3.0
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.3)
@@ -281,9 +281,6 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
     devDependencies:
-      '@types/jdenticon':
-        specifier: ^2.2.0
-        version: 2.2.0
       '@types/node':
         specifier: ^25
         version: 25.0.2
@@ -1934,10 +1931,6 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
-  '@types/jdenticon@2.2.0':
-    resolution: {integrity: sha512-O5flTkCBu4a1N41V4ZmK/sVnrqwf46VEJvhmupdr7owUhoKUo0KVgPhAHq2eOTSQeIqxIQq+Ibj3+r8MoZWt0w==}
-    deprecated: This is a stub types definition. jdenticon provides its own type definitions, so you do not need this installed.
-
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
@@ -2430,6 +2423,12 @@ packages:
   bn.js@5.2.2:
     resolution: {integrity: sha512-v2YAxEmKaBLahNwE1mjp4WON6huMNeuDvagFZW+ASCuA/ku0bXR9hSMw0XpiqMoA3+rmnyck/tPRSFQkoC9Cuw==}
 
+  boring-avatars@2.0.4:
+    resolution: {integrity: sha512-xhZO/w/6aFmRfkaWohcl2NfyIy87gK5SBbys8kctZeTGF1Apjpv/10pfUuv+YEfVPkESU/h2Y6tt/Dwp+bIZPw==}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+
   borsh@1.0.0:
     resolution: {integrity: sha512-fSVWzzemnyfF89EPwlUNsrS5swF5CrtiN4e+h0/lLf4dz2he4L3ndM20PS9wj7ICSkXJe/TQUHdaPTq15b1mNQ==}
 
@@ -2493,9 +2492,6 @@ packages:
 
   caniuse-lite@1.0.30001762:
     resolution: {integrity: sha512-PxZwGNvH7Ak8WX5iXzoK1KPZttBXNPuaOvI2ZYU7NrlM+d9Ov+TUvlLOBNGzVXAntMSMMlJPd+jY6ovrVjSmUw==}
-
-  canvas-renderer@2.2.1:
-    resolution: {integrity: sha512-RrBgVL5qCEDIXpJ6NrzyRNoTnXxYarqm/cS/W6ERhUJts5UQtt/XPEosGN3rqUkZ4fjBArlnCbsISJ+KCFnIAg==}
 
   chai@6.2.1:
     resolution: {integrity: sha512-p4Z49OGG5W/WBCPSS/dH3jQ73kD6tiMmUM+bckNK6Jr5JHMG3k9bg/BvKR8lKmtVBKmOiuVaV2ws8s9oSbwysg==}
@@ -3373,11 +3369,6 @@ packages:
   jake@10.9.4:
     resolution: {integrity: sha512-wpHYzhxiVQL+IV05BLE2Xn34zW1S223hvjtqk0+gsPrwd/8JNLXJgZZM/iPFsYc1xyphF+6M6EvdE5E9MBGkDA==}
     engines: {node: '>=10'}
-    hasBin: true
-
-  jdenticon@3.3.0:
-    resolution: {integrity: sha512-DhuBRNRIybGPeAjMjdHbkIfiwZCCmf8ggu7C49jhp6aJ7DYsZfudnvnTY5/1vgUhrGA7JaDAx1WevnpjCPvaGg==}
-    engines: {node: '>=6.4.0'}
     hasBin: true
 
   jiti@2.6.1:
@@ -6428,10 +6419,6 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
-  '@types/jdenticon@2.2.0':
-    dependencies:
-      jdenticon: 3.3.0
-
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
@@ -6949,6 +6936,11 @@ snapshots:
 
   bn.js@5.2.2: {}
 
+  boring-avatars@2.0.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
   borsh@1.0.0: {}
 
   borsh@2.0.0: {}
@@ -7019,10 +7011,6 @@ snapshots:
   caniuse-lite@1.0.30001759: {}
 
   caniuse-lite@1.0.30001762: {}
-
-  canvas-renderer@2.2.1:
-    dependencies:
-      '@types/node': 25.0.2
 
   chai@6.2.1: {}
 
@@ -8116,10 +8104,6 @@ snapshots:
       async: 3.2.6
       filelist: 1.0.4
       picocolors: 1.1.1
-
-  jdenticon@3.3.0:
-    dependencies:
-      canvas-renderer: 2.2.1
 
   jiti@2.6.1: {}
 

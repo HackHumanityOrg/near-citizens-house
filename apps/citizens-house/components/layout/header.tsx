@@ -138,7 +138,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   <Identicon value={accountId || ""} size={48} />
-                  <ChevronDown className="h-5 w-5" />
+                  <ChevronDown className="h-6 w-6" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[200px]">

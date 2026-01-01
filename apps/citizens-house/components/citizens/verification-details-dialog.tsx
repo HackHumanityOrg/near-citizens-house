@@ -40,10 +40,10 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl bg-white rounded-[8px] border-none shadow-xl">
+        <DialogContent className="sm:max-w-2xl bg-background rounded-[8px] border-none shadow-xl">
           <DialogHeader>
             <DialogTitle
-              className="flex items-center gap-2 text-[22px] leading-[28px] text-black"
+              className="flex items-center gap-2 text-[22px] leading-[28px] text-foreground"
               style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
             >
               <ShieldCheck className="h-5 w-5 text-[#00ec97]" />
@@ -66,7 +66,7 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
           {allValid && proofData && (
             <div className="space-y-3 mt-2">
               <p
-                className="text-[12px] leading-[1.4] text-[#828282]"
+                className="text-[12px] leading-[1.4] text-muted-foreground"
                 style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
               >
                 Verify independently with third-party tools
