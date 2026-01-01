@@ -40,13 +40,13 @@ export function Header() {
   return (
     <header className="bg-background">
       {/* Mobile Header */}
-      <div className="flex md:hidden items-center justify-center gap-8 px-6 py-6">
-        {/* Mobile Logo */}
+      <div className="flex md:hidden items-center justify-between px-6 py-6">
+        {/* Mobile Logo - Left */}
         <Link href="/" className="flex items-center shrink-0">
           <Image src="/logo-mobile.svg" alt="NEAR Citizens House" width={61} height={26} className="dark:invert" />
         </Link>
 
-        {/* Mobile Navigation with Dropdown */}
+        {/* Mobile Navigation with Dropdown - Center */}
         <div className="flex items-center gap-2">
           <Link
             href={primaryNavItem.href}
@@ -72,7 +72,7 @@ export function Header() {
           </DropdownMenu>
         </div>
 
-        {/* Mobile Wallet Button (icon only, no background) */}
+        {/* Mobile Wallet Button - Right */}
         {isLoading ? (
           <button disabled className="p-1 opacity-50" aria-label="Connecting wallet">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -119,25 +119,16 @@ export function Header() {
         <div className="flex items-center gap-10 ml-auto">
           <div className="flex items-center gap-4">
             {isLoading ? (
-              <Button
-                className="bg-[#040404] text-[#d8d8d8] rounded px-6 py-3.5 opacity-70 cursor-not-allowed"
-                disabled
-              >
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Button variant="citizens-primary" size="citizens-xl" disabled>
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Connecting...
               </Button>
             ) : isConnected ? (
-              <Button
-                className="bg-[#040404] hover:bg-[#040404]/90 text-[#d8d8d8] rounded px-6 py-3.5"
-                onClick={disconnect}
-              >
+              <Button variant="citizens-primary" size="citizens-xl" onClick={disconnect}>
                 Disconnect
               </Button>
             ) : (
-              <Button
-                className="bg-[#040404] hover:bg-[#040404]/90 text-[#d8d8d8] rounded px-6 py-3.5"
-                onClick={connect}
-              >
+              <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
                 Connect Wallet
               </Button>
             )}

@@ -1,5 +1,7 @@
 /* FK Grotesk - NEAR brand font (must be before tailwindcss import) */
 @import url("https://db.onlinewebfonts.com/c/9419cf3ea65d2c875025a63789ee57fa?family=FK+Grotesk+Variable");
+/* Inter and Poppins fonts for Citizens page */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400&display=swap");
 
 @import "tailwindcss";
 @import "tw-animate-css";

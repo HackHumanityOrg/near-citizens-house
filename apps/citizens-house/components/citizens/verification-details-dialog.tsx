@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, Button } from "@near-citizens/ui"
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@near-citizens/ui"
 import { useAnalytics } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
@@ -40,16 +40,19 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl bg-white rounded-[8px] border-none shadow-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" />
+            <DialogTitle
+              className="flex items-center gap-2 text-[22px] leading-[28px] text-black"
+              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+            >
+              <ShieldCheck className="h-5 w-5 text-[#00ec97]" />
               Verify Proof
             </DialogTitle>
           </DialogHeader>
 
           {/* Terminal Output */}
-          <div className="bg-muted rounded-lg p-4 font-mono text-sm h-80 border border-border overflow-x-auto overflow-y-auto">
+          <div className="bg-[#1c1c1c] rounded-[12px] p-4 font-mono text-sm h-80 border border-[#333] overflow-x-auto overflow-y-auto">
             <pre className="m-0">
               {lines.map((line, i) => (
                 <div key={i} className={getLineClassName(line)}>
@@ -61,15 +64,30 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
 
           {/* Verification Buttons */}
           {allValid && proofData && (
-            <div className="space-y-2 mt-2">
-              <p className="text-xs text-muted-foreground">Verify independently with third-party tools</p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1" onClick={handleOpenSignatureModal}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
+            <div className="space-y-3 mt-2">
+              <p
+                className="text-[12px] leading-[1.4] text-[#828282]"
+                style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
+              >
+                Verify independently with third-party tools
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="citizens-outline"
+                  size="citizens-xl"
+                  className="flex-1"
+                  onClick={handleOpenSignatureModal}
+                >
+                  <ExternalLink className="h-4 w-4" />
                   NEAR Signature
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1" onClick={handleOpenZkProofModal}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                <Button
+                  variant="citizens-outline"
+                  size="citizens-xl"
+                  className="flex-1"
+                  onClick={handleOpenZkProofModal}
+                >
+                  <ExternalLink className="h-4 w-4" />
                   ZK Proof
                 </Button>
               </div>
@@ -267,15 +285,15 @@ function buildTerminalOutput(
 }
 
 function getLineClassName(line: string): string {
-  if (line.includes("✓")) return "text-foreground leading-relaxed whitespace-pre"
-  if (line.includes("✗") || line.toLowerCase().includes("error"))
-    return "text-destructive leading-relaxed whitespace-pre"
-  if (line.includes("VERIFICATION COMPLETE")) return "text-foreground font-bold leading-relaxed whitespace-pre"
-  if (line.includes("VERIFICATION FAILED")) return "text-destructive font-bold leading-relaxed whitespace-pre"
-  if (line.startsWith(">")) return "text-foreground leading-relaxed whitespace-pre"
-  if (line.includes("════") || line.includes("═══")) return "text-muted-foreground/50 leading-relaxed whitespace-pre"
+  // Terminal colors for dark background
+  if (line.includes("✓")) return "text-[#00ec97] leading-relaxed whitespace-pre"
+  if (line.includes("✗") || line.toLowerCase().includes("error")) return "text-[#ff6b6b] leading-relaxed whitespace-pre"
+  if (line.includes("VERIFICATION COMPLETE")) return "text-[#00ec97] font-bold leading-relaxed whitespace-pre"
+  if (line.includes("VERIFICATION FAILED")) return "text-[#ff6b6b] font-bold leading-relaxed whitespace-pre"
+  if (line.startsWith(">")) return "text-[#fcfaf7] leading-relaxed whitespace-pre"
+  if (line.includes("════") || line.includes("═══")) return "text-[#666666] leading-relaxed whitespace-pre"
   if (line.includes("SELF.XYZ") || line.includes("NEAR WALLET"))
-    return "text-foreground font-bold leading-relaxed whitespace-pre"
-  if (line.startsWith("[") && line.includes("]")) return "text-muted-foreground leading-relaxed whitespace-pre"
-  return "text-muted-foreground leading-relaxed whitespace-pre"
+    return "text-[#fcfaf7] font-bold leading-relaxed whitespace-pre"
+  if (line.startsWith("[") && line.includes("]")) return "text-[#a0a0a0] leading-relaxed whitespace-pre"
+  return "text-[#a0a0a0] leading-relaxed whitespace-pre"
 }

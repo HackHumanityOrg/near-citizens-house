@@ -3,22 +3,9 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useAnalytics } from "@/lib/analytics"
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@near-citizens/ui"
+import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@near-citizens/ui"
 import { NEAR_CONFIG } from "@near-citizens/shared"
-import { CheckCircle, XCircle, ChevronLeft, ChevronRight, ExternalLink, List } from "lucide-react"
+import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
 import type { VerifiedAccountWithStatus } from "@/app/citizens/actions"
 
@@ -78,145 +65,264 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
   }
 
   return (
-    <>
-      <div className="container mx-auto px-4 pt-4 pb-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center space-y-2 mb-6">
-            <div className="flex items-center justify-center gap-2">
-              <List className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">Verified Accounts</h1>
-            </div>
-            <p className="text-muted-foreground">All NEAR accounts verified through Self.xyz passport proofs</p>
-          </div>
+    <TooltipProvider>
+      <div className="flex flex-col gap-[24px] items-center w-full">
+        {/* Page Title Section */}
+        <div className="flex flex-col items-center w-full px-4 md:px-0">
+          <h1
+            className="text-[28px] leading-[32px] md:text-[44px] md:leading-[48px] text-center text-black"
+            style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+          >
+            Citizens
+          </h1>
+        </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Verification Records</CardTitle>
-              <CardDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <span>
-                  {accounts.length > 0
-                    ? `Showing ${accounts.length} of ${total} verified accounts`
-                    : "No verified accounts yet"}
-                </span>
-                <a
-                  href={NEAR_CONFIG.explorerAccountUrl(NEAR_CONFIG.verificationContractId)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs hover:text-foreground transition-colors"
-                >
-                  View contract on NearBlocks
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        {/* Subtitle */}
+        <div className="flex items-center justify-center w-full px-4 md:px-0">
+          <p
+            className="text-[16px] leading-[24px] md:text-[28px] md:leading-[36px] text-black text-center"
+            style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 400 }}
+          >
+            All NEAR accounts verified through Self.xyz passport proofs
+          </p>
+        </div>
+
+        {/* Table Card */}
+        <div className="flex flex-col items-center pt-[40px] pb-[80px] w-full">
+          <div className="flex flex-col items-center w-full">
+            <div className="bg-[rgba(245,245,249,0.5)] flex flex-col items-start rounded-[12px] md:rounded-[16px] w-full max-w-[1276px] mx-4 md:mx-auto">
+              {/* Card Header */}
+              <div className="bg-[#fafafc] flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-tl-[12px] rounded-tr-[12px] md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
+                <div className="flex items-start px-0 py-[8px]">
+                  <p
+                    className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] text-black"
+                    style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+                  >
+                    Verification Records
+                  </p>
+                </div>
+                <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between w-full">
+                  <p
+                    className="text-[12px] md:text-[14px] leading-[1.4] text-[#090909]"
+                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
+                  >
+                    {accounts.length > 0
+                      ? `Showing ${accounts.length} of ${total} verified accounts`
+                      : "No verified accounts yet"}
+                  </p>
+                  <div className="flex items-start px-0 py-0 md:py-[8px]">
+                    <a
+                      href={NEAR_CONFIG.explorerAccountUrl(NEAR_CONFIG.verificationContractId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[14px] md:text-[16px] leading-[24px] text-[#828282] underline hover:text-[#666666] transition-colors"
+                      style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+                    >
+                      View contract on NearBlocks
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table Header - Hidden on mobile */}
+              <div className="hidden md:block bg-[#fafafc] border-b border-[#bdbdbd] px-[40px] py-[16px] w-full">
+                <div className="grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
+                  <p
+                    className="text-[16px] leading-[24px] text-black text-left"
+                    style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+                  >
+                    NEAR Account
+                  </p>
+                  <p
+                    className="text-[16px] leading-[24px] text-black text-center"
+                    style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+                  >
+                    Attestation Type
+                  </p>
+                  <p
+                    className="text-[14px] leading-[1.4] text-[#040404] text-center"
+                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 700 }}
+                  >
+                    Verified At
+                  </p>
+                  <p
+                    className="text-[16px] leading-[1.4] text-[#040404] text-right"
+                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 700 }}
+                  >
+                    Verify
+                  </p>
+                </div>
+              </div>
+
+              {/* Table Body */}
               {accounts.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  No verified accounts yet. Be the first to verify!
+                <div className="flex items-center justify-center w-full py-[48px]">
+                  <p className="text-[14px] md:text-[16px] text-[#828282]" style={{ fontFamily: "Inter, sans-serif" }}>
+                    No verified accounts yet. Be the first to verify!
+                  </p>
                 </div>
               ) : (
-                <>
-                  <div className="rounded-md border bg-card">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="min-w-[180px]">NEAR Account</TableHead>
-                          <TableHead className="min-w-[120px]">Attestation Type</TableHead>
-                          <TableHead className="min-w-[120px]">Nullifier</TableHead>
-                          <TableHead className="min-w-[180px]">Verified At</TableHead>
-                          <TableHead className="min-w-[100px]">Verify</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {accounts.map(({ account, verification }) => {
-                          const isValid = verification.zkValid && verification.signatureValid
-                          return (
-                            <TableRow key={account.nearAccountId}>
-                              <TableCell className="font-mono text-sm">
-                                <a
-                                  href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:text-primary inline-flex items-center gap-1"
+                accounts.map(({ account, verification: _verification }, index) => {
+                  const isLastRow = index === accounts.length - 1
+                  return (
+                    <div
+                      key={account.nearAccountId}
+                      className={`px-4 py-3 md:px-[40px] md:py-[16px] w-full ${!isLastRow ? "border-b border-[#bdbdbd]" : ""}`}
+                    >
+                      {/* Mobile Card Layout */}
+                      <div className="md:hidden flex flex-col gap-3">
+                        <a
+                          href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[14px] leading-[1.3] text-[#040404] tracking-[0.28px] hover:underline inline-flex items-center gap-[6px]"
+                          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                        >
+                          {account.nearAccountId}
+                          <ExternalLink className="h-3.5 w-3.5 text-[#00ec97]" />
+                        </a>
+                        <div className="flex items-center justify-between">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="bg-[#79d1ac] flex h-[28px] items-center px-[8px] rounded-full cursor-pointer">
+                                <span
+                                  className="text-[11px] leading-[1.4] text-[#002716] tracking-[0.22px]"
+                                  style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
                                 >
-                                  {account.nearAccountId}
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
-                              </TableCell>
-                              <TableCell className="font-medium">{getAttestationType(account.attestationId)}</TableCell>
-                              <TableCell className="font-mono text-xs text-muted-foreground" title={account.nullifier}>
-                                {truncate(account.nullifier, 16)}
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {formatDate(account.verifiedAt)}
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const found = accounts.find(
-                                      (a) => a.account.nearAccountId === account.nearAccountId,
-                                    )
-                                    if (found) handleViewDetails(found)
-                                  }}
-                                  title="View verification details"
-                                >
-                                  {isValid ? (
-                                    <CheckCircle className="h-4 w-4 text-vote-for" />
-                                  ) : (
-                                    <XCircle className="h-4 w-4 text-vote-against" />
-                                  )}
-                                  <span className="ml-1">Details</span>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Pagination with <Link> for full SSR */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-muted-foreground">
-                        Page {page + 1} of {totalPages}
+                                  {getAttestationType(account.attestationId)}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="top"
+                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[12px] py-[6px] text-[12px] leading-[1.4]"
+                              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 400 }}
+                            >
+                              Nullifier: {truncate(account.nullifier, 16)}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Button
+                            variant="citizens-primary"
+                            size="citizens-sm"
+                            onClick={() => {
+                              const found = accounts.find((a) => a.account.nearAccountId === account.nearAccountId)
+                              if (found) handleViewDetails(found)
+                            }}
+                          >
+                            Details
+                          </Button>
+                        </div>
+                        <p
+                          className="text-[12px] leading-[1.4] text-[#666666] tracking-[0.24px]"
+                          style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
+                        >
+                          {formatDate(account.verifiedAt)}
+                        </p>
                       </div>
-                      <div className="flex gap-2">
-                        {page > 0 ? (
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/citizens?page=${page - 1}`}>
-                              <ChevronLeft className="h-4 w-4" />
-                              Previous
-                            </Link>
+
+                      {/* Desktop Grid Layout */}
+                      <div className="hidden md:grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
+                        {/* NEAR Account - left aligned */}
+                        <a
+                          href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[16px] leading-[1.3] text-[#040404] tracking-[0.32px] hover:underline inline-flex items-center gap-[8px]"
+                          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                        >
+                          {account.nearAccountId}
+                          <ExternalLink className="h-4 w-4 text-[#00ec97]" />
+                        </a>
+
+                        {/* Attestation Type with Nullifier Tooltip - center aligned */}
+                        <div className="flex justify-center">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
+                                <span
+                                  className="text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]"
+                                  style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
+                                >
+                                  {getAttestationType(account.attestationId)}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="left"
+                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4]"
+                              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 400 }}
+                            >
+                              Nullifier: {truncate(account.nullifier, 16)}
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+
+                        {/* Verified At - center aligned */}
+                        <p
+                          className="text-[14px] leading-[1.4] text-black text-center tracking-[0.28px]"
+                          style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
+                        >
+                          {formatDate(account.verifiedAt)}
+                        </p>
+
+                        {/* Details Button - right aligned */}
+                        <div className="flex justify-end">
+                          <Button
+                            variant="citizens-primary"
+                            size="citizens-md"
+                            onClick={() => {
+                              const found = accounts.find((a) => a.account.nearAccountId === account.nearAccountId)
+                              if (found) handleViewDetails(found)
+                            }}
+                          >
+                            Details
                           </Button>
-                        ) : (
-                          <Button variant="outline" size="sm" disabled>
-                            <ChevronLeft className="h-4 w-4" />
-                            Previous
-                          </Button>
-                        )}
-                        {page < totalPages - 1 ? (
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/citizens?page=${page + 1}`}>
-                              Next
-                              <ChevronRight className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button variant="outline" size="sm" disabled>
-                            Next
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </>
+                  )
+                })
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col gap-3 items-center md:flex-row md:justify-between mt-6 md:mt-[24px] w-full max-w-[1276px] px-4 md:px-0">
+            <p
+              className="text-[12px] md:text-[14px] leading-[1.4] text-[#828282] order-2 md:order-1"
+              style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
+            >
+              Page {page + 1} of {totalPages}
+            </p>
+            <div className="flex gap-3 order-1 md:order-2">
+              {page > 0 ? (
+                <Button variant="citizens-outline" size="citizens-lg" asChild>
+                  <Link href={`/citizens?page=${page - 1}`}>
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="citizens-outline" size="citizens-lg" disabled>
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+              )}
+              {page < totalPages - 1 ? (
+                <Button variant="citizens-outline" size="citizens-lg" asChild>
+                  <Link href={`/citizens?page=${page + 1}`}>
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="citizens-outline" size="citizens-lg" disabled>
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -226,6 +332,6 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
         open={!!selectedAccount}
         onOpenChange={(open) => !open && setSelectedAccount(null)}
       />
-    </>
+    </TooltipProvider>
   )
 }

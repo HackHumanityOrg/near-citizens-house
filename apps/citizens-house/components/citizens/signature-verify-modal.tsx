@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from "@near-citizens/ui"
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@near-citizens/ui"
 import { useAnalytics } from "@/lib/analytics"
 import { Copy, Check, ExternalLink } from "lucide-react"
 
@@ -39,91 +39,138 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl bg-white rounded-[8px] border-none shadow-xl">
         <DialogHeader>
-          <DialogTitle>Verify NEAR Signature</DialogTitle>
-          <DialogDescription>
+          <DialogTitle
+            className="text-[22px] leading-[28px] text-black"
+            style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+          >
+            Verify NEAR Signature
+          </DialogTitle>
+          <DialogDescription
+            className="text-[14px] leading-[1.4] text-[#828282]"
+            style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
+          >
             Independently verify the Ed25519 signature using Cyphr.me&apos;s online tool
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Instructions */}
-          <div className="rounded-lg bg-muted p-4 space-y-2">
-            <h4 className="font-medium text-sm">Instructions</h4>
-            <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+          <div className="rounded-[12px] bg-[#fafafc] p-4 space-y-2 border border-[#e0e0e0]">
+            <h4
+              className="text-[14px] leading-[20px] text-black"
+              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+            >
+              Instructions
+            </h4>
+            <ol
+              className="list-decimal list-inside text-[13px] leading-[1.5] text-[#666666] space-y-1"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
               <li>Open the Cyphr.me Ed25519 tool (button below)</li>
               <li>
-                Set Algorithm to <strong>Ed25519</strong> (not Ed25519ph)
+                Set Algorithm to <strong className="text-[#040404]">Ed25519</strong> (not Ed25519ph)
               </li>
               <li>
-                Set Message encoding to <strong>Hex</strong>
+                Set Message encoding to <strong className="text-[#040404]">Hex</strong>
               </li>
               <li>
-                Set Key encoding to <strong>Hex</strong>
+                Set Key encoding to <strong className="text-[#040404]">Hex</strong>
               </li>
               <li>Paste values below into Message, Public Key, and Signature fields</li>
               <li>
-                Click <strong>✅ Verify</strong>
+                Click <strong className="text-[#040404]">Verify</strong>
               </li>
             </ol>
           </div>
 
           {/* Message (NEP-413 Hash) */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Message (NEP-413 hash, hex)</label>
+            <label
+              className="text-[13px] leading-[1.4] text-black"
+              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+            >
+              Message (NEP-413 hash, hex)
+            </label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono break-all">{data.nep413Hash}</code>
+              <code className="flex-1 bg-[#1c1c1c] text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
+                {data.nep413Hash}
+              </code>
               <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
+                variant="citizens-icon"
+                size="citizens-icon"
                 onClick={() => copyToClipboard(data.nep413Hash, "hash")}
               >
-                {copiedField === "hash" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedField === "hash" ? <Check className="h-4 w-4 text-[#00ec97]" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] leading-[1.4] text-[#828282]" style={{ fontFamily: "Inter, sans-serif" }}>
               This is the SHA-256 hash of the NEP-413 formatted payload (tag + Borsh-serialized message)
             </p>
           </div>
 
           {/* Public Key */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Public Key (hex)</label>
+            <label
+              className="text-[13px] leading-[1.4] text-black"
+              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+            >
+              Public Key (hex)
+            </label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono break-all">{data.publicKeyHex}</code>
+              <code className="flex-1 bg-[#1c1c1c] text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
+                {data.publicKeyHex}
+              </code>
               <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
+                variant="citizens-icon"
+                size="citizens-icon"
                 onClick={() => copyToClipboard(data.publicKeyHex, "publicKey")}
               >
-                {copiedField === "publicKey" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedField === "publicKey" ? (
+                  <Check className="h-4 w-4 text-[#00ec97]" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
 
           {/* Signature */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Signature (hex)</label>
+            <label
+              className="text-[13px] leading-[1.4] text-black"
+              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+            >
+              Signature (hex)
+            </label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono break-all">{data.signatureHex}</code>
+              <code className="flex-1 bg-[#1c1c1c] text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
+                {data.signatureHex}
+              </code>
               <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
+                variant="citizens-icon"
+                size="citizens-icon"
                 onClick={() => copyToClipboard(data.signatureHex, "signature")}
               >
-                {copiedField === "signature" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedField === "signature" ? (
+                  <Check className="h-4 w-4 text-[#00ec97]" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
 
           {/* Technical Details */}
           <details className="text-sm">
-            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Technical details</summary>
-            <div className="mt-2 rounded-lg bg-muted p-3 space-y-1 text-xs text-muted-foreground font-mono">
+            <summary
+              className="cursor-pointer text-[13px] text-[#828282] hover:text-[#040404] transition-colors"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              Technical details
+            </summary>
+            <div className="mt-2 rounded-[8px] bg-[#1c1c1c] p-3 space-y-1 text-xs text-[#a0a0a0] font-mono">
               <p>NEP-413 Message Format:</p>
               <p className="pl-2">1. Tag: 2147484061 (4 bytes, little-endian)</p>
               <p className="pl-2">2. Borsh-serialized payload:</p>
@@ -136,8 +183,8 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
           </details>
 
           {/* Action Button */}
-          <Button className="w-full" onClick={openVerifier}>
-            <ExternalLink className="h-4 w-4 mr-2" />
+          <Button variant="citizens-primary" size="citizens-2xl" className="w-full" onClick={openVerifier}>
+            <ExternalLink className="h-4 w-4" />
             Open Cyphr.me Ed25519 Verifier
           </Button>
         </div>
