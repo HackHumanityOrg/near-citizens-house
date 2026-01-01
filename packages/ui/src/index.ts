@@ -23,6 +23,23 @@ export { Textarea } from "./textarea"
 export { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./table"
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs"
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip"
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+} from "./dropdown-menu"
 
 // Shared infrastructure components
 export { ErrorBoundary } from "./error-boundary"
