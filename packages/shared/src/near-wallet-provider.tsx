@@ -37,6 +37,15 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           },
           autoConnect: true,
           logger: process.env.NODE_ENV === "development" ? console : undefined,
+          walletConnect: {
+            projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+            metadata: {
+              name: "NEAR Citizens House",
+              description: "NEAR governance and identity verification",
+              url: typeof window !== "undefined" ? window.location.origin : "https://citizens.near.org",
+              icons: [],
+            },
+          },
         })
 
         // Connection/disconnection events
