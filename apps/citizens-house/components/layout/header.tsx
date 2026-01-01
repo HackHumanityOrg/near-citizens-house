@@ -8,7 +8,7 @@ import { useIsAdmin } from "@/hooks/admin"
 import { useVerification } from "@/hooks/verification"
 import { LogIn, LogOut, Loader2, ShieldCheck } from "lucide-react"
 
-export function SputnikHeader() {
+export function Header() {
   const { isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
   const { isVerified, loading: verificationLoading } = useVerification()
@@ -26,7 +26,7 @@ export function SputnikHeader() {
               <Link href="/verification" className="text-sm font-medium hover:text-primary transition-colors">
                 Verification
               </Link>
-              <Link href="/verification/accounts" className="text-sm font-medium hover:text-primary transition-colors">
+              <Link href="/citizens" className="text-sm font-medium hover:text-primary transition-colors">
                 Citizens
               </Link>
               <Link href="/governance/proposals" className="text-sm font-medium hover:text-primary transition-colors">

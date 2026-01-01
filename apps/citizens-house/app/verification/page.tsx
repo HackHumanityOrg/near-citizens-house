@@ -1,6 +1,6 @@
 import { ShieldCheck } from "lucide-react"
 import { Badge, Card, CardContent } from "@near-citizens/ui"
-import { IdentityVerificationFlow } from "@/components/home/identity-verification-flow"
+import { IdentityVerificationFlow } from "@/components/verification/identity-verification-flow"
 
 export default function VerificationPage() {
   return (

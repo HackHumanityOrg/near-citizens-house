@@ -20,7 +20,7 @@ import {
 import { NEAR_CONFIG } from "@near-citizens/shared"
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, ExternalLink, List } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
-import type { VerifiedAccountWithStatus } from "@/app/verification/accounts/actions"
+import type { VerifiedAccountWithStatus } from "@/app/citizens/actions"
 
 interface Props {
   accounts: VerifiedAccountWithStatus[]
@@ -186,7 +186,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                       <div className="flex gap-2">
                         {page > 0 ? (
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/verification/accounts?page=${page - 1}`}>
+                            <Link href={`/citizens?page=${page - 1}`}>
                               <ChevronLeft className="h-4 w-4" />
                               Previous
                             </Link>
@@ -199,7 +199,7 @@ export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSi
                         )}
                         {page < totalPages - 1 ? (
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/verification/accounts?page=${page + 1}`}>
+                            <Link href={`/citizens?page=${page + 1}`}>
                               Next
                               <ChevronRight className="h-4 w-4" />
                             </Link>

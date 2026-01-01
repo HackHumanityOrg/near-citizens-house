@@ -1,5 +1,5 @@
 import { getVerifiedAccountsWithStatus } from "./actions"
-import { VerifiedAccountsTable } from "@/components/verified-accounts/verified-accounts-table"
+import { VerifiedAccountsTable } from "@/components/citizens/verified-accounts-table"
 
 const PAGE_SIZE = 10
 

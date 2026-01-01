@@ -26,6 +26,5 @@ export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tool
 
 // Shared infrastructure components
 export { ErrorBoundary } from "./error-boundary"
-export { Footer } from "./footer"
 export { ThemeProvider } from "./theme-provider"
 export { ThemeToggle } from "./theme-toggle"

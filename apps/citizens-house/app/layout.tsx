@@ -3,10 +3,11 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { VercelToolbar } from "@vercel/toolbar/next"
-import { ThemeProvider, Footer } from "@near-citizens/ui"
+import { ThemeProvider } from "@near-citizens/ui"
 import { UserJotWidget } from "@near-citizens/shared"
-import { SputnikHeader } from "@/components/shared/sputnik-header"
-import { BetaBanner } from "@/components/shared/beta-banner"
+import { Header } from "@/components/layout/header"
+import { Footer } from "@/components/layout/footer"
+import { BetaBanner } from "@/components/layout/beta-banner"
 import { Providers } from "./providers"
 import "./globals.css"
 
@@ -42,7 +43,7 @@ export default function RootLayout({
           <Providers>
             <BetaBanner />
             <div className="pt-8">
-              <SputnikHeader />
+              <Header />
             </div>
             {children}
             <Footer />
