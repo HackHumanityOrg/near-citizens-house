@@ -43,5 +43,6 @@ export {
 
 // Shared infrastructure components
 export { ErrorBoundary } from "./error-boundary"
+export { Identicon } from "./identicon"
 export { ThemeProvider } from "./theme-provider"
 export { ThemeToggle } from "./theme-toggle"

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  Identicon,
 } from "@near-citizens/ui"
 import { useNearWallet } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
@@ -16,7 +17,7 @@ import { useVerification } from "@/hooks/verification"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
 
 export function Header() {
-  const { isConnected, connect, disconnect, isLoading } = useNearWallet()
+  const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
   const { isVerified, loading: verificationLoading } = useVerification()
 
@@ -77,12 +78,22 @@ export function Header() {
           <button disabled className="p-1 opacity-50" aria-label="Connecting wallet">
             <Loader2 className="h-5 w-5 animate-spin" />
           </button>
+        ) : isConnected ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="hover:opacity-70 transition-opacity" aria-label="Account menu">
+                <Identicon value={accountId || ""} size={32} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <div className="px-3 py-2 text-sm text-muted-foreground border-b truncate max-w-[200px]">{accountId}</div>
+              <DropdownMenuItem onClick={disconnect} className="cursor-pointer">
+                Disconnect
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
-          <button
-            onClick={isConnected ? disconnect : connect}
-            className="p-1 hover:opacity-70 transition-opacity"
-            aria-label={isConnected ? "Disconnect wallet" : "Connect wallet"}
-          >
+          <button onClick={connect} className="p-1 hover:opacity-70 transition-opacity" aria-label="Connect wallet">
             <Wallet className="h-5 w-5" />
           </button>
         )}
@@ -117,22 +128,31 @@ export function Header() {
 
         {/* Desktop Right Side: Wallet + Theme Toggle */}
         <div className="flex items-center gap-10 ml-auto">
-          <div className="flex items-center gap-4">
-            {isLoading ? (
-              <Button variant="citizens-primary" size="citizens-xl" disabled>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Connecting...
-              </Button>
-            ) : isConnected ? (
-              <Button variant="citizens-primary" size="citizens-xl" onClick={disconnect}>
-                Disconnect
-              </Button>
-            ) : (
-              <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
-                Connect Wallet
-              </Button>
-            )}
-          </div>
+          {isLoading ? (
+            <Button variant="citizens-primary" size="citizens-xl" disabled>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting...
+            </Button>
+          ) : isConnected ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <Identicon value={accountId || ""} size={48} />
+                  <ChevronDown className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <div className="px-3 py-2 text-sm text-muted-foreground border-b">{accountId}</div>
+                <DropdownMenuItem onClick={disconnect} className="cursor-pointer">
+                  Disconnect
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
+              Connect Wallet
+            </Button>
+          )}
 
           <ThemeToggle />
         </div>
