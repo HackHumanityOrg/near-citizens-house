@@ -1,17 +1,22 @@
 //! Versioning tests for verified-accounts contract
 //!
 //! Comprehensive tests for the contract's versioning infrastructure, including:
-//! - Contract state versioning (VersionedContract: V1 -> V2)
-//! - Record versioning (VersionedVerification: V1 -> V2)
-//! - True cross-version upgrade scenarios
+//! - Contract state versioning (VersionedContract enum with ContractV2)
+//! - Record versioning (VersionedVerification enum with VerificationV2)
+//! - Upgrade scenarios (redeploying contract code preserves state)
 //!
 //! ## Test Fixtures
 //!
 //! These tests use pre-built WASM artifacts from `tests/fixtures/`:
-//! - `v1/verified_accounts.wasm` - Production build (no feature flags)
-//! - `v2/verified_accounts.wasm` - Upgrade simulation build (--features upgrade-simulation)
+//! - `v1/verified_accounts.wasm` - V1 contract (current production)
+//! - `v2/verified_accounts.wasm` - V2 contract with:
+//!   - `VerificationV2` (adds `nationality_disclosed` field)
+//!   - `ContractV2` (adds `upgrade_timestamp` field)
 //!
-//! To rebuild fixtures: `./scripts/build_test_fixtures.sh`
+//! The V2 fixture was built from temporary V2 code (since reverted) to enable
+//! testing real upgrade scenarios where V2 has fields/methods V1 doesn't know about.
+//!
+//! See `tests/fixtures/README.md` for details on rebuilding fixtures.
 //!
 //! ## Running Tests
 //!
@@ -29,7 +34,7 @@ use serde_json::json;
 /// Path to V1 WASM fixture (production build)
 pub const WASM_V1_PATH: &str = "./tests/fixtures/v1/verified_accounts.wasm";
 
-/// Path to V2 WASM fixture (upgrade-simulation build)
+/// Path to V2 WASM fixture (has nationality_disclosed field)
 pub const WASM_V2_PATH: &str = "./tests/fixtures/v2/verified_accounts.wasm";
 
 /// Verification summary response (matches contract's VerificationSummary)
@@ -84,7 +89,7 @@ async fn init_v1() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>,
     Ok((worker, contract, backend))
 }
 
-/// Store a verification
+/// Store a verification (V1 contract - no nationality_disclosed parameter)
 async fn store_verification(
     backend: &Account,
     contract: &Contract,
@@ -122,6 +127,52 @@ async fn store_verification(
     assert!(
         result.is_success(),
         "Store verification failed: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+/// Store a verification (V2 contract - includes nationality_disclosed parameter)
+async fn store_verification_v2(
+    backend: &Account,
+    contract: &Contract,
+    user: &Account,
+    nullifier: &str,
+    nationality_disclosed: bool,
+) -> anyhow::Result<()> {
+    let nonce: [u8; 32] = rand::random();
+    let challenge = "Identify myself";
+    let recipient = user.id().to_string();
+
+    let (signature, public_key) = generate_nep413_signature(user, challenge, &nonce, &recipient);
+
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({
+            "nullifier": nullifier,
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": format!("context_for_{}", nullifier),
+            "nationality_disclosed": nationality_disclosed
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Store verification (V2) failed: {:?}",
         result.failures()
     );
 
@@ -453,7 +504,8 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
-            "user_context_data": "context"
+            "user_context_data": "context",
+            "nationality_disclosed": false
         }))
         .gas(Gas::from_tgas(100))
         .transact()
@@ -552,7 +604,8 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
-            "user_context_data": "context"
+            "user_context_data": "context",
+            "nationality_disclosed": false
         }))
         .gas(Gas::from_tgas(100))
         .transact()
@@ -575,10 +628,9 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
 #[allure_suite_label("Verified Accounts Integration Tests")]
 #[allure_sub_suite("Versioning")]
 #[allure_severity("high")]
-#[allure_tags("integration", "versioning", "upgrade", "v2-features")]
+#[allure_tags("integration", "versioning", "upgrade", "new-verifications")]
 #[allure_description(
-    "Upgrade test: After upgrade to V2, new verifications work and V2-specific \
-     features (total_verifications_stored counter) are available."
+    "Upgrade test: After redeploying contract code, new verifications work correctly."
 )]
 #[allure_test]
 #[tokio::test]
@@ -608,30 +660,26 @@ async fn test_upgrade_new_verifications_work() -> anyhow::Result<()> {
     let user1 = worker.dev_create_account().await?;
     store_verification(&backend, &contract, &user1, "v1_verification").await?;
 
-    // Upgrade to V2
+    // Upgrade to V2 (redeploy new code)
     let v2_wasm = load_v2_wasm();
     contract_account.deploy(&v2_wasm).await?;
 
-    // Store new verification with V2
+    // Store new verification after upgrade (V2 requires nationality_disclosed)
     let user2 = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user2, "v2_verification").await?;
+    store_verification_v2(&backend, &contract, &user2, "v2_verification", false).await?;
 
     // Verify counts
     let count: u64 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify new verifications work after upgrade", || {
-        assert_eq!(count, 2, "Should have both V1 and V2 verifications");
+        assert_eq!(count, 2, "Should have both pre and post-upgrade verifications");
     });
 
-    // Verify V2 feature: total_verifications_stored counter
-    let total_stored: u64 = contract
-        .view("get_total_verifications_stored")
-        .await?
-        .json()?;
+    // Verify state version is now 2 (ContractV2 has upgrade_timestamp)
+    let state_version: u8 = contract.view("get_state_version").await?.json()?;
 
-    step("Verify V2 counter tracks new verifications", || {
-        // Counter starts at 0 after upgrade (we don't know V1 history) and counts V2 additions
-        assert_eq!(total_stored, 1, "Should count 1 verification stored after upgrade");
+    step("Verify state version is V2 after upgrade", || {
+        assert_eq!(state_version, 2, "Should report state version 2 after upgrade to V2");
     });
 
     Ok(())
@@ -920,6 +968,191 @@ async fn test_upgrade_admin_functions_work() -> anyhow::Result<()> {
 
     let current_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
     assert_eq!(current_backend, *new_backend.id());
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "upgrade", "v2-feature")]
+#[allure_description(
+    "Upgrade test: V2-specific get_nationality_disclosed method works after upgrade. \
+     V1 records should have nationality_disclosed=false (default for migrated records)."
+)]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_v2_nationality_disclosed_field() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("nationality-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store verification with V1 (no nationality_disclosed field)
+    let user = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user, "v1_no_nationality").await?;
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Call V2-only method: get_nationality_disclosed
+    // V1 records should migrate with nationality_disclosed=false
+    let nationality: Option<bool> = contract
+        .view("get_nationality_disclosed")
+        .args_json(json!({"account_id": user.id()}))
+        .await?
+        .json()?;
+
+    step("Verify V1 record has nationality_disclosed=false after migration", || {
+        assert_eq!(
+            nationality,
+            Some(false),
+            "Migrated V1 records should have nationality_disclosed=false"
+        );
+    });
+
+    // Verify unverified account returns None
+    let unverified = worker.dev_create_account().await?;
+    let no_nationality: Option<bool> = contract
+        .view("get_nationality_disclosed")
+        .args_json(json!({"account_id": unverified.id()}))
+        .await?
+        .json()?;
+
+    step("Verify unverified account returns None", || {
+        assert_eq!(
+            no_nationality, None,
+            "Unverified account should return None"
+        );
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "upgrade", "v2-feature", "contract-state")]
+#[allure_description(
+    "Upgrade test: V2-specific get_upgrade_timestamp method works after upgrade. \
+     ContractV2 records the timestamp when V1 state was migrated."
+)]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("upgrade-ts-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store verification with V1
+    let user = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user, "upgrade_ts_nullifier").await?;
+
+    // Verify V1 state before upgrade
+    let v1_state_version: u8 = contract.view("get_state_version").await?.json()?;
+    step("Verify V1 state version before upgrade", || {
+        assert_eq!(v1_state_version, 1, "Should be state version 1");
+    });
+
+    // Record approximate time before upgrade
+    let before_upgrade = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Record approximate time after upgrade
+    let after_upgrade = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(u64::MAX);
+
+    // Trigger state migration by calling a mutable method (view methods can't mutate)
+    // pause() and unpause() to trigger lazy migration without side effects
+    backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+    backend
+        .call(contract.id(), "unpause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    // Call V2-only method: get_upgrade_timestamp
+    // ContractV2 records the migration timestamp when V1 state was first written
+    let upgrade_timestamp: Option<u64> = contract
+        .view("get_upgrade_timestamp")
+        .await?
+        .json()?;
+
+    step("Verify upgrade_timestamp is set after migration", || {
+        assert!(
+            upgrade_timestamp.is_some(),
+            "Upgrade timestamp should be set after V1 → V2 migration"
+        );
+        let ts = upgrade_timestamp.expect("checked above");
+        // The timestamp should be roughly around the time we upgraded
+        // Allow a generous window since sandbox timing may vary
+        assert!(
+            ts >= before_upgrade.saturating_sub(60_000_000_000), // 60s before
+            "Timestamp {} should be >= {} (before upgrade)",
+            ts,
+            before_upgrade
+        );
+        assert!(
+            ts <= after_upgrade.saturating_add(60_000_000_000), // 60s after
+            "Timestamp {} should be <= {} (after upgrade)",
+            ts,
+            after_upgrade
+        );
+    });
+
+    // Verify state version is now 2
+    let v2_state_version: u8 = contract.view("get_state_version").await?.json()?;
+    step("Verify contract reports V2 state version after upgrade", || {
+        assert_eq!(v2_state_version, 2, "Should be state version 2 after upgrade");
+    });
 
     Ok(())
 }

@@ -9,7 +9,6 @@ repository = "https://github.com/HackHumanityOrg/alpha-venear-unlock"
 default = []
 integration-tests = []
 testing = []  # Exposes internals for unit tests in tests/ folder
-upgrade-simulation = ["testing"]  # Enables V2 structs for upgrade path testing (contract + record level)
 
 [lib]
 crate-type = ["cdylib", "rlib"]

@@ -93,58 +93,71 @@ use near_sdk::{ext_contract, AccountId, NearSchema};
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum VersionedVerification {
-    /// V1: Original verification format (current version)
+    /// V1: Original verification format
     V1(VerificationV1),
-    // Future versions append here:
-    // V2(VerificationV2),  // 0x01 - example: adds new field
+    /// V2: Adds nationality_disclosed field
+    V2(VerificationV2),
 }
 
 /// Current verification version number.
-/// Update this when adding new versions.
-pub const CURRENT_VERIFICATION_VERSION: u8 = 1;
+pub const CURRENT_VERIFICATION_VERSION: u8 = 2;
 
 impl VersionedVerification {
-    /// Create a new versioned verification using the current version (V1).
+    /// Create a new versioned verification using the current version (V2).
     pub fn new(v: Verification) -> Self {
-        Self::V1(v)
+        Self::V2(v)
     }
 
     /// Convert to current Verification format.
     /// This performs lazy migration from older versions.
     pub fn into_current(self) -> Verification {
         match self {
-            Self::V1(v) => v,
-            // Future versions: migrate to current
-            // Self::V2(v) => v,
+            Self::V1(v) => VerificationV2 {
+                nullifier: v.nullifier,
+                near_account_id: v.near_account_id,
+                attestation_id: v.attestation_id,
+                verified_at: v.verified_at,
+                self_proof: v.self_proof,
+                user_context_data: v.user_context_data,
+                nationality_disclosed: false, // Default for migrated V1 records
+            },
+            Self::V2(v) => v,
         }
     }
 
     /// Get a reference as current Verification (cloning if migration needed).
     pub fn as_current(&self) -> Verification {
         match self {
-            Self::V1(v) => v.clone(),
-            // Future versions: migrate to current
-            // Self::V2(v) => v.clone(),
+            Self::V1(v) => VerificationV2 {
+                nullifier: v.nullifier.clone(),
+                near_account_id: v.near_account_id.clone(),
+                attestation_id: v.attestation_id.clone(),
+                verified_at: v.verified_at,
+                self_proof: v.self_proof.clone(),
+                user_context_data: v.user_context_data.clone(),
+                nationality_disclosed: false,
+            },
+            Self::V2(v) => v.clone(),
         }
     }
 
-    /// Check if this is the current version (V1).
+    /// Check if this is the current version (V2).
     pub fn is_current(&self) -> bool {
-        matches!(self, Self::V1(_))
+        matches!(self, Self::V2(_))
     }
 
     /// Get the version number of this record.
     pub fn version(&self) -> u8 {
         match self {
             Self::V1(_) => 1,
-            // Self::V2(_) => 2,
+            Self::V2(_) => 2,
         }
     }
 }
 
 impl From<Verification> for VersionedVerification {
     fn from(v: Verification) -> Self {
-        Self::V1(v)
+        Self::V2(v)
     }
 }
 
@@ -217,15 +230,46 @@ pub struct VerificationV1 {
     pub user_context_data: String,
 }
 
-/// Type alias for the current verification version.
+/// V2: Adds nationality_disclosed field.
 ///
-/// Use this in application code for clarity. When the current version changes,
-/// update this alias to point to the new struct (along with migration logic
-/// in `VersionedVerification::into_current()`).
-pub type Verification = VerificationV1;
+/// This version adds support for tracking whether nationality was disclosed
+/// during verification.
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct VerificationV2 {
+    /// Unique nullifier from the ZK proof (prevents duplicate passport use)
+    pub nullifier: String,
+    /// The NEAR account that was verified
+    pub near_account_id: AccountId,
+    /// Attestation ID from the identity provider
+    pub attestation_id: String,
+    /// Unix timestamp (nanoseconds) when verification was recorded
+    pub verified_at: u64,
+    /// Self.xyz ZK proof data (for re-verification)
+    pub self_proof: SelfProofData,
+    /// Additional context data from verification flow
+    pub user_context_data: String,
+    /// Whether nationality was disclosed during verification
+    pub nationality_disclosed: bool,
+}
+
+/// Type alias for the current verification version (V2).
+pub type Verification = VerificationV2;
 
 impl From<&VerificationV1> for VerificationSummary {
     fn from(v: &VerificationV1) -> Self {
+        Self {
+            nullifier: v.nullifier.clone(),
+            near_account_id: v.near_account_id.clone(),
+            attestation_id: v.attestation_id.clone(),
+            verified_at: v.verified_at,
+        }
+    }
+}
+
+impl From<&VerificationV2> for VerificationSummary {
+    fn from(v: &VerificationV2) -> Self {
         Self {
             nullifier: v.nullifier.clone(),
             near_account_id: v.near_account_id.clone(),
@@ -239,8 +283,7 @@ impl From<&VersionedVerification> for VerificationSummary {
     fn from(v: &VersionedVerification) -> Self {
         match v {
             VersionedVerification::V1(v) => Self::from(v),
-            // Future versions: add conversion here
-            // VersionedVerification::V2(v) => Self::from(v),
+            VersionedVerification::V2(v) => Self::from(v),
         }
     }
 }

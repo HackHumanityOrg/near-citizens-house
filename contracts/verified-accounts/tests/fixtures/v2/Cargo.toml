@@ -1,0 +1,31 @@
+[package]
+name = "verified-accounts-v2-fixture"
+version = "2.0.0"
+edition = "2021"
+description = "V2 fixture for upgrade testing - adds nationality_disclosed and upgrade_timestamp"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { version = "5.20", features = ["legacy"] }
+borsh = "1.6"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+perf = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

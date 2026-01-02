@@ -169,15 +169,15 @@ fn emit_event<T: Serialize>(event_name: &str, data: &T) {
 #[derive(PanicOnDefault)]
 #[near(contract_state)]
 pub enum VersionedContract {
-    /// V1: Original contract state (current production version)
+    /// V1: Original contract state
     V1(ContractV1),
-    // Future versions append here:
-    // V2(ContractV2),  // 0x01 - example: adds rate limiting
+    /// V2: Adds upgrade_timestamp field
+    V2(ContractV2),
 }
 
-/// Contract state version 1 (current production).
+/// Contract state version 1.
 ///
-/// When adding fields, create `ContractV2` instead of modifying this struct.
+/// Do NOT modify this struct - create new versions instead.
 #[near]
 pub struct ContractV1 {
     /// Account authorized to write to this contract
@@ -192,20 +192,51 @@ pub struct ContractV1 {
     pub paused: bool,
 }
 
-/// Type alias for the current contract version.
-/// Update this when changing the current production version.
-pub type Contract = ContractV1;
+/// Contract state version 2 - adds upgrade_timestamp.
+#[near]
+pub struct ContractV2 {
+    /// Account authorized to write to this contract
+    pub backend_wallet: AccountId,
+    /// Set of used nullifiers
+    pub nullifiers: LookupSet<String>,
+    /// Map of NEAR accounts to their verification records (versioned format)
+    pub verifications: UnorderedMap<AccountId, VersionedVerification>,
+    /// Set of used signatures
+    pub used_signatures: LookupSet<[u8; 64]>,
+    /// Whether the contract is paused
+    pub paused: bool,
+    /// Timestamp when contract was upgraded from V1 to V2
+    pub upgrade_timestamp: u64,
+}
+
+/// Type alias for the current contract version (V2).
+pub type Contract = ContractV2;
 
 impl VersionedContract {
-    /// Get mutable reference to current contract version, upgrading if necessary.
+    /// Get mutable reference to current contract version.
     ///
-    /// This method handles lazy migration from older versions to the current version.
-    /// When adding V2, this would migrate V1 -> V2 on first write.
+    /// Note: V1 state is accessed directly without migration. Use migrate() for
+    /// explicit V1 -> V2 migration after contract code upgrade.
     fn contract_mut(&mut self) -> &mut Contract {
         match self {
-            Self::V1(contract) => contract,
-            // Future versions: migrate to current
-            // Self::V2(contract) => contract,
+            Self::V1(v1) => {
+                // Lazy migration on first mutable access
+                // Move collections to V2, preserving their data (same storage keys)
+                let v2 = ContractV2 {
+                    backend_wallet: v1.backend_wallet.clone(),
+                    nullifiers: std::mem::replace(&mut v1.nullifiers, LookupSet::new(StorageKey::Nullifiers)),
+                    verifications: std::mem::replace(&mut v1.verifications, UnorderedMap::new(StorageKey::Accounts)),
+                    used_signatures: std::mem::replace(&mut v1.used_signatures, LookupSet::new(StorageKey::UsedSignatures)),
+                    paused: v1.paused,
+                    upgrade_timestamp: env::block_timestamp(),
+                };
+                *self = Self::V2(v2);
+                match self {
+                    Self::V2(c) => c,
+                    _ => unreachable!(),
+                }
+            }
+            Self::V2(contract) => contract,
         }
     }
 
@@ -217,7 +248,7 @@ impl VersionedContract {
     fn verifications(&self) -> &UnorderedMap<AccountId, VersionedVerification> {
         match self {
             Self::V1(c) => &c.verifications,
-            // Self::V2(c) => &c.verifications,
+            Self::V2(c) => &c.verifications,
         }
     }
 
@@ -225,7 +256,7 @@ impl VersionedContract {
     fn backend_wallet(&self) -> &AccountId {
         match self {
             Self::V1(c) => &c.backend_wallet,
-            // Self::V2(c) => &c.backend_wallet,
+            Self::V2(c) => &c.backend_wallet,
         }
     }
 
@@ -233,7 +264,15 @@ impl VersionedContract {
     fn paused(&self) -> bool {
         match self {
             Self::V1(c) => c.paused,
-            // Self::V2(c) => c.paused,
+            Self::V2(c) => c.paused,
+        }
+    }
+
+    /// Get upgrade timestamp (V2+ only)
+    fn upgrade_timestamp(&self) -> Option<u64> {
+        match self {
+            Self::V1(_) => None,
+            Self::V2(c) => Some(c.upgrade_timestamp),
         }
     }
 }
@@ -269,21 +308,17 @@ impl VersionedContract {
     ///
     /// ## Example Usage
     ///
-    /// Deploy new contract code with migrate as init function:
+    /// After deploying new contract code:
     /// ```bash
-    /// cargo near deploy build-non-reproducible-wasm CONTRACT_ID.testnet \
-    ///   with-init-call migrate json-args '{}' \
-    ///   prepaid-gas '300 Tgas' attached-deposit '0 NEAR' \
-    ///   network-config testnet sign-with-keychain send
+    /// near contract call-function as-transaction CONTRACT_ID migrate \
+    ///   json-args '{}' prepaid-gas '300 Tgas' attached-deposit '0 NEAR' \
+    ///   sign-as BACKEND_WALLET network-config testnet sign-with-keychain send
     /// ```
     ///
     /// ## Security
     ///
-    /// The `#[private]` attribute ensures only the contract account itself can call
-    /// this method (predecessor == current_account). This is satisfied during deploy
-    /// when using `--initFunction migrate`. The `#[init(ignore_state)]` attribute
-    /// allows reading the old state format before the new code's state structure
-    /// is applied.
+    /// Only the backend wallet can call this method. The 1 yoctoNEAR deposit
+    /// requirement prevents accidental calls.
     #[init(ignore_state)]
     #[private]
     pub fn migrate() -> Self {
@@ -291,27 +326,18 @@ impl VersionedContract {
         let old_state: VersionedContract =
             env::state_read().unwrap_or_else(|| env::panic_str("No state to migrate"));
 
-        // Currently no migration needed - just return the existing state.
-        // When adding V2, this would transform V1 -> V2:
-        //
-        // match old_state {
-        //     VersionedContract::V1(v1) => {
-        //         // Clean up any orphan keys if needed
-        //         // old_collection.clear();
-        //
-        //         VersionedContract::V2(ContractV2 {
-        //             backend_wallet: v1.backend_wallet,
-        //             nullifiers: v1.nullifiers,
-        //             verifications: v1.verifications,
-        //             used_signatures: v1.used_signatures,
-        //             paused: v1.paused,
-        //             new_field: default_value,
-        //         })
-        //     }
-        //     VersionedContract::V2(v2) => VersionedContract::V2(v2),
-        // }
-
-        old_state
+        // Migrate V1 to V2
+        match old_state {
+            VersionedContract::V1(v1) => VersionedContract::V2(ContractV2 {
+                backend_wallet: v1.backend_wallet,
+                nullifiers: v1.nullifiers,
+                verifications: v1.verifications,
+                used_signatures: v1.used_signatures,
+                paused: v1.paused,
+                upgrade_timestamp: env::block_timestamp(),
+            }),
+            VersionedContract::V2(v2) => VersionedContract::V2(v2),
+        }
     }
 
     /// Update the backend wallet address (only callable by backend wallet)
@@ -390,6 +416,7 @@ impl VersionedContract {
         signature_data: NearSignatureData,
         self_proof: SelfProofData,
         user_context_data: String,
+        nationality_disclosed: bool,
     ) {
         assert_one_yocto();
 
@@ -501,7 +528,7 @@ impl VersionedContract {
             "NEAR account already verified"
         );
 
-        // Create verification record (always use current version)
+        // Create verification record (always use current version - V2)
         let verification = Verification {
             nullifier: nullifier.clone(),
             near_account_id: near_account_id.clone(),
@@ -509,6 +536,7 @@ impl VersionedContract {
             verified_at: env::block_timestamp(),
             self_proof,
             user_context_data,
+            nationality_disclosed,
         };
 
         // Store verification and tracking data
@@ -701,7 +729,24 @@ impl VersionedContract {
     pub fn get_state_version(&self) -> u8 {
         match self {
             Self::V1(_) => 1,
-            // Self::V2(_) => 2,
+            Self::V2(_) => 2,
         }
+    }
+
+    // ==================== V2 View Methods ====================
+
+    /// Get nationality_disclosed for an account (V2 feature)
+    /// Returns None if account is not verified
+    pub fn get_nationality_disclosed(&self, account_id: AccountId) -> Option<bool> {
+        self.verifications()
+            .get(&account_id)
+            .map(|v| v.into_current().nationality_disclosed)
+    }
+
+    /// Get upgrade timestamp (V2 feature)
+    /// Returns the timestamp when contract was upgraded from V1 to V2
+    /// Returns None if contract is still V1
+    pub fn get_upgrade_timestamp(&self) -> Option<u64> {
+        self.upgrade_timestamp()
     }
 }
