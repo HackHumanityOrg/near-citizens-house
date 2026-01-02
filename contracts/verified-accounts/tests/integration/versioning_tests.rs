@@ -1156,3 +1156,182 @@ async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// ==================== Migrate Function Tests ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "migrate", "v1-to-v2")]
+#[allure_description(
+    "Migrate function test: Explicitly call migrate() after upgrading to V2. \
+     This tests the #[init(ignore_state)] + #[private] migration pattern. \
+     The migrate() function should read the existing V1 state and return it (no transformation in current version)."
+)]
+#[allure_test]
+#[tokio::test]
+async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
+    // Step 1: Deploy V1 and store verifications
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("migrate-fn-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    assert!(
+        deploy_result.details.is_success(),
+        "V1 deploy failed: {:?}",
+        deploy_result.details.failures()
+    );
+    let contract = deploy_result.result;
+
+    // Initialize V1
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store verification with V1
+    let user = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user, "migrate_fn_test_nullifier").await?;
+
+    // Pause the contract to test state preservation
+    backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    // Verify V1 state
+    let v1_state_version: u8 = contract.view("get_state_version").await?.json()?;
+    let v1_paused: bool = contract.view("is_paused").await?.json()?;
+    let v1_count: u64 = contract.view("get_verified_count").await?.json()?;
+
+    step("Verify V1 state before migrate", || {
+        assert_eq!(v1_state_version, 1, "Should be state version 1");
+        assert!(v1_paused, "Contract should be paused");
+        assert_eq!(v1_count, 1, "Should have 1 verification");
+    });
+
+    // Step 2: Deploy V2 and call migrate()
+    let v2_wasm = load_v2_wasm();
+    let upgrade_result = contract_account.deploy(&v2_wasm).await?;
+    assert!(
+        upgrade_result.details.is_success(),
+        "V2 deploy failed: {:?}",
+        upgrade_result.details.failures()
+    );
+
+    // Call migrate() - must be called by contract account itself (#[private])
+    // This simulates `near deploy ... --initFunction migrate`
+    let migrate_result = contract_account
+        .call(contract.id(), "migrate")
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    step("Verify migrate() succeeds", || {
+        assert!(
+            migrate_result.is_success(),
+            "migrate() failed: {:?}",
+            migrate_result.failures()
+        );
+    });
+
+    // Step 3: Verify state is preserved after migrate
+    let v2_count: u64 = contract.view("get_verified_count").await?.json()?;
+    let v2_paused: bool = contract.view("is_paused").await?.json()?;
+    let v2_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
+
+    step("Verify state preserved after migrate", || {
+        assert_eq!(v2_count, 1, "Should still have 1 verification");
+        assert!(v2_paused, "Contract should still be paused");
+        assert_eq!(v2_backend, *backend.id(), "backend_wallet should be preserved");
+    });
+
+    // Verify verification data is accessible
+    let summary: Option<VerificationSummary> = contract
+        .view("get_verification")
+        .args_json(json!({"account_id": user.id()}))
+        .await?
+        .json()?;
+
+    step("Verify verification data accessible after migrate", || {
+        assert!(summary.is_some(), "Verification should be retrievable");
+        let s = summary.expect("checked");
+        assert_eq!(s.nullifier, "migrate_fn_test_nullifier");
+        assert_eq!(s.near_account_id, *user.id());
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "versioning", "migrate", "error")]
+#[allure_description(
+    "Migrate function test: migrate() should fail if called by non-contract account. \
+     The #[private] attribute ensures only the contract account can call migrate()."
+)]
+#[allure_test]
+#[tokio::test]
+async fn test_migrate_fails_when_called_by_non_contract_account() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("migrate-auth-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Deploy V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Try to call migrate() from backend account (not contract account) - should fail
+    let result = backend
+        .call(contract.id(), "migrate")
+        .gas(Gas::from_tgas(50))
+        .transact()
+        .await?;
+
+    step("Verify migrate() fails when called by non-contract account", || {
+        assert!(
+            result.is_failure(),
+            "migrate() should fail when called by non-contract account"
+        );
+        let failure_msg = format!("{:?}", result.failures());
+        // #[private] methods fail with "Method migrate is private"
+        assert!(
+            failure_msg.contains("private") || failure_msg.contains("Predecessor"),
+            "Error should mention private/predecessor, got: {}",
+            failure_msg
+        );
+    });
+
+    Ok(())
+}

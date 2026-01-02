@@ -54,3 +54,6 @@ mod interface_serialization_tests;
 
 #[path = "unit/interface_validation_tests.rs"]
 mod interface_validation_tests;
+
+#[path = "unit/storage_stability_tests.rs"]
+mod storage_stability_tests;
