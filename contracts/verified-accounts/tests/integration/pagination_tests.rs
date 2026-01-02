@@ -58,8 +58,8 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
     });
 
     // Request more than 100 items - should be capped at 100
-    let accounts: Vec<serde_json::Value> = contract
-        .view("get_verified_accounts")
+    let verifications: Vec<serde_json::Value> = contract
+        .view("list_verifications")
         .args_json(json!({"from_index": 0, "limit": 200}))
         .await?
         .json()?;
@@ -67,7 +67,7 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
     step("Verify pagination is capped at 100 items", || {
         // The contract should cap limit at 100 internally
         assert_eq!(
-            accounts.len(),
+            verifications.len(),
             100,
             "Pagination should cap at 100 items even when requesting 200"
         );
@@ -75,13 +75,13 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
 
     // Verify we can get the remaining 5 accounts
     let remaining: Vec<serde_json::Value> = contract
-        .view("get_verified_accounts")
+        .view("list_verifications")
         .args_json(json!({"from_index": 100, "limit": 10}))
         .await?
         .json()?;
 
-    step("Verify remaining 5 accounts can be fetched", || {
-        assert_eq!(remaining.len(), 5, "Should get remaining 5 accounts");
+    step("Verify remaining 5 verifications can be fetched", || {
+        assert_eq!(remaining.len(), 5, "Should get remaining 5 verifications");
     });
 
     Ok(())
@@ -101,14 +101,14 @@ async fn test_pagination_from_index_beyond_data() -> anyhow::Result<()> {
     let (_worker, contract, _backend) = init().await?;
 
     // Request from index beyond existing data
-    let accounts: Vec<serde_json::Value> = contract
-        .view("get_verified_accounts")
+    let verifications: Vec<serde_json::Value> = contract
+        .view("list_verifications")
         .args_json(json!({"from_index": 1000, "limit": 10}))
         .await?
         .json()?;
 
     step("Verify empty result when from_index is beyond data", || {
-        assert_eq!(accounts.len(), 0);
+        assert_eq!(verifications.len(), 0);
     });
 
     Ok(())

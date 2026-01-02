@@ -7,10 +7,10 @@ import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
 import { NEAR_CONFIG } from "@near-citizens/shared"
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
-import type { VerifiedAccountWithStatus } from "@/app/citizens/actions"
+import type { VerificationWithStatus } from "@/app/citizens/actions"
 
 interface Props {
-  accounts: VerifiedAccountWithStatus[]
+  accounts: VerificationWithStatus[]
   total: number
   page: number
   pageSize: number
@@ -46,20 +46,20 @@ function getAttestationType(id: string): string {
   return types[id] || `Type ${id}`
 }
 
-export function VerifiedAccountsTable({ accounts, total, page, pageSize: _pageSize, totalPages }: Props) {
+export function VerificationsTable({ accounts, total, page, pageSize: _pageSize, totalPages }: Props) {
   const analytics = useAnalytics()
-  const [selectedAccount, setSelectedAccount] = useState<VerifiedAccountWithStatus | null>(null)
+  const [selectedAccount, setSelectedAccount] = useState<VerificationWithStatus | null>(null)
   const trackedPageRef = useRef<number | null>(null)
 
   // Track page view
   useEffect(() => {
     if (trackedPageRef.current !== page) {
-      analytics.trackVerifiedAccountsViewed(page)
+      analytics.trackVerificationsViewed(page)
       trackedPageRef.current = page
     }
   }, [page, analytics])
 
-  const handleViewDetails = (account: VerifiedAccountWithStatus) => {
+  const handleViewDetails = (account: VerificationWithStatus) => {
     analytics.trackAccountDetailsViewed(account.account.nearAccountId)
     setSelectedAccount(account)
   }

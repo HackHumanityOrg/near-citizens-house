@@ -7,7 +7,7 @@ use super::helpers::{
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::{Contract, NearSignatureData, SelfProofData, VerifiedAccount, ZkProof};
+use verified_accounts::{Contract, NearSignatureData, SelfProofData, Verification, ZkProof};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -294,9 +294,9 @@ fn test_public_signals_at_max_length_allowed() {
     });
 
     step("Verify account data is stored correctly", || {
-        let account: VerifiedAccount = contract.get_account_with_proof(user.clone()).unwrap();
-        assert_eq!(account.near_account_id, user);
-        assert_eq!(account.self_proof.public_signals.len(), 21);
+        let verification: Verification = contract.get_full_verification(user.clone()).unwrap();
+        assert_eq!(verification.near_account_id, user);
+        assert_eq!(verification.self_proof.public_signals.len(), 21);
     });
 }
 
@@ -335,8 +335,8 @@ fn test_public_signals_under_max_allowed() {
     });
 
     step("Verify proof has 3 public signals", || {
-        let account: VerifiedAccount = contract.get_account_with_proof(user.clone()).unwrap();
-        assert_eq!(account.self_proof.public_signals.len(), 3);
+        let verification: Verification = contract.get_full_verification(user.clone()).unwrap();
+        assert_eq!(verification.self_proof.public_signals.len(), 3);
     });
 }
 
@@ -387,7 +387,7 @@ fn test_proof_components_at_max_length_allowed() {
     });
 
     step("Verify account is verified", || {
-        assert!(contract.is_account_verified(user));
+        assert!(contract.is_verified(user));
     });
 }
 

@@ -456,8 +456,8 @@ pub async fn is_user_verified(
     user: &Account,
 ) -> anyhow::Result<bool> {
     Ok(verified_accounts
-        .view("is_account_verified")
-        .args_json(json!({ "near_account_id": user.id() }))
+        .view("is_verified")
+        .args_json(json!({ "account_id": user.id() }))
         .await?
         .json()?)
 }

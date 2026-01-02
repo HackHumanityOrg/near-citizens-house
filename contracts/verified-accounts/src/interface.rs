@@ -20,7 +20,7 @@
 //!     pub fn do_verified_action(&mut self) -> Promise {
 //!         ext_verified_accounts::ext(self.verification_contract.clone())
 //!             .with_static_gas(Gas::from_tgas(5))
-//!             .is_account_verified(env::predecessor_account_id())
+//!             .is_verified(env::predecessor_account_id())
 //!             .then(
 //!                 Self::ext(env::current_account_id())
 //!                     .with_static_gas(Gas::from_tgas(10))
@@ -70,7 +70,7 @@ pub struct SelfProofData {
     pub public_signals: Vec<String>,
 }
 
-/// Standard verification info (no proof data).
+/// Lightweight verification summary (no proof data).
 ///
 /// This is the most commonly used return type for cross-contract calls.
 /// It includes all essential verification data without the large ZK proof,
@@ -78,7 +78,7 @@ pub struct SelfProofData {
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
-pub struct VerifiedAccountInfo {
+pub struct VerificationSummary {
     /// Unique nullifier from the ZK proof (prevents duplicate passport use)
     pub nullifier: String,
     /// The NEAR account that was verified
@@ -92,11 +92,11 @@ pub struct VerifiedAccountInfo {
 /// Full verification record including ZK proof.
 ///
 /// Only use this when you need the actual proof data for re-verification.
-/// Most cross-contract calls should use `get_account()` instead to save gas.
+/// Most cross-contract calls should use `get_verification()` instead to save gas.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
-pub struct VerifiedAccount {
+pub struct Verification {
     /// Unique nullifier from the ZK proof (prevents duplicate passport use)
     pub nullifier: String,
     /// The NEAR account that was verified
@@ -109,6 +109,17 @@ pub struct VerifiedAccount {
     pub self_proof: SelfProofData,
     /// Additional context data from verification flow
     pub user_context_data: String,
+}
+
+impl From<&Verification> for VerificationSummary {
+    fn from(v: &Verification) -> Self {
+        Self {
+            nullifier: v.nullifier.clone(),
+            near_account_id: v.near_account_id.clone(),
+            attestation_id: v.attestation_id.clone(),
+            verified_at: v.verified_at,
+        }
+    }
 }
 
 // ==================== Interface Trait ====================
@@ -132,11 +143,11 @@ pub struct VerifiedAccount {
 ///
 /// | Method | Recommended Gas |
 /// |--------|-----------------|
-/// | `is_account_verified` | 5 TGas |
-/// | `get_account` | 8 TGas |
-/// | `get_account_with_proof` | 15 TGas |
-/// | `are_accounts_verified(10)` | 8 TGas |
-/// | `get_accounts(10)` | 12 TGas |
+/// | `is_verified` | 5 TGas |
+/// | `get_verification` | 8 TGas |
+/// | `get_full_verification` | 15 TGas |
+/// | `are_verified(10)` | 8 TGas |
+/// | `get_verifications(10)` | 12 TGas |
 /// | Callback overhead | 5 TGas |
 #[ext_contract(ext_verified_accounts)]
 pub trait VerifiedAccountsInterface {
@@ -146,24 +157,24 @@ pub trait VerifiedAccountsInterface {
     ///
     /// **Use this for:** Gate checks, access control, DAO voting eligibility.
     /// This is the most gas-efficient method.
-    fn is_account_verified(&self, near_account_id: AccountId) -> bool;
+    fn is_verified(&self, account_id: AccountId) -> bool;
 
-    /// Get account verification info (without ZK proof).
+    /// Get verification summary (without ZK proof).
     ///
     /// **Use this for:** Most cross-contract calls that need verification details.
     /// Returns all essential data (nullifier, attestation_id, timestamp)
     /// without the large ZK proof, keeping gas costs low.
     ///
     /// Returns `None` if the account is not verified.
-    fn get_account(&self, near_account_id: AccountId) -> Option<VerifiedAccountInfo>;
+    fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary>;
 
-    /// Get full account data including ZK proof.
+    /// Get full verification record including ZK proof.
     ///
     /// **Use this for:** Re-verification, audit trails, proof validation.
     /// This is the most expensive method due to large proof data (~2.5 KB).
     ///
     /// Returns `None` if the account is not verified.
-    fn get_account_with_proof(&self, near_account_id: AccountId) -> Option<VerifiedAccount>;
+    fn get_full_verification(&self, account_id: AccountId) -> Option<Verification>;
 
     // ==================== Batch Queries (for DAO voting, etc.) ====================
 
@@ -175,17 +186,17 @@ pub trait VerifiedAccountsInterface {
     /// **Use this for:** Batch eligibility checks in DAO voting.
     ///
     /// Note: Large batches may exceed gas limits. Recommended max: 100 accounts.
-    fn are_accounts_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool>;
+    fn are_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool>;
 
-    /// Get verification info for multiple accounts (without ZK proofs).
+    /// Get verification summaries for multiple accounts (without ZK proofs).
     ///
-    /// Returns `Vec<Option<VerifiedAccountInfo>>` in the same order as input.
+    /// Returns `Vec<Option<VerificationSummary>>` in the same order as input.
     /// Each element is `None` if that account is not verified.
     ///
     /// **Use this for:** Batch queries that need verification details.
     ///
     /// Note: Large batches may exceed gas limits. Recommended max: 100 accounts.
-    fn get_accounts(&self, account_ids: Vec<AccountId>) -> Vec<Option<VerifiedAccountInfo>>;
+    fn get_verifications(&self, account_ids: Vec<AccountId>) -> Vec<Option<VerificationSummary>>;
 
     // ==================== Metadata ====================
 

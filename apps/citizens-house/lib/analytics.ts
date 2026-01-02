@@ -89,9 +89,9 @@ export function useAnalytics() {
   )
 
   // Engagement events
-  const trackVerifiedAccountsViewed = useCallback(
+  const trackVerificationsViewed = useCallback(
     (pageNumber: number) => {
-      posthog?.capture("verified_accounts_viewed", { page_number: pageNumber })
+      posthog?.capture("verifications_viewed", { page_number: pageNumber })
     },
     [posthog],
   )
@@ -139,7 +139,7 @@ export function useAnalytics() {
     trackVerificationCompleted,
     trackVerificationFailed,
     // Engagement events
-    trackVerifiedAccountsViewed,
+    trackVerificationsViewed,
     trackAccountDetailsViewed,
     trackSignatureVerificationOpened,
     trackZkProofDownloaded,

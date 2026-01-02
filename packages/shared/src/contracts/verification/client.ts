@@ -14,18 +14,21 @@ import type { FailoverRpcProvider } from "@near-js/providers"
 import { KeyPairSigner } from "@near-js/signers"
 import { actionCreators } from "@near-js/transactions"
 import {
-  contractVerifiedAccountSchema,
-  type ContractVerifiedAccount,
+  contractVerificationSchema,
+  contractVerificationSummarySchema,
+  type ContractVerification,
+  type ContractVerificationSummary,
   type ContractSelfProofInput,
   type ContractSignatureInput,
   type IVerificationDatabase,
   type VerificationDataWithSignature,
-  type VerifiedAccount,
+  type Verification,
+  type VerificationSummary,
 } from "./types"
 import { NEAR_CONFIG } from "../../config"
 import { createFailoverProvider } from "../../rpc"
 
-export type { IVerificationDatabase, VerificationDataWithSignature, VerifiedAccount }
+export type { IVerificationDatabase, VerificationDataWithSignature, Verification, VerificationSummary }
 
 export class NearContractDatabase implements IVerificationDatabase {
   private account: Account | null = null
@@ -76,12 +79,12 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  async isAccountVerified(nearAccountId: string): Promise<boolean> {
+  async isVerified(nearAccountId: string): Promise<boolean> {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<boolean>(this.contractId, "is_account_verified", {
-        near_account_id: nearAccountId,
+      const result = await this.provider!.callFunction<boolean>(this.contractId, "is_verified", {
+        account_id: nearAccountId,
       })
 
       return result ?? false
@@ -158,15 +161,15 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  async getVerifiedAccount(nearAccountId: string): Promise<VerifiedAccount | null> {
+  async getVerification(nearAccountId: string): Promise<VerificationSummary | null> {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<ContractVerifiedAccount>(
+      const result = await this.provider!.callFunction<ContractVerificationSummary>(
         this.contractId,
-        "get_account_with_proof",
+        "get_verification",
         {
-          near_account_id: nearAccountId,
+          account_id: nearAccountId,
         },
       )
 
@@ -176,69 +179,58 @@ export class NearContractDatabase implements IVerificationDatabase {
 
       // Validate and transform contract response using Zod schema
       // Automatically converts snake_case to camelCase and nanoseconds to milliseconds
-      return contractVerifiedAccountSchema.parse(result)
+      return contractVerificationSummarySchema.parse(result)
     } catch (error) {
-      console.error("[NearContractDB] Error getting verified account:", error)
+      console.error("[NearContractDB] Error getting verification:", error)
       // Return null for not found instead of throwing
       return null
     }
   }
 
-  async getAllVerifiedAccounts(): Promise<VerifiedAccount[]> {
+  async getFullVerification(nearAccountId: string): Promise<Verification | null> {
     await this.ensureInitialized()
 
     try {
-      const count = await this.provider!.callFunction<number>(this.contractId, "get_verified_count", {})
+      const result = await this.provider!.callFunction<ContractVerification>(this.contractId, "get_full_verification", {
+        account_id: nearAccountId,
+      })
 
-      // Fetch all accounts using pagination (100 at a time)
-      const allAccounts: VerifiedAccount[] = []
-      const pageSize = 100
-
-      for (let i = 0; i < (count ?? 0); i += pageSize) {
-        const page = await this.provider!.callFunction<ContractVerifiedAccount[]>(
-          this.contractId,
-          "get_verified_accounts",
-          {
-            from_index: i,
-            limit: pageSize,
-          },
-        )
-
-        // Validate and transform each contract response using Zod schema
-        const accounts = (page ?? []).map((item) => contractVerifiedAccountSchema.parse(item))
-
-        allAccounts.push(...accounts)
+      if (!result) {
+        return null
       }
 
-      return allAccounts
+      // Validate and transform contract response using Zod schema
+      // Automatically converts snake_case to camelCase and nanoseconds to milliseconds
+      return contractVerificationSchema.parse(result)
     } catch (error) {
-      console.error("[NearContractDB] Error getting all verified accounts:", error)
-      return []
+      console.error("[NearContractDB] Error getting full verification:", error)
+      // Return null for not found instead of throwing
+      return null
     }
   }
 
-  // Get paginated verified accounts (uses FailoverRpcProvider for automatic failover)
-  async getVerifiedAccounts(
+  // Get paginated verifications (uses FailoverRpcProvider for automatic failover)
+  async listVerifications(
     fromIndex: number = 0,
     limit: number = 50,
-  ): Promise<{ accounts: VerifiedAccount[]; total: number }> {
+  ): Promise<{ accounts: Verification[]; total: number }> {
     await this.ensureInitialized()
 
     try {
       const [total, accounts] = await Promise.all([
         this.provider!.callFunction<number>(this.contractId, "get_verified_count", {}),
-        this.provider!.callFunction<ContractVerifiedAccount[]>(this.contractId, "get_verified_accounts", {
+        this.provider!.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
           from_index: fromIndex,
           limit: Math.min(limit, 100),
         }),
       ])
 
       // Validate and transform each contract response using Zod schema
-      const verifiedAccounts = (accounts ?? []).map((item) => contractVerifiedAccountSchema.parse(item))
+      const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
 
-      return { accounts: verifiedAccounts, total: total ?? 0 }
+      return { accounts: verifications, total: total ?? 0 }
     } catch (error) {
-      console.error("[NearContractDB] Error getting paginated accounts:", error)
+      console.error("[NearContractDB] Error getting paginated verifications:", error)
       return { accounts: [], total: 0 }
     }
   }

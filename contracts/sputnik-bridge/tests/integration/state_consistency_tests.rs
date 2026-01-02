@@ -132,8 +132,8 @@ async fn test_dao_citizens_are_verified() -> anyhow::Result<()> {
     for account_id in &citizen_accounts {
         let is_verified: bool = env
             .verified_accounts
-            .view("is_account_verified")
-            .args_json(json!({ "near_account_id": account_id }))
+            .view("is_verified")
+            .args_json(json!({ "account_id": account_id }))
             .await?
             .json()?;
 

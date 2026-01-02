@@ -19,7 +19,7 @@ import { CheckCircle2, Loader2, Shield, Wallet, FileKey, AlertCircle, LogOut } f
 import type { NearSignatureData } from "@near-citizens/shared"
 import type { VerificationStep } from "@/types/ui"
 import { CONSTANTS } from "@near-citizens/shared"
-import { isAccountVerified } from "@/app/citizens/actions"
+import { checkIsVerified } from "@/app/citizens/actions"
 
 export function IdentityVerificationFlow() {
   const { accountId, isConnected, connect, disconnect, signMessage, isLoading } = useNearWallet()
@@ -52,7 +52,7 @@ export function IdentityVerificationFlow() {
 
       setIsCheckingVerification(true)
       try {
-        const isVerified = await isAccountVerified(accountId)
+        const isVerified = await checkIsVerified(accountId)
 
         // Don't update state if effect was cancelled (e.g., user disconnected)
         if (cancelled) return

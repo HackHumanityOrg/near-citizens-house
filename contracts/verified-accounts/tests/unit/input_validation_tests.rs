@@ -107,10 +107,12 @@ fn test_recipient_mismatch() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "batch-size")]
-#[allure_description("Verifies that are_accounts_verified rejects batch queries exceeding maximum size of 100 accounts.")]
+#[allure_description(
+    "Verifies that are_verified rejects batch queries exceeding maximum size of 100 accounts."
+)]
 #[allure_test]
 #[test]
-fn test_batch_size_exceeded_are_accounts_verified() {
+fn test_batch_size_exceeded_are_verified() {
     let contract = step("Initialize contract", || {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -127,7 +129,7 @@ fn test_batch_size_exceeded_are_accounts_verified() {
     step("Attempt batch verification exceeding limit", || {
         assert_panic_with(
             || {
-                contract.are_accounts_verified(too_many_accounts);
+                contract.are_verified(too_many_accounts);
             },
             "Batch size exceeds maximum of 100 accounts",
         );
@@ -140,11 +142,11 @@ fn test_batch_size_exceeded_are_accounts_verified() {
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "batch-size")]
 #[allure_description(
-    "Verifies that get_accounts rejects batch queries exceeding maximum size of 100 accounts."
+    "Verifies that get_verifications rejects batch queries exceeding maximum size of 100 accounts."
 )]
 #[allure_test]
 #[test]
-fn test_batch_size_exceeded_get_accounts() {
+fn test_batch_size_exceeded_get_verifications() {
     let contract = step("Initialize contract", || {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -158,10 +160,10 @@ fn test_batch_size_exceeded_get_accounts() {
             .collect::<Vec<near_sdk::AccountId>>()
     });
 
-    step("Attempt batch get_accounts exceeding limit", || {
+    step("Attempt batch get_verifications exceeding limit", || {
         assert_panic_with(
             || {
-                contract.get_accounts(too_many_accounts);
+                contract.get_verifications(too_many_accounts);
             },
             "Batch size exceeds maximum of 100 accounts",
         );
@@ -344,7 +346,7 @@ fn test_nullifier_max_length_allowed() {
     });
 
     step("Verify account is verified", || {
-        assert!(contract.is_account_verified(user));
+        assert!(contract.is_verified(user));
     });
 }
 
@@ -380,7 +382,7 @@ fn test_attestation_id_single_char_allowed() {
     });
 
     step("Verify account is verified", || {
-        assert!(contract.is_account_verified(user));
+        assert!(contract.is_verified(user));
     });
 }
 
@@ -420,10 +422,10 @@ fn test_user_context_data_max_length_allowed() {
     );
 
     step("Verify account data is stored correctly", || {
-        let account = contract.get_account(user.clone()).unwrap();
-        assert_eq!(account.attestation_id, "1");
-        assert_eq!(account.near_account_id, user);
-        assert_eq!(account.nullifier, "nullifier_context");
+        let verification = contract.get_verification(user.clone()).unwrap();
+        assert_eq!(verification.attestation_id, "1");
+        assert_eq!(verification.near_account_id, user);
+        assert_eq!(verification.nullifier, "nullifier_context");
         assert_eq!(contract.get_verified_count(), 1);
     });
 }

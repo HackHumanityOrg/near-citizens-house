@@ -34,22 +34,22 @@ fn test_read_functions() {
     });
 
     step(
-        "Verify is_account_verified returns false for unknown account",
+        "Verify is_verified returns false for unknown account",
         || {
-            assert!(!contract.is_account_verified(accounts(2)));
+            assert!(!contract.is_verified(accounts(2)));
         },
     );
 
     step(
-        "Verify get_account_with_proof returns None for unknown account",
+        "Verify get_full_verification returns None for unknown account",
         || {
-            assert!(contract.get_account_with_proof(accounts(2)).is_none());
+            assert!(contract.get_full_verification(accounts(2)).is_none());
         },
     );
 
-    step("Verify get_verified_accounts returns empty list", || {
-        let accounts_list = contract.get_verified_accounts(0, 10);
-        assert_eq!(accounts_list.len(), 0);
+    step("Verify list_verifications returns empty list", || {
+        let verifications_list = contract.list_verifications(0, 10);
+        assert_eq!(verifications_list.len(), 0);
     });
 }
 
@@ -104,27 +104,27 @@ fn test_read_functions_with_verified_accounts() {
     });
 
     step("Test pagination returns correct slices", || {
-        let first_page = contract.get_verified_accounts(0, 1);
+        let first_page = contract.list_verifications(0, 1);
         assert_eq!(first_page.len(), 1);
-        let second_page = contract.get_verified_accounts(1, 10);
+        let second_page = contract.list_verifications(1, 10);
         assert_eq!(second_page.len(), 1);
-        let capped = contract.get_verified_accounts(0, 200);
+        let capped = contract.list_verifications(0, 200);
         assert_eq!(capped.len(), 2);
-        let empty_page = contract.get_verified_accounts(5, 10);
+        let empty_page = contract.list_verifications(5, 10);
         assert!(empty_page.is_empty());
     });
 
     step("Test batch verification returns correct flags", || {
-        let statuses = contract.are_accounts_verified(vec![accounts(2), accounts(3), accounts(4)]);
+        let statuses = contract.are_verified(vec![accounts(2), accounts(3), accounts(4)]);
         assert_eq!(statuses, vec![true, true, false]);
     });
 
     step(
-        "Test batch get_accounts returns Some/None correctly",
+        "Test batch get_verifications returns Some/None correctly",
         || {
-            let accounts_data = contract.get_accounts(vec![accounts(2), accounts(4)]);
-            assert!(accounts_data[0].is_some());
-            assert!(accounts_data[1].is_none());
+            let verifications_data = contract.get_verifications(vec![accounts(2), accounts(4)]);
+            assert!(verifications_data[0].is_some());
+            assert!(verifications_data[1].is_none());
         },
     );
 }
@@ -146,10 +146,10 @@ fn test_pagination_with_large_limit_on_empty() {
     });
 
     step(
-        "Call get_verified_accounts with limit > 100 on empty data",
+        "Call list_verifications with limit > 100 on empty data",
         || {
-            let accounts_list = contract.get_verified_accounts(0, 200);
-            assert_eq!(accounts_list.len(), 0);
+            let verifications_list = contract.list_verifications(0, 200);
+            assert_eq!(verifications_list.len(), 0);
         },
     );
 }

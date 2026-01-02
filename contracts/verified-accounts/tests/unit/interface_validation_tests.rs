@@ -10,11 +10,11 @@ use verified_accounts::interface::*;
 #[allure_tags("unit", "validation", "negative")]
 #[allure_test]
 #[test]
-fn test_verified_account_info_json_missing_nullifier_fails() {
+fn test_verification_summary_json_missing_nullifier_fails() {
     // JSON without required "nullifier" field should fail deserialization
     let json =
         r#"{"near_account_id":"test.near","user_id":"u","attestation_id":"1","verified_at":0}"#;
-    let result: Result<VerifiedAccountInfo, _> = near_sdk::serde_json::from_str(json);
+    let result: Result<VerificationSummary, _> = near_sdk::serde_json::from_str(json);
     assert!(
         result.is_err(),
         "Deserialization should fail when nullifier is missing"

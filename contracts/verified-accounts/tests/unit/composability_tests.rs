@@ -32,10 +32,10 @@ fn test_interface_version() {
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "query")]
-#[allure_description("Verifies that get_account returns None for non-existent accounts.")]
+#[allure_description("Verifies that get_verification returns None for non-existent accounts.")]
 #[allure_test]
 #[test]
-fn test_get_account_empty() {
+fn test_get_verification_empty() {
     let contract = step("Initialize contract", || {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -46,7 +46,7 @@ fn test_get_account_empty() {
     step(
         "Query non-existent account and verify None returned",
         || {
-            let info = contract.get_account(accounts(2));
+            let info = contract.get_verification(accounts(2));
             assert!(info.is_none());
         },
     );
@@ -62,7 +62,7 @@ fn test_get_account_empty() {
 )]
 #[allure_test]
 #[test]
-fn test_are_accounts_verified_empty() {
+fn test_are_verified_empty() {
     let contract = step("Initialize contract", || {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -73,8 +73,7 @@ fn test_are_accounts_verified_empty() {
     step(
         "Batch check verification status for non-verified accounts",
         || {
-            let results =
-                contract.are_accounts_verified(vec![accounts(2), accounts(3), accounts(4)]);
+            let results = contract.are_verified(vec![accounts(2), accounts(3), accounts(4)]);
             assert_eq!(results.len(), 3);
             assert!(!results[0]);
             assert!(!results[1]);
@@ -89,11 +88,11 @@ fn test_are_accounts_verified_empty() {
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "batch")]
 #[allure_description(
-    "Verifies that batch get_accounts returns None for all non-existent accounts."
+    "Verifies that batch get_verifications returns None for all non-existent accounts."
 )]
 #[allure_test]
 #[test]
-fn test_get_accounts_empty() {
+fn test_get_verifications_empty() {
     let contract = step("Initialize contract", || {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -101,8 +100,8 @@ fn test_get_accounts_empty() {
         Contract::new(backend)
     });
 
-    step("Batch get accounts and verify all return None", || {
-        let results = contract.get_accounts(vec![accounts(2), accounts(3), accounts(4)]);
+    step("Batch get verifications and verify all return None", || {
+        let results = contract.get_verifications(vec![accounts(2), accounts(3), accounts(4)]);
         assert_eq!(results.len(), 3);
         assert!(results[0].is_none());
         assert!(results[1].is_none());
@@ -118,7 +117,7 @@ fn test_get_accounts_empty() {
 #[allure_description("Verifies that batch verification handles empty input array correctly.")]
 #[allure_test]
 #[test]
-fn test_are_accounts_verified_empty_input() {
+fn test_are_verified_empty_input() {
     let contract = step("Initialize contract", || {
         let backend = accounts(1);
         let context = get_context(backend.clone());
@@ -126,8 +125,8 @@ fn test_are_accounts_verified_empty_input() {
         Contract::new(backend)
     });
 
-    step("Call are_accounts_verified with empty array", || {
-        let results = contract.are_accounts_verified(vec![]);
+    step("Call are_verified with empty array", || {
+        let results = contract.are_verified(vec![]);
         assert!(results.is_empty());
     });
 }

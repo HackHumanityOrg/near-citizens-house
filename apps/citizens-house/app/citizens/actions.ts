@@ -10,7 +10,7 @@ import {
   verifyNearSignature,
   buildProofData,
   nearAccountIdSchema,
-  type VerifiedAccount,
+  type Verification,
   type ProofData,
 } from "@near-citizens/shared"
 
@@ -25,14 +25,14 @@ export type VerificationResult = {
   error?: string
 }
 
-export type VerifiedAccountWithStatus = {
-  account: VerifiedAccount
+export type VerificationWithStatus = {
+  account: Verification
   verification: VerificationResult
   proofData: ProofData | null
 }
 
-export type GetVerifiedAccountsResult = {
-  accounts: VerifiedAccountWithStatus[]
+export type GetVerificationsResult = {
+  accounts: VerificationWithStatus[]
   total: number
 }
 
@@ -40,15 +40,15 @@ export type GetVerifiedAccountsResult = {
  * Core data fetching logic - separated for caching.
  * Fetches accounts from NEAR contract and verifies each one.
  */
-async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise<GetVerifiedAccountsResult> {
+async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Promise<GetVerificationsResult> {
   const nearDb = verificationDb as NearContractDatabase
 
   // Get paginated accounts from NEAR contract
-  const { accounts, total } = await nearDb.getVerifiedAccounts(fromIndex, limit)
+  const { accounts, total } = await nearDb.listVerifications(fromIndex, limit)
 
   // Verify each account in parallel
   const verifiedAccounts = await Promise.all(
-    accounts.map(async (account): Promise<VerifiedAccountWithStatus> => {
+    accounts.map(async (account): Promise<VerificationWithStatus> => {
       try {
         // Re-verification attempt with graceful error handling
         let zkResult
@@ -149,23 +149,20 @@ async function fetchAndVerifyAccounts(fromIndex: number, limit: number): Promise
 }
 
 /**
- * Cached version of fetchAndVerifyAccounts.
+ * Cached version of fetchAndVerifyVerifications.
  * Cache is tagged with 'verifications' for on-demand revalidation.
  */
-const getCachedVerifiedAccounts = unstable_cache(fetchAndVerifyAccounts, ["verified-accounts"], {
+const getCachedVerifications = unstable_cache(fetchAndVerifyVerifications, ["verifications"], {
   tags: ["verifications"],
   revalidate: 60, // Revalidate every 60 seconds (1 minute)
 })
 
 /**
- * Server action to get verified accounts with verification status.
+ * Server action to get verifications with re-verification status.
  * Uses unstable_cache for caching with 1-minute revalidation.
  * All verification (ZK proof via Celo + NEAR signature) happens server-side.
  */
-export async function getVerifiedAccountsWithStatus(
-  page: number,
-  pageSize: number,
-): Promise<GetVerifiedAccountsResult> {
+export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
   // Validate input parameters with safeParse
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
@@ -173,14 +170,14 @@ export async function getVerifiedAccountsWithStatus(
     return { accounts: [], total: 0 }
   }
 
-  return getCachedVerifiedAccounts(params.data.page * params.data.pageSize, params.data.pageSize)
+  return getCachedVerifications(params.data.page * params.data.pageSize, params.data.pageSize)
 }
 
 /**
  * Server action to check if a NEAR account is already verified.
  * Used by the UI to skip verification steps for already-verified accounts.
  */
-export async function isAccountVerified(nearAccountId: string): Promise<boolean> {
+export async function checkIsVerified(nearAccountId: string): Promise<boolean> {
   // Validate account ID format
   const parsed = nearAccountIdSchema.safeParse(nearAccountId)
   if (!parsed.success) {
@@ -189,7 +186,7 @@ export async function isAccountVerified(nearAccountId: string): Promise<boolean>
   }
 
   try {
-    return await verificationDb.isAccountVerified(parsed.data)
+    return await verificationDb.isVerified(parsed.data)
   } catch (error) {
     console.error("Error checking account verification:", error)
     return false

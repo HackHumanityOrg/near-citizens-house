@@ -10,7 +10,7 @@ use allure_rs::bdd;
 use allure_rs::prelude::*;
 use near_sdk::test_utils::{accounts, get_logs};
 use near_sdk::testing_env;
-use verified_accounts::{Contract, VerifiedAccount};
+use verified_accounts::{Contract, Verification};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -65,7 +65,7 @@ fn test_happy_path_store_verification() {
     });
 
     bdd::then("account is verified with correct state and events", || {
-        assert!(contract.is_account_verified(user.clone()));
+        assert!(contract.is_verified(user.clone()));
         assert_eq!(contract.get_verified_count(), 1);
 
         // Parse and validate the verification_stored event
@@ -89,7 +89,7 @@ fn test_happy_path_store_verification() {
         );
 
         // Verify account data is also correct
-        let account = contract.get_account(user.clone()).unwrap();
+        let account = contract.get_verification(user.clone()).unwrap();
         assert_eq!(account.near_account_id, user);
         assert_eq!(account.nullifier, "test_nullifier");
     });
@@ -128,7 +128,7 @@ fn test_signature_replay_rejected() {
             test_self_proof(),
             "ctx".to_string(),
         );
-        assert!(contract.is_account_verified(user.clone()));
+        assert!(contract.is_verified(user.clone()));
     });
 
     step("Attempt replay with same signature nonce", || {
@@ -188,8 +188,8 @@ fn test_verification_timestamp_matches_block_time() {
     });
 
     step("Verify timestamp matches block time", || {
-        let account: VerifiedAccount = contract.get_account_with_proof(user.clone()).unwrap();
-        assert_eq!(account.verified_at, expected_ts);
+        let verification: Verification = contract.get_full_verification(user.clone()).unwrap();
+        assert_eq!(verification.verified_at, expected_ts);
     });
 }
 

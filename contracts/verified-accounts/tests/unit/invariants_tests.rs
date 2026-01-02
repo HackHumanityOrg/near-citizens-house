@@ -59,8 +59,8 @@ fn test_invariant_verified_count_starts_at_zero() {
         assert_eq!(contract.get_verified_count(), 0);
     });
 
-    step("Verify get_verified_accounts returns empty list", || {
-        assert!(contract.get_verified_accounts(0, 100).is_empty());
+    step("Verify list_verifications returns empty list", || {
+        assert!(contract.list_verifications(0, 100).is_empty());
     });
 }
 

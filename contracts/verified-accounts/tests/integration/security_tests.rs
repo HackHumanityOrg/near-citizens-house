@@ -103,7 +103,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
 #[allure_severity("normal")]
 #[allure_tags("integration", "security", "batch-limit")]
 #[allure_description(
-    "Verifies that are_accounts_verified enforces the batch size limit of 100 accounts."
+    "Verifies that are_verified enforces the batch size limit of 100 accounts."
 )]
 #[allure_test]
 #[tokio::test]
@@ -114,9 +114,9 @@ async fn test_batch_size_limit_enforced() -> anyhow::Result<()> {
     let too_many_accounts: Vec<String> =
         (0..101).map(|i| format!("account{}.testnet", i)).collect();
 
-    // Call are_accounts_verified with too many accounts - should fail
+    // Call are_verified with too many accounts - should fail
     let result = contract
-        .view("are_accounts_verified")
+        .view("are_verified")
         .args_json(json!({"account_ids": too_many_accounts}))
         .await;
 

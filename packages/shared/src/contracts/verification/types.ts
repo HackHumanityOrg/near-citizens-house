@@ -199,8 +199,9 @@ export const verificationDataWithSignatureSchema = verificationDataSchema.extend
 
 export type VerificationDataWithSignature = z.infer<typeof verificationDataWithSignatureSchema>
 
-// Verified account record (stored in database/contract)
-export const verifiedAccountSchema = z.object({
+// Full verification record (stored in database/contract)
+// Includes ZK proof data - use VerificationSummary for lightweight queries
+export const verificationSchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER), // Unique passport identifier (prevents duplicate registrations)
   nearAccountId: z.string(), // Associated NEAR wallet
   attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
@@ -209,7 +210,18 @@ export const verifiedAccountSchema = z.object({
   userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA), // Original hex-encoded userContextData for Self.xyz re-verification
 })
 
-export type VerifiedAccount = z.infer<typeof verifiedAccountSchema>
+export type Verification = z.infer<typeof verificationSchema>
+
+// Lightweight verification summary (no ZK proof data)
+// Use this for most queries to save bandwidth
+export const verificationSummarySchema = z.object({
+  nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
+  nearAccountId: z.string(),
+  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+  verifiedAt: z.number(),
+})
+
+export type VerificationSummary = z.infer<typeof verificationSummarySchema>
 
 // ============================================================================
 // Verification Utility Schemas
@@ -291,8 +303,8 @@ export const contractSelfProofDataSchema = z
     publicSignals: data.public_signals,
   }))
 
-// Contract format for VerifiedAccount (with transform to app format)
-export const contractVerifiedAccountSchema = z
+// Contract format for Verification (full record with ZK proof, with transform to app format)
+export const contractVerificationSchema = z
   .object({
     nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
     near_account_id: z.string(),
@@ -316,17 +328,35 @@ export const contractVerifiedAccountSchema = z
     userContextData: data.user_context_data,
   }))
 
-export type ContractVerifiedAccount = z.input<typeof contractVerifiedAccountSchema>
-export type TransformedVerifiedAccount = z.output<typeof contractVerifiedAccountSchema>
+export type ContractVerification = z.input<typeof contractVerificationSchema>
+export type TransformedVerification = z.output<typeof contractVerificationSchema>
+
+// Contract format for VerificationSummary (lightweight, with transform to app format)
+export const contractVerificationSummarySchema = z
+  .object({
+    nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
+    near_account_id: z.string(),
+    attestation_id: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+    verified_at: z.number(), // nanoseconds
+  })
+  .transform((data) => ({
+    nullifier: data.nullifier,
+    nearAccountId: data.near_account_id,
+    attestationId: data.attestation_id,
+    verifiedAt: Math.floor(data.verified_at / 1_000_000), // Convert nanoseconds to milliseconds
+  }))
+
+export type ContractVerificationSummary = z.input<typeof contractVerificationSummarySchema>
+export type TransformedVerificationSummary = z.output<typeof contractVerificationSummarySchema>
 
 // ============================================================================
 // Verification Database Interface
 // ============================================================================
 
 export interface IVerificationDatabase {
-  isAccountVerified(nearAccountId: string): Promise<boolean>
+  isVerified(nearAccountId: string): Promise<boolean>
   storeVerification(data: VerificationDataWithSignature): Promise<void>
-  getVerifiedAccount(nearAccountId: string): Promise<VerifiedAccount | null>
-  getAllVerifiedAccounts(): Promise<VerifiedAccount[]>
-  getVerifiedAccounts(fromIndex?: number, limit?: number): Promise<{ accounts: VerifiedAccount[]; total: number }>
+  getVerification(nearAccountId: string): Promise<VerificationSummary | null>
+  getFullVerification(nearAccountId: string): Promise<Verification | null>
+  listVerifications(fromIndex?: number, limit?: number): Promise<{ accounts: Verification[]; total: number }>
 }

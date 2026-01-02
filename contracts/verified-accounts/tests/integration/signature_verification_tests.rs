@@ -105,8 +105,8 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
 
     // Verify the account is now marked as verified
     let is_verified: bool = contract
-        .view("is_account_verified")
-        .args_json(json!({"near_account_id": user.id()}))
+        .view("is_verified")
+        .args_json(json!({"account_id": user.id()}))
         .await?
         .json()?;
 
@@ -306,10 +306,10 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "read", "verification-data")]
-#[allure_description("Verifies that get_account_with_proof returns the correct verification data.")]
+#[allure_description("Verifies that get_full_verification returns the correct verification data.")]
 #[allure_test]
 #[tokio::test]
-async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
+async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
     let (worker, contract, backend) = init().await?;
     let user = worker.dev_create_account().await?;
 
@@ -353,12 +353,12 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
 
     // Get the verified account data
     let account_data: serde_json::Value = contract
-        .view("get_account_with_proof")
-        .args_json(json!({"near_account_id": user.id()}))
+        .view("get_full_verification")
+        .args_json(json!({"account_id": user.id()}))
         .await?
         .json()?;
 
-    step("Verify get_account_with_proof returns correct data", || {
+    step("Verify get_full_verification returns correct data", || {
         // Verify the returned data
         assert_eq!(
             account_data.get("attestation_id"),
@@ -381,10 +381,10 @@ async fn test_get_verified_account_returns_data() -> anyhow::Result<()> {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "read", "pagination")]
-#[allure_description("Verifies that get_verified_accounts pagination works correctly with multiple verified accounts.")]
+#[allure_description("Verifies that list_verifications pagination works correctly with multiple verified accounts.")]
 #[allure_test]
 #[tokio::test]
-async fn test_get_verified_accounts_pagination() -> anyhow::Result<()> {
+async fn test_list_verifications_pagination() -> anyhow::Result<()> {
     let (worker, contract, backend) = init().await?;
 
     // Create and verify 3 users
@@ -438,7 +438,7 @@ async fn test_get_verified_accounts_pagination() -> anyhow::Result<()> {
 
     // Test pagination - get first 2
     let page1: Vec<serde_json::Value> = contract
-        .view("get_verified_accounts")
+        .view("list_verifications")
         .args_json(json!({"from_index": 0, "limit": 2}))
         .await?
         .json()?;
@@ -449,7 +449,7 @@ async fn test_get_verified_accounts_pagination() -> anyhow::Result<()> {
 
     // Test pagination - get remaining 1
     let page2: Vec<serde_json::Value> = contract
-        .view("get_verified_accounts")
+        .view("list_verifications")
         .args_json(json!({"from_index": 2, "limit": 2}))
         .await?
         .json()?;

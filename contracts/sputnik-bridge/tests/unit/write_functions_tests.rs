@@ -63,7 +63,7 @@ fn test_add_member_schedules_verification_call() {
 
         let (method_name, _args, attached_deposit, prepaid_gas) = action;
         let method = String::from_utf8(method_name.clone()).unwrap();
-        assert_eq!(method, "is_account_verified");
+        assert_eq!(method, "is_verified");
         assert_eq!(
             attached_deposit.as_yoctonear(),
             0,

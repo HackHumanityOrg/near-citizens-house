@@ -39,7 +39,7 @@ use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault
 // Interface module for cross-contract calls
 pub mod interface;
 pub use interface::{
-    ext_verified_accounts, SelfProofData, VerifiedAccount, VerifiedAccountInfo, ZkProof,
+    ext_verified_accounts, SelfProofData, Verification, VerificationSummary, ZkProof,
 };
 
 /// Maximum length for string inputs
@@ -149,7 +149,7 @@ pub struct Contract {
     /// Set of used nullifiers
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records
-    pub accounts: UnorderedMap<AccountId, VerifiedAccount>,
+    pub verifications: UnorderedMap<AccountId, Verification>,
     /// Set of used signatures
     pub used_signatures: LookupSet<[u8; 64]>,
     /// Whether the contract is paused
@@ -164,7 +164,7 @@ impl Contract {
         Self {
             backend_wallet,
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
-            accounts: UnorderedMap::new(StorageKey::Accounts),
+            verifications: UnorderedMap::new(StorageKey::Accounts),
             used_signatures: LookupSet::new(StorageKey::UsedSignatures),
             paused: false,
         }
@@ -385,7 +385,7 @@ impl Contract {
 
         // Prevent re-verification of accounts
         assert!(
-            self.accounts.get(&near_account_id).is_none(),
+            self.verifications.get(&near_account_id).is_none(),
             "NEAR account already verified"
         );
 
@@ -393,7 +393,7 @@ impl Contract {
         let initial_storage = env::storage_usage();
 
         // Create verification record
-        let account = VerifiedAccount {
+        let verification = Verification {
             nullifier: nullifier.clone(),
             near_account_id: near_account_id.clone(),
             attestation_id: attestation_id.clone(),
@@ -405,7 +405,7 @@ impl Contract {
         // Store verification and tracking data
         self.used_signatures.insert(&sig_array);
         self.nullifiers.insert(&nullifier);
-        self.accounts.insert(&near_account_id, &account);
+        self.verifications.insert(&near_account_id, &verification);
 
         // Validate storage cost coverage (after writes)
         // Note: NEAR transactions are atomic - if this check fails, all state changes revert
@@ -521,29 +521,22 @@ impl Contract {
         );
     }
 
-    /// Get account verification info without proof data (public read)
+    /// Get verification summary without proof data (public read)
     /// Returns all essential data without the large ZK proof
-    pub fn get_account(&self, near_account_id: AccountId) -> Option<VerifiedAccountInfo> {
-        self.accounts
-            .get(&near_account_id)
-            .map(|v| VerifiedAccountInfo {
-                nullifier: v.nullifier,
-                near_account_id: v.near_account_id,
-                attestation_id: v.attestation_id,
-                verified_at: v.verified_at,
-            })
+    pub fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary> {
+        self.verifications.get(&account_id).map(|v| (&v).into())
     }
 
-    /// Get full account data including ZK proof (public read)
+    /// Get full verification record including ZK proof (public read)
     /// Only use this when you need the actual proof data for re-verification
-    /// For most cases, use get_account() instead to save gas
-    pub fn get_account_with_proof(&self, near_account_id: AccountId) -> Option<VerifiedAccount> {
-        self.accounts.get(&near_account_id)
+    /// For most cases, use get_verification() instead to save gas
+    pub fn get_full_verification(&self, account_id: AccountId) -> Option<Verification> {
+        self.verifications.get(&account_id)
     }
 
     /// Check if an account is verified (public read)
-    pub fn is_account_verified(&self, near_account_id: AccountId) -> bool {
-        self.accounts.get(&near_account_id).is_some()
+    pub fn is_verified(&self, account_id: AccountId) -> bool {
+        self.verifications.get(&account_id).is_some()
     }
 
     /// Get the backend wallet address (public read)
@@ -553,22 +546,22 @@ impl Contract {
 
     /// Get total number of verified accounts (public read)
     pub fn get_verified_count(&self) -> u64 {
-        self.accounts.len()
+        self.verifications.len()
     }
 
-    /// Get paginated list of all verified accounts (public read)
+    /// Get paginated list of all verifications (public read)
     /// from_index: starting index (0-based)
     /// limit: max number of records to return (max 100)
-    pub fn get_verified_accounts(&self, from_index: u64, limit: u64) -> Vec<VerifiedAccount> {
+    pub fn list_verifications(&self, from_index: u64, limit: u64) -> Vec<Verification> {
         let limit = std::cmp::min(limit, 100); // Cap at 100 per request
-        let keys = self.accounts.keys_as_vector();
+        let keys = self.verifications.keys_as_vector();
         let from_index = std::cmp::min(from_index, keys.len());
         let to_index = std::cmp::min(from_index + limit, keys.len());
 
         (from_index..to_index)
             .filter_map(|index| {
                 keys.get(index)
-                    .and_then(|account_id| self.accounts.get(&account_id))
+                    .and_then(|account_id| self.verifications.get(&account_id))
             })
             .collect()
     }
@@ -576,7 +569,7 @@ impl Contract {
     /// Batch check if multiple accounts are verified (public read)
     /// Returns Vec<bool> in same order as input - efficient for DAO voting
     /// Maximum 100 accounts per call to prevent gas exhaustion
-    pub fn are_accounts_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool> {
+    pub fn are_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool> {
         assert!(
             account_ids.len() <= MAX_BATCH_SIZE,
             "Batch size exceeds maximum of {} accounts",
@@ -584,14 +577,17 @@ impl Contract {
         );
         account_ids
             .iter()
-            .map(|id| self.accounts.get(id).is_some())
+            .map(|id| self.verifications.get(id).is_some())
             .collect()
     }
 
-    /// Batch get account verification info (public read)
-    /// Returns Vec<Option<VerifiedAccountInfo>> in same order as input
+    /// Batch get verification summaries (public read)
+    /// Returns Vec<Option<VerificationSummary>> in same order as input
     /// Maximum 100 accounts per call to prevent gas exhaustion
-    pub fn get_accounts(&self, account_ids: Vec<AccountId>) -> Vec<Option<VerifiedAccountInfo>> {
+    pub fn get_verifications(
+        &self,
+        account_ids: Vec<AccountId>,
+    ) -> Vec<Option<VerificationSummary>> {
         assert!(
             account_ids.len() <= MAX_BATCH_SIZE,
             "Batch size exceeds maximum of {} accounts",
@@ -599,7 +595,7 @@ impl Contract {
         );
         account_ids
             .iter()
-            .map(|id| self.get_account(id.clone()))
+            .map(|id| self.get_verification(id.clone()))
             .collect()
     }
 

@@ -74,7 +74,7 @@ export async function checkVerificationStatus(accountId: string): Promise<boolea
   }
 
   try {
-    return await verificationDb.isAccountVerified(parsed.data)
+    return await verificationDb.isVerified(parsed.data)
   } catch (error) {
     console.error("[Server Action] Error checking verification:", error)
     return false

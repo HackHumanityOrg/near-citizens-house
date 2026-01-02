@@ -10,8 +10,8 @@ use verified_accounts::interface::*;
 #[allure_tags("unit", "serialization", "json", "borsh")]
 #[allure_test]
 #[test]
-fn test_verified_account_info_serialization() {
-    let info = VerifiedAccountInfo {
+fn test_verification_summary_serialization() {
+    let summary = VerificationSummary {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
         attestation_id: "attestation123".to_string(),
@@ -19,15 +19,15 @@ fn test_verified_account_info_serialization() {
     };
 
     // Test JSON serialization
-    let json = near_sdk::serde_json::to_string(&info).unwrap();
+    let json = near_sdk::serde_json::to_string(&summary).unwrap();
     assert!(json.contains("nullifier123"));
     assert!(json.contains("test.near"));
 
     // Test Borsh serialization
-    let borsh = near_sdk::borsh::to_vec(&info).unwrap();
-    let decoded: VerifiedAccountInfo = near_sdk::borsh::from_slice(&borsh).unwrap();
-    assert_eq!(decoded.near_account_id, info.near_account_id);
-    assert_eq!(decoded.nullifier, info.nullifier);
+    let borsh = near_sdk::borsh::to_vec(&summary).unwrap();
+    let decoded: VerificationSummary = near_sdk::borsh::from_slice(&borsh).unwrap();
+    assert_eq!(decoded.near_account_id, summary.near_account_id);
+    assert_eq!(decoded.nullifier, summary.nullifier);
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -37,8 +37,8 @@ fn test_verified_account_info_serialization() {
 #[allure_tags("unit", "serialization", "borsh")]
 #[allure_test]
 #[test]
-fn test_verified_account_serialization() {
-    let account = VerifiedAccount {
+fn test_verification_serialization() {
+    let verification = Verification {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
         attestation_id: "attestation123".to_string(),
@@ -58,10 +58,10 @@ fn test_verified_account_serialization() {
     };
 
     // Test Borsh serialization
-    let borsh = near_sdk::borsh::to_vec(&account).unwrap();
-    let decoded: VerifiedAccount = near_sdk::borsh::from_slice(&borsh).unwrap();
-    assert_eq!(decoded.near_account_id, account.near_account_id);
-    assert_eq!(decoded.nullifier, account.nullifier);
+    let borsh = near_sdk::borsh::to_vec(&verification).unwrap();
+    let decoded: Verification = near_sdk::borsh::from_slice(&borsh).unwrap();
+    assert_eq!(decoded.near_account_id, verification.near_account_id);
+    assert_eq!(decoded.nullifier, verification.nullifier);
     assert_eq!(decoded.self_proof.public_signals.len(), 2);
 }
 
@@ -163,19 +163,19 @@ fn test_self_proof_data_json_roundtrip() {
 #[allure_tags("unit", "serialization", "json")]
 #[allure_test]
 #[test]
-fn test_verified_account_info_json_roundtrip() {
-    let info = VerifiedAccountInfo {
+fn test_verification_summary_json_roundtrip() {
+    let summary = VerificationSummary {
         nullifier: "123456789012345678901234567890".to_string(),
         near_account_id: "alice.testnet".parse().unwrap(),
         attestation_id: "1".to_string(),
         verified_at: 1700000000000000000, // Realistic nanosecond timestamp
     };
 
-    let json = near_sdk::serde_json::to_string(&info).unwrap();
-    let decoded: VerifiedAccountInfo = near_sdk::serde_json::from_str(&json).unwrap();
-    assert_eq!(decoded.nullifier, info.nullifier);
-    assert_eq!(decoded.near_account_id, info.near_account_id);
-    assert_eq!(decoded.verified_at, info.verified_at);
+    let json = near_sdk::serde_json::to_string(&summary).unwrap();
+    let decoded: VerificationSummary = near_sdk::serde_json::from_str(&json).unwrap();
+    assert_eq!(decoded.nullifier, summary.nullifier);
+    assert_eq!(decoded.near_account_id, summary.near_account_id);
+    assert_eq!(decoded.verified_at, summary.verified_at);
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -186,9 +186,9 @@ fn test_verified_account_info_json_roundtrip() {
 #[allure_description("Tests serialization with realistic 21 public signals from passport proofs")]
 #[allure_test]
 #[test]
-fn test_verified_account_with_21_signals() {
+fn test_verification_with_21_signals() {
     // Test with realistic 21 public signals (passport proofs)
-    let account = VerifiedAccount {
+    let verification = Verification {
         nullifier: "nullifier".to_string(),
         near_account_id: "user.near".parse().unwrap(),
         attestation_id: "1".to_string(),
@@ -208,8 +208,8 @@ fn test_verified_account_with_21_signals() {
     };
 
     // Verify serialization works with full 21 signals
-    let borsh = near_sdk::borsh::to_vec(&account).unwrap();
-    let decoded: VerifiedAccount = near_sdk::borsh::from_slice(&borsh).unwrap();
+    let borsh = near_sdk::borsh::to_vec(&verification).unwrap();
+    let decoded: Verification = near_sdk::borsh::from_slice(&borsh).unwrap();
     assert_eq!(decoded.self_proof.public_signals.len(), 21);
 }
 

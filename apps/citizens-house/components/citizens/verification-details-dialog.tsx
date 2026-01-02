@@ -6,10 +6,10 @@ import { useAnalytics } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
 import { ProofVerifyModal } from "./proof-verify-modal"
-import type { VerifiedAccountWithStatus } from "@/app/citizens/actions"
+import type { VerificationWithStatus } from "@/app/citizens/actions"
 
 interface Props {
-  data: VerifiedAccountWithStatus | null
+  data: VerificationWithStatus | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }

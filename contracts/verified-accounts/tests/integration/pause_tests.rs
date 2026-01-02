@@ -176,7 +176,7 @@ async fn test_unpause_requires_one_yocto() -> anyhow::Result<()> {
 #[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "pause")]
-#[allure_description("Test 2.7.2: Verifies that read operations (is_account_verified, get_verified_count, get_verified_accounts) still work when the contract is paused.")]
+#[allure_description("Test 2.7.2: Verifies that read operations (is_verified, get_verified_count, list_verifications) still work when the contract is paused.")]
 #[allure_test]
 #[tokio::test]
 async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
@@ -230,12 +230,12 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
 
     // Read operations should still work while paused
     let is_verified: bool = contract
-        .view("is_account_verified")
-        .args_json(json!({"near_account_id": user.id()}))
+        .view("is_verified")
+        .args_json(json!({"account_id": user.id()}))
         .await?
         .json()?;
 
-    step("Verify is_account_verified works when paused", || {
+    step("Verify is_verified works when paused", || {
         assert!(
             is_verified,
             "Should return true for verified account even when paused"
@@ -249,16 +249,16 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
     });
 
     let accounts: Vec<serde_json::Value> = contract
-        .view("get_verified_accounts")
+        .view("list_verifications")
         .args_json(json!({"from_index": 0, "limit": 10}))
         .await?
         .json()?;
 
-    step("Verify get_verified_accounts works when paused", || {
+    step("Verify list_verifications works when paused", || {
         assert_eq!(
             accounts.len(),
             1,
-            "get_verified_accounts should work when paused"
+            "list_verifications should work when paused"
         );
     });
 

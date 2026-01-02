@@ -231,7 +231,7 @@ impl SputnikBridge {
         //            -> act_proposal -> callback_member_added -> quorum_update_chain
         ext_verified_accounts::ext(self.verified_accounts_contract.clone())
             .with_static_gas(GAS_FOR_VERIFICATION)
-            .is_account_verified(near_account_id.clone())
+            .is_verified(near_account_id.clone())
             .then(
                 Self::ext(env::current_account_id())
                     .with_static_gas(

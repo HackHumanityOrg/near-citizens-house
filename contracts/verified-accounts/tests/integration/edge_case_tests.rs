@@ -116,8 +116,8 @@ async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {
 
     // Verify the unicode data was stored correctly
     let account: serde_json::Value = contract
-        .view("get_account_with_proof")
-        .args_json(json!({"near_account_id": user.id()}))
+        .view("get_full_verification")
+        .args_json(json!({"account_id": user.id()}))
         .await?
         .json()?;
 
