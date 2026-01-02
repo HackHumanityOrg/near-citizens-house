@@ -350,7 +350,10 @@ async fn test_upgrade_v1_to_v2_preserves_verifications() -> anyhow::Result<()> {
     let v2_count: u64 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify verification count persists after upgrade", || {
-        assert_eq!(v2_count, 2, "Should still have 2 verifications after upgrade");
+        assert_eq!(
+            v2_count, 2,
+            "Should still have 2 verifications after upgrade"
+        );
     });
 
     // Read user1's verification
@@ -617,15 +620,18 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify signature replay protection persists after upgrade", || {
-        assert!(result.is_failure());
-        let failure_msg = format!("{:?}", result.failures());
-        assert!(
-            failure_msg.contains("Signature already used"),
-            "Expected signature error, got: {}",
-            failure_msg
-        );
-    });
+    step(
+        "Verify signature replay protection persists after upgrade",
+        || {
+            assert!(result.is_failure());
+            let failure_msg = format!("{:?}", result.failures());
+            assert!(
+                failure_msg.contains("Signature already used"),
+                "Expected signature error, got: {}",
+                failure_msg
+            );
+        },
+    );
 
     Ok(())
 }
@@ -678,14 +684,20 @@ async fn test_upgrade_new_verifications_work() -> anyhow::Result<()> {
     let count: u64 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify new verifications work after upgrade", || {
-        assert_eq!(count, 2, "Should have both pre and post-upgrade verifications");
+        assert_eq!(
+            count, 2,
+            "Should have both pre and post-upgrade verifications"
+        );
     });
 
     // Verify state version is now 2 (ContractV2 has upgrade_timestamp)
     let state_version: u8 = contract.view("get_state_version").await?.json()?;
 
     step("Verify state version is V2 after upgrade", || {
-        assert_eq!(state_version, 2, "Should report state version 2 after upgrade to V2");
+        assert_eq!(
+            state_version, 2,
+            "Should report state version 2 after upgrade to V2"
+        );
     });
 
     Ok(())
@@ -836,7 +848,9 @@ async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
 #[allure_sub_suite("Versioning")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "versioning", "upgrade", "full-verification")]
-#[allure_description("Upgrade test: Full verification data (including ZK proof) readable after upgrade.")]
+#[allure_description(
+    "Upgrade test: Full verification data (including ZK proof) readable after upgrade."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_upgrade_full_verification_readable() -> anyhow::Result<()> {
@@ -1027,13 +1041,16 @@ async fn test_upgrade_v2_nationality_disclosed_field() -> anyhow::Result<()> {
         .await?
         .json()?;
 
-    step("Verify V1 record has nationality_disclosed=false after migration", || {
-        assert_eq!(
-            nationality,
-            Some(false),
-            "Migrated V1 records should have nationality_disclosed=false"
-        );
-    });
+    step(
+        "Verify V1 record has nationality_disclosed=false after migration",
+        || {
+            assert_eq!(
+                nationality,
+                Some(false),
+                "Migrated V1 records should have nationality_disclosed=false"
+            );
+        },
+    );
 
     // Verify unverified account returns None
     let unverified = worker.dev_create_account().await?;
@@ -1127,10 +1144,7 @@ async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
 
     // Call V2-only method: get_upgrade_timestamp
     // ContractV2 records the migration timestamp when V1 state was first written
-    let upgrade_timestamp: Option<u64> = contract
-        .view("get_upgrade_timestamp")
-        .await?
-        .json()?;
+    let upgrade_timestamp: Option<u64> = contract.view("get_upgrade_timestamp").await?.json()?;
 
     step("Verify upgrade_timestamp is set after migration", || {
         assert!(
@@ -1156,9 +1170,15 @@ async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
 
     // Verify state version is now 2
     let v2_state_version: u8 = contract.view("get_state_version").await?.json()?;
-    step("Verify contract reports V2 state version after upgrade", || {
-        assert_eq!(v2_state_version, 2, "Should be state version 2 after upgrade");
-    });
+    step(
+        "Verify contract reports V2 state version after upgrade",
+        || {
+            assert_eq!(
+                v2_state_version, 2,
+                "Should be state version 2 after upgrade"
+            );
+        },
+    );
 
     Ok(())
 }
@@ -1261,7 +1281,11 @@ async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
     step("Verify state preserved after migrate", || {
         assert_eq!(v2_count, 1, "Should still have 1 verification");
         assert!(v2_paused, "Contract should still be paused");
-        assert_eq!(v2_backend, *backend.id(), "backend_wallet should be preserved");
+        assert_eq!(
+            v2_backend,
+            *backend.id(),
+            "backend_wallet should be preserved"
+        );
     });
 
     // Verify verification data is accessible
@@ -1325,19 +1349,22 @@ async fn test_migrate_fails_when_called_by_non_contract_account() -> anyhow::Res
         .transact()
         .await?;
 
-    step("Verify migrate() fails when called by non-contract account", || {
-        assert!(
-            result.is_failure(),
-            "migrate() should fail when called by non-contract account"
-        );
-        let failure_msg = format!("{:?}", result.failures());
-        // #[private] methods fail with "Method migrate is private"
-        assert!(
-            failure_msg.contains("private") || failure_msg.contains("Predecessor"),
-            "Error should mention private/predecessor, got: {}",
-            failure_msg
-        );
-    });
+    step(
+        "Verify migrate() fails when called by non-contract account",
+        || {
+            assert!(
+                result.is_failure(),
+                "migrate() should fail when called by non-contract account"
+            );
+            let failure_msg = format!("{:?}", result.failures());
+            // #[private] methods fail with "Method migrate is private"
+            assert!(
+                failure_msg.contains("private") || failure_msg.contains("Predecessor"),
+                "Error should mention private/predecessor, got: {}",
+                failure_msg
+            );
+        },
+    );
 
     Ok(())
 }

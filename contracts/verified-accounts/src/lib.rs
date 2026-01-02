@@ -692,11 +692,6 @@ impl VersionedContract {
             .collect()
     }
 
-    /// Get interface version for compatibility checking (public read)
-    pub fn interface_version(&self) -> String {
-        env!("CARGO_PKG_VERSION").to_string()
-    }
-
     /// Get contract state version (for diagnostics)
     pub fn get_state_version(&self) -> u8 {
         match self {

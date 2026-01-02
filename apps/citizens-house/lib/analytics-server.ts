@@ -15,15 +15,17 @@ export function getPostHogServer(): PostHog | null {
   return posthog
 }
 
-export function trackVerificationCompletedServer(props: {
+export async function trackVerificationCompletedServer(props: {
   accountId: string
   nationality: string
   attestationId: string
-}) {
+}): Promise<void> {
   const ph = getPostHogServer()
   if (!ph) return
 
-  ph.capture({
+  // Use captureImmediate to guarantee the HTTP request completes
+  // before the serverless function terminates (prevents event loss)
+  await ph.captureImmediate({
     distinctId: props.accountId,
     event: "verification_completed",
     properties: {

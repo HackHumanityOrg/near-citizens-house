@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
       // Track verification completed with nationality for analytics
       const nationality = selfVerificationResult.discloseOutput?.nationality
       if (nationality) {
-        trackVerificationCompletedServer({
+        await trackVerificationCompletedServer({
           accountId: nearSignature.accountId,
           nationality,
           attestationId: attestationId.toString(),

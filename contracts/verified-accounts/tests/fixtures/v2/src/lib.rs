@@ -224,9 +224,18 @@ impl VersionedContract {
                 // Move collections to V2, preserving their data (same storage keys)
                 let v2 = ContractV2 {
                     backend_wallet: v1.backend_wallet.clone(),
-                    nullifiers: std::mem::replace(&mut v1.nullifiers, LookupSet::new(StorageKey::Nullifiers)),
-                    verifications: std::mem::replace(&mut v1.verifications, UnorderedMap::new(StorageKey::Accounts)),
-                    used_signatures: std::mem::replace(&mut v1.used_signatures, LookupSet::new(StorageKey::UsedSignatures)),
+                    nullifiers: std::mem::replace(
+                        &mut v1.nullifiers,
+                        LookupSet::new(StorageKey::Nullifiers),
+                    ),
+                    verifications: std::mem::replace(
+                        &mut v1.verifications,
+                        UnorderedMap::new(StorageKey::Accounts),
+                    ),
+                    used_signatures: std::mem::replace(
+                        &mut v1.used_signatures,
+                        LookupSet::new(StorageKey::UsedSignatures),
+                    ),
                     paused: v1.paused,
                     upgrade_timestamp: env::block_timestamp(),
                 };
@@ -718,11 +727,6 @@ impl VersionedContract {
             .iter()
             .map(|id| verifications.get(id).map(|v| VerificationSummary::from(&v)))
             .collect()
-    }
-
-    /// Get interface version for compatibility checking (public read)
-    pub fn interface_version(&self) -> String {
-        env!("CARGO_PKG_VERSION").to_string()
     }
 
     /// Get contract state version (for diagnostics)

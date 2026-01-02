@@ -369,11 +369,6 @@ pub trait VerifiedAccountsInterface {
     /// Get total number of verified accounts.
     fn get_verified_count(&self) -> u64;
 
-    /// Get interface version for compatibility checking.
-    ///
-    /// Returns a semver string like "1.0.0".
-    fn interface_version(&self) -> String;
-
     /// Check if contract is paused.
     ///
     /// When paused, no new verifications can be stored, but reads still work.

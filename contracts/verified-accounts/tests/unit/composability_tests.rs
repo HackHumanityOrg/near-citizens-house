@@ -10,27 +10,6 @@ use verified_accounts::VersionedContract;
 #[allure_suite_label("Verified Accounts Unit Tests")]
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
-#[allure_tags("unit", "interface", "composability")]
-#[allure_description("Verifies that the contract returns the correct interface version string.")]
-#[allure_test]
-#[test]
-fn test_interface_version() {
-    let contract = step("Initialize contract", || {
-        let backend = accounts(1);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-        VersionedContract::new(backend)
-    });
-
-    step("Verify interface version returns expected value", || {
-        assert_eq!(contract.interface_version(), "1.0.0");
-    });
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Composability Interface")]
-#[allure_severity("normal")]
 #[allure_tags("unit", "interface", "query")]
 #[allure_description("Verifies that get_verification returns None for non-existent accounts.")]
 #[allure_test]
