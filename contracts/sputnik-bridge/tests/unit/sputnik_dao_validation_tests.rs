@@ -1,7 +1,7 @@
-//! Validation tests for sputnik-dao-interface types
+//! Validation tests for sputnik-dao interface types
 
 use allure_rs::prelude::*;
-use sputnik_dao_interface::*;
+use sputnik_bridge::sputnik_dao::*;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Sputnik DAO Interface Tests")]

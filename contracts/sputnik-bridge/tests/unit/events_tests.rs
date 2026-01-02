@@ -12,12 +12,10 @@ use sputnik_bridge::{MemberAddedEvent, ProposalCreatedEvent, QuorumUpdatedEvent}
 #[allure_test]
 #[test]
 fn test_member_added_event_serializes_correctly() {
-    let event = step("Create MemberAddedEvent", || {
-        MemberAddedEvent {
-            member_id: "alice.near".to_string(),
-            role: "citizen".to_string(),
-            proposal_id: 42,
-        }
+    let event = step("Create MemberAddedEvent", || MemberAddedEvent {
+        member_id: "alice.near".to_string(),
+        role: "citizen".to_string(),
+        proposal_id: 42,
     });
 
     step("Serialize and verify JSON contains expected fields", || {
@@ -37,11 +35,9 @@ fn test_member_added_event_serializes_correctly() {
 #[allure_test]
 #[test]
 fn test_proposal_created_event_serializes_correctly() {
-    let event = step("Create ProposalCreatedEvent", || {
-        ProposalCreatedEvent {
-            proposal_id: 123,
-            description: "Test proposal description".to_string(),
-        }
+    let event = step("Create ProposalCreatedEvent", || ProposalCreatedEvent {
+        proposal_id: 123,
+        description: "Test proposal description".to_string(),
     });
 
     step("Serialize and verify JSON contains expected fields", || {
@@ -60,12 +56,10 @@ fn test_proposal_created_event_serializes_correctly() {
 #[allure_test]
 #[test]
 fn test_quorum_updated_event_serializes_correctly() {
-    let event = step("Create QuorumUpdatedEvent", || {
-        QuorumUpdatedEvent {
-            citizen_count: 100,
-            new_quorum: 7,
-            proposal_id: 456,
-        }
+    let event = step("Create QuorumUpdatedEvent", || QuorumUpdatedEvent {
+        citizen_count: 100,
+        new_quorum: 7,
+        proposal_id: 456,
     });
 
     step("Serialize and verify JSON contains expected fields", || {

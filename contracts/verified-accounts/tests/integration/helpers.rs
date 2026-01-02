@@ -28,7 +28,8 @@ pub struct Nep413Payload {
 }
 
 /// Initialize test environment with contract deployed
-pub async fn init() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>, Contract, Account)> {
+pub async fn init() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>, Contract, Account)>
+{
     let worker = near_workspaces::sandbox().await?;
 
     // Read the WASM file

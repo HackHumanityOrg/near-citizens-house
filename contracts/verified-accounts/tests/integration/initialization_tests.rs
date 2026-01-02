@@ -46,7 +46,9 @@ async fn test_contract_initialization() -> anyhow::Result<()> {
 #[allure_sub_suite("Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "initialization", "security")]
-#[allure_description("Test 1.1.4: Verifies that the contract cannot be reinitialized after initial setup.")]
+#[allure_description(
+    "Test 1.1.4: Verifies that the contract cannot be reinitialized after initial setup."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_init_cannot_reinitialize() -> anyhow::Result<()> {
@@ -70,7 +72,8 @@ async fn test_init_cannot_reinitialize() -> anyhow::Result<()> {
         // Verify error message indicates contract is already initialized
         let failure_msg = format!("{:?}", result.failures());
         assert!(
-            failure_msg.contains("already initialized") || failure_msg.contains("The contract has already been initialized"),
+            failure_msg.contains("already initialized")
+                || failure_msg.contains("The contract has already been initialized"),
             "Expected 'already initialized' error, got: {}",
             failure_msg
         );

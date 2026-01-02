@@ -92,7 +92,9 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
 #[allure_sub_suite("Pagination")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "pagination", "edge-case")]
-#[allure_description("Verifies that pagination returns empty when from_index is beyond existing data.")]
+#[allure_description(
+    "Verifies that pagination returns empty when from_index is beyond existing data."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_pagination_from_index_beyond_data() -> anyhow::Result<()> {

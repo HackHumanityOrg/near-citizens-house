@@ -4,7 +4,7 @@ use allure_rs::prelude::*;
 use near_sdk::mock::MockAction;
 use near_sdk::test_utils::{accounts, get_created_receipts, VMContextBuilder};
 use near_sdk::testing_env;
-use sputnik_bridge::{GAS_FOR_ADD_PROPOSAL, GAS_FOR_VERIFICATION, SputnikBridge};
+use sputnik_bridge::{SputnikBridge, GAS_FOR_ADD_PROPOSAL, GAS_FOR_VERIFICATION};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Sputnik Bridge Unit Tests")]
@@ -15,14 +15,17 @@ use sputnik_bridge::{GAS_FOR_ADD_PROPOSAL, GAS_FOR_VERIFICATION, SputnikBridge};
 #[allure_test]
 #[test]
 fn test_add_member_schedules_verification_call() {
-    let mut contract = step("Initialize contract with backend wallet and deposit", || {
-        let mut context = VMContextBuilder::new();
-        context.predecessor_account_id(accounts(0));
-        // Simulate caller attaching a non-zero deposit that must be forwarded
-        context.attached_deposit(near_sdk::NearToken::from_yoctonear(42));
-        testing_env!(context.build());
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
-    });
+    let mut contract = step(
+        "Initialize contract with backend wallet and deposit",
+        || {
+            let mut context = VMContextBuilder::new();
+            context.predecessor_account_id(accounts(0));
+            // Simulate caller attaching a non-zero deposit that must be forwarded
+            context.attached_deposit(near_sdk::NearToken::from_yoctonear(42));
+            testing_env!(context.build());
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+        },
+    );
 
     step("Call add_member", || {
         let _ = contract.add_member(accounts(5));
@@ -36,7 +39,8 @@ fn test_add_member_schedules_verification_call() {
 
     step("Verify receipt targets verified_accounts_contract", || {
         assert_eq!(
-            receipt.receiver_id, accounts(2),
+            receipt.receiver_id,
+            accounts(2),
             "Verification call should target verified_accounts_contract"
         );
     });
@@ -82,13 +86,16 @@ fn test_add_member_schedules_verification_call() {
 #[allure_test]
 #[test]
 fn test_create_proposal_schedules_add_proposal() {
-    let mut contract = step("Initialize contract with backend wallet and deposit", || {
-        let mut context = VMContextBuilder::new();
-        context.predecessor_account_id(accounts(0));
-        context.attached_deposit(near_sdk::NearToken::from_yoctonear(42));
-        testing_env!(context.build());
-        SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
-    });
+    let mut contract = step(
+        "Initialize contract with backend wallet and deposit",
+        || {
+            let mut context = VMContextBuilder::new();
+            context.predecessor_account_id(accounts(0));
+            context.attached_deposit(near_sdk::NearToken::from_yoctonear(42));
+            testing_env!(context.build());
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
+        },
+    );
 
     step("Call create_proposal with padded description", || {
         let _ = contract.create_proposal("  Hello Citizens  ".to_string());
@@ -102,46 +109,50 @@ fn test_create_proposal_schedules_add_proposal() {
 
     step("Verify receipt targets sputnik_dao contract", || {
         assert_eq!(
-            receipt.receiver_id, accounts(1),
+            receipt.receiver_id,
+            accounts(1),
             "add_proposal should target the sputnik_dao contract"
         );
     });
 
-    step("Verify function call parameters and trimmed description", || {
-        let action = receipt
-            .actions
-            .iter()
-            .find_map(|a| match a {
-                MockAction::FunctionCallWeight {
-                    method_name,
-                    args,
-                    attached_deposit,
-                    prepaid_gas,
-                    ..
-                } => Some((method_name, args, attached_deposit, prepaid_gas)),
-                _ => None,
-            })
-            .expect("Expected a function call action");
+    step(
+        "Verify function call parameters and trimmed description",
+        || {
+            let action = receipt
+                .actions
+                .iter()
+                .find_map(|a| match a {
+                    MockAction::FunctionCallWeight {
+                        method_name,
+                        args,
+                        attached_deposit,
+                        prepaid_gas,
+                        ..
+                    } => Some((method_name, args, attached_deposit, prepaid_gas)),
+                    _ => None,
+                })
+                .expect("Expected a function call action");
 
-        let (method_name, args, attached_deposit, prepaid_gas) = action;
-        let method = String::from_utf8(method_name.clone()).unwrap();
-        assert_eq!(method, "add_proposal");
-        assert_eq!(
-            attached_deposit.as_yoctonear(),
-            42,
-            "create_proposal should forward the caller's attached deposit unchanged"
-        );
-        assert_eq!(
-            prepaid_gas.as_gas(),
-            GAS_FOR_ADD_PROPOSAL.as_gas(),
-            "add_proposal call should reserve GAS_FOR_ADD_PROPOSAL"
-        );
+            let (method_name, args, attached_deposit, prepaid_gas) = action;
+            let method = String::from_utf8(method_name.clone()).unwrap();
+            assert_eq!(method, "add_proposal");
+            assert_eq!(
+                attached_deposit.as_yoctonear(),
+                42,
+                "create_proposal should forward the caller's attached deposit unchanged"
+            );
+            assert_eq!(
+                prepaid_gas.as_gas(),
+                GAS_FOR_ADD_PROPOSAL.as_gas(),
+                "add_proposal call should reserve GAS_FOR_ADD_PROPOSAL"
+            );
 
-        let args_str = String::from_utf8(args.clone()).expect("args should be UTF-8 JSON");
-        assert!(
-            args_str.contains("Hello Citizens"),
-            "Expected trimmed description in add_proposal args, got: {}",
-            args_str
-        );
-    });
+            let args_str = String::from_utf8(args.clone()).expect("args should be UTF-8 JSON");
+            assert!(
+                args_str.contains("Hello Citizens"),
+                "Expected trimmed description in add_proposal args, got: {}",
+                args_str
+            );
+        },
+    );
 }

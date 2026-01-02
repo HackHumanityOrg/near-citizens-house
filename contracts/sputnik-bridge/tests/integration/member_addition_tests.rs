@@ -12,7 +12,8 @@ use serde_json::json;
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "member", "happy-path")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies the complete happy path for adding a verified user as a citizen through the bridge.
 
@@ -21,8 +22,8 @@ Verifies the complete happy path for adding a verified user as a citizen through
 2. Backend calls add_member on bridge
 3. Bridge verifies user and creates SputnikDAO proposal
 4. Proposal is auto-approved, user becomes citizen
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_verified_member_success() -> anyhow::Result<()> {
@@ -55,14 +56,15 @@ async fn test_add_verified_member_success() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "member", "proposal")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that add_member creates a proposal in SputnikDAO.
 
 ## Expected
 Proposal count increases after add_member call.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_creates_proposal() -> anyhow::Result<()> {
@@ -91,14 +93,15 @@ async fn test_add_member_creates_proposal() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "member", "auto-approve")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that add_member proposals are auto-approved by the bridge.
 
 ## Mechanism
 Bridge has council role and auto-votes approve on AddMemberToRole proposals.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_auto_approves() -> anyhow::Result<()> {
@@ -133,14 +136,15 @@ async fn test_add_member_auto_approves() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "member", "role")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that added member appears in the citizen role in SputnikDAO.
 
 ## Expected
 is_account_in_role("citizen") returns true for added user.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_member_appears_in_citizen_role() -> anyhow::Result<()> {
@@ -169,14 +173,15 @@ async fn test_member_appears_in_citizen_role() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "member", "security")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that only the backend wallet can call add_member.
 
 ## Security
 Unauthorized accounts should receive "Only backend wallet" error.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_unauthorized() -> anyhow::Result<()> {
@@ -207,14 +212,15 @@ async fn test_add_member_unauthorized() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "member", "verification")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that unverified users cannot be added as citizens.
 
 ## Sybil Resistance
 Bridge checks verification status before creating proposal.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_unverified_member_fails() -> anyhow::Result<()> {
@@ -241,14 +247,15 @@ async fn test_add_unverified_member_fails() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "member", "multiple")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that multiple users can be added as citizens sequentially.
 
 ## Expected
 All 3 users end up in the citizen role.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_multiple_members() -> anyhow::Result<()> {
@@ -279,15 +286,16 @@ async fn test_add_multiple_members() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "member", "duplicate")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies idempotent behavior when adding an existing citizen again.
 
 ## Behavior
 SputnikDAO allows adding existing members (idempotent).
 Two proposals are created (member + quorum update), user stays citizen.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_already_citizen() -> anyhow::Result<()> {
@@ -309,13 +317,16 @@ async fn test_add_member_already_citizen() -> anyhow::Result<()> {
 
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
 
-    step("Verify re-adding existing citizen succeeds (idempotent)", || {
-        assert!(
-            result.is_success(),
-            "Re-adding existing citizen should succeed (idempotent). Failures: {:?}",
-            result.failures()
-        );
-    });
+    step(
+        "Verify re-adding existing citizen succeeds (idempotent)",
+        || {
+            assert!(
+                result.is_success(),
+                "Re-adding existing citizen should succeed (idempotent). Failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
@@ -330,12 +341,15 @@ async fn test_add_member_already_citizen() -> anyhow::Result<()> {
     let is_still_citizen =
         is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
 
-    step("Verify user is still a citizen (no state corruption)", || {
-        assert!(
-            is_still_citizen,
-            "User should still be a citizen after duplicate add"
-        );
-    });
+    step(
+        "Verify user is still a citizen (no state corruption)",
+        || {
+            assert!(
+                is_still_citizen,
+                "User should still be a citizen after duplicate add"
+            );
+        },
+    );
 
     Ok(())
 }
@@ -345,7 +359,8 @@ async fn test_add_member_already_citizen() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "member", "proposal")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that proposals created via the bridge show the bridge contract as the proposer.
 
@@ -353,8 +368,8 @@ Verifies that proposals created via the bridge show the bridge contract as the p
 
 ## Expected
 Proposal.proposer == bridge contract account ID.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_bridge_proposal_shows_bridge_as_proposer() -> anyhow::Result<()> {
@@ -406,7 +421,8 @@ async fn test_bridge_proposal_shows_bridge_as_proposer() -> anyhow::Result<()> {
 #[allure_sub_suite("Member Addition")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "member", "proposal")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that AddMemberToRole proposals have the correct member_id and role.
 
@@ -416,8 +432,8 @@ Verifies that AddMemberToRole proposals have the correct member_id and role.
 - Proposal kind is AddMemberToRole
 - member_id matches the user being added
 - role is "citizen"
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_proposal_has_correct_content() -> anyhow::Result<()> {

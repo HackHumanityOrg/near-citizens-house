@@ -14,7 +14,9 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "verification")]
-#[allure_description("Verifies callback successfully processes verified account and schedules add_proposal.")]
+#[allure_description(
+    "Verifies callback successfully processes verified account and schedules add_proposal."
+)]
 #[allure_test]
 #[test]
 fn test_callback_add_member_verified() {
@@ -42,7 +44,9 @@ fn test_callback_add_member_verified() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "verification")]
-#[allure_description("Verifies callback rejects unverified account with appropriate error message.")]
+#[allure_description(
+    "Verifies callback rejects unverified account with appropriate error message."
+)]
 #[allure_test]
 #[test]
 fn test_callback_add_member_not_verified() {
@@ -60,14 +64,17 @@ fn test_callback_add_member_not_verified() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Verify callback panics with 'Account is not verified'", || {
-        assert_panic_with(
-            || {
-                let _ = contract.callback_add_member(accounts(3));
-            },
-            "Account is not verified",
-        );
-    });
+    step(
+        "Verify callback panics with 'Account is not verified'",
+        || {
+            assert_panic_with(
+                || {
+                    let _ = contract.callback_add_member(accounts(3));
+                },
+                "Account is not verified",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -75,7 +82,9 @@ fn test_callback_add_member_not_verified() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "proposal")]
-#[allure_description("Verifies callback successfully processes proposal creation and schedules act_proposal.")]
+#[allure_description(
+    "Verifies callback successfully processes proposal creation and schedules act_proposal."
+)]
 #[allure_test]
 #[test]
 fn test_callback_proposal_created() {
@@ -93,9 +102,12 @@ fn test_callback_proposal_created() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Call callback_proposal_created and verify it succeeds", || {
-        let _ = contract.callback_proposal_created(accounts(3));
-    });
+    step(
+        "Call callback_proposal_created and verify it succeeds",
+        || {
+            let _ = contract.callback_proposal_created(accounts(3));
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -131,7 +143,10 @@ fn test_callback_member_added() {
             logs[0].contains("member_added"),
             "Expected member_added event"
         );
-        assert!(logs[0].contains("danny"), "Expected member ID in event payload");
+        assert!(
+            logs[0].contains("danny"),
+            "Expected member ID in event payload"
+        );
         assert!(
             logs[0].contains("citizen"),
             "Expected citizen role to be included in event payload"
@@ -144,7 +159,9 @@ fn test_callback_member_added() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "policy")]
-#[allure_description("Verifies callback calculates quorum from policy and schedules quorum update proposal.")]
+#[allure_description(
+    "Verifies callback calculates quorum from policy and schedules quorum update proposal."
+)]
 #[allure_test]
 #[test]
 fn test_callback_policy_received_for_quorum() {
@@ -172,9 +189,12 @@ fn test_callback_policy_received_for_quorum() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Call callback_policy_received_for_quorum and verify it succeeds", || {
-        let _ = contract.callback_policy_received_for_quorum();
-    });
+    step(
+        "Call callback_policy_received_for_quorum and verify it succeeds",
+        || {
+            let _ = contract.callback_policy_received_for_quorum();
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -182,7 +202,9 @@ fn test_callback_policy_received_for_quorum() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "quorum")]
-#[allure_description("Verifies callback successfully processes quorum proposal creation and schedules get_proposal.")]
+#[allure_description(
+    "Verifies callback successfully processes quorum proposal creation and schedules get_proposal."
+)]
 #[allure_test]
 #[test]
 fn test_callback_quorum_proposal_created() {
@@ -200,9 +222,12 @@ fn test_callback_quorum_proposal_created() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Call callback_quorum_proposal_created and verify it succeeds", || {
-        let _ = contract.callback_quorum_proposal_created(2, 1);
-    });
+    step(
+        "Call callback_quorum_proposal_created and verify it succeeds",
+        || {
+            let _ = contract.callback_quorum_proposal_created(2, 1);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -210,7 +235,9 @@ fn test_callback_quorum_proposal_created() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "quorum")]
-#[allure_description("Verifies callback extracts proposal kind and schedules act_proposal for quorum update.")]
+#[allure_description(
+    "Verifies callback extracts proposal kind and schedules act_proposal for quorum update."
+)]
 #[allure_test]
 #[test]
 fn test_callback_got_quorum_proposal() {
@@ -240,9 +267,12 @@ fn test_callback_got_quorum_proposal() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Call callback_got_quorum_proposal and verify it succeeds", || {
-        let _ = contract.callback_got_quorum_proposal(2, 1, 2);
-    });
+    step(
+        "Call callback_got_quorum_proposal and verify it succeeds",
+        || {
+            let _ = contract.callback_got_quorum_proposal(2, 1, 2);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -250,7 +280,9 @@ fn test_callback_got_quorum_proposal() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "quorum")]
-#[allure_description("Verifies callback emits quorum_updated event when quorum update is successfully approved.")]
+#[allure_description(
+    "Verifies callback emits quorum_updated event when quorum update is successfully approved."
+)]
 #[allure_test]
 #[test]
 fn test_callback_quorum_updated() {
@@ -270,27 +302,30 @@ fn test_callback_quorum_updated() {
         contract.callback_quorum_updated(2, 1, 2);
     });
 
-    step("Verify quorum_updated event was emitted with correct data", || {
-        let logs = get_logs();
-        assert!(!logs.is_empty(), "Expected logs to be emitted");
-        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(
-            logs[0].contains("quorum_updated"),
-            "Expected quorum_updated event"
-        );
-        assert!(
-            logs[0].contains("\"citizen_count\":2"),
-            "Expected citizen_count in quorum_updated event"
-        );
-        assert!(
-            logs[0].contains("\"new_quorum\":1"),
-            "Expected new_quorum in quorum_updated event"
-        );
-        assert!(
-            logs[0].contains("\"proposal_id\":2"),
-            "Expected proposal_id in quorum_updated event"
-        );
-    });
+    step(
+        "Verify quorum_updated event was emitted with correct data",
+        || {
+            let logs = get_logs();
+            assert!(!logs.is_empty(), "Expected logs to be emitted");
+            assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
+            assert!(
+                logs[0].contains("quorum_updated"),
+                "Expected quorum_updated event"
+            );
+            assert!(
+                logs[0].contains("\"citizen_count\":2"),
+                "Expected citizen_count in quorum_updated event"
+            );
+            assert!(
+                logs[0].contains("\"new_quorum\":1"),
+                "Expected new_quorum in quorum_updated event"
+            );
+            assert!(
+                logs[0].contains("\"proposal_id\":2"),
+                "Expected proposal_id in quorum_updated event"
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -298,7 +333,9 @@ fn test_callback_quorum_updated() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "proposal")]
-#[allure_description("Verifies callback emits proposal_created event when vote proposal is successfully created.")]
+#[allure_description(
+    "Verifies callback emits proposal_created event when vote proposal is successfully created."
+)]
 #[allure_test]
 #[test]
 fn test_callback_vote_proposal_created() {
@@ -320,23 +357,26 @@ fn test_callback_vote_proposal_created() {
         let _ = contract.callback_vote_proposal_created("desc".to_string());
     });
 
-    step("Verify proposal_created event was emitted with correct data", || {
-        let logs = get_logs();
-        assert!(!logs.is_empty(), "Expected logs to be emitted");
-        assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
-        assert!(
-            logs[0].contains("proposal_created"),
-            "Expected proposal_created event"
-        );
-        assert!(
-            logs[0].contains("\"proposal_id\":3"),
-            "Expected proposal_id in proposal_created event"
-        );
-        assert!(
-            logs[0].contains("\"description\":\"desc\""),
-            "Expected description to be serialized in proposal_created event"
-        );
-    });
+    step(
+        "Verify proposal_created event was emitted with correct data",
+        || {
+            let logs = get_logs();
+            assert!(!logs.is_empty(), "Expected logs to be emitted");
+            assert!(logs[0].contains("EVENT_JSON"), "Expected JSON event");
+            assert!(
+                logs[0].contains("proposal_created"),
+                "Expected proposal_created event"
+            );
+            assert!(
+                logs[0].contains("\"proposal_id\":3"),
+                "Expected proposal_id in proposal_created event"
+            );
+            assert!(
+                logs[0].contains("\"description\":\"desc\""),
+                "Expected description to be serialized in proposal_created event"
+            );
+        },
+    );
 }
 
 // ==================== PROMISE FAILURE TESTS ====================
@@ -348,7 +388,9 @@ fn test_callback_vote_proposal_created() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
-#[allure_description("Verifies callback handles promise failure during verification check with appropriate error.")]
+#[allure_description(
+    "Verifies callback handles promise failure during verification check with appropriate error."
+)]
 #[allure_test]
 #[test]
 fn test_callback_add_member_promise_failed() {
@@ -364,14 +406,17 @@ fn test_callback_add_member_promise_failed() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Verify callback panics with 'Verification check failed'", || {
-        assert_panic_with(
-            || {
-                let _ = contract.callback_add_member(accounts(3));
-            },
-            "Verification check failed",
-        );
-    });
+    step(
+        "Verify callback panics with 'Verification check failed'",
+        || {
+            assert_panic_with(
+                || {
+                    let _ = contract.callback_add_member(accounts(3));
+                },
+                "Verification check failed",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -379,7 +424,9 @@ fn test_callback_add_member_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
-#[allure_description("Verifies callback handles promise failure during proposal creation with appropriate error.")]
+#[allure_description(
+    "Verifies callback handles promise failure during proposal creation with appropriate error."
+)]
 #[allure_test]
 #[test]
 fn test_callback_proposal_created_promise_failed() {
@@ -395,14 +442,17 @@ fn test_callback_proposal_created_promise_failed() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Verify callback panics with 'Failed to create proposal'", || {
-        assert_panic_with(
-            || {
-                let _ = contract.callback_proposal_created(accounts(3));
-            },
-            "Failed to create proposal",
-        );
-    });
+    step(
+        "Verify callback panics with 'Failed to create proposal'",
+        || {
+            assert_panic_with(
+                || {
+                    let _ = contract.callback_proposal_created(accounts(3));
+                },
+                "Failed to create proposal",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -426,14 +476,17 @@ fn test_callback_member_added_promise_failed() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Verify callback panics with 'Failed to approve member addition proposal'", || {
-        assert_panic_with(
-            || {
-                let _ = contract.callback_member_added(accounts(3), 1);
-            },
-            "Failed to approve member addition proposal",
-        );
-    });
+    step(
+        "Verify callback panics with 'Failed to approve member addition proposal'",
+        || {
+            assert_panic_with(
+                || {
+                    let _ = contract.callback_member_added(accounts(3), 1);
+                },
+                "Failed to approve member addition proposal",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -441,7 +494,9 @@ fn test_callback_member_added_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
-#[allure_description("Verifies callback handles promise failure when retrieving policy with appropriate error.")]
+#[allure_description(
+    "Verifies callback handles promise failure when retrieving policy with appropriate error."
+)]
 #[allure_test]
 #[test]
 fn test_callback_policy_received_for_quorum_promise_failed() {
@@ -488,14 +543,17 @@ fn test_callback_quorum_updated_promise_failed() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Verify callback panics with 'Failed to approve quorum update proposal'", || {
-        assert_panic_with(
-            || {
-                contract.callback_quorum_updated(2, 1, 2);
-            },
-            "Failed to approve quorum update proposal",
-        );
-    });
+    step(
+        "Verify callback panics with 'Failed to approve quorum update proposal'",
+        || {
+            assert_panic_with(
+                || {
+                    contract.callback_quorum_updated(2, 1, 2);
+                },
+                "Failed to approve quorum update proposal",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -503,7 +561,9 @@ fn test_callback_quorum_updated_promise_failed() {
 #[allure_sub_suite("Callbacks")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "callback", "failure-handling")]
-#[allure_description("Verifies callback handles promise failure when creating vote proposal with appropriate error.")]
+#[allure_description(
+    "Verifies callback handles promise failure when creating vote proposal with appropriate error."
+)]
 #[allure_test]
 #[test]
 fn test_callback_vote_proposal_created_promise_failed() {
@@ -519,12 +579,15 @@ fn test_callback_vote_proposal_created_promise_failed() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    step("Verify callback panics with 'Failed to create proposal'", || {
-        assert_panic_with(
-            || {
-                let _ = contract.callback_vote_proposal_created("desc".to_string());
-            },
-            "Failed to create proposal",
-        );
-    });
+    step(
+        "Verify callback panics with 'Failed to create proposal'",
+        || {
+            assert_panic_with(
+                || {
+                    let _ = contract.callback_vote_proposal_created("desc".to_string());
+                },
+                "Failed to create proposal",
+            );
+        },
+    );
 }

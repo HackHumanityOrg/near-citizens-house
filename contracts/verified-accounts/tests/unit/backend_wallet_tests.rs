@@ -67,12 +67,15 @@ fn test_unauthorized_update_backend_wallet() {
         Contract::new(backend)
     });
 
-    step("Attempt update_backend_wallet from unauthorized account", || {
-        assert_panic_with(
-            || contract.update_backend_wallet(accounts(3)),
-            "Only backend wallet can update backend wallet",
-        );
-    });
+    step(
+        "Attempt update_backend_wallet from unauthorized account",
+        || {
+            assert_panic_with(
+                || contract.update_backend_wallet(accounts(3)),
+                "Only backend wallet can update backend wallet",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -80,7 +83,9 @@ fn test_unauthorized_update_backend_wallet() {
 #[allure_sub_suite("Backend Wallet Management")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "yocto")]
-#[allure_description("Verifies that update_backend_wallet requires exactly 1 yoctoNEAR attached deposit.")]
+#[allure_description(
+    "Verifies that update_backend_wallet requires exactly 1 yoctoNEAR attached deposit."
+)]
 #[allure_test]
 #[test]
 fn test_update_backend_wallet_requires_one_yocto() {

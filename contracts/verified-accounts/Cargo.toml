@@ -16,7 +16,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { version = "5.20", features = ["legacy"] }
 borsh = "1.6"
-verified-accounts-interface = { path = "../verified-accounts-interface" }
 
 [dev-dependencies]
 near-sdk = { version = "5.20", features = ["legacy", "unit-testing"] }

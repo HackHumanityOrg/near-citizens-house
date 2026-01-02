@@ -648,9 +648,10 @@ pub async fn get_vote_threshold(dao: &Contract, role_name: &str) -> anyhow::Resu
     }
 
     if let Some(w_str) = threshold_value.as_str() {
-        let weight = w_str
-            .parse::<u64>()
-            .context(format!("Failed to parse fixed threshold for role '{}'", role_name))?;
+        let weight = w_str.parse::<u64>().context(format!(
+            "Failed to parse fixed threshold for role '{}'",
+            role_name
+        ))?;
         return Ok((weight, 0));
     }
 

@@ -32,9 +32,12 @@ fn test_quorum_with_0_citizens_equals_0() {
 #[allure_test]
 #[test]
 fn test_quorum_with_1_citizen_equals_1() {
-    step("Calculate and verify quorum for 1 citizen (ceil(0.07) = 1)", || {
-        assert_eq!(calculate_quorum(1), 1);
-    });
+    step(
+        "Calculate and verify quorum for 1 citizen (ceil(0.07) = 1)",
+        || {
+            assert_eq!(calculate_quorum(1), 1);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -46,9 +49,12 @@ fn test_quorum_with_1_citizen_equals_1() {
 #[allure_test]
 #[test]
 fn test_quorum_with_14_citizens_equals_1() {
-    step("Calculate and verify quorum for 14 citizens (ceil(0.98) = 1)", || {
-        assert_eq!(calculate_quorum(14), 1);
-    });
+    step(
+        "Calculate and verify quorum for 14 citizens (ceil(0.98) = 1)",
+        || {
+            assert_eq!(calculate_quorum(14), 1);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -60,9 +66,12 @@ fn test_quorum_with_14_citizens_equals_1() {
 #[allure_test]
 #[test]
 fn test_quorum_with_15_citizens_equals_2() {
-    step("Calculate and verify quorum for 15 citizens (ceil(1.05) = 2)", || {
-        assert_eq!(calculate_quorum(15), 2);
-    });
+    step(
+        "Calculate and verify quorum for 15 citizens (ceil(1.05) = 2)",
+        || {
+            assert_eq!(calculate_quorum(15), 2);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -74,9 +83,12 @@ fn test_quorum_with_15_citizens_equals_2() {
 #[allure_test]
 #[test]
 fn test_quorum_with_100_citizens_equals_7() {
-    step("Calculate and verify quorum for 100 citizens (exact 7.0)", || {
-        assert_eq!(calculate_quorum(100), 7);
-    });
+    step(
+        "Calculate and verify quorum for 100 citizens (exact 7.0)",
+        || {
+            assert_eq!(calculate_quorum(100), 7);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -88,9 +100,12 @@ fn test_quorum_with_100_citizens_equals_7() {
 #[allure_test]
 #[test]
 fn test_quorum_with_101_citizens_equals_8() {
-    step("Calculate and verify quorum for 101 citizens (ceil(7.07) = 8)", || {
-        assert_eq!(calculate_quorum(101), 8);
-    });
+    step(
+        "Calculate and verify quorum for 101 citizens (ceil(7.07) = 8)",
+        || {
+            assert_eq!(calculate_quorum(101), 8);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -102,9 +117,12 @@ fn test_quorum_with_101_citizens_equals_8() {
 #[allure_test]
 #[test]
 fn test_quorum_with_143_citizens_equals_11() {
-    step("Calculate and verify quorum for 143 citizens (ceil(10.01) = 11)", || {
-        assert_eq!(calculate_quorum(143), 11);
-    });
+    step(
+        "Calculate and verify quorum for 143 citizens (ceil(10.01) = 11)",
+        || {
+            assert_eq!(calculate_quorum(143), 11);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -116,9 +134,12 @@ fn test_quorum_with_143_citizens_equals_11() {
 #[allure_test]
 #[test]
 fn test_quorum_with_1000_citizens_equals_70() {
-    step("Calculate and verify quorum for 1000 citizens (exact 70.0)", || {
-        assert_eq!(calculate_quorum(1000), 70);
-    });
+    step(
+        "Calculate and verify quorum for 1000 citizens (exact 70.0)",
+        || {
+            assert_eq!(calculate_quorum(1000), 70);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -150,11 +171,14 @@ fn test_quorum_ceiling_division_correctness() {
 #[allure_test]
 #[test]
 fn test_quorum_large_numbers() {
-    step("Verify quorum calculation with large citizen counts", || {
-        assert_eq!(calculate_quorum(10000), 700);
-        assert_eq!(calculate_quorum(100000), 7000);
-        assert_eq!(calculate_quorum(1000000), 70000);
-    });
+    step(
+        "Verify quorum calculation with large citizen counts",
+        || {
+            assert_eq!(calculate_quorum(10000), 700);
+            assert_eq!(calculate_quorum(100000), 7000);
+            assert_eq!(calculate_quorum(1000000), 70000);
+        },
+    );
 }
 
 // ==================== BOUNDARY VALUE TESTS ====================
@@ -300,37 +324,49 @@ fn test_quorum_boundary_exact_14_percent() {
 #[allure_test]
 #[test]
 fn test_quorum_boundary_floor_vs_ceil_difference() {
-    step("Verify ceiling is used for 1 citizen (floor=0, ceil=1)", || {
-        assert_eq!(
-            calculate_quorum(1),
-            1,
-            "1 citizen: floor=0, ceil=1, should be 1"
-        );
-    });
+    step(
+        "Verify ceiling is used for 1 citizen (floor=0, ceil=1)",
+        || {
+            assert_eq!(
+                calculate_quorum(1),
+                1,
+                "1 citizen: floor=0, ceil=1, should be 1"
+            );
+        },
+    );
 
-    step("Verify ceiling is used for 14 citizens (floor=0, ceil=1)", || {
-        assert_eq!(
-            calculate_quorum(14),
-            1,
-            "14 citizens: floor=0, ceil=1, should be 1"
-        );
-    });
+    step(
+        "Verify ceiling is used for 14 citizens (floor=0, ceil=1)",
+        || {
+            assert_eq!(
+                calculate_quorum(14),
+                1,
+                "14 citizens: floor=0, ceil=1, should be 1"
+            );
+        },
+    );
 
-    step("Verify ceiling is used for 15 citizens (floor=1, ceil=2)", || {
-        assert_eq!(
-            calculate_quorum(15),
-            2,
-            "15 citizens: floor=1, ceil=2, should be 2"
-        );
-    });
+    step(
+        "Verify ceiling is used for 15 citizens (floor=1, ceil=2)",
+        || {
+            assert_eq!(
+                calculate_quorum(15),
+                2,
+                "15 citizens: floor=1, ceil=2, should be 2"
+            );
+        },
+    );
 
-    step("Verify ceiling is used for 99 citizens (floor=6, ceil=7)", || {
-        assert_eq!(
-            calculate_quorum(99),
-            7,
-            "99 citizens: floor=6, ceil=7, should be 7"
-        );
-    });
+    step(
+        "Verify ceiling is used for 99 citizens (floor=6, ceil=7)",
+        || {
+            assert_eq!(
+                calculate_quorum(99),
+                7,
+                "99 citizens: floor=6, ceil=7, should be 7"
+            );
+        },
+    );
 }
 
 // ==================== OVERFLOW TESTS ====================
@@ -363,20 +399,23 @@ fn test_quorum_overflow_panics() {
 #[allure_test]
 #[test]
 fn test_quorum_near_overflow_boundary() {
-    step("Calculate safe max value (u64::MAX / 7) and verify exact result", || {
-        let safe_max = u64::MAX / 7;
-        let result = calculate_quorum(safe_max);
+    step(
+        "Calculate safe max value (u64::MAX / 7) and verify exact result",
+        || {
+            let safe_max = u64::MAX / 7;
+            let result = calculate_quorum(safe_max);
 
-        // Formula: (citizen_count * 7).div_ceil(100)
-        // For safe_max = u64::MAX / 7, we have:
-        // safe_max * 7 = (u64::MAX / 7) * 7 ≈ u64::MAX (with rounding)
-        // Expected = div_ceil(safe_max * 7, 100)
-        let expected = (safe_max * 7).div_ceil(100);
+            // Formula: (citizen_count * 7).div_ceil(100)
+            // For safe_max = u64::MAX / 7, we have:
+            // safe_max * 7 = (u64::MAX / 7) * 7 ≈ u64::MAX (with rounding)
+            // Expected = div_ceil(safe_max * 7, 100)
+            let expected = (safe_max * 7).div_ceil(100);
 
-        assert_eq!(
-            result, expected,
-            "Quorum calculation should match expected value at boundary: {} vs {}",
-            result, expected
-        );
-    });
+            assert_eq!(
+                result, expected,
+                "Quorum calculation should match expected value at boundary: {} vs {}",
+                result, expected
+            );
+        },
+    );
 }

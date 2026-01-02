@@ -3727,14 +3727,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "tokio",
- "verified-accounts-interface",
-]
-
-[[package]]
-name = "verified-accounts-interface"
-version = "1.0.0"
-dependencies = [
- "near-sdk",
 ]
 
 [[package]]

@@ -11,7 +11,9 @@ use sputnik_bridge::{
 #[allure_sub_suite("Constants")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "constants", "gas")]
-#[allure_description("Verifies gas constants are within reasonable ranges for contract operations.")]
+#[allure_description(
+    "Verifies gas constants are within reasonable ranges for contract operations."
+)]
 #[allure_test]
 #[test]
 fn test_gas_constants_are_reasonable() {
@@ -33,7 +35,9 @@ fn test_gas_constants_are_reasonable() {
 #[allure_sub_suite("Constants")]
 #[allure_severity("minor")]
 #[allure_tags("unit", "constants")]
-#[allure_description("Verifies MAX_DESCRIPTION_LENGTH constant has expected value of 10,000 characters.")]
+#[allure_description(
+    "Verifies MAX_DESCRIPTION_LENGTH constant has expected value of 10,000 characters."
+)]
 #[allure_test]
 #[test]
 fn test_max_description_length_constant() {

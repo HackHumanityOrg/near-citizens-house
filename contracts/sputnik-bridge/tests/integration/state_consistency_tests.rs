@@ -16,7 +16,8 @@ use serde_json::json;
 #[allure_sub_suite("State Consistency")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "invariant", "state")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that bridge configuration (sputnik_dao, verified_accounts) remains unchanged
 after member additions and proposal creations.
@@ -25,8 +26,8 @@ after member additions and proposal creations.
 
 ## Invariant
 sputnik_dao and verified_accounts_contract addresses never change.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_bridge_config_unchanged_after_operations() -> anyhow::Result<()> {
@@ -77,7 +78,8 @@ async fn test_bridge_config_unchanged_after_operations() -> anyhow::Result<()> {
 #[allure_sub_suite("State Consistency")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "invariant", "cross-system")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that all citizens in the DAO are verified in the verified-accounts contract.
 This is a critical Sybil-resistance invariant.
@@ -86,8 +88,8 @@ This is a critical Sybil-resistance invariant.
 
 ## Invariant
 For every account in the DAO citizen role, is_account_verified() == true.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_dao_citizens_are_verified() -> anyhow::Result<()> {
@@ -108,7 +110,11 @@ async fn test_dao_citizens_are_verified() -> anyhow::Result<()> {
     let mut citizen_accounts: Vec<String> = Vec::new();
     for role in roles {
         if role.get("name").and_then(|n| n.as_str()) == Some("citizen") {
-            if let Some(group) = role.get("kind").and_then(|k| k.get("Group")).and_then(|g| g.as_array()) {
+            if let Some(group) = role
+                .get("kind")
+                .and_then(|k| k.get("Group"))
+                .and_then(|g| g.as_array())
+            {
                 for member in group {
                     if let Some(account_id) = member.as_str() {
                         citizen_accounts.push(account_id.to_string());
@@ -138,9 +144,12 @@ async fn test_dao_citizens_are_verified() -> anyhow::Result<()> {
         );
     }
 
-    step("Verify all citizens are verified in verified-accounts", || {
-        // All verifications passed above
-    });
+    step(
+        "Verify all citizens are verified in verified-accounts",
+        || {
+            // All verifications passed above
+        },
+    );
 
     Ok(())
 }
@@ -150,7 +159,8 @@ async fn test_dao_citizens_are_verified() -> anyhow::Result<()> {
 #[allure_sub_suite("State Consistency")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "invariant", "cross-system")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that verified accounts are NOT automatically citizens.
 Being verified is a prerequisite but doesn't grant citizenship.
@@ -159,8 +169,8 @@ Being verified is a prerequisite but doesn't grant citizenship.
 
 ## Invariant
 Verification != Citizenship. User must go through add_member to become citizen.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_verified_accounts_not_necessarily_citizens() -> anyhow::Result<()> {
@@ -214,7 +224,8 @@ async fn test_verified_accounts_not_necessarily_citizens() -> anyhow::Result<()>
 #[allure_sub_suite("State Consistency")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "invariant", "proposal")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that proposal IDs are sequential with no gaps.
 
@@ -222,8 +233,8 @@ Verifies that proposal IDs are sequential with no gaps.
 
 ## Invariant
 Proposal IDs increment by 1 for each proposal, starting from 0.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_proposal_count_consistency() -> anyhow::Result<()> {
@@ -280,7 +291,8 @@ async fn test_proposal_count_consistency() -> anyhow::Result<()> {
 #[allure_sub_suite("State Consistency")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "invariant", "failure-recovery")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that a failed add_member leaves the DAO state unchanged.
 
@@ -288,8 +300,8 @@ Verifies that a failed add_member leaves the DAO state unchanged.
 
 ## Invariant
 If add_member fails, no proposal is created and user is not in DAO.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_failed_add_member_leaves_dao_unchanged() -> anyhow::Result<()> {
@@ -329,7 +341,10 @@ async fn test_failed_add_member_leaves_dao_unchanged() -> anyhow::Result<()> {
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
 
     step("Verify user is not citizen after failure", || {
-        assert!(!is_citizen, "User should not be citizen after failed add_member");
+        assert!(
+            !is_citizen,
+            "User should not be citizen after failed add_member"
+        );
     });
 
     Ok(())

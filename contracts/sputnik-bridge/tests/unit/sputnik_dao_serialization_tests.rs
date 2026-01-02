@@ -1,8 +1,8 @@
-//! Serialization tests for sputnik-dao-interface types
+//! Serialization tests for sputnik-dao interface types
 
 use allure_rs::prelude::*;
 use near_sdk::json_types::U128;
-use sputnik_dao_interface::*;
+use sputnik_bridge::sputnik_dao::*;
 use std::collections::HashMap;
 
 #[allure_parent_suite("Near Citizens House")]
@@ -313,7 +313,10 @@ fn test_weight_or_ratio_zero_denominator_serialization() {
 
     // Test that it serializes (type system allows it)
     let json = near_sdk::serde_json::to_string(&ratio).unwrap();
-    assert!(json.contains('0'), "JSON should contain the zero denominator");
+    assert!(
+        json.contains('0'),
+        "JSON should contain the zero denominator"
+    );
 
     // Test roundtrip preserves the dangerous value
     let decoded: WeightOrRatio = near_sdk::serde_json::from_str(&json).unwrap();

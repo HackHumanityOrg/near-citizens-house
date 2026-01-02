@@ -8,8 +8,7 @@ use verified_accounts::{NearSignatureData, SelfProofData, ZkProof};
 
 // Re-export event structs from the contract for test use
 pub use verified_accounts::{
-    BackendWalletUpdatedEvent, ContractPausedEvent, ContractUnpausedEvent,
-    VerificationStoredEvent,
+    BackendWalletUpdatedEvent, ContractPausedEvent, ContractUnpausedEvent, VerificationStoredEvent,
 };
 
 /// Create a test context with the given predecessor account

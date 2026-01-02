@@ -42,7 +42,9 @@ async fn test_full_setup() -> anyhow::Result<()> {
 #[allure_sub_suite("Contract Setup")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "setup", "dao")]
-#[allure_description("Verifies that the bridge contract is properly registered in the DAO's bridge role.")]
+#[allure_description(
+    "Verifies that the bridge contract is properly registered in the DAO's bridge role."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_bridge_connected_to_dao() -> anyhow::Result<()> {
@@ -95,7 +97,9 @@ async fn test_dao_policy_configured_correctly() -> anyhow::Result<()> {
 #[allure_sub_suite("DAO Integration Setup")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "setup", "dao", "citizen-role")]
-#[allure_description("Verifies that the DAO has an empty citizen role initially, ready for citizens to be added.")]
+#[allure_description(
+    "Verifies that the DAO has an empty citizen role initially, ready for citizens to be added."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_dao_init_with_citizen_role() -> anyhow::Result<()> {
@@ -126,10 +130,15 @@ async fn test_dao_init_with_citizen_role() -> anyhow::Result<()> {
             .get("permissions")
             .and_then(|p| p.as_array())
             .expect("Role should have permissions");
-        let has_vote_permissions = permissions
-            .iter()
-            .any(|p| p.as_str().map(|s| s.contains("VoteApprove") || s.contains("VoteReject")).unwrap_or(false));
-        assert!(has_vote_permissions, "Citizen role should have vote permissions");
+        let has_vote_permissions = permissions.iter().any(|p| {
+            p.as_str()
+                .map(|s| s.contains("VoteApprove") || s.contains("VoteReject"))
+                .unwrap_or(false)
+        });
+        assert!(
+            has_vote_permissions,
+            "Citizen role should have vote permissions"
+        );
     });
 
     Ok(())
@@ -161,7 +170,11 @@ async fn test_dao_init_bridge_has_add_member_permission() -> anyhow::Result<()> 
             .get("permissions")
             .and_then(|p| p.as_array())
             .expect("Role should have permissions");
-        permissions.iter().filter_map(|p| p.as_str()).map(String::from).collect::<Vec<_>>()
+        permissions
+            .iter()
+            .filter_map(|p| p.as_str())
+            .map(String::from)
+            .collect::<Vec<_>>()
     });
 
     step("Verify bridge has add_member_to_role:AddProposal", || {
@@ -195,7 +208,9 @@ async fn test_dao_init_bridge_has_add_member_permission() -> anyhow::Result<()> 
 #[allure_sub_suite("DAO Integration Setup")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "setup", "dao", "permissions")]
-#[allure_description("Verifies that the bridge role has policy_add_or_update_role permissions for quorum updates.")]
+#[allure_description(
+    "Verifies that the bridge role has policy_add_or_update_role permissions for quorum updates."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_dao_init_bridge_has_policy_update_permission() -> anyhow::Result<()> {
@@ -215,30 +230,40 @@ async fn test_dao_init_bridge_has_policy_update_permission() -> anyhow::Result<(
             .get("permissions")
             .and_then(|p| p.as_array())
             .expect("Role should have permissions");
-        permissions.iter().filter_map(|p| p.as_str()).map(String::from).collect::<Vec<_>>()
+        permissions
+            .iter()
+            .filter_map(|p| p.as_str())
+            .map(String::from)
+            .collect::<Vec<_>>()
     });
 
-    step("Verify bridge has policy_add_or_update_role:AddProposal", || {
-        let has_policy_add_proposal = perm_strings
-            .iter()
-            .any(|p| p.contains("policy_add_or_update_role") && p.contains("AddProposal"));
-        assert!(
-            has_policy_add_proposal,
-            "Bridge should have policy_add_or_update_role:AddProposal. Found: {:?}",
-            perm_strings
-        );
-    });
+    step(
+        "Verify bridge has policy_add_or_update_role:AddProposal",
+        || {
+            let has_policy_add_proposal = perm_strings
+                .iter()
+                .any(|p| p.contains("policy_add_or_update_role") && p.contains("AddProposal"));
+            assert!(
+                has_policy_add_proposal,
+                "Bridge should have policy_add_or_update_role:AddProposal. Found: {:?}",
+                perm_strings
+            );
+        },
+    );
 
-    step("Verify bridge has policy_add_or_update_role:VoteApprove", || {
-        let has_policy_vote_approve = perm_strings
-            .iter()
-            .any(|p| p.contains("policy_add_or_update_role") && p.contains("VoteApprove"));
-        assert!(
+    step(
+        "Verify bridge has policy_add_or_update_role:VoteApprove",
+        || {
+            let has_policy_vote_approve = perm_strings
+                .iter()
+                .any(|p| p.contains("policy_add_or_update_role") && p.contains("VoteApprove"));
+            assert!(
             has_policy_vote_approve,
             "Bridge should have policy_add_or_update_role:VoteApprove for quorum updates. Found: {:?}",
             perm_strings
         );
-    });
+        },
+    );
 
     Ok(())
 }
@@ -249,7 +274,9 @@ async fn test_dao_init_bridge_has_policy_update_permission() -> anyhow::Result<(
 #[allure_sub_suite("DAO Integration Setup")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "setup", "dao", "permissions")]
-#[allure_description("Verifies that the bridge role has vote:AddProposal permission for creating Vote proposals.")]
+#[allure_description(
+    "Verifies that the bridge role has vote:AddProposal permission for creating Vote proposals."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_dao_init_bridge_has_vote_permission() -> anyhow::Result<()> {
@@ -269,7 +296,11 @@ async fn test_dao_init_bridge_has_vote_permission() -> anyhow::Result<()> {
             .get("permissions")
             .and_then(|p| p.as_array())
             .expect("Role should have permissions");
-        permissions.iter().filter_map(|p| p.as_str()).map(String::from).collect::<Vec<_>>()
+        permissions
+            .iter()
+            .filter_map(|p| p.as_str())
+            .map(String::from)
+            .collect::<Vec<_>>()
     });
 
     step("Verify bridge has vote:AddProposal permission", || {
@@ -342,7 +373,9 @@ async fn test_dao_init_all_role_can_finalize() -> anyhow::Result<()> {
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "query", "view")]
-#[allure_description("Verifies that the get_info view function returns correct bridge configuration details.")]
+#[allure_description(
+    "Verifies that the get_info view function returns correct bridge configuration details."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_get_info() -> anyhow::Result<()> {
@@ -527,13 +560,16 @@ async fn test_init_with_nonexistent_dao() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify initialization with nonexistent DAO succeeds", || {
-        assert!(
-            result.is_success(),
-            "Init with nonexistent DAO should succeed. Failures: {:?}",
-            result.failures()
-        );
-    });
+    step(
+        "Verify initialization with nonexistent DAO succeeds",
+        || {
+            assert!(
+                result.is_success(),
+                "Init with nonexistent DAO should succeed. Failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     let info: BridgeInfo = bridge.view("get_info").await?.json()?;
 
@@ -599,19 +635,25 @@ async fn test_init_with_nonexistent_verified_accounts() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify initialization with nonexistent verified-accounts succeeds", || {
-        assert!(
-            result.is_success(),
-            "Init with nonexistent verified-accounts should succeed. Failures: {:?}",
-            result.failures()
-        );
-    });
+    step(
+        "Verify initialization with nonexistent verified-accounts succeeds",
+        || {
+            assert!(
+                result.is_success(),
+                "Init with nonexistent verified-accounts should succeed. Failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     let info: BridgeInfo = bridge.view("get_info").await?.json()?;
 
-    step("Verify verified-accounts address is stored correctly", || {
-        assert_eq!(info.verified_accounts_contract, fake_verified_accounts_id);
-    });
+    step(
+        "Verify verified-accounts address is stored correctly",
+        || {
+            assert_eq!(info.verified_accounts_contract, fake_verified_accounts_id);
+        },
+    );
 
     Ok(())
 }
@@ -685,13 +727,16 @@ async fn test_init_with_special_chars_role() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify initialization with special chars role succeeds", || {
-        assert!(
-            result.is_success(),
-            "Init with special chars role should succeed. Failures: {:?}",
-            result.failures()
-        );
-    });
+    step(
+        "Verify initialization with special chars role succeeds",
+        || {
+            assert!(
+                result.is_success(),
+                "Init with special chars role should succeed. Failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     let info: BridgeInfo = bridge.view("get_info").await?.json()?;
 

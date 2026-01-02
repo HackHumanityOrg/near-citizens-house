@@ -13,7 +13,6 @@ use serde_json::json;
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "authorization")]
 #[allure_description("Verifies that unauthorized users cannot update the backend wallet address. Security-critical test.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
@@ -44,7 +43,6 @@ async fn test_update_backend_wallet_unauthorized() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "dao")]
 #[allure_description("Verifies that citizens cannot bypass the bridge and add proposals directly to the DAO. Security-critical test.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()> {
@@ -78,13 +76,16 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
         .transact()
         .await?;
 
-    step("Verify citizen cannot bypass bridge to add proposals", || {
-        // Should fail because citizens don't have AddProposal permission in production policy
-        assert!(
-            result.is_failure(),
-            "Citizen should not be able to add proposals directly to DAO"
-        );
-    });
+    step(
+        "Verify citizen cannot bypass bridge to add proposals",
+        || {
+            // Should fail because citizens don't have AddProposal permission in production policy
+            assert!(
+                result.is_failure(),
+                "Citizen should not be able to add proposals directly to DAO"
+            );
+        },
+    );
 
     Ok(())
 }
@@ -95,7 +96,6 @@ async fn test_citizen_cannot_add_proposal_to_dao_directly() -> anyhow::Result<()
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "dao")]
 #[allure_description("Verifies that random accounts without any role cannot add proposals to the DAO. Security-critical test.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> {
@@ -133,7 +133,6 @@ async fn test_random_account_cannot_add_proposal_to_dao() -> anyhow::Result<()> 
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "voting")]
 #[allure_description("Verifies that citizens cannot use VoteRemove action as they only have VoteApprove and VoteReject permissions.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
@@ -150,7 +149,10 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test proposal")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
 
     // Citizen tries to VoteRemove (which they don't have permission for)
     let result = vote_on_proposal(
@@ -179,7 +181,6 @@ async fn test_citizen_cannot_vote_remove() -> anyhow::Result<()> {
 #[allure_severity("normal")]
 #[allure_tags("integration", "security", "finalization")]
 #[allure_description("Verifies that anyone can finalize expired proposals as per the 'all' role permissions in the DAO policy.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
@@ -190,7 +191,10 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Finalize test")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
 
     // Verify proposal is InProgress before finalization
     let proposal_before = get_proposal(&env.sputnik_dao, proposal_id).await?;
@@ -251,7 +255,6 @@ async fn test_anyone_can_finalize_proposal() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
 #[allure_description("Verifies that callback_add_member cannot be called externally, protected by #[private] macro. Security-critical test.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Result<()> {
@@ -266,24 +269,31 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
         .transact()
         .await?;
 
-    step("Verify callback_add_member is protected from external calls", || {
-        assert!(
-            result.is_failure(),
-            "External call to callback_add_member should fail"
-        );
+    step(
+        "Verify callback_add_member is protected from external calls",
+        || {
+            assert!(
+                result.is_failure(),
+                "External call to callback_add_member should fail"
+            );
 
-        // Verify it fails due to #[private] macro protection (predecessor != current_account)
-        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-        assert!(
-            contains_any_error(
-                &result,
-                &["predecessor", "Method callback_add_member is private", "private"],
-                "private callback"
-            ),
-            "Should fail due to #[private] macro protection. Actual failures: {:?}",
-            result.failures()
-        );
-    });
+            // Verify it fails due to #[private] macro protection (predecessor != current_account)
+            // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+            assert!(
+                contains_any_error(
+                    &result,
+                    &[
+                        "predecessor",
+                        "Method callback_add_member is private",
+                        "private"
+                    ],
+                    "private callback"
+                ),
+                "Should fail due to #[private] macro protection. Actual failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     Ok(())
 }
@@ -294,7 +304,6 @@ async fn test_callback_add_member_cannot_be_called_externally() -> anyhow::Resul
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
 #[allure_description("Verifies that callback_proposal_created cannot be called externally, protected by #[private] macro. Security-critical test.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow::Result<()> {
@@ -309,24 +318,31 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
         .transact()
         .await?;
 
-    step("Verify callback_proposal_created is protected from external calls", || {
-        assert!(
-            result.is_failure(),
-            "External call to callback_proposal_created should fail"
-        );
+    step(
+        "Verify callback_proposal_created is protected from external calls",
+        || {
+            assert!(
+                result.is_failure(),
+                "External call to callback_proposal_created should fail"
+            );
 
-        // Verify it fails due to #[private] macro protection
-        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-        assert!(
-            contains_any_error(
-                &result,
-                &["predecessor", "Method callback_proposal_created is private", "private"],
-                "private callback"
-            ),
-            "Should fail due to #[private] macro protection. Actual failures: {:?}",
-            result.failures()
-        );
-    });
+            // Verify it fails due to #[private] macro protection
+            // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+            assert!(
+                contains_any_error(
+                    &result,
+                    &[
+                        "predecessor",
+                        "Method callback_proposal_created is private",
+                        "private"
+                    ],
+                    "private callback"
+                ),
+                "Should fail due to #[private] macro protection. Actual failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     Ok(())
 }
@@ -337,7 +353,6 @@ async fn test_callback_proposal_created_cannot_be_called_externally() -> anyhow:
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
 #[allure_description("Verifies that callback_member_added cannot be called externally, protected by #[private] macro. Security-critical test.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Result<()> {
@@ -355,24 +370,31 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
         .transact()
         .await?;
 
-    step("Verify callback_member_added is protected from external calls", || {
-        assert!(
-            result.is_failure(),
-            "External call to callback_member_added should fail"
-        );
+    step(
+        "Verify callback_member_added is protected from external calls",
+        || {
+            assert!(
+                result.is_failure(),
+                "External call to callback_member_added should fail"
+            );
 
-        // Verify it fails due to #[private] macro protection
-        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-        assert!(
-            contains_any_error(
-                &result,
-                &["predecessor", "Method callback_member_added is private", "private"],
-                "private callback"
-            ),
-            "Should fail due to #[private] macro protection. Actual failures: {:?}",
-            result.failures()
-        );
-    });
+            // Verify it fails due to #[private] macro protection
+            // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+            assert!(
+                contains_any_error(
+                    &result,
+                    &[
+                        "predecessor",
+                        "Method callback_member_added is private",
+                        "private"
+                    ],
+                    "private callback"
+                ),
+                "Should fail due to #[private] macro protection. Actual failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     Ok(())
 }
@@ -383,7 +405,6 @@ async fn test_callback_member_added_cannot_be_called_externally() -> anyhow::Res
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "callback")]
 #[allure_description("Verifies that callback_vote_proposal_created cannot be called externally, protected by #[private] macro. Security-critical test.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> anyhow::Result<()> {
@@ -398,24 +419,31 @@ async fn test_callback_vote_proposal_created_cannot_be_called_externally() -> an
         .transact()
         .await?;
 
-    step("Verify callback_vote_proposal_created is protected from external calls", || {
-        assert!(
-            result.is_failure(),
-            "External call to callback_vote_proposal_created should fail"
-        );
+    step(
+        "Verify callback_vote_proposal_created is protected from external calls",
+        || {
+            assert!(
+                result.is_failure(),
+                "External call to callback_vote_proposal_created should fail"
+            );
 
-        // Verify it fails due to #[private] macro protection
-        // Note: NEAR SDK's #[private] macro may emit different error messages across versions
-        assert!(
-            contains_any_error(
-                &result,
-                &["predecessor", "Method callback_vote_proposal_created is private", "private"],
-                "private callback"
-            ),
-            "Should fail due to #[private] macro protection. Actual failures: {:?}",
-            result.failures()
-        );
-    });
+            // Verify it fails due to #[private] macro protection
+            // Note: NEAR SDK's #[private] macro may emit different error messages across versions
+            assert!(
+                contains_any_error(
+                    &result,
+                    &[
+                        "predecessor",
+                        "Method callback_vote_proposal_created is private",
+                        "private"
+                    ],
+                    "private callback"
+                ),
+                "Should fail due to #[private] macro protection. Actual failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     Ok(())
 }

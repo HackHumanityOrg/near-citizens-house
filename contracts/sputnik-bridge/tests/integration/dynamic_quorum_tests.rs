@@ -18,7 +18,6 @@ use serde_json::json;
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "threshold")]
 #[allure_description("Verifies that dynamic quorum is calculated correctly as ceil(7% * citizen_count) when adding multiple citizens.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
@@ -93,7 +92,6 @@ async fn test_dynamic_quorum_and_threshold_calculation() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "voting")]
 #[allure_description("Verifies that a proposal remains InProgress when not enough votes are cast to reach the effective threshold.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
@@ -123,19 +121,25 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
         calculate_effective_threshold(quorum, threshold, citizen_count as u64);
     println!("Effective threshold: {}", effective_threshold);
 
-    step("Verify setup with 10 citizens and effective threshold", || {
-        assert_eq!(citizen_count, 10, "Should have 10 citizens");
-        assert_eq!(
-            effective_threshold, 6,
-            "Effective threshold should be 6 (50% of 10 + 1)"
-        );
-    });
+    step(
+        "Verify setup with 10 citizens and effective threshold",
+        || {
+            assert_eq!(citizen_count, 10, "Should have 10 citizens");
+            assert_eq!(
+                effective_threshold, 6,
+                "Effective threshold should be 6 (50% of 10 + 1)"
+            );
+        },
+    );
 
     // Create a Vote proposal
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test quorum failure")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
 
     // Only 2 citizens vote YES (less than effective_threshold of 6)
     for i in 0..2 {
@@ -173,7 +177,6 @@ async fn test_vote_proposal_quorum_fails() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "threshold")]
 #[allure_description("Verifies that a proposal remains InProgress when participation meets quorum but YES votes don't reach the threshold.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()> {
@@ -210,7 +213,10 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test threshold failure")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
 
     // 5 citizens vote YES, 5 vote NO
     // Total participation: 10 (50%) > quorum (2) - quorum passes
@@ -242,14 +248,17 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
     // Proposal should be InProgress (neither YES nor NO reached threshold)
     let proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
 
-    step("Verify proposal InProgress when neither threshold met", || {
-        assert_eq!(
-            proposal.status,
-            ProposalStatus::InProgress,
-            "Proposal should be InProgress: 5 YES and 5 NO, but need {} for threshold",
-            effective_threshold
-        );
-    });
+    step(
+        "Verify proposal InProgress when neither threshold met",
+        || {
+            assert_eq!(
+                proposal.status,
+                ProposalStatus::InProgress,
+                "Proposal should be InProgress: 5 YES and 5 NO, but need {} for threshold",
+                effective_threshold
+            );
+        },
+    );
 
     Ok(())
 }
@@ -265,7 +274,6 @@ async fn test_vote_proposal_quorum_passes_threshold_fails() -> anyhow::Result<()
 #[allure_severity("normal")]
 #[allure_tags("integration", "quorum", "edge-case")]
 #[allure_description("Documents that quorum failing while threshold passes is impossible due to effective_threshold = max(quorum, threshold_weight).")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow::Result<()> {
@@ -293,21 +301,24 @@ async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow
         quorum, threshold, effective_threshold
     );
 
-    step("Verify effective_threshold always >= quorum (invariant)", || {
-        // quorum = ceil(10 * 7 / 100) = 1
-        // threshold_weight = (10 * 1 / 2) + 1 = 6
-        // effective_threshold = max(1, 6) = 6
-        assert!(
-            effective_threshold >= quorum,
-            "Effective threshold ({}) should always >= quorum ({})",
-            effective_threshold,
-            quorum
-        );
+    step(
+        "Verify effective_threshold always >= quorum (invariant)",
+        || {
+            // quorum = ceil(10 * 7 / 100) = 1
+            // threshold_weight = (10 * 1 / 2) + 1 = 6
+            // effective_threshold = max(1, 6) = 6
+            assert!(
+                effective_threshold >= quorum,
+                "Effective threshold ({}) should always >= quorum ({})",
+                effective_threshold,
+                quorum
+            );
 
-        // If we have 6 YES votes to meet threshold, we also have >= 1 vote (quorum)
-        // Therefore, quorum_fails && threshold_passes is logically impossible
-        // The test passes by documenting this invariant
-    });
+            // If we have 6 YES votes to meet threshold, we also have >= 1 vote (quorum)
+            // Therefore, quorum_fails && threshold_passes is logically impossible
+            // The test passes by documenting this invariant
+        },
+    );
 
     Ok(())
 }
@@ -319,7 +330,6 @@ async fn test_vote_proposal_quorum_fails_threshold_passes_impossible() -> anyhow
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "voting")]
 #[allure_description("Verifies that a proposal is approved when YES votes reach the effective threshold (max of quorum and 50%).")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
@@ -346,7 +356,10 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test both pass")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
 
     // Have exactly effective_threshold citizens vote YES
     // effective_threshold = 6 for 10 citizens
@@ -399,8 +412,9 @@ async fn test_vote_proposal_quorum_and_threshold_pass() -> anyhow::Result<()> {
 #[allure_sub_suite("Dynamic Quorum")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "quorum", "voting")]
-#[allure_description("Verifies that a proposal is rejected when NO votes reach the effective threshold.")]
-
+#[allure_description(
+    "Verifies that a proposal is rejected when NO votes reach the effective threshold."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
@@ -423,7 +437,10 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "Test rejection")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
 
     // Have effective_threshold citizens vote NO
     let votes_needed = effective_threshold as usize;
@@ -469,7 +486,6 @@ async fn test_vote_proposal_rejected_at_threshold() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "edge-case")]
 #[allure_description("Verifies the critical 0-to-1 citizen transition, where quorum updates from 0 to 1 and the first citizen can approve proposals.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
@@ -481,7 +497,10 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
 
     step("Verify initial state with 0 citizens", || {
         assert_eq!(initial_citizen_count, 0, "Should start with 0 citizens");
-        assert_eq!(initial_quorum, 0, "Initial quorum should be 0 with no citizens");
+        assert_eq!(
+            initial_quorum, 0,
+            "Initial quorum should be 0 with no citizens"
+        );
     });
 
     // Add the first citizen
@@ -499,7 +518,8 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
     let new_quorum = get_vote_quorum(&env.sputnik_dao, "citizen").await?;
 
     // Verify the first citizen is actually in the role
-    let is_citizen = is_account_in_role(&env.sputnik_dao, first_user.id().as_str(), "citizen").await?;
+    let is_citizen =
+        is_account_in_role(&env.sputnik_dao, first_user.id().as_str(), "citizen").await?;
 
     step("Verify first citizen added and quorum updated to 1", || {
         assert_eq!(new_citizen_count, 1, "Should have 1 citizen after addition");
@@ -514,7 +534,10 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
     create_proposal_via_bridge(&env.backend, &env.bridge, "First citizen vote test")
         .await?
         .into_result()?;
-    let proposal_id = get_last_proposal_id(&env.sputnik_dao).await?.checked_sub(1).expect("expected at least one proposal");
+    let proposal_id = get_last_proposal_id(&env.sputnik_dao)
+        .await?
+        .checked_sub(1)
+        .expect("expected at least one proposal");
 
     // With 1 citizen, effective_threshold = max(1, (1*1/2)+1) = max(1, 1) = 1
     // Single vote should approve
@@ -550,7 +573,6 @@ async fn test_zero_to_one_citizen_quorum_transition() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "boundary")]
 #[allure_description("Verifies the quorum boundary transition from 14 to 15 citizens where quorum increases from 1 to 2.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_quorum_boundary_14_to_15_citizens() -> anyhow::Result<()> {
@@ -611,7 +633,6 @@ async fn test_quorum_boundary_14_to_15_citizens() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "overflow")]
 #[allure_description("Verifies that quorum calculation handles large citizen counts (100+) correctly without overflow using saturating arithmetic.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_quorum_calculation_with_many_citizens() -> anyhow::Result<()> {
@@ -672,7 +693,6 @@ async fn test_quorum_calculation_with_many_citizens() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "quorum", "atomicity")]
 #[allure_description("Verifies that quorum updates are atomic with member addition, with both member_added and quorum_updated events emitted.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_quorum_update_atomic_with_member_addition() -> anyhow::Result<()> {

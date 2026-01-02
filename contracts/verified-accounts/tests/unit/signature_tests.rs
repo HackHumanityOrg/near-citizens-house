@@ -13,7 +13,9 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "signature")]
-#[allure_description("Verifies that invalid NEAR signatures are rejected during NEP-413 verification.")]
+#[allure_description(
+    "Verifies that invalid NEAR signatures are rejected during NEP-413 verification."
+)]
 #[allure_test]
 #[test]
 fn test_invalid_signature() {
@@ -238,7 +240,9 @@ fn test_signature_too_long() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "signature")]
-#[allure_description("Verifies signatures signed by a different key than the declared account are rejected.")]
+#[allure_description(
+    "Verifies signatures signed by a different key than the declared account are rejected."
+)]
 #[allure_test]
 #[test]
 fn test_signature_from_different_key_rejected() {
@@ -252,27 +256,30 @@ fn test_signature_from_different_key_rejected() {
         (contract, user, other)
     });
 
-    step("Create signature with other's key but user's public key", || {
-        let signer_other = create_signer(&other);
-        let mut sig_data =
-            create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &user);
-        let user_pk = create_signer(&user).public_key();
-        sig_data.public_key = user_pk.to_string().parse().unwrap();
+    step(
+        "Create signature with other's key but user's public key",
+        || {
+            let signer_other = create_signer(&other);
+            let mut sig_data =
+                create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &user);
+            let user_pk = create_signer(&user).public_key();
+            sig_data.public_key = user_pk.to_string().parse().unwrap();
 
-        assert_panic_with(
-            || {
-                contract.store_verification(
-                    "nullifier_wrong_key".to_string(),
-                    user.clone(),
-                    "1".to_string(),
-                    sig_data,
-                    test_self_proof(),
-                    "ctx".to_string(),
-                );
-            },
-            "Invalid NEAR signature - NEP-413 verification failed",
-        );
-    });
+            assert_panic_with(
+                || {
+                    contract.store_verification(
+                        "nullifier_wrong_key".to_string(),
+                        user.clone(),
+                        "1".to_string(),
+                        sig_data,
+                        test_self_proof(),
+                        "ctx".to_string(),
+                    );
+                },
+                "Invalid NEAR signature - NEP-413 verification failed",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -320,7 +327,9 @@ fn test_signature_wrong_nonce_rejected() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "signature", "recipient")]
-#[allure_description("Verifies that changing the recipient after signing invalidates the signature.")]
+#[allure_description(
+    "Verifies that changing the recipient after signing invalidates the signature."
+)]
 #[allure_test]
 #[test]
 fn test_signature_wrong_recipient_rejected() {
@@ -361,7 +370,9 @@ fn test_signature_wrong_recipient_rejected() {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "signature", "challenge")]
-#[allure_description("Verifies that changing the challenge after signing invalidates the signature.")]
+#[allure_description(
+    "Verifies that changing the challenge after signing invalidates the signature."
+)]
 #[allure_test]
 #[test]
 fn test_signature_wrong_challenge_rejected() {

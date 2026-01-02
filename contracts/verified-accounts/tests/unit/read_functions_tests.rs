@@ -1,8 +1,6 @@
 //! Read functions tests for verified-accounts contract
 
-use super::helpers::{
-    create_signer, create_valid_signature, get_context, test_self_proof,
-};
+use super::helpers::{create_signer, create_valid_signature, get_context, test_self_proof};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
@@ -13,7 +11,9 @@ use verified_accounts::Contract;
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "query", "view")]
-#[allure_description("Verifies all read-only view functions return correct values for empty contract state.")]
+#[allure_description(
+    "Verifies all read-only view functions return correct values for empty contract state."
+)]
 #[allure_test]
 #[test]
 fn test_read_functions() {
@@ -33,13 +33,19 @@ fn test_read_functions() {
         assert_eq!(contract.get_verified_count(), 0);
     });
 
-    step("Verify is_account_verified returns false for unknown account", || {
-        assert!(!contract.is_account_verified(accounts(2)));
-    });
+    step(
+        "Verify is_account_verified returns false for unknown account",
+        || {
+            assert!(!contract.is_account_verified(accounts(2)));
+        },
+    );
 
-    step("Verify get_account_with_proof returns None for unknown account", || {
-        assert!(contract.get_account_with_proof(accounts(2)).is_none());
-    });
+    step(
+        "Verify get_account_with_proof returns None for unknown account",
+        || {
+            assert!(contract.get_account_with_proof(accounts(2)).is_none());
+        },
+    );
 
     step("Verify get_verified_accounts returns empty list", || {
         let accounts_list = contract.get_verified_accounts(0, 10);
@@ -66,7 +72,8 @@ fn test_read_functions_with_verified_accounts() {
     step("Store first verified account", || {
         let user_a = accounts(2);
         let signer_a = create_signer(&user_a);
-        let sig_a = create_valid_signature(&signer_a, &user_a, "Identify myself", &[9; 32], &user_a);
+        let sig_a =
+            create_valid_signature(&signer_a, &user_a, "Identify myself", &[9; 32], &user_a);
         contract.store_verification(
             "nullifier_a".to_string(),
             user_a,
@@ -80,7 +87,8 @@ fn test_read_functions_with_verified_accounts() {
     step("Store second verified account", || {
         let user_b = accounts(3);
         let signer_b = create_signer(&user_b);
-        let sig_b = create_valid_signature(&signer_b, &user_b, "Identify myself", &[10; 32], &user_b);
+        let sig_b =
+            create_valid_signature(&signer_b, &user_b, "Identify myself", &[10; 32], &user_b);
         contract.store_verification(
             "nullifier_b".to_string(),
             user_b,
@@ -111,11 +119,14 @@ fn test_read_functions_with_verified_accounts() {
         assert_eq!(statuses, vec![true, true, false]);
     });
 
-    step("Test batch get_accounts returns Some/None correctly", || {
-        let accounts_data = contract.get_accounts(vec![accounts(2), accounts(4)]);
-        assert!(accounts_data[0].is_some());
-        assert!(accounts_data[1].is_none());
-    });
+    step(
+        "Test batch get_accounts returns Some/None correctly",
+        || {
+            let accounts_data = contract.get_accounts(vec![accounts(2), accounts(4)]);
+            assert!(accounts_data[0].is_some());
+            assert!(accounts_data[1].is_none());
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -134,8 +145,11 @@ fn test_pagination_with_large_limit_on_empty() {
         Contract::new(backend)
     });
 
-    step("Call get_verified_accounts with limit > 100 on empty data", || {
-        let accounts_list = contract.get_verified_accounts(0, 200);
-        assert_eq!(accounts_list.len(), 0);
-    });
+    step(
+        "Call get_verified_accounts with limit > 100 on empty data",
+        || {
+            let accounts_list = contract.get_verified_accounts(0, 200);
+            assert_eq!(accounts_list.len(), 0);
+        },
+    );
 }

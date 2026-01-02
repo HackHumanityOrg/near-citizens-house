@@ -102,7 +102,9 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
 #[allure_sub_suite("Security")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "security", "batch-limit")]
-#[allure_description("Verifies that are_accounts_verified enforces the batch size limit of 100 accounts.")]
+#[allure_description(
+    "Verifies that are_accounts_verified enforces the batch size limit of 100 accounts."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_batch_size_limit_enforced() -> anyhow::Result<()> {

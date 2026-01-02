@@ -31,12 +31,17 @@ use near_sdk::assert_one_yocto;
 use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, Gas, NearSchema, PanicOnDefault, Promise, PromiseResult};
-use sputnik_dao_interface::{
+use std::collections::HashMap;
+
+// Local interface modules
+pub mod sputnik_dao;
+pub mod verified_accounts;
+
+use sputnik_dao::{
     ext_sputnik_dao, Action, ProposalInput, ProposalKind, RoleKind, RolePermission, VotePolicy,
     WeightKind, WeightOrRatio,
 };
-use std::collections::HashMap;
-use verified_accounts_interface::ext_verified_accounts;
+use verified_accounts::ext_verified_accounts;
 
 /// Maximum description length for proposals (prevents storage abuse)
 #[cfg(not(feature = "testing"))]

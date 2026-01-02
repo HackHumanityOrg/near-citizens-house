@@ -15,7 +15,9 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_sub_suite("Pause/Unpause")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "admin", "pause")]
-#[allure_description("Verifies that backend wallet can pause and unpause the contract, emitting proper events.")]
+#[allure_description(
+    "Verifies that backend wallet can pause and unpause the contract, emitting proper events."
+)]
 #[allure_test]
 #[test]
 fn test_pause_unpause() {

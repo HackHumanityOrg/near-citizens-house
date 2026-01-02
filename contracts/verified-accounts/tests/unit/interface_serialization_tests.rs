@@ -1,7 +1,7 @@
-//! Serialization tests for verified-accounts-interface types
+//! Serialization tests for verified-accounts interface types
 
 use allure_rs::prelude::*;
-use verified_accounts_interface::*;
+use verified_accounts::interface::*;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Interface Tests")]
@@ -183,9 +183,7 @@ fn test_verified_account_info_json_roundtrip() {
 #[allure_sub_suite("Serialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "serialization", "passport")]
-#[allure_description(
-    "Tests serialization with realistic 21 public signals from passport proofs"
-)]
+#[allure_description("Tests serialization with realistic 21 public signals from passport proofs")]
 #[allure_test]
 #[test]
 fn test_verified_account_with_21_signals() {

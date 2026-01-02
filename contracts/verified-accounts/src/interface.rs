@@ -1,14 +1,14 @@
 //! # Verified Accounts Interface
 //!
-//! This crate provides a typed interface for making cross-contract calls to the
-//! NEAR verified accounts oracle contract. Other NEAR contracts can add this as
-//! a dependency to get type-safe cross-contract calls.
+//! This module provides a typed interface for making cross-contract calls to the
+//! NEAR verified accounts oracle contract. Other NEAR contracts can use these types
+//! and the generated `ext_verified_accounts` module for type-safe cross-contract calls.
 //!
 //! ## Usage Example
 //!
 //! ```rust,ignore
 //! use near_sdk::{env, near, AccountId, Promise, Gas, PromiseResult};
-//! use verified_accounts_interface::ext_verified_accounts;
+//! use verified_accounts::interface::ext_verified_accounts;
 //!
 //! #[near(contract_state)]
 //! pub struct MyContract {
@@ -139,7 +139,7 @@ pub struct VerifiedAccount {
 /// | `get_accounts(10)` | 12 TGas |
 /// | Callback overhead | 5 TGas |
 #[ext_contract(ext_verified_accounts)]
-pub trait VerifiedAccounts {
+pub trait VerifiedAccountsInterface {
     // ==================== Single Account Queries ====================
 
     /// Check if an account is verified (simple boolean).
@@ -202,4 +202,3 @@ pub trait VerifiedAccounts {
     /// When paused, no new verifications can be stored, but reads still work.
     fn is_paused(&self) -> bool;
 }
-

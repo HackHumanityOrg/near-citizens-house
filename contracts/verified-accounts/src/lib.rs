@@ -36,6 +36,12 @@ use near_sdk::collections::{LookupSet, UnorderedMap};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
 
+// Interface module for cross-contract calls
+pub mod interface;
+pub use interface::{
+    ext_verified_accounts, SelfProofData, VerifiedAccount, VerifiedAccountInfo, ZkProof,
+};
+
 /// Maximum length for string inputs
 const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 78 decimal digits
 const MAX_ATTESTATION_ID_LEN: usize = 1; // Self.xyz uses "1", "2", "3"
@@ -53,42 +59,6 @@ pub enum StorageKey {
     Nullifiers,
     Accounts,
     UsedSignatures,
-}
-
-/// Groth16 ZK proof structure
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
-#[abi(json)]
-#[serde(crate = "near_sdk::serde")]
-#[borsh(crate = "near_sdk::borsh")]
-pub struct ZkProof {
-    pub a: [String; 2],
-    pub b: [[String; 2]; 2],
-    pub c: [String; 2],
-}
-
-/// Self.xyz proof data
-/// Contains all data needed to re-verify the proof against Self.xyz's IdentityVerificationHub
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
-#[abi(json)]
-#[serde(crate = "near_sdk::serde")]
-#[borsh(crate = "near_sdk::borsh")]
-pub struct SelfProofData {
-    pub proof: ZkProof,
-    pub public_signals: Vec<String>,
-}
-
-/// Verified account record stored on-chain
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, NearSchema)]
-#[abi(json)]
-#[serde(crate = "near_sdk::serde")]
-#[borsh(crate = "near_sdk::borsh")]
-pub struct VerifiedAccount {
-    pub nullifier: String,
-    pub near_account_id: AccountId,
-    pub attestation_id: String,
-    pub verified_at: u64,
-    pub self_proof: SelfProofData,
-    pub user_context_data: String,
 }
 
 /// NEAR signature data
@@ -553,18 +523,15 @@ impl Contract {
 
     /// Get account verification info without proof data (public read)
     /// Returns all essential data without the large ZK proof
-    pub fn get_account(
-        &self,
-        near_account_id: AccountId,
-    ) -> Option<verified_accounts_interface::VerifiedAccountInfo> {
-        self.accounts.get(&near_account_id).map(|v| {
-            verified_accounts_interface::VerifiedAccountInfo {
+    pub fn get_account(&self, near_account_id: AccountId) -> Option<VerifiedAccountInfo> {
+        self.accounts
+            .get(&near_account_id)
+            .map(|v| VerifiedAccountInfo {
                 nullifier: v.nullifier,
                 near_account_id: v.near_account_id,
                 attestation_id: v.attestation_id,
                 verified_at: v.verified_at,
-            }
-        })
+            })
     }
 
     /// Get full account data including ZK proof (public read)
@@ -624,10 +591,7 @@ impl Contract {
     /// Batch get account verification info (public read)
     /// Returns Vec<Option<VerifiedAccountInfo>> in same order as input
     /// Maximum 100 accounts per call to prevent gas exhaustion
-    pub fn get_accounts(
-        &self,
-        account_ids: Vec<AccountId>,
-    ) -> Vec<Option<verified_accounts_interface::VerifiedAccountInfo>> {
+    pub fn get_accounts(&self, account_ids: Vec<AccountId>) -> Vec<Option<VerifiedAccountInfo>> {
         assert!(
             account_ids.len() <= MAX_BATCH_SIZE,
             "Batch size exceeds maximum of {} accounts",
@@ -645,4 +609,3 @@ impl Contract {
         env!("CARGO_PKG_VERSION").to_string()
     }
 }
-

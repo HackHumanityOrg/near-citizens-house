@@ -100,20 +100,23 @@ fn test_happy_path_store_verification() {
 #[allure_sub_suite("Store Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "replay-protection")]
-#[allure_description("Verifies signature replay protection rejects storing the same signature twice.")]
+#[allure_description(
+    "Verifies signature replay protection rejects storing the same signature twice."
+)]
 #[allure_test]
 #[test]
 fn test_signature_replay_rejected() {
-    let (mut contract, user, signer, nonce) = step("Initialize contract with valid signature", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-        let contract = Contract::new(backend);
-        let signer = create_signer(&user);
-        let nonce = vec![1u8; 32];
-        (contract, user, signer, nonce)
-    });
+    let (mut contract, user, signer, nonce) =
+        step("Initialize contract with valid signature", || {
+            let backend = accounts(1);
+            let user = accounts(2);
+            let context = get_context(backend.clone());
+            testing_env!(context.build());
+            let contract = Contract::new(backend);
+            let signer = create_signer(&user);
+            let nonce = vec![1u8; 32];
+            (contract, user, signer, nonce)
+        });
 
     step("Store first verification successfully", || {
         let sig_data = create_valid_signature(&signer, &user, "Identify myself", &nonce, &user);
@@ -131,13 +134,8 @@ fn test_signature_replay_rejected() {
     step("Attempt replay with same signature nonce", || {
         assert_panic_with(
             || {
-                let replay_sig = create_valid_signature(
-                    &signer,
-                    &user,
-                    "Identify myself",
-                    &nonce,
-                    &user,
-                );
+                let replay_sig =
+                    create_valid_signature(&signer, &user, "Identify myself", &nonce, &user);
                 contract.store_verification(
                     "nullifier_two".to_string(),
                     user.clone(),
@@ -157,22 +155,26 @@ fn test_signature_replay_rejected() {
 #[allure_sub_suite("Store Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "timestamp")]
-#[allure_description("Verifies that verified_at matches the block timestamp when the verification was stored.")]
+#[allure_description(
+    "Verifies that verified_at matches the block timestamp when the verification was stored."
+)]
 #[allure_test]
 #[test]
 fn test_verification_timestamp_matches_block_time() {
-    let (mut contract, user, sig_data, expected_ts) = step("Initialize contract with specific block timestamp", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let mut context = get_context(backend.clone());
-        let expected_ts = 123_456_789u64;
-        context.block_timestamp(expected_ts);
-        testing_env!(context.build());
-        let contract = Contract::new(backend);
-        let signer = create_signer(&user);
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &user);
-        (contract, user, sig_data, expected_ts)
-    });
+    let (mut contract, user, sig_data, expected_ts) =
+        step("Initialize contract with specific block timestamp", || {
+            let backend = accounts(1);
+            let user = accounts(2);
+            let mut context = get_context(backend.clone());
+            let expected_ts = 123_456_789u64;
+            context.block_timestamp(expected_ts);
+            testing_env!(context.build());
+            let contract = Contract::new(backend);
+            let signer = create_signer(&user);
+            let sig_data =
+                create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &user);
+            (contract, user, sig_data, expected_ts)
+        });
 
     step("Store verification", || {
         contract.store_verification(
@@ -210,7 +212,8 @@ fn test_nullifier_reuse_rejected() {
     step("Store first verification with nullifier", || {
         let user_a = accounts(2);
         let signer_a = create_signer(&user_a);
-        let sig_a = create_valid_signature(&signer_a, &user_a, "Identify myself", &[0; 32], &user_a);
+        let sig_a =
+            create_valid_signature(&signer_a, &user_a, "Identify myself", &[0; 32], &user_a);
         contract.store_verification(
             "shared_nullifier".to_string(),
             user_a,
@@ -224,13 +227,8 @@ fn test_nullifier_reuse_rejected() {
     step("Attempt to reuse nullifier with different account", || {
         let user_b = accounts(3);
         let signer_b = create_signer(&user_b);
-        let sig_b = create_valid_signature(
-            &signer_b,
-            &user_b,
-            "Identify myself",
-            &[2; 32],
-            &user_b,
-        );
+        let sig_b =
+            create_valid_signature(&signer_b, &user_b, "Identify myself", &[2; 32], &user_b);
         assert_panic_with(
             || {
                 contract.store_verification(
@@ -252,7 +250,9 @@ fn test_nullifier_reuse_rejected() {
 #[allure_sub_suite("Store Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "duplicate-account")]
-#[allure_description("Verifies the same NEAR account cannot be verified twice even with new signatures/nullifiers.")]
+#[allure_description(
+    "Verifies the same NEAR account cannot be verified twice even with new signatures/nullifiers."
+)]
 #[allure_test]
 #[test]
 fn test_double_verification_rejected() {
@@ -301,7 +301,9 @@ fn test_double_verification_rejected() {
 #[allure_sub_suite("Store Verification")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "storage", "economics")]
-#[allure_description("Verifies insufficient contract balance is rejected before persisting verification.")]
+#[allure_description(
+    "Verifies insufficient contract balance is rejected before persisting verification."
+)]
 #[allure_test]
 #[test]
 fn test_insufficient_balance_rejected() {

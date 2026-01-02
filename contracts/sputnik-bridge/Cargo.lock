@@ -3171,16 +3171,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "sputnik-dao-interface",
  "tokio",
- "verified-accounts-interface",
-]
-
-[[package]]
-name = "sputnik-dao-interface"
-version = "1.0.0"
-dependencies = [
- "near-sdk",
 ]
 
 [[package]]
@@ -3738,13 +3729,6 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
-
-[[package]]
-name = "verified-accounts-interface"
-version = "1.0.0"
-dependencies = [
- "near-sdk",
-]
 
 [[package]]
 name = "version_check"

@@ -35,17 +35,20 @@ fn test_invariant_quorum_percent_valid_range() {
 #[allure_test]
 #[test]
 fn test_invariant_quorum_never_exceeds_citizen_count() {
-    step("Verify quorum never exceeds citizen count for 0..1000", || {
-        for n in 0..1000 {
-            let quorum = calculate_quorum(n);
-            assert!(
-                quorum <= n,
-                "Quorum {} exceeded citizen count {} (invalid invariant)",
-                quorum,
-                n
-            );
-        }
-    });
+    step(
+        "Verify quorum never exceeds citizen count for 0..1000",
+        || {
+            for n in 0..1000 {
+                let quorum = calculate_quorum(n);
+                assert!(
+                    quorum <= n,
+                    "Quorum {} exceeded citizen count {} (invalid invariant)",
+                    quorum,
+                    n
+                );
+            }
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -57,20 +60,23 @@ fn test_invariant_quorum_never_exceeds_citizen_count() {
 #[allure_test]
 #[test]
 fn test_invariant_quorum_monotonic_increasing() {
-    step("Verify quorum is monotonically increasing for 0..1000", || {
-        let mut prev_quorum = 0u64;
-        for n in 0..1000 {
-            let quorum = calculate_quorum(n);
-            assert!(
-                quorum >= prev_quorum,
-                "Quorum decreased from {} to {} at citizen count {} (non-monotonic)",
-                prev_quorum,
-                quorum,
-                n
-            );
-            prev_quorum = quorum;
-        }
-    });
+    step(
+        "Verify quorum is monotonically increasing for 0..1000",
+        || {
+            let mut prev_quorum = 0u64;
+            for n in 0..1000 {
+                let quorum = calculate_quorum(n);
+                assert!(
+                    quorum >= prev_quorum,
+                    "Quorum decreased from {} to {} at citizen count {} (non-monotonic)",
+                    prev_quorum,
+                    quorum,
+                    n
+                );
+                prev_quorum = quorum;
+            }
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -78,7 +84,9 @@ fn test_invariant_quorum_monotonic_increasing() {
 #[allure_sub_suite("Invariants")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "invariant", "initialization")]
-#[allure_description("Verifies all configured account IDs are valid and non-empty after contract initialization.")]
+#[allure_description(
+    "Verifies all configured account IDs are valid and non-empty after contract initialization."
+)]
 #[allure_test]
 #[test]
 fn test_invariant_all_config_accounts_valid_after_init() {

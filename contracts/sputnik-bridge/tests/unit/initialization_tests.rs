@@ -11,7 +11,9 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "initialization")]
-#[allure_description("Verifies contract initializes correctly with all config values stored properly.")]
+#[allure_description(
+    "Verifies contract initializes correctly with all config values stored properly."
+)]
 #[allure_test]
 #[test]
 fn test_initialization() {
@@ -60,12 +62,7 @@ fn test_initialization_empty_citizen_role_fails() {
     step("Attempt initialization with empty citizen_role", || {
         assert_panic_with(
             || {
-                SputnikBridge::new(
-                    accounts(0),
-                    accounts(1),
-                    accounts(2),
-                    "".to_string(),
-                );
+                SputnikBridge::new(accounts(0), accounts(1), accounts(2), "".to_string());
             },
             "citizen_role must be non-empty",
         );
@@ -77,7 +74,9 @@ fn test_initialization_empty_citizen_role_fails() {
 #[allure_sub_suite("Initialization")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "initialization", "validation")]
-#[allure_description("Verifies that whitespace-only citizen_role is trimmed and rejected as empty.")]
+#[allure_description(
+    "Verifies that whitespace-only citizen_role is trimmed and rejected as empty."
+)]
 #[allure_test]
 #[test]
 fn test_initialization_whitespace_only_citizen_role_fails() {
@@ -86,17 +85,15 @@ fn test_initialization_whitespace_only_citizen_role_fails() {
         testing_env!(context.build());
     });
 
-    step("Attempt initialization with whitespace-only citizen_role", || {
-        assert_panic_with(
-            || {
-                SputnikBridge::new(
-                    accounts(0),
-                    accounts(1),
-                    accounts(2),
-                    "   ".to_string(),
-                );
-            },
-            "citizen_role must be non-empty",
-        );
-    });
+    step(
+        "Attempt initialization with whitespace-only citizen_role",
+        || {
+            assert_panic_with(
+                || {
+                    SputnikBridge::new(accounts(0), accounts(1), accounts(2), "   ".to_string());
+                },
+                "citizen_role must be non-empty",
+            );
+        },
+    );
 }

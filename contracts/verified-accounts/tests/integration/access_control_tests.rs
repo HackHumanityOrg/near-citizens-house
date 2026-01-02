@@ -11,7 +11,9 @@ use serde_json::json;
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "authorization")]
-#[allure_description("Verifies that unauthorized accounts cannot store verifications. Security-critical test.")]
+#[allure_description(
+    "Verifies that unauthorized accounts cannot store verifications. Security-critical test."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
@@ -55,7 +57,9 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "authorization")]
-#[allure_description("Verifies that unauthorized accounts cannot pause the contract. Security-critical test.")]
+#[allure_description(
+    "Verifies that unauthorized accounts cannot pause the contract. Security-critical test."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_unauthorized_pause() -> anyhow::Result<()> {
@@ -82,7 +86,9 @@ async fn test_unauthorized_pause() -> anyhow::Result<()> {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "admin", "pause")]
-#[allure_description("Verifies that the backend wallet can pause and unpause the contract correctly.")]
+#[allure_description(
+    "Verifies that the backend wallet can pause and unpause the contract correctly."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_authorized_pause_unpause() -> anyhow::Result<()> {
@@ -244,20 +250,26 @@ async fn test_update_backend_wallet_requires_one_yocto() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify update_backend_wallet fails with 2 yoctoNEAR", || {
-        assert!(result_too_much.is_failure());
-        let failure_msg = format!("{:?}", result_too_much.failures());
-        assert!(
-            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
-            "Expected yoctoNEAR error, got: {}",
-            failure_msg
-        );
-    });
+    step(
+        "Verify update_backend_wallet fails with 2 yoctoNEAR",
+        || {
+            assert!(result_too_much.is_failure());
+            let failure_msg = format!("{:?}", result_too_much.failures());
+            assert!(
+                failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+                "Expected yoctoNEAR error, got: {}",
+                failure_msg
+            );
+        },
+    );
 
     let current_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
-    step("Verify backend wallet unchanged after failed updates", || {
-        assert_eq!(current_backend, *backend.id());
-    });
+    step(
+        "Verify backend wallet unchanged after failed updates",
+        || {
+            assert_eq!(current_backend, *backend.id());
+        },
+    );
 
     Ok(())
 }
@@ -267,7 +279,9 @@ async fn test_update_backend_wallet_requires_one_yocto() -> anyhow::Result<()> {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "admin", "backend-wallet")]
-#[allure_description("Verifies that the backend wallet can be updated and the new wallet gains proper permissions.")]
+#[allure_description(
+    "Verifies that the backend wallet can be updated and the new wallet gains proper permissions."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_update_backend_wallet() -> anyhow::Result<()> {

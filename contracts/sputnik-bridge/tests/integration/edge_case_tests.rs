@@ -13,7 +13,6 @@ use serde_json::json;
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "deposit")]
 #[allure_description("Verifies that adding a member with insufficient deposit (below DAO proposal bond) fails with appropriate error.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
@@ -63,7 +62,6 @@ async fn test_add_member_insufficient_deposit() -> anyhow::Result<()> {
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "deposit")]
 #[allure_description("Verifies that adding a member with zero deposit fails as expected.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
@@ -99,7 +97,8 @@ async fn test_add_member_zero_deposit() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "deposit")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that adding a member with exactly the required bond (1 NEAR) succeeds.
 
@@ -107,8 +106,8 @@ Verifies that adding a member with exactly the required bond (1 NEAR) succeeds.
 
 ## Expected
 Transaction succeeds with exactly 1 NEAR deposit.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_with_exact_bond_succeeds() -> anyhow::Result<()> {
@@ -152,7 +151,8 @@ async fn test_add_member_with_exact_bond_succeeds() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "deposit")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that adding a member with more than the required bond (2 NEAR) fails.
 SputnikDAO v2 requires EXACTLY the bond amount, not "at least".
@@ -161,8 +161,8 @@ SputnikDAO v2 requires EXACTLY the bond amount, not "at least".
 
 ## Expected
 Transaction fails - SputnikDAO requires exact bond amount.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_with_excess_deposit_fails() -> anyhow::Result<()> {
@@ -182,21 +182,24 @@ async fn test_add_member_with_excess_deposit_fails() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify excess deposit is rejected (DAO requires exact bond)", || {
-        // SputnikDAO v2 requires EXACT bond amount, not minimum
-        // This fails with ERR_MIN_BOND (misleading name but checks equality)
-        assert!(
-            result.is_failure(),
-            "Add member with excess deposit should fail - DAO requires exact bond"
-        );
+    step(
+        "Verify excess deposit is rejected (DAO requires exact bond)",
+        || {
+            // SputnikDAO v2 requires EXACT bond amount, not minimum
+            // This fails with ERR_MIN_BOND (misleading name but checks equality)
+            assert!(
+                result.is_failure(),
+                "Add member with excess deposit should fail - DAO requires exact bond"
+            );
 
-        // Verify error mentions bond
-        assert!(
-            contains_any_error(&result, &["ERR_MIN_BOND", "bond"], "bond error"),
-            "Error should mention bond. Failures: {:?}",
-            result.failures()
-        );
-    });
+            // Verify error mentions bond
+            assert!(
+                contains_any_error(&result, &["ERR_MIN_BOND", "bond"], "bond error"),
+                "Error should mention bond. Failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     Ok(())
 }
@@ -206,7 +209,8 @@ async fn test_add_member_with_excess_deposit_fails() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "deposit")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that creating a proposal with exactly the required bond (1 NEAR) succeeds.
 
@@ -214,8 +218,8 @@ Verifies that creating a proposal with exactly the required bond (1 NEAR) succee
 
 ## Expected
 Transaction succeeds with exactly 1 NEAR deposit.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_create_proposal_with_exact_bond() -> anyhow::Result<()> {
@@ -257,7 +261,8 @@ async fn test_create_proposal_with_exact_bond() -> anyhow::Result<()> {
 #[allure_sub_suite("Cross-Contract Integration")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "pause", "cross-contract")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that the bridge can still query verification status from the verified-accounts
 contract when it is paused, because read operations (like is_account_verified) are
@@ -270,8 +275,8 @@ allowed even when the contract is paused.
 2. Verified-accounts contract is paused
 3. Bridge calls add_member (which queries is_account_verified)
 4. Verification check succeeds because reads work when paused
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_bridge_handles_verification_contract_pause() -> anyhow::Result<()> {
@@ -304,23 +309,29 @@ async fn test_bridge_handles_verification_contract_pause() -> anyhow::Result<()>
     // Bridge should still be able to add member - read operations work when paused
     let result = add_member_via_bridge(&env.backend, &env.bridge, user).await?;
 
-    step("Verify add_member works when verified-accounts is paused", || {
-        assert!(
+    step(
+        "Verify add_member works when verified-accounts is paused",
+        || {
+            assert!(
             result.is_success(),
             "Add member should succeed even when verified-accounts is paused (reads work). Failures: {:?}",
             result.failures()
         );
-    });
+        },
+    );
 
     // Verify user was added as citizen
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
 
-    step("Verify user is citizen after paused contract operation", || {
-        assert!(
-            is_citizen,
-            "User should be in citizen role after add_member with paused verified-accounts"
-        );
-    });
+    step(
+        "Verify user is citizen after paused contract operation",
+        || {
+            assert!(
+                is_citizen,
+                "User should be in citizen role after add_member with paused verified-accounts"
+            );
+        },
+    );
 
     Ok(())
 }
@@ -337,7 +348,6 @@ async fn test_bridge_handles_verification_contract_pause() -> anyhow::Result<()>
      Note: Additions are sequential (not truly concurrent) due to blockchain transaction ordering, \
      but rapid succession still tests for race conditions in state management."
 )]
-
 #[allure_test]
 #[tokio::test]
 async fn test_rapid_sequential_member_additions() -> anyhow::Result<()> {
@@ -372,14 +382,17 @@ async fn test_rapid_sequential_member_additions() -> anyhow::Result<()> {
     // Verify correct number of proposals were created (one per user)
     let proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
-    step("Verify all users are citizens with correct proposal count", || {
-        assert!(
-            proposal_count >= env.users.len() as u64,
-            "Should have at least {} proposals, got {}",
-            env.users.len(),
-            proposal_count
-        );
-    });
+    step(
+        "Verify all users are citizens with correct proposal count",
+        || {
+            assert!(
+                proposal_count >= env.users.len() as u64,
+                "Should have at least {} proposals, got {}",
+                env.users.len(),
+                proposal_count
+            );
+        },
+    );
 
     Ok(())
 }
@@ -390,7 +403,6 @@ async fn test_rapid_sequential_member_additions() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "edge-case", "voting")]
 #[allure_description("Verifies that sequential voting correctly auto-approves when threshold is reached and rejects late votes on approved proposals.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
@@ -420,9 +432,14 @@ async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
     // With 5 citizens and >50% threshold: need >2.5 votes, so 3 votes (60%) is sufficient
     for i in 0..3 {
         let user = env.user(i);
-        let result =
-            vote_on_proposal(user, &env.sputnik_dao, proposal_id, "VoteApprove", json!("Vote"))
-                .await?;
+        let result = vote_on_proposal(
+            user,
+            &env.sputnik_dao,
+            proposal_id,
+            "VoteApprove",
+            json!("Vote"),
+        )
+        .await?;
         assert!(
             result.is_success(),
             "Vote {} should succeed. Failures: {:?}",
@@ -463,13 +480,16 @@ async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
     // Final verification - proposal is still approved
     let final_proposal = get_proposal(&env.sputnik_dao, proposal_id).await?;
 
-    step("Verify proposal remains approved after late vote attempt", || {
-        assert_eq!(
-            final_proposal.status,
-            ProposalStatus::Approved,
-            "Proposal should remain approved"
-        );
-    });
+    step(
+        "Verify proposal remains approved after late vote attempt",
+        || {
+            assert_eq!(
+                final_proposal.status,
+                ProposalStatus::Approved,
+                "Proposal should remain approved"
+            );
+        },
+    );
 
     Ok(())
 }
@@ -481,7 +501,8 @@ async fn test_sequential_voting_reaches_threshold() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "deposit", "yocto")]
-#[allure_description(r#"
+#[allure_description(
+    r#"
 ## Purpose
 Verifies that storing a verification in the verified-accounts contract requires exactly
 1 yoctoNEAR deposit. This is a security measure to prevent accidental calls.
@@ -490,8 +511,8 @@ Verifies that storing a verification in the verified-accounts contract requires 
 
 ## Expected
 Calling store_verification without 1 yoctoNEAR deposit fails with appropriate error.
-"#)]
-
+"#
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_store_verification_requires_one_yocto_in_verified_accounts() -> anyhow::Result<()> {
@@ -528,18 +549,21 @@ async fn test_store_verification_requires_one_yocto_in_verified_accounts() -> an
         .transact()
         .await?;
 
-    step("Verify store_verification fails without 1 yoctoNEAR deposit", || {
-        assert!(
-            result_no_deposit.is_failure(),
-            "store_verification should fail without deposit"
-        );
-        let failure_msg = format!("{:?}", result_no_deposit.failures());
-        assert!(
-            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
-            "Expected yoctoNEAR error, got: {}",
-            failure_msg
-        );
-    });
+    step(
+        "Verify store_verification fails without 1 yoctoNEAR deposit",
+        || {
+            assert!(
+                result_no_deposit.is_failure(),
+                "store_verification should fail without deposit"
+            );
+            let failure_msg = format!("{:?}", result_no_deposit.failures());
+            assert!(
+                failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+                "Expected yoctoNEAR error, got: {}",
+                failure_msg
+            );
+        },
+    );
 
     // Try with 2 yoctoNEAR (should also fail - must be exactly 1)
     let result_too_much = env
@@ -565,18 +589,21 @@ async fn test_store_verification_requires_one_yocto_in_verified_accounts() -> an
         .transact()
         .await?;
 
-    step("Verify store_verification fails with 2 yoctoNEAR deposit", || {
-        assert!(
-            result_too_much.is_failure(),
-            "store_verification should fail with 2 yoctoNEAR (not exactly 1)"
-        );
-        let failure_msg = format!("{:?}", result_too_much.failures());
-        assert!(
-            failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
-            "Expected yoctoNEAR error, got: {}",
-            failure_msg
-        );
-    });
+    step(
+        "Verify store_verification fails with 2 yoctoNEAR deposit",
+        || {
+            assert!(
+                result_too_much.is_failure(),
+                "store_verification should fail with 2 yoctoNEAR (not exactly 1)"
+            );
+            let failure_msg = format!("{:?}", result_too_much.failures());
+            assert!(
+                failure_msg.contains("Requires attached deposit of exactly 1 yoctoNEAR"),
+                "Expected yoctoNEAR error, got: {}",
+                failure_msg
+            );
+        },
+    );
 
     Ok(())
 }

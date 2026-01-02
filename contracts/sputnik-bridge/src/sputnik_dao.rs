@@ -1,14 +1,14 @@
 //! # SputnikDAO Interface
 //!
-//! This crate provides a typed interface for making cross-contract calls to
-//! SputnikDAO v2 contracts. Other NEAR contracts can add this as a dependency
-//! to get type-safe cross-contract calls.
+//! This module provides a typed interface for making cross-contract calls to
+//! SputnikDAO v2 contracts. It generates the `ext_sputnik_dao` module with
+//! cross-contract call builders via the `#[ext_contract]` macro.
 //!
 //! ## Usage Example
 //!
 //! ```rust,ignore
 //! use near_sdk::{env, near, AccountId, Promise, Gas};
-//! use sputnik_dao_interface::{ext_sputnik_dao, ProposalInput, ProposalKind};
+//! use crate::sputnik_dao::{ext_sputnik_dao, ProposalInput, ProposalKind};
 //!
 //! #[near(contract_state)]
 //! pub struct MyContract {
@@ -221,4 +221,3 @@ pub trait SputnikDao {
     /// Get the last proposal ID.
     fn get_last_proposal_id(&self) -> u64;
 }
-

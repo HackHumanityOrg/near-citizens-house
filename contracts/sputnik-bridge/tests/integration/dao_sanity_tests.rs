@@ -130,7 +130,9 @@ async fn test_dao_deploys_and_initializes() -> anyhow::Result<()> {
 
     // Verify policy has the council member
     let policy: serde_json::Value = dao.view("get_policy").await?.json()?;
-    let roles = policy["roles"].as_array().expect("roles should be an array");
+    let roles = policy["roles"]
+        .as_array()
+        .expect("roles should be an array");
 
     let council_role = roles
         .iter()
@@ -143,7 +145,9 @@ async fn test_dao_deploys_and_initializes() -> anyhow::Result<()> {
 
     step("Verify council member is in policy", || {
         assert!(
-            group.iter().any(|m| m.as_str() == Some(council.id().as_str())),
+            group
+                .iter()
+                .any(|m| m.as_str() == Some(council.id().as_str())),
             "Council member should be in the group"
         );
     });
@@ -200,17 +204,20 @@ async fn test_dao_proposal_lifecycle_without_bridge() -> anyhow::Result<()> {
         .await?
         .json()?;
 
-    step("Verify proposal is InProgress with correct description", || {
-        assert_eq!(
-            proposal.status,
-            ProposalStatus::InProgress,
-            "Proposal should be InProgress"
-        );
-        assert_eq!(
-            proposal.description, "Test proposal created directly",
-            "Proposal description should match"
-        );
-    });
+    step(
+        "Verify proposal is InProgress with correct description",
+        || {
+            assert_eq!(
+                proposal.status,
+                ProposalStatus::InProgress,
+                "Proposal should be InProgress"
+            );
+            assert_eq!(
+                proposal.description, "Test proposal created directly",
+                "Proposal description should match"
+            );
+        },
+    );
 
     // Council member votes to approve
     let vote_result = council
@@ -299,8 +306,7 @@ async fn test_dao_non_council_cannot_create_proposal() -> anyhow::Result<()> {
 #[allure_sub_suite("DAO Sanity Tests")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "dao", "state")]
-#[allure_description("Verifies the DAO correctly tracks proposal IDs and counts.")
-]
+#[allure_description("Verifies the DAO correctly tracks proposal IDs and counts.")]
 #[allure_test]
 #[tokio::test]
 async fn test_dao_proposal_counting() -> anyhow::Result<()> {
@@ -359,7 +365,10 @@ async fn test_dao_proposal_counting() -> anyhow::Result<()> {
     let final_id: u64 = dao.view("get_last_proposal_id").await?.json()?;
 
     step("Verify final proposal count is 2", || {
-        assert_eq!(final_id, 2, "Last proposal ID should be 2 after creating 2 proposals");
+        assert_eq!(
+            final_id, 2,
+            "Last proposal ID should be 2 after creating 2 proposals"
+        );
     });
 
     Ok(())
@@ -371,8 +380,7 @@ async fn test_dao_proposal_counting() -> anyhow::Result<()> {
 #[allure_sub_suite("DAO Sanity Tests")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "dao", "voting")]
-#[allure_description("Verifies that a council member can vote to reject a proposal.")
-]
+#[allure_description("Verifies that a council member can vote to reject a proposal.")]
 #[allure_test]
 #[tokio::test]
 async fn test_dao_proposal_rejection() -> anyhow::Result<()> {

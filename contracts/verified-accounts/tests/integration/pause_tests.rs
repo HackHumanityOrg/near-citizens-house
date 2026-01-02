@@ -25,7 +25,11 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
         .await?;
 
     step("Verify pause succeeds", || {
-        assert!(pause_result.is_success(), "Pause failed: {:?}", pause_result.failures());
+        assert!(
+            pause_result.is_success(),
+            "Pause failed: {:?}",
+            pause_result.failures()
+        );
     });
 
     // Try to store verification - should fail
@@ -99,9 +103,12 @@ async fn test_pause_requires_one_yocto() -> anyhow::Result<()> {
     });
 
     let is_paused: bool = contract.view("is_paused").await?.json()?;
-    step("Verify contract remains unpaused after failed attempts", || {
-        assert!(!is_paused);
-    });
+    step(
+        "Verify contract remains unpaused after failed attempts",
+        || {
+            assert!(!is_paused);
+        },
+    );
 
     Ok(())
 }
@@ -154,9 +161,12 @@ async fn test_unpause_requires_one_yocto() -> anyhow::Result<()> {
     });
 
     let is_paused: bool = contract.view("is_paused").await?.json()?;
-    step("Verify contract remains paused after failed unpause attempts", || {
-        assert!(is_paused);
-    });
+    step(
+        "Verify contract remains paused after failed unpause attempts",
+        || {
+            assert!(is_paused);
+        },
+    );
 
     Ok(())
 }
@@ -226,7 +236,10 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
         .json()?;
 
     step("Verify is_account_verified works when paused", || {
-        assert!(is_verified, "Should return true for verified account even when paused");
+        assert!(
+            is_verified,
+            "Should return true for verified account even when paused"
+        );
     });
 
     let count: u64 = contract.view("get_verified_count").await?.json()?;
@@ -242,7 +255,11 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
         .json()?;
 
     step("Verify get_verified_accounts works when paused", || {
-        assert_eq!(accounts.len(), 1, "get_verified_accounts should work when paused");
+        assert_eq!(
+            accounts.len(),
+            1,
+            "get_verified_accounts should work when paused"
+        );
     });
 
     Ok(())

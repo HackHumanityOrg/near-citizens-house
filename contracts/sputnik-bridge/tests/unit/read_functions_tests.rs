@@ -21,9 +21,7 @@ fn test_get_info() {
         SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string())
     });
 
-    let info = step("Call get_info()", || {
-        contract.get_info()
-    });
+    let info = step("Call get_info()", || contract.get_info());
 
     step("Verify backend_wallet in info", || {
         assert_eq!(info.backend_wallet, accounts(0));

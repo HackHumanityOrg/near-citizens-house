@@ -9,7 +9,9 @@ use serde_json::json;
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "read", "verification-status")]
-#[allure_description("Verifies that is_account_verified returns false for accounts that have not been verified.")]
+#[allure_description(
+    "Verifies that is_account_verified returns false for accounts that have not been verified."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_is_account_verified_returns_false_for_unverified() -> anyhow::Result<()> {
@@ -22,9 +24,12 @@ async fn test_is_account_verified_returns_false_for_unverified() -> anyhow::Resu
         .await?
         .json()?;
 
-    step("Verify is_account_verified returns false for unverified account", || {
-        assert!(!is_verified);
-    });
+    step(
+        "Verify is_account_verified returns false for unverified account",
+        || {
+            assert!(!is_verified);
+        },
+    );
 
     Ok(())
 }

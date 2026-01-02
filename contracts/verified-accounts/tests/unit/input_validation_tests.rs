@@ -17,15 +17,16 @@ use verified_accounts::{Contract, NearSignatureData};
 #[allure_test]
 #[test]
 fn test_account_id_mismatch() {
-    let (mut contract, user, different_user) = step("Initialize contract and test accounts", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let different_user = accounts(3);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-        let contract = Contract::new(backend);
-        (contract, user, different_user)
-    });
+    let (mut contract, user, different_user) =
+        step("Initialize contract and test accounts", || {
+            let backend = accounts(1);
+            let user = accounts(2);
+            let different_user = accounts(3);
+            let context = get_context(backend.clone());
+            testing_env!(context.build());
+            let contract = Contract::new(backend);
+            (contract, user, different_user)
+        });
 
     step("Attempt verification with mismatched account_id", || {
         assert_panic_with(
@@ -63,15 +64,16 @@ fn test_account_id_mismatch() {
 #[allure_test]
 #[test]
 fn test_recipient_mismatch() {
-    let (mut contract, user, different_recipient) = step("Initialize contract and test accounts", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let different_recipient = accounts(3);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-        let contract = Contract::new(backend);
-        (contract, user, different_recipient)
-    });
+    let (mut contract, user, different_recipient) =
+        step("Initialize contract and test accounts", || {
+            let backend = accounts(1);
+            let user = accounts(2);
+            let different_recipient = accounts(3);
+            let context = get_context(backend.clone());
+            testing_env!(context.build());
+            let contract = Contract::new(backend);
+            (contract, user, different_recipient)
+        });
 
     step("Attempt verification with mismatched recipient", || {
         assert_panic_with(
@@ -137,7 +139,9 @@ fn test_batch_size_exceeded_are_accounts_verified() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "batch-size")]
-#[allure_description("Verifies that get_accounts rejects batch queries exceeding maximum size of 100 accounts.")]
+#[allure_description(
+    "Verifies that get_accounts rejects batch queries exceeding maximum size of 100 accounts."
+)]
 #[allure_test]
 #[test]
 fn test_batch_size_exceeded_get_accounts() {
@@ -276,33 +280,36 @@ fn test_user_context_data_too_long() {
         (contract, user)
     });
 
-    step("Attempt verification with 4097-char user_context_data", || {
-        assert_panic_with(
-            || {
-                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-                let sig_data = NearSignatureData {
-                    account_id: user.clone(),
-                    signature: vec![0; 64],
-                    public_key: public_key_str.parse().unwrap(),
-                    challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
-                    recipient: user.clone(),
-                };
+    step(
+        "Attempt verification with 4097-char user_context_data",
+        || {
+            assert_panic_with(
+                || {
+                    let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                    let sig_data = NearSignatureData {
+                        account_id: user.clone(),
+                        signature: vec![0; 64],
+                        public_key: public_key_str.parse().unwrap(),
+                        challenge: "Identify myself".to_string(),
+                        nonce: vec![0; 32],
+                        recipient: user.clone(),
+                    };
 
-                let too_long_user_context = "x".repeat(4097);
+                    let too_long_user_context = "x".repeat(4097);
 
-                contract.store_verification(
-                    "test_nullifier".to_string(),
-                    user,
-                    "1".to_string(),
-                    sig_data,
-                    test_self_proof(),
-                    too_long_user_context,
-                );
-            },
-            "User context data exceeds maximum length of 4096",
-        );
-    });
+                    contract.store_verification(
+                        "test_nullifier".to_string(),
+                        user,
+                        "1".to_string(),
+                        sig_data,
+                        test_self_proof(),
+                        too_long_user_context,
+                    );
+                },
+                "User context data exceeds maximum length of 4096",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -397,17 +404,20 @@ fn test_user_context_data_max_length_allowed() {
         (contract, user, sig_data)
     });
 
-    step("Store verification with 4096-char user_context_data", || {
-        let context_data = "c".repeat(4096);
-        contract.store_verification(
-            "nullifier_context".to_string(),
-            user.clone(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            context_data,
-        );
-    });
+    step(
+        "Store verification with 4096-char user_context_data",
+        || {
+            let context_data = "c".repeat(4096);
+            contract.store_verification(
+                "nullifier_context".to_string(),
+                user.clone(),
+                "1".to_string(),
+                sig_data,
+                test_self_proof(),
+                context_data,
+            );
+        },
+    );
 
     step("Verify account data is stored correctly", || {
         let account = contract.get_account(user.clone()).unwrap();

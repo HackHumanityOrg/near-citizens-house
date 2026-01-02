@@ -10,7 +10,9 @@ use serde_json::json;
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "context-data")]
-#[allure_description("Verifies that user_context_data at exactly the maximum limit (4096 bytes) is accepted.")]
+#[allure_description(
+    "Verifies that user_context_data at exactly the maximum limit (4096 bytes) is accepted."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_max_length_user_context_data() -> anyhow::Result<()> {
@@ -64,7 +66,9 @@ async fn test_max_length_user_context_data() -> anyhow::Result<()> {
 #[allure_sub_suite("Edge Cases")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "edge-case", "unicode")]
-#[allure_description("Verifies that unicode characters in user_context_data are handled correctly.")]
+#[allure_description(
+    "Verifies that unicode characters in user_context_data are handled correctly."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {

@@ -43,10 +43,13 @@ fn test_get_account_empty() {
         Contract::new(backend)
     });
 
-    step("Query non-existent account and verify None returned", || {
-        let info = contract.get_account(accounts(2));
-        assert!(info.is_none());
-    });
+    step(
+        "Query non-existent account and verify None returned",
+        || {
+            let info = contract.get_account(accounts(2));
+            assert!(info.is_none());
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -54,7 +57,9 @@ fn test_get_account_empty() {
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "batch")]
-#[allure_description("Verifies that batch verification returns false for all non-verified accounts.")]
+#[allure_description(
+    "Verifies that batch verification returns false for all non-verified accounts."
+)]
 #[allure_test]
 #[test]
 fn test_are_accounts_verified_empty() {
@@ -65,13 +70,17 @@ fn test_are_accounts_verified_empty() {
         Contract::new(backend)
     });
 
-    step("Batch check verification status for non-verified accounts", || {
-        let results = contract.are_accounts_verified(vec![accounts(2), accounts(3), accounts(4)]);
-        assert_eq!(results.len(), 3);
-        assert!(!results[0]);
-        assert!(!results[1]);
-        assert!(!results[2]);
-    });
+    step(
+        "Batch check verification status for non-verified accounts",
+        || {
+            let results =
+                contract.are_accounts_verified(vec![accounts(2), accounts(3), accounts(4)]);
+            assert_eq!(results.len(), 3);
+            assert!(!results[0]);
+            assert!(!results[1]);
+            assert!(!results[2]);
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -79,7 +88,9 @@ fn test_are_accounts_verified_empty() {
 #[allure_sub_suite("Composability Interface")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "interface", "batch")]
-#[allure_description("Verifies that batch get_accounts returns None for all non-existent accounts.")]
+#[allure_description(
+    "Verifies that batch get_accounts returns None for all non-existent accounts."
+)]
 #[allure_test]
 #[test]
 fn test_get_accounts_empty() {

@@ -3,7 +3,12 @@
 //! Run with: cargo test --features testing --test unit
 
 #![cfg(feature = "testing")]
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing
+)]
 
 #[path = "unit/helpers.rs"]
 pub mod helpers;
@@ -40,3 +45,9 @@ mod access_control_tests;
 
 #[path = "unit/write_functions_tests.rs"]
 mod write_functions_tests;
+
+#[path = "unit/sputnik_dao_serialization_tests.rs"]
+mod sputnik_dao_serialization_tests;
+
+#[path = "unit/sputnik_dao_validation_tests.rs"]
+mod sputnik_dao_validation_tests;

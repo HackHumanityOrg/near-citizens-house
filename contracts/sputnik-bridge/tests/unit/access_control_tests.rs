@@ -11,14 +11,17 @@ use sputnik_bridge::SputnikBridge;
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
-#[allure_description("Verifies unauthorized account cannot create proposal and receives appropriate error.")]
+#[allure_description(
+    "Verifies unauthorized account cannot create proposal and receives appropriate error."
+)]
 #[allure_test]
 #[test]
 fn test_create_proposal_unauthorized_fails() {
     let (mut contract, mut context) = step("Initialize contract", || {
         let context = get_context(accounts(0));
         testing_env!(context.build());
-        let contract = SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+        let contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
         (contract, context)
     });
 
@@ -42,14 +45,17 @@ fn test_create_proposal_unauthorized_fails() {
 #[allure_sub_suite("Access Control")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "security", "authorization")]
-#[allure_description("Verifies unauthorized account cannot add member and receives appropriate error.")]
+#[allure_description(
+    "Verifies unauthorized account cannot add member and receives appropriate error."
+)]
 #[allure_test]
 #[test]
 fn test_add_member_unauthorized_fails() {
     let (mut contract, mut context) = step("Initialize contract", || {
         let context = get_context(accounts(0));
         testing_env!(context.build());
-        let contract = SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
+        let contract =
+            SputnikBridge::new(accounts(0), accounts(1), accounts(2), "citizen".to_string());
         (contract, context)
     });
 

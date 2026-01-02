@@ -143,43 +143,46 @@ fn test_proof_component_a_too_long() {
         (contract, user)
     });
 
-    step("Attempt verification with 81-char proof.a component", || {
-        assert_panic_with(
-            || {
-                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-                let sig_data = NearSignatureData {
-                    account_id: user.clone(),
-                    signature: vec![0; 64],
-                    public_key: public_key_str.parse().unwrap(),
-                    challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
-                    recipient: user.clone(),
-                };
+    step(
+        "Attempt verification with 81-char proof.a component",
+        || {
+            assert_panic_with(
+                || {
+                    let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                    let sig_data = NearSignatureData {
+                        account_id: user.clone(),
+                        signature: vec![0; 64],
+                        public_key: public_key_str.parse().unwrap(),
+                        challenge: "Identify myself".to_string(),
+                        nonce: vec![0; 32],
+                        recipient: user.clone(),
+                    };
 
-                let bad_proof = SelfProofData {
-                    proof: ZkProof {
-                        a: ["x".repeat(81), "2".to_string()],
-                        b: [
-                            ["3".to_string(), "4".to_string()],
-                            ["5".to_string(), "6".to_string()],
-                        ],
-                        c: ["7".to_string(), "8".to_string()],
-                    },
-                    public_signals: vec!["0".to_string(); 21],
-                };
+                    let bad_proof = SelfProofData {
+                        proof: ZkProof {
+                            a: ["x".repeat(81), "2".to_string()],
+                            b: [
+                                ["3".to_string(), "4".to_string()],
+                                ["5".to_string(), "6".to_string()],
+                            ],
+                            c: ["7".to_string(), "8".to_string()],
+                        },
+                        public_signals: vec!["0".to_string(); 21],
+                    };
 
-                contract.store_verification(
-                    "test_nullifier".to_string(),
-                    user,
-                    "1".to_string(),
-                    sig_data,
-                    bad_proof,
-                    "test_user_context_data".to_string(),
-                );
-            },
-            "Proof component 'a' string exceeds maximum length of 80",
-        );
-    });
+                    contract.store_verification(
+                        "test_nullifier".to_string(),
+                        user,
+                        "1".to_string(),
+                        sig_data,
+                        bad_proof,
+                        "test_user_context_data".to_string(),
+                    );
+                },
+                "Proof component 'a' string exceeds maximum length of 80",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -200,43 +203,46 @@ fn test_proof_component_b_too_long() {
         (contract, user)
     });
 
-    step("Attempt verification with 81-char proof.b component", || {
-        assert_panic_with(
-            || {
-                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-                let sig_data = NearSignatureData {
-                    account_id: user.clone(),
-                    signature: vec![0; 64],
-                    public_key: public_key_str.parse().unwrap(),
-                    challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
-                    recipient: user.clone(),
-                };
+    step(
+        "Attempt verification with 81-char proof.b component",
+        || {
+            assert_panic_with(
+                || {
+                    let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                    let sig_data = NearSignatureData {
+                        account_id: user.clone(),
+                        signature: vec![0; 64],
+                        public_key: public_key_str.parse().unwrap(),
+                        challenge: "Identify myself".to_string(),
+                        nonce: vec![0; 32],
+                        recipient: user.clone(),
+                    };
 
-                let bad_proof = SelfProofData {
-                    proof: ZkProof {
-                        a: ["1".to_string(), "2".to_string()],
-                        b: [
-                            ["x".repeat(81), "4".to_string()],
-                            ["5".to_string(), "6".to_string()],
-                        ],
-                        c: ["7".to_string(), "8".to_string()],
-                    },
-                    public_signals: vec!["0".to_string(); 21],
-                };
+                    let bad_proof = SelfProofData {
+                        proof: ZkProof {
+                            a: ["1".to_string(), "2".to_string()],
+                            b: [
+                                ["x".repeat(81), "4".to_string()],
+                                ["5".to_string(), "6".to_string()],
+                            ],
+                            c: ["7".to_string(), "8".to_string()],
+                        },
+                        public_signals: vec!["0".to_string(); 21],
+                    };
 
-                contract.store_verification(
-                    "test_nullifier".to_string(),
-                    user,
-                    "1".to_string(),
-                    sig_data,
-                    bad_proof,
-                    "test_user_context_data".to_string(),
-                );
-            },
-            "Proof component 'b' string exceeds maximum length of 80",
-        );
-    });
+                    contract.store_verification(
+                        "test_nullifier".to_string(),
+                        user,
+                        "1".to_string(),
+                        sig_data,
+                        bad_proof,
+                        "test_user_context_data".to_string(),
+                    );
+                },
+                "Proof component 'b' string exceeds maximum length of 80",
+            );
+        },
+    );
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -244,7 +250,9 @@ fn test_proof_component_b_too_long() {
 #[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof", "boundary")]
-#[allure_description("Verifies that a proof with exactly 21 public signals within the length limit is accepted.")]
+#[allure_description(
+    "Verifies that a proof with exactly 21 public signals within the length limit is accepted."
+)]
 #[allure_test]
 #[test]
 fn test_public_signals_at_max_length_allowed() {
@@ -313,11 +321,8 @@ fn test_public_signals_under_max_allowed() {
     });
 
     step("Store verification with only 3 public signals", || {
-        let proof = test_self_proof_with_signals(vec![
-            "1".to_string(),
-            "2".to_string(),
-            "3".to_string(),
-        ]);
+        let proof =
+            test_self_proof_with_signals(vec!["1".to_string(), "2".to_string(), "3".to_string()]);
 
         contract.store_verification(
             "nullifier_three_signals".to_string(),
@@ -340,7 +345,9 @@ fn test_public_signals_under_max_allowed() {
 #[allure_sub_suite("Proof Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "zk-proof", "boundary")]
-#[allure_description("Verifies that proof components exactly at the 80 character limit are accepted.")]
+#[allure_description(
+    "Verifies that proof components exactly at the 80 character limit are accepted."
+)]
 #[allure_test]
 #[test]
 fn test_proof_components_at_max_length_allowed() {
@@ -360,7 +367,10 @@ fn test_proof_components_at_max_length_allowed() {
         let proof = SelfProofData {
             proof: ZkProof {
                 a: [component.clone(), component.clone()],
-                b: [[component.clone(), component.clone()], [component.clone(), component.clone()]],
+                b: [
+                    [component.clone(), component.clone()],
+                    [component.clone(), component.clone()],
+                ],
                 c: [component.clone(), component.clone()],
             },
             public_signals: vec!["ok".to_string(); 2],
@@ -399,41 +409,44 @@ fn test_proof_component_c_too_long() {
         (contract, user)
     });
 
-    step("Attempt verification with 81-char proof.c component", || {
-        assert_panic_with(
-            || {
-                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-                let sig_data = NearSignatureData {
-                    account_id: user.clone(),
-                    signature: vec![0; 64],
-                    public_key: public_key_str.parse().unwrap(),
-                    challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
-                    recipient: user.clone(),
-                };
+    step(
+        "Attempt verification with 81-char proof.c component",
+        || {
+            assert_panic_with(
+                || {
+                    let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                    let sig_data = NearSignatureData {
+                        account_id: user.clone(),
+                        signature: vec![0; 64],
+                        public_key: public_key_str.parse().unwrap(),
+                        challenge: "Identify myself".to_string(),
+                        nonce: vec![0; 32],
+                        recipient: user.clone(),
+                    };
 
-                let bad_proof = SelfProofData {
-                    proof: ZkProof {
-                        a: ["1".to_string(), "2".to_string()],
-                        b: [
-                            ["3".to_string(), "4".to_string()],
-                            ["5".to_string(), "6".to_string()],
-                        ],
-                        c: ["x".repeat(81), "8".to_string()],
-                    },
-                    public_signals: vec!["0".to_string(); 21],
-                };
+                    let bad_proof = SelfProofData {
+                        proof: ZkProof {
+                            a: ["1".to_string(), "2".to_string()],
+                            b: [
+                                ["3".to_string(), "4".to_string()],
+                                ["5".to_string(), "6".to_string()],
+                            ],
+                            c: ["x".repeat(81), "8".to_string()],
+                        },
+                        public_signals: vec!["0".to_string(); 21],
+                    };
 
-                contract.store_verification(
-                    "test_nullifier".to_string(),
-                    user,
-                    "1".to_string(),
-                    sig_data,
-                    bad_proof,
-                    "test_user_context_data".to_string(),
-                );
-            },
-            "Proof component 'c' string exceeds maximum length of 80",
-        );
-    });
+                    contract.store_verification(
+                        "test_nullifier".to_string(),
+                        user,
+                        "1".to_string(),
+                        sig_data,
+                        bad_proof,
+                        "test_user_context_data".to_string(),
+                    );
+                },
+                "Proof component 'c' string exceeds maximum length of 80",
+            );
+        },
+    );
 }

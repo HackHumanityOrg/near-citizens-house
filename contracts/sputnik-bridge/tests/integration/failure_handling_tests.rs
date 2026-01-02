@@ -17,7 +17,6 @@ use serde_json::json;
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "state")]
 #[allure_description("Verifies that when user verification fails, no state changes occur and no proposals are created in the DAO.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<()> {
@@ -67,7 +66,6 @@ async fn test_add_member_verification_fails_no_state_change() -> anyhow::Result<
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "events")]
 #[allure_description("Verifies that when auto-approve fails (due to missing permissions), no member_added event is emitted and the user is not added.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
@@ -89,21 +87,27 @@ async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
     let logs = extract_event_logs(&result);
     let events = parse_events(&logs);
 
-    step("Verify no member_added event on auto-approve failure", || {
-        assert!(
-            events.iter().all(|e| e.event != "member_added"),
-            "member_added event must not be emitted on auto-approve failure"
-        );
-    });
+    step(
+        "Verify no member_added event on auto-approve failure",
+        || {
+            assert!(
+                events.iter().all(|e| e.event != "member_added"),
+                "member_added event must not be emitted on auto-approve failure"
+            );
+        },
+    );
 
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
 
-    step("Verify user is not citizen after auto-approve failure", || {
-        assert!(
-            !is_citizen,
-            "User should not be added when auto-approve fails"
-        );
-    });
+    step(
+        "Verify user is not citizen after auto-approve failure",
+        || {
+            assert!(
+                !is_citizen,
+                "User should not be added when auto-approve fails"
+            );
+        },
+    );
 
     Ok(())
 }
@@ -114,7 +118,6 @@ async fn test_add_member_auto_approve_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "promise")]
 #[allure_description("Verifies that when the verification contract promise fails, the entire flow is aborted with no events or state changes.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
@@ -168,7 +171,6 @@ async fn test_verification_promise_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "proposal")]
 #[allure_description("Verifies that when proposal creation fails at the DAO level (e.g., insufficient deposit), no proposal_created event is emitted.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
@@ -184,10 +186,13 @@ async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify create proposal with insufficient deposit fails", || {
-        // Should fail
-        assert!(result.is_failure(), "Should fail with insufficient deposit");
-    });
+    step(
+        "Verify create proposal with insufficient deposit fails",
+        || {
+            // Should fail
+            assert!(result.is_failure(), "Should fail with insufficient deposit");
+        },
+    );
 
     // Verify no proposal_created event was emitted (callback didn't complete)
     let logs = extract_event_logs(&result);
@@ -211,7 +216,6 @@ async fn test_create_proposal_dao_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "member")]
 #[allure_description("Verifies that when DAO rejects a member addition (e.g., insufficient deposit), no member_added event is emitted and user is not added.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
@@ -231,10 +235,13 @@ async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify add_member with insufficient deposit fails at DAO", || {
-        // Should fail at DAO level
-        assert!(result.is_failure(), "Should fail with insufficient deposit");
-    });
+    step(
+        "Verify add_member with insufficient deposit fails at DAO",
+        || {
+            // Should fail at DAO level
+            assert!(result.is_failure(), "Should fail with insufficient deposit");
+        },
+    );
 
     // Verify no member_added event was emitted
     let logs = extract_event_logs(&result);
@@ -268,7 +275,6 @@ async fn test_add_member_dao_failure_no_event() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "state")]
 #[allure_description("Verifies that multiple consecutive failures don't corrupt state and successful operations continue to work correctly.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
@@ -318,12 +324,15 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
     // Verify state is still consistent
     let final_proposal_count = get_last_proposal_id(&env.sputnik_dao).await?;
 
-    step("Verify no proposals created after multiple failures", || {
-        assert_eq!(
-            initial_proposal_count, final_proposal_count,
-            "No proposals should be created after multiple failures"
-        );
-    });
+    step(
+        "Verify no proposals created after multiple failures",
+        || {
+            assert_eq!(
+                initial_proposal_count, final_proposal_count,
+                "No proposals should be created after multiple failures"
+            );
+        },
+    );
 
     // Now do a successful operation to verify the system still works
     verify_user(&env.backend, &env.verified_accounts, env.user(2), 2).await?;
@@ -354,7 +363,6 @@ async fn test_multiple_failures_dont_corrupt_state() -> anyhow::Result<()> {
 #[allure_severity("critical")]
 #[allure_tags("integration", "failure", "gas")]
 #[allure_description("Verifies that gas exhaustion during cross-contract calls doesn't cause partial state corruption and user is not added.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
@@ -395,12 +403,15 @@ async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
     // Verify user was NOT added (no partial state corruption)
     let is_citizen = is_account_in_role(&env.sputnik_dao, user.id().as_str(), "citizen").await?;
 
-    step("Verify no partial state corruption after gas exhaustion", || {
-        assert!(
-            !is_citizen,
-            "User should not be in citizen role after gas exhaustion failure"
-        );
-    });
+    step(
+        "Verify no partial state corruption after gas exhaustion",
+        || {
+            assert!(
+                !is_citizen,
+                "User should not be in citizen role after gas exhaustion failure"
+            );
+        },
+    );
 
     Ok(())
 }
@@ -411,7 +422,6 @@ async fn test_gas_exhaustion_partial_operation() -> anyhow::Result<()> {
 #[allure_severity("normal")]
 #[allure_tags("integration", "failure", "recovery")]
 #[allure_description("Verifies that successful operations work correctly after a failed callback, demonstrating proper error recovery.")]
-
 #[allure_test]
 #[tokio::test]
 async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()> {
@@ -426,13 +436,16 @@ async fn test_successful_operation_after_failed_callback() -> anyhow::Result<()>
     verify_user(&env.backend, &env.verified_accounts, user2, 1).await?;
     let success_result = add_member_via_bridge(&env.backend, &env.bridge, user2).await?;
 
-    step("Verify second operation succeeds after first failure", || {
-        assert!(
-            success_result.is_success(),
-            "Should succeed after previous failure. Failures: {:?}",
-            success_result.failures()
-        );
-    });
+    step(
+        "Verify second operation succeeds after first failure",
+        || {
+            assert!(
+                success_result.is_success(),
+                "Should succeed after previous failure. Failures: {:?}",
+                success_result.failures()
+            );
+        },
+    );
 
     // Verify user2 is a citizen but user1 is not
     let is_user1_citizen =

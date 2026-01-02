@@ -53,7 +53,9 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "verification", "signature")]
-#[allure_description("Verifies that valid NEP-413 signatures are accepted and verification is stored correctly.")]
+#[allure_description(
+    "Verifies that valid NEP-413 signatures are accepted and verification is stored correctly."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
@@ -90,13 +92,16 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify store_verification succeeds with valid signature", || {
-        assert!(
-            result.is_success(),
-            "store_verification failed: {:?}",
-            result.failures()
-        );
-    });
+    step(
+        "Verify store_verification succeeds with valid signature",
+        || {
+            assert!(
+                result.is_success(),
+                "store_verification failed: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     // Verify the account is now marked as verified
     let is_verified: bool = contract
@@ -124,7 +129,9 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "nullifier")]
-#[allure_description("Verifies that duplicate nullifiers are rejected to prevent double-verification.")]
+#[allure_description(
+    "Verifies that duplicate nullifiers are rejected to prevent double-verification."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
@@ -282,11 +289,14 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify second verification for same account is rejected", || {
-        assert!(result.is_failure());
-        let failure_msg = format!("{:?}", result.failures());
-        assert!(failure_msg.contains("NEAR account already verified"));
-    });
+    step(
+        "Verify second verification for same account is rejected",
+        || {
+            assert!(result.is_failure());
+            let failure_msg = format!("{:?}", result.failures());
+            assert!(failure_msg.contains("NEAR account already verified"));
+        },
+    );
 
     Ok(())
 }
@@ -528,14 +538,17 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
         .transact()
         .await?;
 
-    step("Verify same attestation_id for different accounts is allowed", || {
-        // Should succeed - attestation_id is not a unique constraint
-        assert!(
-            result.is_success(),
-            "Same attestation_id for different accounts should be allowed. Failures: {:?}",
-            result.failures()
-        );
-    });
+    step(
+        "Verify same attestation_id for different accounts is allowed",
+        || {
+            // Should succeed - attestation_id is not a unique constraint
+            assert!(
+                result.is_success(),
+                "Same attestation_id for different accounts should be allowed. Failures: {:?}",
+                result.failures()
+            );
+        },
+    );
 
     Ok(())
 }

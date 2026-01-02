@@ -1,7 +1,7 @@
-//! Validation tests for verified-accounts-interface types
+//! Validation tests for verified-accounts interface types
 
 use allure_rs::prelude::*;
-use verified_accounts_interface::*;
+use verified_accounts::interface::*;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Interface Tests")]
