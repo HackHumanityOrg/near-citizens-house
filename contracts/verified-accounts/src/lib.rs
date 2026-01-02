@@ -323,38 +323,6 @@ impl Contract {
 
         // Early storage cost estimation based on actual data structures:
         //
-        // VerifiedAccount struct (Borsh serialized):
-        //   - nullifier: ~84 bytes (80 char max + 4-byte length prefix)
-        //   - near_account_id: ~68 bytes (64 char max + 4-byte length prefix)
-        //   - attestation_id: ~5 bytes (1 char + 4-byte length prefix)
-        //   - verified_at: 8 bytes (u64)
-        //   - user_context_data: ~4100 bytes (4096 max + 4-byte length prefix)
-        //   - self_proof.proof (Groth16 BN254):
-        //       - a: 2 × ~84 bytes (77-digit field elements + length prefix) = ~168 bytes
-        //       - b: 4 × ~84 bytes = ~336 bytes
-        //       - c: 2 × ~84 bytes = ~168 bytes
-        //   - self_proof.public_signals: 21 × ~84 bytes + vec prefix = ~1768 bytes
-        //   Subtotal: ~6,700 bytes worst case
-        //
-        // Additional collections storage:
-        //   - used_signatures LookupSet: 64 bytes + ~40 bytes key overhead = ~104 bytes
-        //   - nullifiers LookupSet: ~84 bytes + ~40 bytes key overhead = ~124 bytes
-        //   - accounts UnorderedMap: ~68 bytes key + ~40 bytes overhead = ~108 bytes
-        //   Subtotal: ~336 bytes
-        //
-        // Total: ~7,036 bytes
-        // Using 10KB (10,240 bytes) as conservative estimate with ~45% margin
-        //
-        // NEAR storage cost: 1e19 yoctoNEAR per byte (100KB = 1 NEAR)
-        // 10KB = 0.1 NEAR = 1e23 yoctoNEAR
-        const ESTIMATED_STORAGE_BYTES: u128 = 10_240;
-        let estimated_cost = env::storage_byte_cost().saturating_mul(ESTIMATED_STORAGE_BYTES);
-        assert!(
-            env::account_balance() >= estimated_cost,
-            "Insufficient contract balance for storage. Estimated required: {} yoctoNEAR (~0.1 NEAR)",
-            estimated_cost
-        );
-
         // Verify signature data matches the account being verified
         assert_eq!(
             signature_data.account_id, near_account_id,
@@ -389,9 +357,6 @@ impl Contract {
             "NEAR account already verified"
         );
 
-        // Check storage balance before modifications
-        let initial_storage = env::storage_usage();
-
         // Create verification record
         let verification = Verification {
             nullifier: nullifier.clone(),
@@ -403,21 +368,12 @@ impl Contract {
         };
 
         // Store verification and tracking data
+        // Note: If the contract lacks sufficient balance for storage, NEAR protocol
+        // will reject the transaction with LackBalanceForState error at commit time.
+        // This is enforced atomically - all state changes are rolled back on failure.
         self.used_signatures.insert(&sig_array);
         self.nullifiers.insert(&nullifier);
         self.verifications.insert(&near_account_id, &verification);
-
-        // Validate storage cost coverage (after writes)
-        // Note: NEAR transactions are atomic - if this check fails, all state changes revert
-        let final_storage = env::storage_usage();
-        let storage_used = final_storage.saturating_sub(initial_storage);
-        let storage_cost = env::storage_byte_cost().saturating_mul(storage_used.into());
-
-        assert!(
-            env::account_balance() >= storage_cost,
-            "Insufficient contract balance for storage. Required: {} yoctoNEAR",
-            storage_cost
-        );
 
         // Emit event
         emit_event(
