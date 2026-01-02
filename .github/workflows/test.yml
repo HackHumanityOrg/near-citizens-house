@@ -70,6 +70,12 @@ jobs:
         working-directory: contracts/verified-accounts
         run: cargo near build non-reproducible-wasm
 
+      - name: Copy V1 WASM to fixtures
+        run: |
+          mkdir -p contracts/verified-accounts/tests/fixtures/v1
+          cp contracts/verified-accounts/target/near/verified_accounts.wasm \
+             contracts/verified-accounts/tests/fixtures/v1/
+
       - name: Build V2 fixture WASM (for versioning tests)
         working-directory: contracts/verified-accounts/tests/fixtures/v2
         run: |
@@ -91,7 +97,7 @@ jobs:
         with:
           name: wasm-contracts
           path: |
-            contracts/verified-accounts/target/near/*.wasm
+            contracts/verified-accounts/tests/fixtures/v1/verified_accounts.wasm
             contracts/verified-accounts/tests/fixtures/v2/verified_accounts.wasm
             contracts/sputnik-bridge/target/near/*.wasm
             contracts/sputnik-dao-contract/res/*.wasm

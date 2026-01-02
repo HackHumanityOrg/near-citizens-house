@@ -50,7 +50,10 @@ pub struct VerificationSummary {
 fn load_v1_wasm() -> Vec<u8> {
     std::fs::read(WASM_V1_PATH).unwrap_or_else(|e| {
         panic!(
-            "Could not find V1 WASM at {}. Run ./scripts/build_test_fixtures.sh first. Error: {}",
+            "Could not find V1 WASM at {}. Build with: \
+             cd contracts/verified-accounts && cargo near build non-reproducible-wasm && \
+             mkdir -p tests/fixtures/v1 && cp target/near/verified_accounts.wasm tests/fixtures/v1/. \
+             Error: {}",
             WASM_V1_PATH, e
         )
     })
@@ -60,7 +63,10 @@ fn load_v1_wasm() -> Vec<u8> {
 fn load_v2_wasm() -> Vec<u8> {
     std::fs::read(WASM_V2_PATH).unwrap_or_else(|e| {
         panic!(
-            "Could not find V2 WASM at {}. Run ./scripts/build_test_fixtures.sh first. Error: {}",
+            "Could not find V2 WASM at {}. Build with: \
+             cd contracts/verified-accounts/tests/fixtures/v2 && cargo near build non-reproducible-wasm && \
+             cp target/near/verified_accounts_v2_fixture.wasm verified_accounts.wasm. \
+             Error: {}",
             WASM_V2_PATH, e
         )
     })

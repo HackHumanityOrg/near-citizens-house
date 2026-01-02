@@ -1,0 +1,4 @@
+# This file ensures the v1 fixtures directory is tracked in git.
+# The verified_accounts.wasm file is built by CI or locally via:
+#   cd contracts/verified-accounts && cargo near build non-reproducible-wasm
+#   cp target/near/verified_accounts.wasm tests/fixtures/v1/
