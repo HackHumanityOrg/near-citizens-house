@@ -6,7 +6,6 @@
 // ==============================================================================
 
 import { z } from "zod"
-import type { VerificationConfig } from "@selfxyz/core"
 
 // ==============================================================================
 // ENVIRONMENT VALIDATION
@@ -109,10 +108,14 @@ export const NEAR_CONFIG = {
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse.houseofstake.dev"
 
 // Self.xyz Configuration
-const DISCLOSURE_CONFIG: VerificationConfig = {
+// Disclosure config includes both verification rules (minimumAge, excludedCountries, ofac)
+// and data disclosure requests (nationality). These are used by both frontend SelfAppBuilder
+// and backend SelfBackendVerifier which validate the overlapping fields.
+const DISCLOSURE_CONFIG = {
   minimumAge: 18,
-  excludedCountries: [],
+  excludedCountries: [] as const,
   ofac: false,
+  nationality: true, // Request nationality disclosure from passport
 }
 
 export const SELF_CONFIG = {

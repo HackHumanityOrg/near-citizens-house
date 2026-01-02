@@ -12,6 +12,7 @@ import {
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
 import { updateSession } from "@/lib/session-store"
+import { trackVerificationCompletedServer } from "@/lib/analytics-server"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
@@ -250,6 +251,17 @@ export async function POST(request: NextRequest) {
       revalidateTag("verifications", "max")
 
       console.log(`[Verify] Stored verification for account ${nearSignature.accountId}`)
+
+      // Track verification completed with nationality for analytics
+      const nationality = selfVerificationResult.discloseOutput?.nationality
+      if (nationality) {
+        trackVerificationCompletedServer({
+          accountId: nearSignature.accountId,
+          nationality,
+          attestationId: attestationId.toString(),
+        })
+        console.log(`[Verify] Tracked verification with nationality: ${nationality}`)
+      }
 
       // Update session status for deep link callback
       // The userId from Self.xyz is used as the sessionId in our deep link flow
