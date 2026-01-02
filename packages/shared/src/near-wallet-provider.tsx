@@ -6,7 +6,6 @@ import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS } from "./config"
-import { RPC_ENDPOINTS } from "./rpc"
 import type { NearSignatureData } from "./contracts/verification"
 
 interface NearWalletContextType {
@@ -29,23 +28,36 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function initializeWalletConnector() {
       try {
-        const connector = new NearConnector({
-          network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
-          providers: {
-            mainnet: [...RPC_ENDPOINTS.mainnet],
-            testnet: [...RPC_ENDPOINTS.testnet],
-          },
-          autoConnect: true,
-          logger: process.env.NODE_ENV === "development" ? console : undefined,
-          walletConnect: {
-            projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+        // Use the configured RPC URL for the current network
+        const rpcUrl = NEAR_CONFIG.rpcUrl
+
+        // Initialize WalletConnect SignClient if projectId is provided
+        // This enables wallets that use WalletConnect protocol (e.g., MyNearWallet, Unity Wallet)
+        const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+        let walletConnectClient
+        if (projectId) {
+          // Dynamically import WalletConnect to avoid bundling if not used
+          const SignClient = (await import("@walletconnect/sign-client")).default
+          walletConnectClient = await SignClient.init({
+            projectId,
             metadata: {
               name: "NEAR Citizens House",
               description: "NEAR governance and identity verification",
               url: typeof window !== "undefined" ? window.location.origin : "https://citizens.near.org",
               icons: [],
             },
+          })
+        }
+
+        const connector = new NearConnector({
+          network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
+          providers: {
+            mainnet: NEAR_CONFIG.networkId === "mainnet" ? [rpcUrl] : ["https://rpc.mainnet.near.org"],
+            testnet: NEAR_CONFIG.networkId === "testnet" ? [rpcUrl] : ["https://rpc.testnet.near.org"],
           },
+          autoConnect: true,
+          logger: process.env.NODE_ENV === "development" ? console : undefined,
+          walletConnect: walletConnectClient,
         })
 
         // Connection/disconnection events

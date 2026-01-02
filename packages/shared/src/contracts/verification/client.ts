@@ -10,7 +10,7 @@ import { Account } from "@near-js/accounts"
 import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
 import { KeyPair } from "@near-js/crypto"
-import type { FailoverRpcProvider } from "@near-js/providers"
+import type { JsonRpcProvider } from "@near-js/providers"
 import { KeyPairSigner } from "@near-js/signers"
 import { actionCreators } from "@near-js/transactions"
 import {
@@ -26,13 +26,13 @@ import {
   type VerificationSummary,
 } from "./types"
 import { NEAR_CONFIG } from "../../config"
-import { createFailoverProvider } from "../../rpc"
+import { createRpcProvider } from "../../rpc"
 
 export type { IVerificationDatabase, VerificationDataWithSignature, Verification, VerificationSummary }
 
 export class NearContractDatabase implements IVerificationDatabase {
   private account: Account | null = null
-  private provider: FailoverRpcProvider | null = null
+  private provider: JsonRpcProvider | null = null
   private contractId: string
   private initialized: Promise<void>
 
@@ -52,8 +52,8 @@ export class NearContractDatabase implements IVerificationDatabase {
       const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
       const signer = new KeyPairSigner(keyPair)
 
-      // Create FailoverRpcProvider with multiple endpoints and retry logic
-      this.provider = createFailoverProvider()
+      // Create JsonRpcProvider with configured endpoint
+      this.provider = createRpcProvider()
 
       // Account constructor types don't match the actual implementation
       // The provider and signer interfaces are compatible at runtime
@@ -209,7 +209,7 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  // Get paginated verifications (uses FailoverRpcProvider for automatic failover)
+  // Get paginated verifications
   async listVerifications(
     fromIndex: number = 0,
     limit: number = 50,

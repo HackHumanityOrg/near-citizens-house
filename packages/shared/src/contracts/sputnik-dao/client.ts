@@ -4,7 +4,7 @@
  * Provides database abstraction layer for reading from SputnikDAO v2 contracts.
  * Write operations (voting) are handled client-side via useSputnikDao hook.
  */
-import type { FailoverRpcProvider } from "@near-js/providers"
+import type { JsonRpcProvider } from "@near-js/providers"
 import {
   sputnikProposalSchema,
   transformedPolicySchema,
@@ -15,22 +15,22 @@ import {
   type SputnikPolicy,
 } from "./types"
 import { NEAR_CONFIG } from "../../config"
-import { createFailoverProvider } from "../../rpc"
+import { createRpcProvider } from "../../rpc"
 
 export type { ISputnikDaoContract, SputnikProposal, TransformedPolicy }
 
 /**
  * Read-only SputnikDAO v2 contract client.
- * Uses FailoverRpcProvider for automatic failover between RPC endpoints.
+ * Uses JsonRpcProvider for RPC access.
  * Write operations should be performed via useSputnikDao hook (client-side wallet signing).
  */
 export class SputnikDaoContract implements ISputnikDaoContract {
-  private provider: FailoverRpcProvider
+  private provider: JsonRpcProvider
   private contractId: string
 
   constructor(contractId: string) {
     this.contractId = contractId
-    this.provider = createFailoverProvider()
+    this.provider = createRpcProvider()
 
     console.log(`[SputnikDaoContract] Initialized read-only client`)
     console.log(`[SputnikDaoContract] Contract ID: ${this.contractId}`)

@@ -412,14 +412,14 @@ async fn test_upgrade_preserves_contract_state() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
         .await?;
 
     // Modify state in V1: pause the contract
-    backend
+    let _ = backend
         .call(contract.id(), "pause")
         .deposit(NearToken::from_yoctonear(1))
         .transact()
@@ -435,7 +435,7 @@ async fn test_upgrade_preserves_contract_state() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Verify state persists
     let v2_paused: bool = contract.view("is_paused").await?.json()?;
@@ -476,7 +476,7 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -488,7 +488,7 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Try to reuse nullifier with V2 code - should fail
     let user2 = worker.dev_create_account().await?;
@@ -557,7 +557,7 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -570,7 +570,7 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
     let recipient = user.id().to_string();
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
-    backend
+    let _ = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
@@ -594,7 +594,7 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Try to replay signature with V2 code - should fail
     let result = backend
@@ -662,7 +662,7 @@ async fn test_upgrade_new_verifications_work() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -674,7 +674,7 @@ async fn test_upgrade_new_verifications_work() -> anyhow::Result<()> {
 
     // Upgrade to V2 (redeploy new code)
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Store new verification after upgrade (V2 requires nationality_disclosed)
     let user2 = worker.dev_create_account().await?;
@@ -727,7 +727,7 @@ async fn test_upgrade_batch_queries_work() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -743,7 +743,7 @@ async fn test_upgrade_batch_queries_work() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Test batch queries after upgrade
     let verification_status: Vec<bool> = contract
@@ -803,7 +803,7 @@ async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -817,7 +817,7 @@ async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Test pagination after upgrade
     let first_page: Vec<serde_json::Value> = contract
@@ -869,7 +869,7 @@ async fn test_upgrade_full_verification_readable() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -880,7 +880,7 @@ async fn test_upgrade_full_verification_readable() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Get full verification after upgrade
     let full: Option<serde_json::Value> = contract
@@ -927,7 +927,7 @@ async fn test_upgrade_admin_functions_work() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -935,7 +935,7 @@ async fn test_upgrade_admin_functions_work() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Test admin functions after upgrade
     let pause_result = backend
@@ -1019,7 +1019,7 @@ async fn test_upgrade_v2_nationality_disclosed_field() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -1031,7 +1031,7 @@ async fn test_upgrade_v2_nationality_disclosed_field() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Call V2-only method: get_nationality_disclosed
     // V1 records should migrate with nationality_disclosed=false
@@ -1097,7 +1097,7 @@ async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -1121,7 +1121,7 @@ async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Record approximate time after upgrade
     let after_upgrade = std::time::SystemTime::now()
@@ -1131,12 +1131,12 @@ async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
 
     // Trigger state migration by calling a mutable method (view methods can't mutate)
     // pause() and unpause() to trigger lazy migration without side effects
-    backend
+    let _ = backend
         .call(contract.id(), "pause")
         .deposit(NearToken::from_yoctonear(1))
         .transact()
         .await?;
-    backend
+    let _ = backend
         .call(contract.id(), "unpause")
         .deposit(NearToken::from_yoctonear(1))
         .transact()
@@ -1220,7 +1220,7 @@ async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
     let contract = deploy_result.result;
 
     // Initialize V1
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -1231,7 +1231,7 @@ async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
     store_verification(&backend, &contract, &user, "migrate_fn_test_nullifier").await?;
 
     // Pause the contract to test state preservation
-    backend
+    let _ = backend
         .call(contract.id(), "pause")
         .deposit(NearToken::from_yoctonear(1))
         .transact()
@@ -1332,7 +1332,7 @@ async fn test_migrate_fails_when_called_by_non_contract_account() -> anyhow::Res
     let deploy_result = contract_account.deploy(&v1_wasm).await?;
     let contract = deploy_result.result;
 
-    contract
+    let _ = contract
         .call("new")
         .args_json(json!({ "backend_wallet": backend.id() }))
         .transact()
@@ -1340,7 +1340,7 @@ async fn test_migrate_fails_when_called_by_non_contract_account() -> anyhow::Res
 
     // Deploy V2
     let v2_wasm = load_v2_wasm();
-    contract_account.deploy(&v2_wasm).await?;
+    let _ = contract_account.deploy(&v2_wasm).await?;
 
     // Try to call migrate() from backend account (not contract account) - should fail
     let result = backend

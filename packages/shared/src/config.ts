@@ -6,6 +6,7 @@
 // ==============================================================================
 
 import { z } from "zod"
+import type { VerificationConfig } from "@selfxyz/core"
 
 // ==============================================================================
 // ENVIRONMENT VALIDATION
@@ -17,6 +18,7 @@ import { z } from "zod"
 const envSchema = z.object({
   // Required for all environments (client & server)
   NEXT_PUBLIC_NEAR_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
+  NEXT_PUBLIC_NEAR_RPC_URL: z.string().optional(),
 
   // Self.xyz network (independent from NEAR network)
   // "mainnet" = Real passports with OFAC checks, "testnet" = Mock passports
@@ -34,8 +36,8 @@ const envSchema = z.object({
   // Redis for session storage (server-side only)
   REDIS_URL: z.string().optional(),
 
-  // Celo RPC URLs for ZK proof verification (comma-separated, server-side only)
-  CELO_RPC_URLS: z.string().optional(),
+  // Celo RPC URL for ZK proof verification (server-side only)
+  CELO_RPC_URL: z.string().optional(),
 })
 
 // Validate environment at module load time
@@ -78,15 +80,13 @@ const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testne
 // This allows using NEAR testnet with Self.xyz mainnet for real passport verification with OFAC checks
 const selfNetworkId = (process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet") as "testnet" | "mainnet"
 
-// Default RPC URLs for FastNear
-const defaultRpcUrl = networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+// Default RPC URLs (Near Foundation public endpoints)
+const defaultRpcUrl = networkId === "mainnet" ? "https://rpc.mainnet.near.org" : "https://rpc.testnet.near.org"
 
 export const NEAR_CONFIG = {
   networkId,
   // Primary RPC URL (can be overridden via env var)
   rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || defaultRpcUrl,
-  // Optional API key for authenticated RPC access (FastNear paid plans)
-  rpcApiKey: process.env.NEAR_RPC_API_KEY || "",
   // Contract addresses
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
   governanceContractId: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT || "",
@@ -111,9 +111,9 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse
 // Disclosure config includes both verification rules (minimumAge, excludedCountries, ofac)
 // and data disclosure requests (nationality). These are used by both frontend SelfAppBuilder
 // and backend SelfBackendVerifier which validate the overlapping fields.
-const DISCLOSURE_CONFIG = {
+const DISCLOSURE_CONFIG: VerificationConfig & { nationality: boolean } = {
   minimumAge: 18,
-  excludedCountries: [] as const,
+  excludedCountries: [],
   ofac: false,
   nationality: true, // Request nationality disclosure from passport
 }
@@ -144,17 +144,13 @@ export const SELF_CONFIG = {
 }
 
 // Celo RPC Configuration (for ZK proof verification)
+// Default public Celo RPC URLs
+const defaultCeloRpcUrl =
+  selfNetworkId === "mainnet" ? "https://forno.celo.org" : "https://alfajores-forno.celo-testnet.org"
+
 export const CELO_CONFIG = {
-  // Parse CELO_RPC_URLS: null means use built-in defaults, empty string treated as unset
-  rpcUrls: (() => {
-    const envValue = process.env.CELO_RPC_URLS?.trim()
-    if (!envValue) return null // empty or undefined = use defaults
-    const urls = envValue
-      .split(",")
-      .map((url) => url.trim())
-      .filter((url) => url.length > 0)
-    return urls.length > 0 ? urls : null
-  })(),
+  // Single RPC URL (can be overridden via env var)
+  rpcUrl: process.env.CELO_RPC_URL || defaultCeloRpcUrl,
 }
 
 // UserJot Configuration (Feedback Widget)

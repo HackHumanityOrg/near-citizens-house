@@ -134,7 +134,8 @@ async fn test_batch_size_limit_enforced() -> anyhow::Result<()> {
 #[allure_description(
     "Verifies that verification storage fails when contract has insufficient available balance. \
      The NEAR protocol enforces storage costs at transaction commit time, preventing state \
-     changes that would exceed the account's balance."
+     changes that would exceed the account's balance. This test dynamically calculates the \
+     drain amount based on actual storage usage to ensure reliability."
 )]
 #[allure_test]
 #[tokio::test]
@@ -149,11 +150,11 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
     // Create backend account (will have enough balance from dev_create_account)
     let backend = worker.dev_create_account().await?;
 
-    // Create a contract account with plenty of balance for deployment
+    // Create a contract account with plenty of balance for deployment and operations
     let contract_account = worker
         .root_account()?
         .create_subaccount("lowbalance")
-        .initial_balance(NearToken::from_near(5)) // 5 NEAR - plenty for deployment
+        .initial_balance(NearToken::from_near(10)) // 10 NEAR - plenty of headroom
         .transact()
         .await?
         .result;
@@ -187,16 +188,40 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
         );
     });
 
-    // Drain the contract's balance by transferring most of it away.
-    //
-    // Storage costs on NEAR: 1 NEAR per 100KB (1e19 yoctoNEAR per byte)
-    // The ~175KB WASM locks ~1.75 NEAR for code storage.
-    // Each verification record needs ~7KB = ~0.07 NEAR additional storage.
-    //
-    // We transfer 3.235 NEAR from the 5 NEAR initial balance, leaving ~1.765 NEAR.
-    // This is just above the code storage minimum but insufficient for additional data.
+    // Query actual storage usage and balance after initialization
+    // This ensures we calculate the correct drain amount regardless of WASM size variations
+    let account_state = worker.view_account(contract.id()).await?;
+    let current_balance = account_state.balance;
+    let storage_usage = account_state.storage_usage; // in bytes
+
+    // Storage cost on NEAR: 10^19 yoctoNEAR per byte (1 NEAR per 100KB)
+    const STORAGE_PRICE_PER_BYTE: u128 = 10_000_000_000_000_000_000;
+
+    // Calculate minimum required balance for current storage
+    let min_for_storage = (storage_usage as u128) * STORAGE_PRICE_PER_BYTE;
+
+    // Add a small buffer (0.001 NEAR) to ensure the transfer itself doesn't fail
+    // but leave insufficient balance for additional storage (verification records need ~7KB)
+    let buffer = NearToken::from_millinear(1).as_yoctonear(); // 0.001 NEAR
+    let target_remaining = min_for_storage + buffer;
+
+    // Calculate how much to drain
+    let drain_amount = current_balance
+        .as_yoctonear()
+        .saturating_sub(target_remaining);
+
+    step("Calculate and verify drain parameters", || {
+        assert!(
+            drain_amount > 0,
+            "Contract doesn't have enough balance to drain. Balance: {}, Min required: {}",
+            current_balance.as_yoctonear(),
+            target_remaining
+        );
+    });
+
+    // Drain the contract's balance to leave it with just enough for current storage
     let drain_result = contract_account
-        .transfer_near(backend.id(), NearToken::from_millinear(3235))
+        .transfer_near(backend.id(), NearToken::from_yoctonear(drain_amount))
         .await?;
 
     step("Verify balance drain succeeds", || {
@@ -216,6 +241,8 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
     // Attempt to store verification - should fail due to insufficient balance
+    // The error may occur at broadcast time (pre-validation) or execution time,
+    // depending on exact balance and timing. Both are valid failures.
     let result = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
@@ -236,30 +263,42 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
         }))
         .gas(Gas::from_tgas(100))
         .transact()
-        .await?;
+        .await;
 
+    // The transaction should fail - either at broadcast time or execution time
+    // depending on exact balance calculations and NEAR protocol version
     step(
         "Verify store_verification fails due to insufficient balance",
         || {
-            assert!(
-                result.is_failure(),
-                "Expected store_verification to fail with insufficient balance"
-            );
-
-            // The NEAR protocol enforces storage costs at transaction commit time.
-            // Even though the contract code may execute, the state changes are rejected
-            // if the account lacks sufficient balance to cover storage costs.
-            let failure_msg = format!("{:?}", result.failures());
-            assert!(
-                failure_msg.contains("LackBalanceForState"),
-                "Expected LackBalanceForState error from NEAR protocol, got: {}",
-                failure_msg
-            );
+            match &result {
+                Ok(execution_result) => {
+                    // Transaction was broadcast but should have failed during execution
+                    assert!(
+                        execution_result.is_failure(),
+                        "Expected store_verification to fail with insufficient balance"
+                    );
+                    let failure_msg = format!("{:?}", execution_result.failures());
+                    assert!(
+                        failure_msg.contains("LackBalanceForState"),
+                        "Expected LackBalanceForState error from NEAR protocol, got: {}",
+                        failure_msg
+                    );
+                }
+                Err(err) => {
+                    // Transaction was rejected at broadcast time - also valid
+                    let err_msg = err.to_string();
+                    assert!(
+                        err_msg.contains("LackBalanceForState"),
+                        "Expected LackBalanceForState error, got: {}",
+                        err_msg
+                    );
+                }
+            }
         },
     );
 
     // Verify the verification was not stored (NEAR's atomic transactions ensure rollback)
-    let count: u32 = contract.view("get_verified_count").await?.json()?;
+    let count: u64 = contract.view("get_verified_count").await?.json()?;
 
     step(
         "Verify no verification was stored (atomic rollback)",

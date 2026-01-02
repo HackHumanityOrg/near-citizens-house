@@ -5,9 +5,9 @@
  * All write operations (addMember, createProposal, etc.) are performed client-side
  * through the wallet connection, not server-side.
  */
-import type { FailoverRpcProvider } from "@near-js/providers"
+import type { JsonRpcProvider } from "@near-js/providers"
 import { NEAR_CONFIG } from "../../config"
-import { createFailoverProvider } from "../../rpc"
+import { createRpcProvider } from "../../rpc"
 import { bridgeInfoSchema, type BridgeInfo, type IBridgeContractReader } from "./types"
 
 export type { IBridgeContractReader, BridgeInfo }
@@ -18,15 +18,15 @@ export type { IBridgeContractReader, BridgeInfo }
 
 /**
  * Read-only client for the bridge contract.
- * Uses FailoverRpcProvider for automatic failover between RPC endpoints.
+ * Uses JsonRpcProvider for RPC access.
  */
 export class BridgeContractReader implements IBridgeContractReader {
-  private provider: FailoverRpcProvider
+  private provider: JsonRpcProvider
   private contractId: string
 
   constructor(contractId: string) {
     this.contractId = contractId
-    this.provider = createFailoverProvider()
+    this.provider = createRpcProvider()
 
     console.log(`[BridgeContract] Initialized read-only client`)
     console.log(`[BridgeContract] Contract ID: ${this.contractId}`)

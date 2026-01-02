@@ -269,7 +269,7 @@ describe("Near Citizens House", () => {
             // On success, should include rpcUrl
             if (!result.error) {
               expect(result.rpcUrl).toBeDefined()
-              expect(result.rpcUrl).toContain("celo")
+              expect(typeof result.rpcUrl).toBe("string")
             }
           })
 
@@ -426,15 +426,15 @@ describe("Near Citizens House", () => {
       })
 
       // ============================================================================
-      // RPC Failover Tests
+      // RPC Connection Tests
       // ============================================================================
 
-      describeNetwork("RPC Failover Mechanism", () => {
+      describeNetwork("RPC Connection", () => {
         describe("Happy Path", () => {
-          it("should successfully connect to at least one RPC endpoint", async () => {
+          it("should successfully connect to Celo RPC endpoint", async () => {
             await allure.severity("critical")
 
-            // If this test passes, at least one RPC endpoint is working
+            // If this test passes, the configured RPC endpoint is working
             const result = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
             // Should complete without throwing (even if proof is invalid)
@@ -443,29 +443,22 @@ describe("Near Citizens House", () => {
         })
 
         describe("Positive Tests", () => {
-          it("should cache successful RPC endpoint", async () => {
+          it("should use consistent RPC endpoint across calls", async () => {
             await allure.severity("normal")
 
             // First call
             const result1 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
 
-            // Second call should use cached endpoint (faster)
-            const start = Date.now()
+            // Second call
             const result2 = await verifyStoredProofWithDetails(mockInvalidProof, PASSPORT_ATTESTATION_ID)
-            const elapsed = Date.now() - start
 
             // Both should succeed
             expect(result1).toBeDefined()
             expect(result2).toBeDefined()
 
-            // If both have rpcUrl, they might be the same (cached)
+            // Both should use the same RPC URL (single configured endpoint)
             if (result1.rpcUrl && result2.rpcUrl) {
-              // Log for debugging (not a strict assertion as cache may expire)
-              await allure.attachment(
-                "RPC URLs",
-                `First: ${result1.rpcUrl}\nSecond: ${result2.rpcUrl}\nElapsed: ${elapsed}ms`,
-                "text/plain",
-              )
+              expect(result1.rpcUrl).toBe(result2.rpcUrl)
             }
           })
         })
