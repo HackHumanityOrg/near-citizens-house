@@ -6,7 +6,7 @@ use super::helpers::{
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::{Contract, NearSignatureData};
+use verified_accounts::{NearSignatureData, VersionedContract};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -24,7 +24,7 @@ fn test_account_id_mismatch() {
             let different_user = accounts(3);
             let context = get_context(backend.clone());
             testing_env!(context.build());
-            let contract = Contract::new(backend);
+            let contract = VersionedContract::new(backend);
             (contract, user, different_user)
         });
 
@@ -71,7 +71,7 @@ fn test_recipient_mismatch() {
             let different_recipient = accounts(3);
             let context = get_context(backend.clone());
             testing_env!(context.build());
-            let contract = Contract::new(backend);
+            let contract = VersionedContract::new(backend);
             (contract, user, different_recipient)
         });
 
@@ -117,7 +117,7 @@ fn test_batch_size_exceeded_are_verified() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     let too_many_accounts = step("Create batch of 101 accounts", || {
@@ -151,7 +151,7 @@ fn test_batch_size_exceeded_get_verifications() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     let too_many_accounts = step("Create batch of 101 accounts", || {
@@ -184,7 +184,7 @@ fn test_nullifier_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -231,7 +231,7 @@ fn test_attestation_id_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -278,7 +278,7 @@ fn test_user_context_data_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -328,7 +328,7 @@ fn test_nullifier_max_length_allowed() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
         let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[2; 32], &user);
         (contract, user, sig_data)
@@ -364,7 +364,7 @@ fn test_attestation_id_single_char_allowed() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
         let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
         (contract, user, sig_data)
@@ -400,7 +400,7 @@ fn test_user_context_data_max_length_allowed() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
         let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
         (contract, user, sig_data)

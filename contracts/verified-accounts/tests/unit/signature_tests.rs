@@ -6,7 +6,7 @@ use super::helpers::{
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::{Contract, NearSignatureData};
+use verified_accounts::{NearSignatureData, VersionedContract};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -24,7 +24,7 @@ fn test_invalid_signature() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -69,7 +69,7 @@ fn test_invalid_nonce_length() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -114,7 +114,7 @@ fn test_invalid_signature_length() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -159,7 +159,7 @@ fn test_nonce_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -204,7 +204,7 @@ fn test_signature_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -252,7 +252,7 @@ fn test_signature_from_different_key_rejected() {
         let other = accounts(3);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user, other)
     });
 
@@ -296,7 +296,7 @@ fn test_signature_wrong_nonce_rejected() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -339,7 +339,7 @@ fn test_signature_wrong_recipient_rejected() {
         let other = accounts(3);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user, other)
     });
 
@@ -381,7 +381,7 @@ fn test_signature_wrong_challenge_rejected() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -421,7 +421,7 @@ fn test_invalid_signature_contents() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 

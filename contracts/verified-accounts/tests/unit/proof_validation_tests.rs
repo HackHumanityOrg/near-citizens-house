@@ -7,7 +7,9 @@ use super::helpers::{
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::{Contract, NearSignatureData, SelfProofData, Verification, ZkProof};
+use verified_accounts::{
+    NearSignatureData, SelfProofData, Verification, VersionedContract, ZkProof,
+};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -23,7 +25,7 @@ fn test_public_signals_too_many() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -80,7 +82,7 @@ fn test_public_signal_item_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -139,7 +141,7 @@ fn test_proof_component_a_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -199,7 +201,7 @@ fn test_proof_component_b_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 
@@ -261,7 +263,7 @@ fn test_public_signals_at_max_length_allowed() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
         let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[6; 32], &user);
         (contract, user, sig_data)
@@ -314,7 +316,7 @@ fn test_public_signals_under_max_allowed() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
         let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &user);
         (contract, user, sig_data)
@@ -356,7 +358,7 @@ fn test_proof_components_at_max_length_allowed() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
         let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[8; 32], &user);
         (contract, user, sig_data)
@@ -405,7 +407,7 @@ fn test_proof_component_c_too_long() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         (contract, user)
     });
 

@@ -34,3 +34,6 @@ mod security_tests;
 
 #[path = "integration/edge_case_tests.rs"]
 mod edge_case_tests;
+
+#[path = "integration/versioning_tests.rs"]
+mod versioning_tests;

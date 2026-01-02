@@ -7,7 +7,7 @@ use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
 use near_sdk::NearToken;
-use verified_accounts::Contract;
+use verified_accounts::VersionedContract;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -24,7 +24,7 @@ fn test_invariant_backend_wallet_always_valid() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend.clone());
+        let contract = VersionedContract::new(backend.clone());
         (contract, backend)
     });
 
@@ -52,7 +52,7 @@ fn test_invariant_verified_count_starts_at_zero() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step("Verify count is zero", || {
@@ -77,7 +77,7 @@ fn test_invariant_paused_state_consistent() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend.clone());
+        let contract = VersionedContract::new(backend.clone());
         (contract, backend)
     });
 

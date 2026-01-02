@@ -4,7 +4,7 @@ use super::helpers::get_context;
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::Contract;
+use verified_accounts::VersionedContract;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -19,7 +19,7 @@ fn test_interface_version() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step("Verify interface version returns expected value", || {
@@ -40,7 +40,7 @@ fn test_get_verification_empty() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step(
@@ -67,7 +67,7 @@ fn test_are_verified_empty() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step(
@@ -97,7 +97,7 @@ fn test_get_verifications_empty() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step("Batch get verifications and verify all return None", || {
@@ -122,7 +122,7 @@ fn test_are_verified_empty_input() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step("Call are_verified with empty array", || {

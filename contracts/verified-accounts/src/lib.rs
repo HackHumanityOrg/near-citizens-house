@@ -3,10 +3,22 @@
 //! A NEAR smart contract that links real-world passport identity to NEAR wallets
 //! using Self.xyz zero-knowledge proofs and on-chain signature verification.
 //!
-//! # Versioning
+//! # Versioning Strategy
 //!
-//! Verification records use `VersionedVerification` to support future schema changes
-//! without requiring data migrations. New records are always stored as the latest version.
+//! This contract uses two levels of versioning:
+//!
+//! ## Contract State Versioning
+//! The main contract state is wrapped in `VersionedContract` enum to support
+//! future changes to the contract's top-level fields. When you need to add
+//! a new field to the contract (e.g., rate limiting, admin list), you:
+//! 1. Create a new `ContractV2` struct with the new field
+//! 2. Add `V2(ContractV2)` variant to `VersionedContract`
+//! 3. Update `contract_mut()` to handle migration from V1 to V2
+//!
+//! ## Record Versioning
+//! Individual verification records use `VersionedVerification` enum to support
+//! changes to the verification data structure. This allows lazy migration -
+//! old records are upgraded only when read, avoiding expensive batch migrations.
 //!
 //! # Security Model
 //!
@@ -28,9 +40,6 @@
 //! - Signature uniqueness (replay protection)
 //! - Nullifier uniqueness (one identity per person)
 //! - Account uniqueness (one identity per NEAR account)
-//!
-//! ## Proof Storage & Re-Verification
-//! Self.xyz ZK proofs are stored on-chain in their entirety
 
 #![allow(clippy::too_many_arguments)]
 
@@ -134,15 +143,36 @@ fn emit_event<T: Serialize>(event_name: &str, data: &T) {
     }
 }
 
-// ==================== Contract State ====================
+// ==================== Contract State Versioning ====================
 
-/// Main contract state.
+/// Versioned contract state for upgrade support.
 ///
-/// Verification records are stored using `VersionedVerification` to allow
-/// future schema changes without requiring data migrations.
+/// This enum wraps the contract state to allow future upgrades without
+/// requiring state migrations. When you need to add new fields to the
+/// contract state:
+///
+/// 1. Create a new struct (e.g., `ContractV2`) with the new fields
+/// 2. Add a new variant to this enum (e.g., `V2(ContractV2)`)
+/// 3. Update `contract_mut()` to migrate V1 -> V2 on first write
+/// 4. Update `contract()` to handle both versions for reads
+///
+/// **Important:** Never reorder variants - only append new ones at the end.
+/// Borsh uses enum discriminants (0x00, 0x01, etc.) based on declaration order.
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
-pub struct Contract {
+pub enum VersionedContract {
+    /// V1: Original contract state (current production)
+    V1(ContractV1),
+    /// V2: Adds total_verifications_stored counter (upgrade-simulation feature only)
+    #[cfg(feature = "upgrade-simulation")]
+    V2(ContractV2),
+}
+
+/// Contract state version 1 (original/current production).
+///
+/// When adding fields, create `ContractV2` instead of modifying this struct.
+#[near]
+pub struct ContractV1 {
     /// Account authorized to write to this contract
     pub backend_wallet: AccountId,
     /// Set of used nullifiers
@@ -155,19 +185,158 @@ pub struct Contract {
     pub paused: bool,
 }
 
-// ==================== Contract Implementation ====================
-
+/// Contract state version 2 (upgrade-simulation feature only).
+///
+/// Adds `total_verifications_stored` field to track lifetime verification count.
+/// This demonstrates how to add a new field to the contract state.
+#[cfg(feature = "upgrade-simulation")]
 #[near]
-impl Contract {
-    /// Initialize contract with backend wallet address.
-    #[init]
-    pub fn new(backend_wallet: AccountId) -> Self {
+pub struct ContractV2 {
+    /// Account authorized to write to this contract
+    pub backend_wallet: AccountId,
+    /// Set of used nullifiers
+    pub nullifiers: LookupSet<String>,
+    /// Map of NEAR accounts to their verification records (versioned format)
+    pub verifications: UnorderedMap<AccountId, VersionedVerification>,
+    /// Set of used signatures
+    pub used_signatures: LookupSet<[u8; 64]>,
+    /// Whether the contract is paused
+    pub paused: bool,
+    /// NEW in V2: Total number of verifications ever stored (even if later removed)
+    pub total_verifications_stored: u64,
+}
+
+/// Type alias for the current contract version.
+/// Update this when changing the current production version.
+#[cfg(not(feature = "upgrade-simulation"))]
+pub type Contract = ContractV1;
+
+#[cfg(feature = "upgrade-simulation")]
+pub type Contract = ContractV2;
+
+impl VersionedContract {
+    /// Get mutable reference to current contract version, upgrading if necessary.
+    ///
+    /// This method handles lazy migration from older versions to the current version.
+    /// When a V1 contract is accessed for writing, it's automatically upgraded to V2.
+    #[cfg(not(feature = "upgrade-simulation"))]
+    fn contract_mut(&mut self) -> &mut Contract {
+        match self {
+            Self::V1(contract) => contract,
+        }
+    }
+
+    /// Get mutable reference to current contract version (V2), upgrading if necessary.
+    #[cfg(feature = "upgrade-simulation")]
+    fn contract_mut(&mut self) -> &mut Contract {
+        let old_contract = match self {
+            Self::V2(contract) => return contract,
+            Self::V1(contract) => core::mem::take(contract),
+        };
+
+        // Upgrade V1 -> V2: migrate state
+        *self = Self::V2(ContractV2 {
+            backend_wallet: old_contract.backend_wallet,
+            nullifiers: old_contract.nullifiers,
+            verifications: old_contract.verifications,
+            used_signatures: old_contract.used_signatures,
+            paused: old_contract.paused,
+            // New field: initialize to current verification count
+            total_verifications_stored: 0, // We don't know historical count, start fresh
+        });
+
+        if let Self::V2(contract) = self {
+            contract
+        } else {
+            env::abort()
+        }
+    }
+
+    // ==================== Field Accessors for View Methods ====================
+    // These provide uniform access to common fields across all versions,
+    // eliminating the need for duplicate view method implementations.
+
+    /// Get reference to verifications map (works across all versions)
+    fn verifications(&self) -> &UnorderedMap<AccountId, VersionedVerification> {
+        match self {
+            Self::V1(c) => &c.verifications,
+            #[cfg(feature = "upgrade-simulation")]
+            Self::V2(c) => &c.verifications,
+        }
+    }
+
+    /// Get reference to backend wallet (works across all versions)
+    fn backend_wallet(&self) -> &AccountId {
+        match self {
+            Self::V1(c) => &c.backend_wallet,
+            #[cfg(feature = "upgrade-simulation")]
+            Self::V2(c) => &c.backend_wallet,
+        }
+    }
+
+    /// Get paused state (works across all versions)
+    fn paused(&self) -> bool {
+        match self {
+            Self::V1(c) => c.paused,
+            #[cfg(feature = "upgrade-simulation")]
+            Self::V2(c) => c.paused,
+        }
+    }
+}
+
+impl Default for ContractV1 {
+    fn default() -> Self {
         Self {
-            backend_wallet,
+            backend_wallet: env::predecessor_account_id(),
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
             verifications: UnorderedMap::new(StorageKey::Accounts),
             used_signatures: LookupSet::new(StorageKey::UsedSignatures),
             paused: false,
+        }
+    }
+}
+
+#[cfg(feature = "upgrade-simulation")]
+impl Default for ContractV2 {
+    fn default() -> Self {
+        Self {
+            backend_wallet: env::predecessor_account_id(),
+            nullifiers: LookupSet::new(StorageKey::Nullifiers),
+            verifications: UnorderedMap::new(StorageKey::Accounts),
+            used_signatures: LookupSet::new(StorageKey::UsedSignatures),
+            paused: false,
+            total_verifications_stored: 0,
+        }
+    }
+}
+
+// ==================== Contract Implementation ====================
+
+#[near]
+impl VersionedContract {
+    /// Initialize contract with backend wallet address.
+    #[init]
+    pub fn new(backend_wallet: AccountId) -> Self {
+        #[cfg(not(feature = "upgrade-simulation"))]
+        {
+            VersionedContract::V1(ContractV1 {
+                backend_wallet,
+                nullifiers: LookupSet::new(StorageKey::Nullifiers),
+                verifications: UnorderedMap::new(StorageKey::Accounts),
+                used_signatures: LookupSet::new(StorageKey::UsedSignatures),
+                paused: false,
+            })
+        }
+        #[cfg(feature = "upgrade-simulation")]
+        {
+            VersionedContract::V2(ContractV2 {
+                backend_wallet,
+                nullifiers: LookupSet::new(StorageKey::Nullifiers),
+                verifications: UnorderedMap::new(StorageKey::Accounts),
+                used_signatures: LookupSet::new(StorageKey::UsedSignatures),
+                paused: false,
+                total_verifications_stored: 0,
+            })
         }
     }
 
@@ -176,13 +345,14 @@ impl Contract {
     pub fn update_backend_wallet(&mut self, new_backend_wallet: AccountId) {
         assert_one_yocto();
 
+        let contract = self.contract_mut();
         assert_eq!(
             env::predecessor_account_id(),
-            self.backend_wallet,
+            contract.backend_wallet,
             "Only backend wallet can update backend wallet"
         );
-        let old_wallet = self.backend_wallet.clone();
-        self.backend_wallet = new_backend_wallet.clone();
+        let old_wallet = contract.backend_wallet.clone();
+        contract.backend_wallet = new_backend_wallet.clone();
 
         emit_event(
             "backend_wallet_updated",
@@ -200,11 +370,12 @@ impl Contract {
         assert_one_yocto();
         let caller = env::predecessor_account_id();
 
+        let contract = self.contract_mut();
         assert_eq!(
-            caller, self.backend_wallet,
+            caller, contract.backend_wallet,
             "Only backend wallet can pause contract"
         );
-        self.paused = true;
+        contract.paused = true;
 
         emit_event(
             "contract_paused",
@@ -220,11 +391,12 @@ impl Contract {
         assert_one_yocto();
         let caller = env::predecessor_account_id();
 
+        let contract = self.contract_mut();
         assert_eq!(
-            caller, self.backend_wallet,
+            caller, contract.backend_wallet,
             "Only backend wallet can unpause contract"
         );
-        self.paused = false;
+        contract.paused = false;
 
         emit_event(
             "contract_unpaused",
@@ -232,11 +404,6 @@ impl Contract {
                 by: caller.to_string(),
             },
         );
-    }
-
-    /// Check if the contract is paused (public read)
-    pub fn is_paused(&self) -> bool {
-        self.paused
     }
 
     /// Store a verified account with NEAR signature verification (only callable by backend wallet)
@@ -252,9 +419,11 @@ impl Contract {
     ) {
         assert_one_yocto();
 
+        let contract = self.contract_mut();
+
         // Check if contract is paused
         assert!(
-            !self.paused,
+            !contract.paused,
             "Contract is paused - no new verifications allowed"
         );
 
@@ -320,7 +489,7 @@ impl Contract {
         // Access control: only backend wallet can write
         assert_eq!(
             env::predecessor_account_id(),
-            self.backend_wallet,
+            contract.backend_wallet,
             "Only backend wallet can store verifications"
         );
 
@@ -342,23 +511,24 @@ impl Contract {
         let mut sig_array = [0u8; 64];
         sig_array.copy_from_slice(&signature_data.signature);
         assert!(
-            !self.used_signatures.contains(&sig_array),
+            !contract.used_signatures.contains(&sig_array),
             "Signature already used - potential replay attack"
         );
 
         // Prevent duplicate nullifiers
         assert!(
-            !self.nullifiers.contains(&nullifier),
+            !contract.nullifiers.contains(&nullifier),
             "Nullifier already used - passport already registered"
         );
 
         // Prevent re-verification of accounts
         assert!(
-            self.verifications.get(&near_account_id).is_none(),
+            contract.verifications.get(&near_account_id).is_none(),
             "NEAR account already verified"
         );
 
         // Create verification record (always use current version)
+        #[cfg(not(feature = "upgrade-simulation"))]
         let verification = Verification {
             nullifier: nullifier.clone(),
             near_account_id: near_account_id.clone(),
@@ -368,11 +538,29 @@ impl Contract {
             user_context_data,
         };
 
+        #[cfg(feature = "upgrade-simulation")]
+        let verification = Verification {
+            nullifier: nullifier.clone(),
+            near_account_id: near_account_id.clone(),
+            attestation_id: attestation_id.clone(),
+            verified_at: env::block_timestamp(),
+            self_proof,
+            user_context_data,
+            nationality_disclosed: false, // V2 field - default to false
+        };
+
         // Store verification and tracking data
-        self.used_signatures.insert(&sig_array);
-        self.nullifiers.insert(&nullifier);
-        self.verifications
+        contract.used_signatures.insert(&sig_array);
+        contract.nullifiers.insert(&nullifier);
+        contract
+            .verifications
             .insert(&near_account_id, &VersionedVerification::from(verification));
+
+        // Update V2 counter if applicable
+        #[cfg(feature = "upgrade-simulation")]
+        {
+            contract.total_verifications_stored += 1;
+        }
 
         // Emit event
         emit_event(
@@ -391,11 +579,6 @@ impl Contract {
     ///
     /// This function verifies cryptographic signature validity only. It does NOT
     /// verify that the public key is a valid access key for the claimed account.
-    ///
-    /// The NEAR SDK does not provide a way to query on-chain access keys from
-    /// within a smart contract. Access key validation must be performed off-chain
-    /// by the backend wallet using RPC (`view_access_key`) before calling this
-    /// contract.
     fn verify_near_signature(sig_data: &NearSignatureData) {
         // Validate nonce length
         assert_eq!(sig_data.nonce.len(), 32, "Nonce must be exactly 32 bytes");
@@ -404,7 +587,6 @@ impl Contract {
         assert_eq!(sig_data.signature.len(), 64, "Signature must be 64 bytes");
 
         // Step 1: Serialize the NEP-413 prefix tag
-        // The tag is 2^31 + 413 = 2147484061
         let tag: u32 = 2147484061;
         let tag_bytes = tag.to_le_bytes().to_vec();
 
@@ -473,73 +655,80 @@ impl Contract {
     // ==================== View Methods ====================
 
     /// Get verification summary without proof data (public read)
-    /// Returns all essential data without the large ZK proof
     pub fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary> {
-        self.verifications
+        self.verifications()
             .get(&account_id)
             .map(|v| VerificationSummary::from(&v))
     }
 
     /// Get full verification record including ZK proof (public read)
-    /// Only use this when you need the actual proof data for re-verification
-    /// For most cases, use get_verification() instead to save gas
     pub fn get_full_verification(&self, account_id: AccountId) -> Option<Verification> {
-        self.verifications
+        self.verifications()
             .get(&account_id)
             .map(|v| v.into_current())
     }
 
     /// Check if an account is verified (public read)
     pub fn is_verified(&self, account_id: AccountId) -> bool {
-        self.verifications.get(&account_id).is_some()
+        self.verifications().get(&account_id).is_some()
     }
 
     /// Get the backend wallet address (public read)
     pub fn get_backend_wallet(&self) -> AccountId {
-        self.backend_wallet.clone()
+        self.backend_wallet().clone()
     }
 
     /// Get total number of verified accounts (public read)
     pub fn get_verified_count(&self) -> u64 {
-        self.verifications.len()
+        self.verifications().len()
+    }
+
+    /// Check if the contract is paused (public read)
+    pub fn is_paused(&self) -> bool {
+        self.paused()
+    }
+
+    /// Get total verifications ever stored (V2 only, returns 0 for V1)
+    #[cfg(feature = "upgrade-simulation")]
+    pub fn get_total_verifications_stored(&self) -> u64 {
+        match self {
+            Self::V1(_) => 0,
+            Self::V2(contract) => contract.total_verifications_stored,
+        }
     }
 
     /// Get paginated list of all verifications (public read)
-    /// from_index: starting index (0-based)
-    /// limit: max number of records to return (max 100)
     pub fn list_verifications(&self, from_index: u64, limit: u64) -> Vec<Verification> {
+        let verifications = self.verifications();
         let limit = std::cmp::min(limit, 100);
-        let keys = self.verifications.keys_as_vector();
+        let keys = verifications.keys_as_vector();
         let from_index = std::cmp::min(from_index, keys.len());
         let to_index = std::cmp::min(from_index + limit, keys.len());
 
         (from_index..to_index)
             .filter_map(|index| {
                 keys.get(index)
-                    .and_then(|account_id| self.verifications.get(&account_id))
+                    .and_then(|account_id| verifications.get(&account_id))
                     .map(|v| v.into_current())
             })
             .collect()
     }
 
     /// Batch check if multiple accounts are verified (public read)
-    /// Returns Vec<bool> in same order as input - efficient for DAO voting
-    /// Maximum 100 accounts per call to prevent gas exhaustion
     pub fn are_verified(&self, account_ids: Vec<AccountId>) -> Vec<bool> {
         assert!(
             account_ids.len() <= MAX_BATCH_SIZE,
             "Batch size exceeds maximum of {} accounts",
             MAX_BATCH_SIZE
         );
+        let verifications = self.verifications();
         account_ids
             .iter()
-            .map(|id| self.verifications.get(id).is_some())
+            .map(|id| verifications.get(id).is_some())
             .collect()
     }
 
     /// Batch get verification summaries (public read)
-    /// Returns Vec<Option<VerificationSummary>> in same order as input
-    /// Maximum 100 accounts per call to prevent gas exhaustion
     pub fn get_verifications(
         &self,
         account_ids: Vec<AccountId>,
@@ -549,19 +738,24 @@ impl Contract {
             "Batch size exceeds maximum of {} accounts",
             MAX_BATCH_SIZE
         );
+        let verifications = self.verifications();
         account_ids
             .iter()
-            .map(|id| {
-                self.verifications
-                    .get(id)
-                    .map(|v| VerificationSummary::from(&v))
-            })
+            .map(|id| verifications.get(id).map(|v| VerificationSummary::from(&v)))
             .collect()
     }
 
     /// Get interface version for compatibility checking (public read)
-    /// Derived from Cargo.toml version to ensure consistency
     pub fn interface_version(&self) -> String {
         env!("CARGO_PKG_VERSION").to_string()
+    }
+
+    /// Get contract state version (for diagnostics)
+    pub fn get_state_version(&self) -> u8 {
+        match self {
+            Self::V1(_) => 1,
+            #[cfg(feature = "upgrade-simulation")]
+            Self::V2(_) => 2,
+        }
     }
 }

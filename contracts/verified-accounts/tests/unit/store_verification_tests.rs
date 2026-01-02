@@ -10,7 +10,7 @@ use allure_rs::bdd;
 use allure_rs::prelude::*;
 use near_sdk::test_utils::{accounts, get_logs};
 use near_sdk::testing_env;
-use verified_accounts::{Contract, Verification};
+use verified_accounts::{Verification, VersionedContract};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -43,7 +43,7 @@ fn test_happy_path_store_verification() {
             let context = get_context(backend.clone());
             testing_env!(context.build());
 
-            let contract = Contract::new(backend);
+            let contract = VersionedContract::new(backend);
             let signer = create_signer(&user);
 
             let challenge = "Identify myself";
@@ -112,7 +112,7 @@ fn test_signature_replay_rejected() {
             let user = accounts(2);
             let context = get_context(backend.clone());
             testing_env!(context.build());
-            let contract = Contract::new(backend);
+            let contract = VersionedContract::new(backend);
             let signer = create_signer(&user);
             let nonce = vec![1u8; 32];
             (contract, user, signer, nonce)
@@ -169,7 +169,7 @@ fn test_verification_timestamp_matches_block_time() {
             let expected_ts = 123_456_789u64;
             context.block_timestamp(expected_ts);
             testing_env!(context.build());
-            let contract = Contract::new(backend);
+            let contract = VersionedContract::new(backend);
             let signer = create_signer(&user);
             let sig_data =
                 create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &user);
@@ -206,7 +206,7 @@ fn test_nullifier_reuse_rejected() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step("Store first verification with nullifier", || {
@@ -260,7 +260,7 @@ fn test_double_verification_rejected() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend);
+        let contract = VersionedContract::new(backend);
         let user = accounts(2);
         let signer = create_signer(&user);
         (contract, user, signer)

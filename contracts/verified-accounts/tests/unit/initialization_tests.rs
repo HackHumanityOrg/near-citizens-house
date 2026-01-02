@@ -4,7 +4,7 @@ use super::helpers::get_context;
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::Contract;
+use verified_accounts::VersionedContract;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -18,7 +18,7 @@ fn test_initialization() {
     let contract = step("Initialize contract with backend wallet", || {
         let context = get_context(accounts(0));
         testing_env!(context.build());
-        Contract::new(accounts(1))
+        VersionedContract::new(accounts(1))
     });
 
     step("Verify backend wallet is set correctly", || {

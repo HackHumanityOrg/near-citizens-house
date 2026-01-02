@@ -82,58 +82,127 @@ use near_sdk::{ext_contract, AccountId, NearSchema};
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum VersionedVerification {
-    /// V1: Original verification format (current)
+    /// V1: Original verification format
     V1(VerificationV1),
-    // Future versions append here:
-    // V2(VerificationV2),  // 0x01
-    // V3(VerificationV3),  // 0x02
+    /// V2: Adds nationality_disclosed field (testing-upgrade feature only)
+    #[cfg(feature = "upgrade-simulation")]
+    V2(VerificationV2),
 }
 
 /// Current verification version number.
 /// Update this when adding new versions.
+#[cfg(not(feature = "upgrade-simulation"))]
 pub const CURRENT_VERIFICATION_VERSION: u8 = 1;
+
+#[cfg(feature = "upgrade-simulation")]
+pub const CURRENT_VERIFICATION_VERSION: u8 = 2;
 
 impl VersionedVerification {
     /// Create a new versioned verification using the current version.
+    #[cfg(not(feature = "upgrade-simulation"))]
     pub fn current(v: VerificationV1) -> Self {
         Self::V1(v)
     }
 
+    /// Create a new versioned verification using the current version (V2).
+    #[cfg(feature = "upgrade-simulation")]
+    pub fn current(v: VerificationV2) -> Self {
+        Self::V2(v)
+    }
+
     /// Convert to current Verification format.
     /// This performs lazy migration from older versions.
+    #[cfg(not(feature = "upgrade-simulation"))]
     pub fn into_current(self) -> Verification {
         match self {
             Self::V1(v) => v,
-            // Future migrations:
-            // Self::V2(v) => v.into(), // if V2 can convert to current
+        }
+    }
+
+    /// Convert to current Verification format (V2).
+    /// This performs lazy migration from V1 to V2.
+    #[cfg(feature = "upgrade-simulation")]
+    pub fn into_current(self) -> Verification {
+        match self {
+            Self::V1(v) => VerificationV2 {
+                nullifier: v.nullifier,
+                near_account_id: v.near_account_id,
+                attestation_id: v.attestation_id,
+                verified_at: v.verified_at,
+                self_proof: v.self_proof,
+                user_context_data: v.user_context_data,
+                nationality_disclosed: false, // Default for migrated V1 records
+            },
+            Self::V2(v) => v,
         }
     }
 
     /// Get a reference as current Verification (cloning if migration needed).
+    #[cfg(not(feature = "upgrade-simulation"))]
     pub fn as_current(&self) -> Verification {
         match self {
             Self::V1(v) => v.clone(),
-            // Future migrations would clone and convert here
+        }
+    }
+
+    /// Get a reference as current Verification (cloning if migration needed).
+    #[cfg(feature = "upgrade-simulation")]
+    pub fn as_current(&self) -> Verification {
+        match self {
+            Self::V1(v) => VerificationV2 {
+                nullifier: v.nullifier.clone(),
+                near_account_id: v.near_account_id.clone(),
+                attestation_id: v.attestation_id.clone(),
+                verified_at: v.verified_at,
+                self_proof: v.self_proof.clone(),
+                user_context_data: v.user_context_data.clone(),
+                nationality_disclosed: false,
+            },
+            Self::V2(v) => v.clone(),
         }
     }
 
     /// Check if this is the current version.
+    #[cfg(not(feature = "upgrade-simulation"))]
     pub fn is_current(&self) -> bool {
         matches!(self, Self::V1(_))
     }
 
+    /// Check if this is the current version (V2).
+    #[cfg(feature = "upgrade-simulation")]
+    pub fn is_current(&self) -> bool {
+        matches!(self, Self::V2(_))
+    }
+
     /// Get the version number of this record.
+    #[cfg(not(feature = "upgrade-simulation"))]
     pub fn version(&self) -> u8 {
         match self {
             Self::V1(_) => 1,
-            // Self::V2(_) => 2,
+        }
+    }
+
+    /// Get the version number of this record.
+    #[cfg(feature = "upgrade-simulation")]
+    pub fn version(&self) -> u8 {
+        match self {
+            Self::V1(_) => 1,
+            Self::V2(_) => 2,
         }
     }
 }
 
+#[cfg(not(feature = "upgrade-simulation"))]
 impl From<Verification> for VersionedVerification {
     fn from(v: Verification) -> Self {
-        Self::current(v)
+        Self::V1(v)
+    }
+}
+
+#[cfg(feature = "upgrade-simulation")]
+impl From<Verification> for VersionedVerification {
+    fn from(v: Verification) -> Self {
+        Self::V2(v)
     }
 }
 
@@ -207,11 +276,41 @@ pub struct VerificationV1 {
     pub user_context_data: String,
 }
 
+/// V2: Adds nationality_disclosed field (testing-upgrade feature only).
+///
+/// This struct demonstrates how to add new fields when upgrading.
+/// Records migrated from V1 will have `nationality_disclosed: false`.
+#[cfg(feature = "upgrade-simulation")]
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct VerificationV2 {
+    /// Unique nullifier from the ZK proof (prevents duplicate passport use)
+    pub nullifier: String,
+    /// The NEAR account that was verified
+    pub near_account_id: AccountId,
+    /// Attestation ID from the identity provider
+    pub attestation_id: String,
+    /// Unix timestamp (nanoseconds) when verification was recorded
+    pub verified_at: u64,
+    /// Self.xyz ZK proof data (for re-verification)
+    pub self_proof: SelfProofData,
+    /// Additional context data from verification flow
+    pub user_context_data: String,
+    /// NEW in V2: Whether nationality was disclosed during verification
+    pub nationality_disclosed: bool,
+}
+
 /// Type alias for the current verification version.
 ///
 /// Use this in application code for clarity. When the current version changes,
 /// only this alias needs to be updated (along with migration logic).
+#[cfg(not(feature = "upgrade-simulation"))]
 pub type Verification = VerificationV1;
+
+/// Type alias for the current verification version (V2 when testing-upgrade enabled).
+#[cfg(feature = "upgrade-simulation")]
+pub type Verification = VerificationV2;
 
 impl From<&VerificationV1> for VerificationSummary {
     fn from(v: &VerificationV1) -> Self {
@@ -224,12 +323,33 @@ impl From<&VerificationV1> for VerificationSummary {
     }
 }
 
+#[cfg(feature = "upgrade-simulation")]
+impl From<&VerificationV2> for VerificationSummary {
+    fn from(v: &VerificationV2) -> Self {
+        Self {
+            nullifier: v.nullifier.clone(),
+            near_account_id: v.near_account_id.clone(),
+            attestation_id: v.attestation_id.clone(),
+            verified_at: v.verified_at,
+        }
+    }
+}
+
+#[cfg(not(feature = "upgrade-simulation"))]
 impl From<&VersionedVerification> for VerificationSummary {
     fn from(v: &VersionedVerification) -> Self {
         match v {
             VersionedVerification::V1(v) => Self::from(v),
-            // Future versions:
-            // VersionedVerification::V2(v) => Self::from(v),
+        }
+    }
+}
+
+#[cfg(feature = "upgrade-simulation")]
+impl From<&VersionedVerification> for VerificationSummary {
+    fn from(v: &VersionedVerification) -> Self {
+        match v {
+            VersionedVerification::V1(v) => Self::from(v),
+            VersionedVerification::V2(v) => Self::from(v),
         }
     }
 }

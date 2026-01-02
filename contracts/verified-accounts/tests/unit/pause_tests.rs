@@ -8,7 +8,7 @@ use allure_rs::prelude::*;
 use near_sdk::test_utils::{accounts, get_logs};
 use near_sdk::testing_env;
 use near_sdk::NearToken;
-use verified_accounts::{Contract, NearSignatureData};
+use verified_accounts::{NearSignatureData, VersionedContract};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -25,7 +25,7 @@ fn test_pause_unpause() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend.clone());
+        let contract = VersionedContract::new(backend.clone());
         (contract, backend)
     });
 
@@ -75,7 +75,7 @@ fn test_unauthorized_pause() {
         let mut context = get_context(unauthorized);
         context.attached_deposit(NearToken::from_yoctonear(1));
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step("Attempt pause from unauthorized account", || {
@@ -99,7 +99,7 @@ fn test_unauthorized_unpause() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let mut contract = Contract::new(backend.clone());
+        let mut contract = VersionedContract::new(backend.clone());
 
         let mut pause_context = get_context(backend);
         pause_context.attached_deposit(NearToken::from_yoctonear(1));
@@ -136,7 +136,7 @@ fn test_store_verification_when_paused() {
         let user = accounts(2);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let mut contract = Contract::new(backend.clone());
+        let mut contract = VersionedContract::new(backend.clone());
 
         let mut pause_context = get_context(backend);
         pause_context.attached_deposit(NearToken::from_yoctonear(1));

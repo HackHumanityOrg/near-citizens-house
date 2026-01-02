@@ -4,7 +4,7 @@ use super::helpers::{create_signer, create_valid_signature, get_context, test_se
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::Contract;
+use verified_accounts::VersionedContract;
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -21,7 +21,7 @@ fn test_read_functions() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        let contract = Contract::new(backend.clone());
+        let contract = VersionedContract::new(backend.clone());
         (contract, backend)
     });
 
@@ -66,7 +66,7 @@ fn test_read_functions_with_verified_accounts() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step("Store first verified account", || {
@@ -142,7 +142,7 @@ fn test_pagination_with_large_limit_on_empty() {
         let backend = accounts(1);
         let context = get_context(backend.clone());
         testing_env!(context.build());
-        Contract::new(backend)
+        VersionedContract::new(backend)
     });
 
     step(

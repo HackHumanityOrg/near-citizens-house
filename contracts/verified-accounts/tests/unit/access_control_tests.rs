@@ -4,7 +4,7 @@ use super::helpers::{assert_panic_with, get_context, test_self_proof};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
-use verified_accounts::{Contract, NearSignatureData};
+use verified_accounts::{NearSignatureData, VersionedContract};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -18,7 +18,7 @@ fn test_unauthorized_write() {
     let mut contract = step("Initialize contract with unauthorized caller", || {
         let context = get_context(accounts(0));
         testing_env!(context.build());
-        Contract::new(accounts(1))
+        VersionedContract::new(accounts(1))
     });
 
     step("Attempt store_verification from non-backend wallet", || {

@@ -1,0 +1,925 @@
+//! Versioning tests for verified-accounts contract
+//!
+//! Comprehensive tests for the contract's versioning infrastructure, including:
+//! - Contract state versioning (VersionedContract: V1 -> V2)
+//! - Record versioning (VersionedVerification: V1 -> V2)
+//! - True cross-version upgrade scenarios
+//!
+//! ## Test Fixtures
+//!
+//! These tests use pre-built WASM artifacts from `tests/fixtures/`:
+//! - `v1/verified_accounts.wasm` - Production build (no feature flags)
+//! - `v2/verified_accounts.wasm` - Upgrade simulation build (--features upgrade-simulation)
+//!
+//! To rebuild fixtures: `./scripts/build_test_fixtures.sh`
+//!
+//! ## Running Tests
+//!
+//! ```sh
+//! cargo test --features integration-tests --test integration versioning
+//! ```
+
+use crate::helpers::{generate_nep413_signature, test_self_proof};
+use allure_rs::prelude::*;
+use near_workspaces::types::{Gas, NearToken};
+use near_workspaces::{Account, AccountId, Contract, Worker};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+
+/// Path to V1 WASM fixture (production build)
+pub const WASM_V1_PATH: &str = "./tests/fixtures/v1/verified_accounts.wasm";
+
+/// Path to V2 WASM fixture (upgrade-simulation build)
+pub const WASM_V2_PATH: &str = "./tests/fixtures/v2/verified_accounts.wasm";
+
+/// Verification summary response (matches contract's VerificationSummary)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct VerificationSummary {
+    pub nullifier: String,
+    pub near_account_id: AccountId,
+    pub attestation_id: String,
+    pub verified_at: u64,
+}
+
+/// Load V1 WASM from fixtures
+fn load_v1_wasm() -> Vec<u8> {
+    std::fs::read(WASM_V1_PATH).unwrap_or_else(|e| {
+        panic!(
+            "Could not find V1 WASM at {}. Run ./scripts/build_test_fixtures.sh first. Error: {}",
+            WASM_V1_PATH, e
+        )
+    })
+}
+
+/// Load V2 WASM from fixtures
+fn load_v2_wasm() -> Vec<u8> {
+    std::fs::read(WASM_V2_PATH).unwrap_or_else(|e| {
+        panic!(
+            "Could not find V2 WASM at {}. Run ./scripts/build_test_fixtures.sh first. Error: {}",
+            WASM_V2_PATH, e
+        )
+    })
+}
+
+/// Initialize test environment with V1 contract deployed
+async fn init_v1() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>, Contract, Account)>
+{
+    let worker = near_workspaces::sandbox().await?;
+    let wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+    let contract = worker.dev_deploy(&wasm).await?;
+
+    let result = contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "V1 contract initialization failed: {:?}",
+        result.failures()
+    );
+
+    Ok((worker, contract, backend))
+}
+
+/// Store a verification
+async fn store_verification(
+    backend: &Account,
+    contract: &Contract,
+    user: &Account,
+    nullifier: &str,
+) -> anyhow::Result<()> {
+    let nonce: [u8; 32] = rand::random();
+    let challenge = "Identify myself";
+    let recipient = user.id().to_string();
+
+    let (signature, public_key) = generate_nep413_signature(user, challenge, &nonce, &recipient);
+
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({
+            "nullifier": nullifier,
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": format!("context_for_{}", nullifier)
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    assert!(
+        result.is_success(),
+        "Store verification failed: {:?}",
+        result.failures()
+    );
+
+    Ok(())
+}
+
+// ==================== V1 Baseline Tests ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "v1")]
+#[allure_description("Baseline test: V1 contract can store and retrieve verifications.")]
+#[allure_test]
+#[tokio::test]
+async fn test_v1_baseline_storage_and_retrieval() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init_v1().await?;
+    let user = worker.dev_create_account().await?;
+
+    store_verification(&backend, &contract, &user, "v1_baseline_nullifier").await?;
+
+    let summary: Option<VerificationSummary> = contract
+        .view("get_verification")
+        .args_json(json!({"account_id": user.id()}))
+        .await?
+        .json()?;
+
+    step("Verify V1 data is stored and retrievable", || {
+        assert!(summary.is_some(), "Verification should be found");
+        let summary = summary.expect("checked above");
+        assert_eq!(summary.nullifier, "v1_baseline_nullifier");
+        assert_eq!(summary.near_account_id, *user.id());
+    });
+
+    let state_version: u8 = contract.view("get_state_version").await?.json()?;
+    step("Verify contract reports V1 state version", || {
+        assert_eq!(state_version, 1, "Should be state version 1");
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "v1", "nullifier")]
+#[allure_description("V1 nullifier protection works correctly.")]
+#[allure_test]
+#[tokio::test]
+async fn test_v1_nullifier_protection() -> anyhow::Result<()> {
+    let (worker, contract, backend) = init_v1().await?;
+    let user1 = worker.dev_create_account().await?;
+    let user2 = worker.dev_create_account().await?;
+
+    store_verification(&backend, &contract, &user1, "shared_nullifier").await?;
+
+    // Try to reuse nullifier
+    let nonce: [u8; 32] = rand::random();
+    let challenge = "Identify myself";
+    let recipient = user2.id().to_string();
+    let (signature, public_key) = generate_nep413_signature(&user2, challenge, &nonce, &recipient);
+
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({
+            "nullifier": "shared_nullifier",
+            "near_account_id": user2.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user2.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify nullifier reuse is rejected", || {
+        assert!(result.is_failure());
+        let failure_msg = format!("{:?}", result.failures());
+        assert!(failure_msg.contains("Nullifier already used"));
+    });
+
+    Ok(())
+}
+
+// ==================== Cross-Version Upgrade Tests ====================
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "upgrade", "v1-to-v2")]
+#[allure_description(
+    "Critical upgrade test: Deploy V1, store data, upgrade to V2, verify data persists. \
+     This tests the core contract state versioning mechanism."
+)]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_v1_to_v2_preserves_verifications() -> anyhow::Result<()> {
+    // Step 1: Deploy V1 and store verifications
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    // Deploy V1 to a specific account (not dev_deploy, so we can redeploy)
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("upgrade-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    assert!(
+        deploy_result.details.is_success(),
+        "V1 deploy failed: {:?}",
+        deploy_result.details.failures()
+    );
+    let contract = deploy_result.result;
+
+    // Initialize V1
+    let init_result = contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+    assert!(
+        init_result.is_success(),
+        "V1 init failed: {:?}",
+        init_result.failures()
+    );
+
+    // Store verifications with V1
+    let user1 = worker.dev_create_account().await?;
+    let user2 = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user1, "v1_user1_nullifier").await?;
+    store_verification(&backend, &contract, &user2, "v1_user2_nullifier").await?;
+
+    // Verify V1 state
+    let v1_count: u64 = contract.view("get_verified_count").await?.json()?;
+    let v1_state_version: u8 = contract.view("get_state_version").await?.json()?;
+
+    step("Verify V1 state before upgrade", || {
+        assert_eq!(v1_count, 2, "Should have 2 verifications in V1");
+        assert_eq!(v1_state_version, 1, "Should be state version 1");
+    });
+
+    // Step 2: Upgrade to V2 (redeploy with V2 WASM)
+    let v2_wasm = load_v2_wasm();
+    let upgrade_result = contract_account.deploy(&v2_wasm).await?;
+    assert!(
+        upgrade_result.details.is_success(),
+        "V2 deploy failed: {:?}",
+        upgrade_result.details.failures()
+    );
+
+    // Step 3: Verify V1 data is readable with V2 code
+    let v2_count: u64 = contract.view("get_verified_count").await?.json()?;
+
+    step("Verify verification count persists after upgrade", || {
+        assert_eq!(v2_count, 2, "Should still have 2 verifications after upgrade");
+    });
+
+    // Read user1's verification
+    let summary1: Option<VerificationSummary> = contract
+        .view("get_verification")
+        .args_json(json!({"account_id": user1.id()}))
+        .await?
+        .json()?;
+
+    step("Verify user1 verification readable after upgrade", || {
+        assert!(summary1.is_some());
+        let s = summary1.expect("checked");
+        assert_eq!(s.nullifier, "v1_user1_nullifier");
+        assert_eq!(s.near_account_id, *user1.id());
+    });
+
+    // Read user2's verification
+    let summary2: Option<VerificationSummary> = contract
+        .view("get_verification")
+        .args_json(json!({"account_id": user2.id()}))
+        .await?
+        .json()?;
+
+    step("Verify user2 verification readable after upgrade", || {
+        assert!(summary2.is_some());
+        let s = summary2.expect("checked");
+        assert_eq!(s.nullifier, "v1_user2_nullifier");
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "upgrade", "v1-to-v2")]
+#[allure_description(
+    "Upgrade test: Contract state fields (backend_wallet, paused) persist across upgrade."
+)]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_preserves_contract_state() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("state-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Modify state in V1: pause the contract
+    backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    let v1_paused: bool = contract.view("is_paused").await?.json()?;
+    let v1_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
+
+    step("Verify V1 state modifications", || {
+        assert!(v1_paused, "Contract should be paused in V1");
+        assert_eq!(v1_backend, *backend.id());
+    });
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Verify state persists
+    let v2_paused: bool = contract.view("is_paused").await?.json()?;
+    let v2_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
+
+    step("Verify paused state persists after upgrade", || {
+        assert!(v2_paused, "Contract should still be paused after upgrade");
+    });
+
+    step("Verify backend_wallet persists after upgrade", || {
+        assert_eq!(v2_backend, *backend.id());
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "upgrade", "nullifier")]
+#[allure_description("Upgrade test: Nullifier protection persists across V1 to V2 upgrade.")]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("nullifier-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store verification with V1
+    let user1 = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user1, "protected_nullifier").await?;
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Try to reuse nullifier with V2 code - should fail
+    let user2 = worker.dev_create_account().await?;
+    let nonce: [u8; 32] = rand::random();
+    let challenge = "Identify myself";
+    let recipient = user2.id().to_string();
+    let (signature, public_key) = generate_nep413_signature(&user2, challenge, &nonce, &recipient);
+
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({
+            "nullifier": "protected_nullifier",
+            "near_account_id": user2.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user2.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify nullifier protection persists after upgrade", || {
+        assert!(result.is_failure());
+        let failure_msg = format!("{:?}", result.failures());
+        assert!(
+            failure_msg.contains("Nullifier already used"),
+            "Expected nullifier error, got: {}",
+            failure_msg
+        );
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "versioning", "upgrade", "signature")]
+#[allure_description("Upgrade test: Signature replay protection persists across upgrade.")]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("sig-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store verification with specific signature in V1
+    let user = worker.dev_create_account().await?;
+    let nonce: [u8; 32] = [42u8; 32]; // Fixed nonce for replay test
+    let challenge = "Identify myself";
+    let recipient = user.id().to_string();
+    let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
+
+    backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({
+            "nullifier": "sig_test_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature.clone(),
+                "public_key": public_key.clone(),
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient.clone()
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Try to replay signature with V2 code - should fail
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({
+            "nullifier": "different_nullifier",
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context"
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify signature replay protection persists after upgrade", || {
+        assert!(result.is_failure());
+        let failure_msg = format!("{:?}", result.failures());
+        assert!(
+            failure_msg.contains("Signature already used"),
+            "Expected signature error, got: {}",
+            failure_msg
+        );
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("high")]
+#[allure_tags("integration", "versioning", "upgrade", "v2-features")]
+#[allure_description(
+    "Upgrade test: After upgrade to V2, new verifications work and V2-specific \
+     features (total_verifications_stored counter) are available."
+)]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_new_verifications_work() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("new-ver-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store one verification with V1
+    let user1 = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user1, "v1_verification").await?;
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Store new verification with V2
+    let user2 = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user2, "v2_verification").await?;
+
+    // Verify counts
+    let count: u64 = contract.view("get_verified_count").await?.json()?;
+
+    step("Verify new verifications work after upgrade", || {
+        assert_eq!(count, 2, "Should have both V1 and V2 verifications");
+    });
+
+    // Verify V2 feature: total_verifications_stored counter
+    let total_stored: u64 = contract
+        .view("get_total_verifications_stored")
+        .await?
+        .json()?;
+
+    step("Verify V2 counter tracks new verifications", || {
+        // Counter starts at 0 after upgrade (we don't know V1 history) and counts V2 additions
+        assert_eq!(total_stored, 1, "Should count 1 verification stored after upgrade");
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "versioning", "upgrade", "batch")]
+#[allure_description("Upgrade test: Batch queries work correctly after upgrade.")]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_batch_queries_work() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("batch-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store verifications with V1
+    let user1 = worker.dev_create_account().await?;
+    let user2 = worker.dev_create_account().await?;
+    let user3 = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user1, "batch_v1_1").await?;
+    store_verification(&backend, &contract, &user2, "batch_v1_2").await?;
+    // user3 not verified
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Test batch queries after upgrade
+    let verification_status: Vec<bool> = contract
+        .view("are_verified")
+        .args_json(json!({
+            "account_ids": [user1.id(), user2.id(), user3.id()]
+        }))
+        .await?
+        .json()?;
+
+    step("Verify are_verified batch works after upgrade", || {
+        assert_eq!(verification_status.len(), 3);
+        assert_eq!(verification_status.first().copied(), Some(true));
+        assert_eq!(verification_status.get(1).copied(), Some(true));
+        assert_eq!(verification_status.get(2).copied(), Some(false));
+    });
+
+    let verifications: Vec<Option<VerificationSummary>> = contract
+        .view("get_verifications")
+        .args_json(json!({
+            "account_ids": [user1.id(), user2.id(), user3.id()]
+        }))
+        .await?
+        .json()?;
+
+    step("Verify get_verifications batch works after upgrade", || {
+        assert_eq!(verifications.len(), 3);
+        assert!(verifications.first().and_then(|v| v.as_ref()).is_some());
+        assert!(verifications.get(1).and_then(|v| v.as_ref()).is_some());
+        assert!(verifications.get(2).and_then(|v| v.as_ref()).is_none());
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "versioning", "upgrade", "pagination")]
+#[allure_description("Upgrade test: Pagination works correctly after upgrade.")]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("page-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Store 5 verifications with V1
+    for i in 0..5 {
+        let user = worker.dev_create_account().await?;
+        store_verification(&backend, &contract, &user, &format!("page_v1_{}", i)).await?;
+    }
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Test pagination after upgrade
+    let first_page: Vec<serde_json::Value> = contract
+        .view("list_verifications")
+        .args_json(json!({"from_index": 0u64, "limit": 3u64}))
+        .await?
+        .json()?;
+
+    step("Verify first page after upgrade", || {
+        assert_eq!(first_page.len(), 3);
+    });
+
+    let second_page: Vec<serde_json::Value> = contract
+        .view("list_verifications")
+        .args_json(json!({"from_index": 3u64, "limit": 3u64}))
+        .await?
+        .json()?;
+
+    step("Verify second page after upgrade", || {
+        assert_eq!(second_page.len(), 2);
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "versioning", "upgrade", "full-verification")]
+#[allure_description("Upgrade test: Full verification data (including ZK proof) readable after upgrade.")]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_full_verification_readable() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("full-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    let user = worker.dev_create_account().await?;
+    store_verification(&backend, &contract, &user, "full_v1_nullifier").await?;
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Get full verification after upgrade
+    let full: Option<serde_json::Value> = contract
+        .view("get_full_verification")
+        .args_json(json!({"account_id": user.id()}))
+        .await?
+        .json()?;
+
+    step("Verify full verification readable after upgrade", || {
+        assert!(full.is_some());
+        let v = full.expect("checked");
+        assert_eq!(
+            v.get("nullifier").and_then(|v| v.as_str()),
+            Some("full_v1_nullifier")
+        );
+        assert!(v.get("self_proof").is_some());
+        assert!(v.get("user_context_data").is_some());
+    });
+
+    Ok(())
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Integration Tests")]
+#[allure_sub_suite("Versioning")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "versioning", "upgrade", "admin")]
+#[allure_description("Upgrade test: Admin functions work correctly after upgrade.")]
+#[allure_test]
+#[tokio::test]
+async fn test_upgrade_admin_functions_work() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let v1_wasm = load_v1_wasm();
+    let backend = worker.dev_create_account().await?;
+
+    let contract_account = worker
+        .root_account()?
+        .create_subaccount("admin-test")
+        .initial_balance(NearToken::from_near(50))
+        .transact()
+        .await?
+        .result;
+
+    let deploy_result = contract_account.deploy(&v1_wasm).await?;
+    let contract = deploy_result.result;
+
+    contract
+        .call("new")
+        .args_json(json!({ "backend_wallet": backend.id() }))
+        .transact()
+        .await?;
+
+    // Upgrade to V2
+    let v2_wasm = load_v2_wasm();
+    contract_account.deploy(&v2_wasm).await?;
+
+    // Test admin functions after upgrade
+    let pause_result = backend
+        .call(contract.id(), "pause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify pause works after upgrade", || {
+        assert!(
+            pause_result.is_success(),
+            "Pause failed: {:?}",
+            pause_result.failures()
+        );
+    });
+
+    let is_paused: bool = contract.view("is_paused").await?.json()?;
+    assert!(is_paused);
+
+    let unpause_result = backend
+        .call(contract.id(), "unpause")
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify unpause works after upgrade", || {
+        assert!(
+            unpause_result.is_success(),
+            "Unpause failed: {:?}",
+            unpause_result.failures()
+        );
+    });
+
+    // Update backend wallet
+    let new_backend = worker.dev_create_account().await?;
+    let update_result = backend
+        .call(contract.id(), "update_backend_wallet")
+        .args_json(json!({"new_backend_wallet": new_backend.id()}))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+
+    step("Verify backend wallet update works after upgrade", || {
+        assert!(
+            update_result.is_success(),
+            "Update failed: {:?}",
+            update_result.failures()
+        );
+    });
+
+    let current_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
+    assert_eq!(current_backend, *new_backend.id());
+
+    Ok(())
+}
