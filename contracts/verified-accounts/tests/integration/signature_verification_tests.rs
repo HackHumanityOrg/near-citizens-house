@@ -381,7 +381,9 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "read", "pagination")]
-#[allure_description("Verifies that list_verifications pagination works correctly with multiple verified accounts.")]
+#[allure_description(
+    "Verifies that list_verifications pagination works correctly with multiple verified accounts."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_list_verifications_pagination() -> anyhow::Result<()> {

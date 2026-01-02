@@ -4,6 +4,23 @@
 //! NEAR verified accounts oracle contract. Other NEAR contracts can use these types
 //! and the generated `ext_verified_accounts` module for type-safe cross-contract calls.
 //!
+//! ## Versioning
+//!
+//! This module uses versioned types to support contract upgrades without migrations:
+//! - `VersionedVerification` - enum wrapper for verification records stored on-chain
+//! - `Verification` - type alias for the current version (`VerificationV1`)
+//!
+//! Old records are automatically upgraded when read (lazy migration).
+//!
+//! When adding new versions, always append to the enum (never reorder):
+//! ```ignore
+//! pub enum VersionedVerification {
+//!     V1(VerificationV1),  // 0x00 - original
+//!     V2(VerificationV2),  // 0x01 - added new_field
+//!     V3(VerificationV3),  // 0x02 - future version
+//! }
+//! ```
+//!
 //! ## Usage Example
 //!
 //! ```rust,ignore
@@ -47,6 +64,79 @@ use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{ext_contract, AccountId, NearSchema};
 
+// ==================== Versioning ====================
+
+/// Versioned verification record for on-chain storage.
+///
+/// This enum allows the contract to upgrade the verification structure
+/// without requiring data migrations. Old records are lazily upgraded
+/// when read.
+///
+/// ## Borsh Serialization
+///
+/// Borsh serializes enums with a 1-byte discriminant:
+/// - `0x00` = V1 (current/original format)
+/// - Future versions are appended (V2 = 0x01, V3 = 0x02, etc.)
+///
+/// **Important:** Never reorder variants - only append new ones at the end.
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
+#[borsh(crate = "near_sdk::borsh")]
+pub enum VersionedVerification {
+    /// V1: Original verification format (current)
+    V1(VerificationV1),
+    // Future versions append here:
+    // V2(VerificationV2),  // 0x01
+    // V3(VerificationV3),  // 0x02
+}
+
+/// Current verification version number.
+/// Update this when adding new versions.
+pub const CURRENT_VERIFICATION_VERSION: u8 = 1;
+
+impl VersionedVerification {
+    /// Create a new versioned verification using the current version.
+    pub fn current(v: VerificationV1) -> Self {
+        Self::V1(v)
+    }
+
+    /// Convert to current Verification format.
+    /// This performs lazy migration from older versions.
+    pub fn into_current(self) -> Verification {
+        match self {
+            Self::V1(v) => v,
+            // Future migrations:
+            // Self::V2(v) => v.into(), // if V2 can convert to current
+        }
+    }
+
+    /// Get a reference as current Verification (cloning if migration needed).
+    pub fn as_current(&self) -> Verification {
+        match self {
+            Self::V1(v) => v.clone(),
+            // Future migrations would clone and convert here
+        }
+    }
+
+    /// Check if this is the current version.
+    pub fn is_current(&self) -> bool {
+        matches!(self, Self::V1(_))
+    }
+
+    /// Get the version number of this record.
+    pub fn version(&self) -> u8 {
+        match self {
+            Self::V1(_) => 1,
+            // Self::V2(_) => 2,
+        }
+    }
+}
+
+impl From<Verification> for VersionedVerification {
+    fn from(v: Verification) -> Self {
+        Self::current(v)
+    }
+}
+
 // ==================== Data Types ====================
 
 /// Groth16 ZK proof structure (a, b, c points)
@@ -75,6 +165,9 @@ pub struct SelfProofData {
 /// This is the most commonly used return type for cross-contract calls.
 /// It includes all essential verification data without the large ZK proof,
 /// keeping gas costs low.
+///
+/// Note: This type is NOT versioned because it's only used for view responses,
+/// not for on-chain storage.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
@@ -89,14 +182,17 @@ pub struct VerificationSummary {
     pub verified_at: u64,
 }
 
-/// Full verification record including ZK proof.
+// ==================== Versioned Verification Types ====================
+
+/// V1: Original verification format (current version).
 ///
-/// Only use this when you need the actual proof data for re-verification.
-/// Most cross-contract calls should use `get_verification()` instead to save gas.
+/// This is the first and current version of the verification structure.
+/// When adding fields, create a new `VerificationV2` struct and update
+/// the migration logic in `VersionedVerification::into_current()`.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
-pub struct Verification {
+pub struct VerificationV1 {
     /// Unique nullifier from the ZK proof (prevents duplicate passport use)
     pub nullifier: String,
     /// The NEAR account that was verified
@@ -111,13 +207,29 @@ pub struct Verification {
     pub user_context_data: String,
 }
 
-impl From<&Verification> for VerificationSummary {
-    fn from(v: &Verification) -> Self {
+/// Type alias for the current verification version.
+///
+/// Use this in application code for clarity. When the current version changes,
+/// only this alias needs to be updated (along with migration logic).
+pub type Verification = VerificationV1;
+
+impl From<&VerificationV1> for VerificationSummary {
+    fn from(v: &VerificationV1) -> Self {
         Self {
             nullifier: v.nullifier.clone(),
             near_account_id: v.near_account_id.clone(),
             attestation_id: v.attestation_id.clone(),
             verified_at: v.verified_at,
+        }
+    }
+}
+
+impl From<&VersionedVerification> for VerificationSummary {
+    fn from(v: &VersionedVerification) -> Self {
+        match v {
+            VersionedVerification::V1(v) => Self::from(v),
+            // Future versions:
+            // VersionedVerification::V2(v) => Self::from(v),
         }
     }
 }

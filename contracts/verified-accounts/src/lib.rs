@@ -3,6 +3,11 @@
 //! A NEAR smart contract that links real-world passport identity to NEAR wallets
 //! using Self.xyz zero-knowledge proofs and on-chain signature verification.
 //!
+//! # Versioning
+//!
+//! Verification records use `VersionedVerification` to support future schema changes
+//! without requiring data migrations. New records are always stored as the latest version.
+//!
 //! # Security Model
 //!
 //! This contract operates with a trusted backend model:
@@ -26,7 +31,6 @@
 //!
 //! ## Proof Storage & Re-Verification
 //! Self.xyz ZK proofs are stored on-chain in their entirety
-//!
 
 #![allow(clippy::too_many_arguments)]
 
@@ -39,7 +43,8 @@ use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault
 // Interface module for cross-contract calls
 pub mod interface;
 pub use interface::{
-    ext_verified_accounts, SelfProofData, Verification, VerificationSummary, ZkProof,
+    ext_verified_accounts, SelfProofData, Verification, VerificationSummary, VersionedVerification,
+    ZkProof,
 };
 
 /// Maximum length for string inputs
@@ -52,7 +57,8 @@ const MAX_PROOF_COMPONENT_LEN: usize = 80; // BN254 field elements ~77 decimal d
 /// Maximum accounts per batch query
 const MAX_BATCH_SIZE: usize = 100;
 
-/// Storage key prefixes for collections
+/// Storage key prefixes for collections.
+/// IMPORTANT: These must remain constant across versions to preserve data.
 #[derive(BorshStorageKey, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum StorageKey {
@@ -78,18 +84,6 @@ pub struct NearSignatureData {
 /// NEP-413 Payload structure
 #[derive(BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
-#[cfg(not(feature = "testing"))]
-struct Nep413Payload {
-    message: String,
-    nonce: [u8; 32],
-    recipient: String,
-    callback_url: Option<String>,
-}
-
-/// NEP-413 Payload structure (public for testing)
-#[derive(BorshSerialize)]
-#[borsh(crate = "near_sdk::borsh")]
-#[cfg(feature = "testing")]
 pub struct Nep413Payload {
     pub message: String,
     pub nonce: [u8; 32],
@@ -140,7 +134,12 @@ fn emit_event<T: Serialize>(event_name: &str, data: &T) {
     }
 }
 
-/// Main contract structure
+// ==================== Contract State ====================
+
+/// Main contract state.
+///
+/// Verification records are stored using `VersionedVerification` to allow
+/// future schema changes without requiring data migrations.
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct Contract {
@@ -148,17 +147,19 @@ pub struct Contract {
     pub backend_wallet: AccountId,
     /// Set of used nullifiers
     pub nullifiers: LookupSet<String>,
-    /// Map of NEAR accounts to their verification records
-    pub verifications: UnorderedMap<AccountId, Verification>,
+    /// Map of NEAR accounts to their verification records (versioned format)
+    pub verifications: UnorderedMap<AccountId, VersionedVerification>,
     /// Set of used signatures
     pub used_signatures: LookupSet<[u8; 64]>,
     /// Whether the contract is paused
     pub paused: bool,
 }
 
+// ==================== Contract Implementation ====================
+
 #[near]
 impl Contract {
-    /// Initialize contract with backend wallet address
+    /// Initialize contract with backend wallet address.
     #[init]
     pub fn new(backend_wallet: AccountId) -> Self {
         Self {
@@ -174,6 +175,7 @@ impl Contract {
     #[payable]
     pub fn update_backend_wallet(&mut self, new_backend_wallet: AccountId) {
         assert_one_yocto();
+
         assert_eq!(
             env::predecessor_account_id(),
             self.backend_wallet,
@@ -197,6 +199,7 @@ impl Contract {
     pub fn pause(&mut self) {
         assert_one_yocto();
         let caller = env::predecessor_account_id();
+
         assert_eq!(
             caller, self.backend_wallet,
             "Only backend wallet can pause contract"
@@ -216,6 +219,7 @@ impl Contract {
     pub fn unpause(&mut self) {
         assert_one_yocto();
         let caller = env::predecessor_account_id();
+
         assert_eq!(
             caller, self.backend_wallet,
             "Only backend wallet can unpause contract"
@@ -279,7 +283,6 @@ impl Contract {
         );
 
         // Validate individual string lengths in proof components
-        // BN254 field elements are ~77 decimal digits, 80 chars gives margin
         for signal in &self_proof.public_signals {
             assert!(
                 signal.len() <= MAX_PROOF_COMPONENT_LEN,
@@ -321,8 +324,6 @@ impl Contract {
             "Only backend wallet can store verifications"
         );
 
-        // Early storage cost estimation based on actual data structures:
-        //
         // Verify signature data matches the account being verified
         assert_eq!(
             signature_data.account_id, near_account_id,
@@ -335,7 +336,7 @@ impl Contract {
         );
 
         // Verify the NEAR signature
-        self.verify_near_signature(&signature_data);
+        Self::verify_near_signature(&signature_data);
 
         // Prevent signature replay
         let mut sig_array = [0u8; 64];
@@ -357,7 +358,7 @@ impl Contract {
             "NEAR account already verified"
         );
 
-        // Create verification record
+        // Create verification record (always use current version)
         let verification = Verification {
             nullifier: nullifier.clone(),
             near_account_id: near_account_id.clone(),
@@ -368,12 +369,10 @@ impl Contract {
         };
 
         // Store verification and tracking data
-        // Note: If the contract lacks sufficient balance for storage, NEAR protocol
-        // will reject the transaction with LackBalanceForState error at commit time.
-        // This is enforced atomically - all state changes are rolled back on failure.
         self.used_signatures.insert(&sig_array);
         self.nullifiers.insert(&nullifier);
-        self.verifications.insert(&near_account_id, &verification);
+        self.verifications
+            .insert(&near_account_id, &VersionedVerification::from(verification));
 
         // Emit event
         emit_event(
@@ -397,9 +396,7 @@ impl Contract {
     /// within a smart contract. Access key validation must be performed off-chain
     /// by the backend wallet using RPC (`view_access_key`) before calling this
     /// contract.
-    ///
-    /// See module-level documentation for the complete trust model.
-    fn verify_near_signature(&self, sig_data: &NearSignatureData) {
+    fn verify_near_signature(sig_data: &NearSignatureData) {
         // Validate nonce length
         assert_eq!(sig_data.nonce.len(), 32, "Nonce must be exactly 32 bytes");
 
@@ -408,7 +405,6 @@ impl Contract {
 
         // Step 1: Serialize the NEP-413 prefix tag
         // The tag is 2^31 + 413 = 2147484061
-        // This prevents replay attacks by making the message definitively NOT a NEAR transaction
         let tag: u32 = 2147484061;
         let tag_bytes = tag.to_le_bytes().to_vec();
 
@@ -420,11 +416,10 @@ impl Contract {
             message: sig_data.challenge.clone(),
             nonce: nonce_array,
             recipient: sig_data.recipient.to_string(),
-            callback_url: None, // Not used in our implementation
+            callback_url: None,
         };
 
         // Borsh serialize the payload
-        // This should never fail
         let payload_bytes = match near_sdk::borsh::to_vec(&payload) {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -453,11 +448,9 @@ impl Contract {
             "Public key data should be 33 bytes (1 byte type + 32 bytes key)"
         );
 
-        // First byte is the key type (0 for ED25519)
         let key_type = public_key_data.first().copied().unwrap_or(255);
         assert_eq!(key_type, 0, "Only ED25519 keys are supported");
 
-        // Extract the 32-byte public key (skip first byte which is key type)
         let public_key_bytes = public_key_data.get(1..).unwrap_or(&[]);
         assert_eq!(public_key_bytes.len(), 32, "Public key must be 32 bytes");
 
@@ -477,17 +470,23 @@ impl Contract {
         );
     }
 
+    // ==================== View Methods ====================
+
     /// Get verification summary without proof data (public read)
     /// Returns all essential data without the large ZK proof
     pub fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary> {
-        self.verifications.get(&account_id).map(|v| (&v).into())
+        self.verifications
+            .get(&account_id)
+            .map(|v| VerificationSummary::from(&v))
     }
 
     /// Get full verification record including ZK proof (public read)
     /// Only use this when you need the actual proof data for re-verification
     /// For most cases, use get_verification() instead to save gas
     pub fn get_full_verification(&self, account_id: AccountId) -> Option<Verification> {
-        self.verifications.get(&account_id)
+        self.verifications
+            .get(&account_id)
+            .map(|v| v.into_current())
     }
 
     /// Check if an account is verified (public read)
@@ -509,7 +508,7 @@ impl Contract {
     /// from_index: starting index (0-based)
     /// limit: max number of records to return (max 100)
     pub fn list_verifications(&self, from_index: u64, limit: u64) -> Vec<Verification> {
-        let limit = std::cmp::min(limit, 100); // Cap at 100 per request
+        let limit = std::cmp::min(limit, 100);
         let keys = self.verifications.keys_as_vector();
         let from_index = std::cmp::min(from_index, keys.len());
         let to_index = std::cmp::min(from_index + limit, keys.len());
@@ -518,6 +517,7 @@ impl Contract {
             .filter_map(|index| {
                 keys.get(index)
                     .and_then(|account_id| self.verifications.get(&account_id))
+                    .map(|v| v.into_current())
             })
             .collect()
     }
@@ -551,7 +551,11 @@ impl Contract {
         );
         account_ids
             .iter()
-            .map(|id| self.get_verification(id.clone()))
+            .map(|id| {
+                self.verifications
+                    .get(id)
+                    .map(|v| VerificationSummary::from(&v))
+            })
             .collect()
     }
 

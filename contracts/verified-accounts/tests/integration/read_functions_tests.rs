@@ -39,7 +39,9 @@ async fn test_is_verified_returns_false_for_unverified() -> anyhow::Result<()> {
 #[allure_sub_suite("Read Functions")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "read", "pagination")]
-#[allure_description("Verifies that list_verifications returns an empty list when no accounts have been verified.")]
+#[allure_description(
+    "Verifies that list_verifications returns an empty list when no accounts have been verified."
+)]
 #[allure_test]
 #[tokio::test]
 async fn test_list_verifications_empty() -> anyhow::Result<()> {

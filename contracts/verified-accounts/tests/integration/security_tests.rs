@@ -102,9 +102,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
 #[allure_sub_suite("Security")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "security", "batch-limit")]
-#[allure_description(
-    "Verifies that are_verified enforces the batch size limit of 100 accounts."
-)]
+#[allure_description("Verifies that are_verified enforces the batch size limit of 100 accounts.")]
 #[allure_test]
 #[tokio::test]
 async fn test_batch_size_limit_enforced() -> anyhow::Result<()> {
@@ -263,12 +261,15 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
     // Verify the verification was not stored (NEAR's atomic transactions ensure rollback)
     let count: u32 = contract.view("get_verified_count").await?.json()?;
 
-    step("Verify no verification was stored (atomic rollback)", || {
-        assert_eq!(
-            count, 0,
-            "Expected no verifications to be stored due to atomic rollback"
-        );
-    });
+    step(
+        "Verify no verification was stored (atomic rollback)",
+        || {
+            assert_eq!(
+                count, 0,
+                "Expected no verifications to be stored due to atomic rollback"
+            );
+        },
+    );
 
     Ok(())
 }
