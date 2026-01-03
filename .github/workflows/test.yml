@@ -14,6 +14,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  ACT_UNIT_TEST_TARGET: all
   # Enable ZK verification tests (makes real Celo RPC calls)
   ENABLE_NETWORK_TESTS: "true"
 
@@ -36,12 +37,14 @@ jobs:
       # Persistent cargo caching via stickydisk (22x faster than actions/cache)
       # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
       - name: Mount Cargo Registry Cache
+        if: ${{ env.ACT != 'true' }}
         uses: useblacksmith/stickydisk@v1
         with:
           key: ${{ github.repository }}-cargo-registry
           path: ~/.cargo/registry
 
       - name: Mount Cargo Git Cache
+        if: ${{ env.ACT != 'true' }}
         uses: useblacksmith/stickydisk@v1
         with:
           key: ${{ github.repository }}-cargo-git
@@ -49,14 +52,13 @@ jobs:
 
       # Smart Rust caching for target directories
       - name: Cache Rust dependencies
+        if: ${{ env.ACT != 'true' }}
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             contracts/verified-accounts -> target
             contracts/verified-accounts/tests/fixtures/v2 -> target
             contracts/sputnik-bridge -> target
-            contracts/verified-accounts-interface -> target
-            contracts/sputnik-dao-interface -> target
           shared-key: rust-build
           cache-on-failure: true
 
@@ -93,6 +95,7 @@ jobs:
           ./build.sh
 
       - name: Upload WASM artifacts
+        if: ${{ env.ACT != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: wasm-contracts
@@ -110,12 +113,8 @@ jobs:
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts.outputs.failed }}
-      verified_accounts_interface_passed: ${{ steps.test_verified_accounts_interface.outputs.passed }}
-      verified_accounts_interface_failed: ${{ steps.test_verified_accounts_interface.outputs.failed }}
       sputnik_bridge_passed: ${{ steps.test_sputnik_bridge.outputs.passed }}
       sputnik_bridge_failed: ${{ steps.test_sputnik_bridge.outputs.failed }}
-      sputnik_dao_interface_passed: ${{ steps.test_sputnik_dao_interface.outputs.passed }}
-      sputnik_dao_interface_failed: ${{ steps.test_sputnik_dao_interface.outputs.failed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -131,12 +130,14 @@ jobs:
       # Persistent cargo caching via stickydisk (22x faster than actions/cache)
       # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
       - name: Mount Cargo Registry Cache
+        if: ${{ env.ACT != 'true' }}
         uses: useblacksmith/stickydisk@v1
         with:
           key: ${{ github.repository }}-cargo-registry
           path: ~/.cargo/registry
 
       - name: Mount Cargo Git Cache
+        if: ${{ env.ACT != 'true' }}
         uses: useblacksmith/stickydisk@v1
         with:
           key: ${{ github.repository }}-cargo-git
@@ -144,14 +145,13 @@ jobs:
 
       # Smart Rust caching for target directories
       - name: Cache Rust dependencies
+        if: ${{ env.ACT != 'true' }}
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             contracts/verified-accounts -> target
             contracts/verified-accounts/tests/fixtures/v2 -> target
             contracts/sputnik-bridge -> target
-            contracts/verified-accounts-interface -> target
-            contracts/sputnik-dao-interface -> target
           shared-key: rust-build
           cache-on-failure: true
 
@@ -159,6 +159,7 @@ jobs:
         run: mkdir -p allure-results
 
       - name: Run verified-accounts unit tests
+        if: ${{ env.ACT != 'true' || env.ACT_UNIT_TEST_TARGET == 'all' || env.ACT_UNIT_TEST_TARGET == 'verified-accounts' }}
         id: test_verified_accounts
         working-directory: contracts/verified-accounts
         run: |
@@ -170,35 +171,12 @@ jobs:
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
         continue-on-error: true
 
-      - name: Run verified-accounts-interface unit tests
-        id: test_verified_accounts_interface
-        working-directory: contracts/verified-accounts-interface
-        run: |
-          cargo test 2>&1 | tee test_output.txt
-          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
-          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
-          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
-          echo "passed=$PASSED" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
       - name: Run sputnik-bridge unit tests
+        if: ${{ env.ACT != 'true' || env.ACT_UNIT_TEST_TARGET == 'all' || env.ACT_UNIT_TEST_TARGET == 'sputnik-bridge' }}
         id: test_sputnik_bridge
         working-directory: contracts/sputnik-bridge
         run: |
           cargo test --features testing 2>&1 | tee test_output.txt
-          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
-          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
-          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
-          echo "passed=$PASSED" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
-      - name: Run sputnik-dao-interface unit tests
-        id: test_sputnik_dao_interface
-        working-directory: contracts/sputnik-dao-interface
-        run: |
-          cargo test 2>&1 | tee test_output.txt
           SUMMARY=$(grep "test result:" test_output.txt | tail -1)
           PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
           FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
@@ -224,7 +202,7 @@ jobs:
           done
 
       - name: Upload allure results
-        if: always()
+        if: ${{ env.ACT != 'true' && always() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-results-rust-unit
@@ -277,7 +255,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload allure results
-        if: always()
+        if: ${{ env.ACT != 'true' && always() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-results-typescript
@@ -289,6 +267,7 @@ jobs:
     name: Integration Tests
     runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: build
+    if: ${{ github.actor != 'nektos/act' }}
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts_integration.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts_integration.outputs.failed }}
@@ -308,12 +287,14 @@ jobs:
       # Persistent cargo caching via stickydisk (22x faster than actions/cache)
       # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
       - name: Mount Cargo Registry Cache
+        if: ${{ env.ACT != 'true' }}
         uses: useblacksmith/stickydisk@v1
         with:
           key: ${{ github.repository }}-cargo-registry
           path: ~/.cargo/registry
 
       - name: Mount Cargo Git Cache
+        if: ${{ env.ACT != 'true' }}
         uses: useblacksmith/stickydisk@v1
         with:
           key: ${{ github.repository }}-cargo-git
@@ -321,14 +302,13 @@ jobs:
 
       # Smart Rust caching for target directories
       - name: Cache Rust dependencies
+        if: ${{ env.ACT != 'true' }}
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             contracts/verified-accounts -> target
             contracts/verified-accounts/tests/fixtures/v2 -> target
             contracts/sputnik-bridge -> target
-            contracts/verified-accounts-interface -> target
-            contracts/sputnik-dao-interface -> target
           shared-key: rust-build
           cache-on-failure: true
 
@@ -375,7 +355,7 @@ jobs:
           done
 
       - name: Upload allure results
-        if: always()
+        if: ${{ env.ACT != 'true' && always() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-results-integration
@@ -387,7 +367,7 @@ jobs:
     name: Publish Report
     runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [unit-tests-rust, unit-tests-typescript, integration-tests]
-    if: always()
+    if: ${{ github.actor != 'nektos/act' && always() }}
     steps:
       - uses: actions/checkout@v4
 
@@ -413,18 +393,14 @@ jobs:
         run: |
           TOTAL_PASSED=$((
             ${{ needs.unit-tests-rust.outputs.verified_accounts_passed || 0 }} +
-            ${{ needs.unit-tests-rust.outputs.verified_accounts_interface_passed || 0 }} +
             ${{ needs.unit-tests-rust.outputs.sputnik_bridge_passed || 0 }} +
-            ${{ needs.unit-tests-rust.outputs.sputnik_dao_interface_passed || 0 }} +
             ${{ needs.unit-tests-typescript.outputs.passed || 0 }} +
             ${{ needs.integration-tests.outputs.verified_accounts_passed || 0 }} +
             ${{ needs.integration-tests.outputs.sputnik_bridge_passed || 0 }}
           ))
           TOTAL_FAILED=$((
             ${{ needs.unit-tests-rust.outputs.verified_accounts_failed || 0 }} +
-            ${{ needs.unit-tests-rust.outputs.verified_accounts_interface_failed || 0 }} +
             ${{ needs.unit-tests-rust.outputs.sputnik_bridge_failed || 0 }} +
-            ${{ needs.unit-tests-rust.outputs.sputnik_dao_interface_failed || 0 }} +
             ${{ needs.unit-tests-typescript.outputs.failed || 0 }} +
             ${{ needs.integration-tests.outputs.verified_accounts_failed || 0 }} +
             ${{ needs.integration-tests.outputs.sputnik_bridge_failed || 0 }}
