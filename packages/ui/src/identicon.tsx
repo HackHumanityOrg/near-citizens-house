@@ -8,7 +8,8 @@ interface IdenticonProps {
   className?: string
 }
 
-const AVATAR_COLORS = ["#e6626f", "#efae78", "#f5e19c", "#a2ca8e", "#66af91"]
+// Colors based on accent yellow with opacity (#FFDA1EE5 = 90% opacity)
+const AVATAR_COLORS = ["#FFDA1EE5", "#FFDA1ECC", "#FFDA1EB3", "#FFDA1E99", "#FFDA1E80"]
 
 export function Identicon({ value, size = 48, className }: IdenticonProps) {
   return (

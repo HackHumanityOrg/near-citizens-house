@@ -95,7 +95,7 @@ export function Header() {
         ) : isConnected ? (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <button className="hover:opacity-70 transition-opacity" aria-label="Account menu">
+              <button aria-label="Account menu">
                 <Identicon value={accountId || ""} size={32} />
               </button>
             </DropdownMenuTrigger>
@@ -116,7 +116,7 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <button onClick={connect} className="p-1 hover:opacity-70 transition-opacity" aria-label="Connect wallet">
+          <button onClick={connect} className="p-1" aria-label="Connect wallet">
             <Wallet className="h-5 w-5" />
           </button>
         )}
@@ -161,7 +161,7 @@ export function Header() {
           ) : isConnected ? (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <button className="flex items-center gap-2">
                   <Identicon value={accountId || ""} size={48} />
                   <ChevronDown className="h-6 w-6" />
                 </button>
