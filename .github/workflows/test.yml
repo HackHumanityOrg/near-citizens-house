@@ -318,6 +318,20 @@ jobs:
           name: wasm-contracts
           path: contracts/
 
+      - name: Copy WASM files to expected test locations
+        run: |
+          # verified-accounts: Copy fixture WASMs to target/near/ for integration tests
+          mkdir -p contracts/verified-accounts/target/near
+          cp contracts/verified-accounts/tests/fixtures/v1/verified_accounts.wasm \
+             contracts/verified-accounts/target/near/verified_accounts.wasm
+
+          # Verify files exist
+          ls -la contracts/verified-accounts/target/near/
+          ls -la contracts/verified-accounts/tests/fixtures/v1/
+          ls -la contracts/verified-accounts/tests/fixtures/v2/
+          ls -la contracts/sputnik-bridge/target/near/ || echo "Bridge WASM location check"
+          ls -la contracts/sputnik-dao-contract/res/ || echo "DAO WASM location check"
+
       - name: Setup Allure results
         run: mkdir -p allure-results
 
