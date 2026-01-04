@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <footer className="bg-white dark:bg-background border-t border-black/10 mt-8">
+    <footer className="bg-white dark:bg-background border-t border-black/10">
       {/* Desktop Footer */}
       <div className="hidden md:flex items-end justify-end p-20">
         {/* Right side: Built by HackHumanity • GitHub */}

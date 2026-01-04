@@ -38,14 +38,14 @@ export default function RootLayout({
   return (
     // suppressHydrationWarning required for next-themes - theme stored in localStorage causes hydration mismatch
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased pt-8 flex flex-col min-h-screen bg-[#f2f2f2] dark:bg-neutral-900`}
+      >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
             <BetaBanner />
-            <div className="pt-8">
-              <Header />
-            </div>
-            {children}
+            <Header />
+            <main className="flex-1">{children}</main>
             <Footer />
           </Providers>
         </ThemeProvider>

@@ -1,0 +1,8 @@
+<svg width="624" height="412" viewBox="0 0 624 412" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="plus" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M16 8V24M8 16H24" stroke="#F7D24A" stroke-opacity="0.9" stroke-width="2" stroke-linecap="round" />
+    </pattern>
+  </defs>
+  <rect width="624" height="412" fill="url(#plus)" />
+</svg>

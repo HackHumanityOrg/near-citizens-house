@@ -69,20 +69,14 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
       <div className="flex flex-col gap-[24px] items-center w-full">
         {/* Page Title Section */}
         <div className="flex flex-col items-center w-full px-4 md:px-0">
-          <h1
-            className="text-[28px] leading-[32px] md:text-[44px] md:leading-[48px] text-center text-foreground"
-            style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
-          >
+          <h1 className="text-[28px] leading-[32px] md:text-[44px] md:leading-[48px] text-center text-foreground font-fk-grotesk font-medium">
             Citizens
           </h1>
         </div>
 
         {/* Subtitle */}
         <div className="flex items-center justify-center w-full px-4 md:px-0">
-          <p
-            className="text-[16px] leading-[24px] md:text-[28px] md:leading-[36px] text-foreground text-center"
-            style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 400 }}
-          >
+          <p className="text-[16px] leading-[24px] md:text-[28px] md:leading-[36px] text-foreground text-center font-fk-grotesk font-normal">
             All NEAR accounts verified through Self.xyz passport proofs
           </p>
         </div>
@@ -94,18 +88,12 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
               {/* Card Header */}
               <div className="bg-secondary flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-none md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
                 <div className="flex items-start px-0 py-[8px]">
-                  <p
-                    className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] text-foreground"
-                    style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
-                  >
+                  <p className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] text-foreground font-fk-grotesk font-medium">
                     Verification Records
                   </p>
                 </div>
                 <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between w-full">
-                  <p
-                    className="text-[12px] md:text-[14px] leading-[1.4] text-foreground"
-                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
-                  >
+                  <p className="text-[12px] md:text-[14px] leading-[1.4] text-foreground font-inter font-normal">
                     {accounts.length > 0
                       ? `Showing ${accounts.length} of ${total} verified accounts`
                       : "No verified accounts yet"}
@@ -115,8 +103,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                       href={NEAR_CONFIG.explorerAccountUrl(NEAR_CONFIG.verificationContractId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[14px] md:text-[16px] leading-[24px] text-muted-foreground underline hover:text-foreground transition-colors"
-                      style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
+                      className="text-[14px] md:text-[16px] leading-[24px] text-muted-foreground underline hover:text-foreground transition-colors font-fk-grotesk font-medium"
                     >
                       View contract on NearBlocks
                     </a>
@@ -127,40 +114,23 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
               {/* Table Header - Hidden on mobile */}
               <div className="hidden md:block bg-secondary border-b border-border px-[40px] py-[16px] w-full">
                 <div className="grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
-                  <p
-                    className="text-[16px] leading-[24px] text-foreground text-left"
-                    style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
-                  >
+                  <p className="text-[16px] leading-[24px] text-foreground text-left font-fk-grotesk font-medium">
                     NEAR Account
                   </p>
-                  <p
-                    className="text-[16px] leading-[24px] text-foreground text-center"
-                    style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 500 }}
-                  >
+                  <p className="text-[16px] leading-[24px] text-foreground text-center font-fk-grotesk font-medium">
                     Attestation Type
                   </p>
-                  <p
-                    className="text-[14px] leading-[1.4] text-foreground text-center"
-                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 700 }}
-                  >
+                  <p className="text-[14px] leading-[1.4] text-foreground text-center font-inter font-bold">
                     Verified At
                   </p>
-                  <p
-                    className="text-[16px] leading-[1.4] text-foreground text-right"
-                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 700 }}
-                  >
-                    Verify
-                  </p>
+                  <p className="text-[16px] leading-[1.4] text-foreground text-right font-inter font-bold">Verify</p>
                 </div>
               </div>
 
               {/* Table Body */}
               {accounts.length === 0 ? (
                 <div className="flex items-center justify-center w-full py-[48px]">
-                  <p
-                    className="text-[14px] md:text-[16px] text-muted-foreground"
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                  >
+                  <p className="text-[14px] md:text-[16px] text-muted-foreground font-inter">
                     No verified accounts yet. Be the first to verify!
                   </p>
                 </div>
@@ -178,8 +148,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[14px] leading-[1.3] text-foreground tracking-[0.28px] hover:underline inline-flex items-center gap-[6px]"
-                          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                          className="text-[14px] leading-[1.3] text-foreground tracking-[0.28px] hover:underline inline-flex items-center gap-[6px] font-inter font-semibold"
                         >
                           {account.nearAccountId}
                           <ExternalLink className="h-3.5 w-3.5 text-[#00ec97]" />
@@ -188,18 +157,14 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="bg-[#79d1ac] flex h-[28px] items-center px-[8px] rounded-full cursor-pointer">
-                                <span
-                                  className="text-[11px] leading-[1.4] text-[#002716] tracking-[0.22px]"
-                                  style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
-                                >
+                                <span className="text-[11px] leading-[1.4] text-[#002716] tracking-[0.22px] font-poppins font-normal">
                                   {getAttestationType(account.attestationId)}
                                 </span>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent
                               side="top"
-                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[12px] py-[6px] text-[12px] leading-[1.4]"
-                              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 400 }}
+                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[12px] py-[6px] text-[12px] leading-[1.4] font-fk-grotesk font-normal"
                             >
                               Nullifier: {truncate(account.nullifier, 16)}
                             </TooltipContent>
@@ -215,10 +180,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                             Details
                           </Button>
                         </div>
-                        <p
-                          className="text-[12px] leading-[1.4] text-muted-foreground tracking-[0.24px]"
-                          style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
-                        >
+                        <p className="text-[12px] leading-[1.4] text-muted-foreground tracking-[0.24px] font-poppins font-normal">
                           {formatDate(account.verifiedAt)}
                         </p>
                       </div>
@@ -230,8 +192,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[16px] leading-[1.3] text-foreground tracking-[0.32px] hover:underline inline-flex items-center gap-[8px]"
-                          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                          className="text-[16px] leading-[1.3] text-foreground tracking-[0.32px] hover:underline inline-flex items-center gap-[8px] font-inter font-semibold"
                         >
                           {account.nearAccountId}
                           <ExternalLink className="h-4 w-4 text-[#00ec97]" />
@@ -242,18 +203,14 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
-                                <span
-                                  className="text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]"
-                                  style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
-                                >
+                                <span className="text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px] font-poppins font-normal">
                                   {getAttestationType(account.attestationId)}
                                 </span>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent
                               side="left"
-                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4]"
-                              style={{ fontFamily: "'FK Grotesk Variable', sans-serif", fontWeight: 400 }}
+                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4] font-fk-grotesk font-normal"
                             >
                               Nullifier: {truncate(account.nullifier, 16)}
                             </TooltipContent>
@@ -261,10 +218,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                         </div>
 
                         {/* Verified At - center aligned */}
-                        <p
-                          className="text-[14px] leading-[1.4] text-foreground text-center tracking-[0.28px]"
-                          style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400 }}
-                        >
+                        <p className="text-[14px] leading-[1.4] text-foreground text-center tracking-[0.28px] font-poppins font-normal">
                           {formatDate(account.verifiedAt)}
                         </p>
 
@@ -291,10 +245,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
 
           {/* Pagination */}
           <div className="flex flex-col gap-3 items-center md:flex-row md:justify-between mt-6 md:mt-[24px] w-full max-w-[1276px] px-4 md:px-0">
-            <p
-              className="text-[12px] md:text-[14px] leading-[1.4] text-muted-foreground order-2 md:order-1"
-              style={{ fontFamily: "Inter, sans-serif", fontWeight: 400 }}
-            >
+            <p className="text-[12px] md:text-[14px] leading-[1.4] text-muted-foreground order-2 md:order-1 font-inter font-normal">
               Page {page + 1} of {totalPages}
             </p>
             <div className="flex gap-3 order-1 md:order-2">

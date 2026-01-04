@@ -26,20 +26,20 @@ export function Header() {
 
   // Primary nav item for mobile
   const primaryNavItem = showGetVerifiedAsPrimary
-    ? { label: "Get Verified to Vote", href: "/verification", underline: true }
+    ? { label: "Get Verified to Vote", href: "/verification/start", underline: true }
     : { label: "Proposals", href: "/governance/proposals", underline: false }
 
   // Dropdown items (excludes the primary item)
   const dropdownItems = [
     ...(showGetVerifiedAsPrimary
       ? [{ label: "Proposals", href: "/governance/proposals" }]
-      : [{ label: "Get Verified to Vote", href: "/verification" }]),
+      : [{ label: "Get Verified to Vote", href: "/verification/start" }]),
     { label: "Citizens", href: "/citizens" },
     ...(!adminLoading && isAdmin ? [{ label: "Admin", href: "/governance/admin" }] : []),
   ]
 
   return (
-    <header className="bg-background">
+    <header className="relative z-50 bg-transparent">
       {/* Mobile Header */}
       <div className="flex md:hidden items-center justify-between px-6 py-6">
         {/* Mobile Logo - Left */}
@@ -109,7 +109,7 @@ export function Header() {
         {/* Desktop Navigation - Order: Get Verified (underlined), Proposals, Citizens */}
         <nav className="flex items-center gap-20">
           {showGetVerifiedAsPrimary && (
-            <Link href="/verification" className="text-base underline hover:opacity-70 transition-opacity">
+            <Link href="/verification/start" className="text-base underline hover:opacity-70 transition-opacity">
               Get Verified to Vote
             </Link>
           )}

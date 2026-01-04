@@ -222,10 +222,10 @@ function VerifyCallbackContent() {
                 </AlertDescription>
               </Alert>
 
-              <Link href="/verification" className="block">
+              <Link href={`/verification/start?status=success&sessionId=${sessionId}`} className="block">
                 <Button className="w-full">
                   <Home className="h-4 w-4 mr-2" />
-                  Return Home
+                  Continue
                 </Button>
               </Link>
             </CardContent>
@@ -247,7 +247,10 @@ function VerifyCallbackContent() {
                 <AlertDescription>{errorMessage || "An unexpected error occurred"}</AlertDescription>
               </Alert>
 
-              <Link href="/verification" className="block">
+              <Link
+                href={`/verification/start?status=error&error=${encodeURIComponent(errorMessage || "Unknown error")}`}
+                className="block"
+              >
                 <Button className="w-full">
                   <Home className="h-4 w-4 mr-2" />
                   Try Again
