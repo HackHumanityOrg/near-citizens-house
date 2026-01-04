@@ -1,20 +1,9 @@
 "use client"
 
 import { useEffect, useState, Suspense, useRef } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useAnalytics } from "@/lib/analytics"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Alert,
-  AlertDescription,
-  Button,
-} from "@near-citizens/ui"
-import { Loader2, CheckCircle2, AlertCircle, Home } from "lucide-react"
-import Link from "next/link"
+import { Loader2 } from "lucide-react"
 import { VERIFICATION_ERROR_MESSAGES, type VerificationErrorCode } from "@near-citizens/shared"
 
 function getErrorMessage(errorCode: string | null): string {
@@ -30,6 +19,7 @@ type VerificationStatus = "checking" | "success" | "error" | "expired"
 
 function VerifyCallbackContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const sessionId = searchParams.get("sessionId")
   const analytics = useAnalytics()
   const [status, setStatus] = useState<VerificationStatus>("checking")
@@ -182,104 +172,150 @@ function VerifyCallbackContent() {
     }
   }, [sessionId])
 
+  const handleContinue = () => {
+    router.push(`/verification/start?status=success&sessionId=${sessionId}`)
+  }
+
+  const handleTryAgain = () => {
+    router.push(`/verification/start?status=error&error=${encodeURIComponent(errorMessage || "Unknown error")}`)
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-background to-background/80">
-      <Card className="max-w-md w-full">
+    <div className="min-h-screen bg-[#f2f2f2] dark:bg-neutral-900 flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[650px]">
+        {/* Checking Status */}
         {status === "checking" && (
-          <>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <CardTitle>Verifying...</CardTitle>
-              </div>
-              <CardDescription>Please wait while we complete your verification</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center gap-4 py-8">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground text-center">
+          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+            <div className="flex flex-col items-center gap-6">
+              <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
+              <div className="flex flex-col items-center gap-4 text-center">
+                <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+                  Verifying...
+                </h1>
+                <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+                  Please wait while we complete your verification
+                </p>
+                <p className="text-[14px] leading-[20px] text-[#757575] dark:text-[#a3a3a3] mt-2">
                   This may take a few moments. Do not close this page.
                 </p>
               </div>
-            </CardContent>
-          </>
+            </div>
+          </div>
         )}
 
+        {/* Success Status */}
         {status === "success" && (
-          <>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-                <CardTitle>Verification Complete!</CardTitle>
+          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+            <div className="flex flex-col items-center gap-6">
+              {/* Success Icon */}
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[rgba(0,236,151,0.15)]">
+                <svg
+                  className="w-8 h-8 text-[#00ec97]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <CardDescription>Your identity has been successfully verified</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <CheckCircle2 className="h-4 w-4" />
-                <AlertDescription>
-                  Your NEAR account <span className="font-mono font-semibold">{accountId}</span> is now verified.
-                </AlertDescription>
-              </Alert>
 
-              <Link href={`/verification/start?status=success&sessionId=${sessionId}`} className="block">
-                <Button className="w-full">
-                  <Home className="h-4 w-4 mr-2" />
+              <div className="flex flex-col items-center gap-4 text-center w-full">
+                <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+                  Verification Complete!
+                </h1>
+                <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+                  Your identity has been successfully verified
+                </p>
+
+                {/* Account Info */}
+                {accountId && (
+                  <div className="w-full bg-[rgba(0,236,151,0.08)] border border-[rgba(0,236,151,0.3)] rounded p-4 mt-2">
+                    <p className="text-[14px] leading-[20px] text-black dark:text-neutral-200 mb-2">
+                      Your NEAR account is now verified:
+                    </p>
+                    <p className="text-[16px] leading-[24px] font-mono font-semibold text-[#111] dark:text-white break-all">
+                      {accountId}
+                    </p>
+                  </div>
+                )}
+
+                {/* Continue Button */}
+                <button
+                  onClick={handleContinue}
+                  className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
+                >
                   Continue
-                </Button>
-              </Link>
-            </CardContent>
-          </>
-        )}
-
-        {(status === "error" || status === "expired") && (
-          <>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-destructive" />
-                <CardTitle>Verification Failed</CardTitle>
+                </button>
               </div>
-              <CardDescription>There was an issue with your verification</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errorMessage || "An unexpected error occurred"}</AlertDescription>
-              </Alert>
-
-              <Link
-                href={`/verification/start?status=error&error=${encodeURIComponent(errorMessage || "Unknown error")}`}
-                className="block"
-              >
-                <Button className="w-full">
-                  <Home className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-              </Link>
-            </CardContent>
-          </>
+            </div>
+          </div>
         )}
-      </Card>
+
+        {/* Error/Expired Status */}
+        {(status === "error" || status === "expired") && (
+          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+            <div className="flex flex-col items-center gap-6">
+              {/* Error Icon */}
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[rgba(239,68,68,0.15)]">
+                <svg
+                  className="w-8 h-8 text-[#ef4444]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+
+              <div className="flex flex-col items-center gap-4 text-center w-full">
+                <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+                  Verification Failed
+                </h1>
+                <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+                  There was an issue with your verification
+                </p>
+
+                {/* Error Message */}
+                <div className="w-full bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.3)] rounded p-4 mt-2">
+                  <p className="text-[14px] sm:text-[16px] leading-[20px] sm:leading-[24px] text-[#ef4444] dark:text-[#f87171]">
+                    {errorMessage || "An unexpected error occurred"}
+                  </p>
+                </div>
+
+                {/* Try Again Button */}
+                <button
+                  onClick={handleTryAgain}
+                  className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-background to-background/80">
-      <Card className="max-w-md w-full">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <CardTitle>Loading...</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-[#f2f2f2] dark:bg-neutral-900 flex items-center justify-center px-4">
+      <div className="w-full max-w-[650px] bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+        <div className="flex flex-col items-center gap-6">
+          <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
+          <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+            Loading...
+          </h1>
+        </div>
+      </div>
     </div>
   )
 }
