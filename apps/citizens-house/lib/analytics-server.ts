@@ -89,3 +89,13 @@ export async function trackVerificationFailedServer(props: {
     properties,
   })
 }
+
+/**
+ * Gracefully shutdown PostHog server instance
+ * Ensures all queued events are flushed before shutdown
+ */
+export async function shutdownPostHog(): Promise<void> {
+  if (posthog) {
+    await posthog.shutdown()
+  }
+}

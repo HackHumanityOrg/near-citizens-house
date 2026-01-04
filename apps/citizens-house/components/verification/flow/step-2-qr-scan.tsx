@@ -49,6 +49,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
     "idle",
   )
   const trackedStartRef = useRef(false)
+  const trackedQrDisplayRef = useRef(false)
   const [isMobile, setIsMobile] = useState(false)
 
   // Detect mobile device
@@ -65,12 +66,18 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
-  // Track verification started
+  // Track verification started and QR code displayed
   useEffect(() => {
     if (!trackedStartRef.current) {
       const method = isMobile ? "deeplink" : "qr"
       analytics.trackVerificationStarted(nearSignature.accountId, method)
       trackedStartRef.current = true
+    }
+
+    if (!trackedQrDisplayRef.current) {
+      const method = isMobile ? "deeplink" : "qr"
+      analytics.trackQrCodeDisplayed(nearSignature.accountId, method)
+      trackedQrDisplayRef.current = true
     }
   }, [nearSignature.accountId, isMobile, analytics])
 
@@ -121,6 +128,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
 
   const handleOpenSelfApp = () => {
     if (isMobile) {
+      analytics.trackDeeplinkOpened(nearSignature.accountId)
       window.open(deeplink, "_blank")
     }
   }

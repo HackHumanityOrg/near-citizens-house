@@ -28,6 +28,15 @@ function VerificationStartContent() {
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
 
   const trackedWalletRef = useRef<string | null>(null)
+  const trackedPageViewRef = useRef(false)
+
+  // Track page view on mount
+  useEffect(() => {
+    if (!trackedPageViewRef.current) {
+      analytics.trackVerificationPageViewed()
+      trackedPageViewRef.current = true
+    }
+  }, [analytics])
 
   // Check if already verified on mount
   useEffect(() => {
@@ -107,7 +116,8 @@ function VerificationStartContent() {
       setCurrentStep(2)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to sign message"
-      analytics.trackMessageSignFailed(accountId, message)
+      const errorCode = message.includes("rejected") || message.includes("cancelled") ? "USER_REJECTED" : "UNKNOWN"
+      analytics.trackMessageSignFailed(accountId, { code: errorCode, message })
       setErrorMessage(message)
       setIsErrorModalOpen(true)
     } finally {

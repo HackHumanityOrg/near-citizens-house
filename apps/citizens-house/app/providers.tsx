@@ -63,6 +63,14 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           },
         },
       })
+
+      // Register super properties that apply to all events
+      posthog.register({
+        environment: process.env.NODE_ENV,
+        near_network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
+        self_network: process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet",
+        app_version: process.env.NEXT_PUBLIC_APP_VERSION || "unknown",
+      })
     }
   }, [])
 

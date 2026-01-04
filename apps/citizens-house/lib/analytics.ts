@@ -10,7 +10,15 @@ export function useAnalytics() {
   const identifyUser = useCallback(
     (accountId: string) => {
       posthog?.identify(accountId, {
-        near_account: accountId,
+        $set: {
+          near_account: accountId,
+          wallet_type: "near",
+          near_network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
+        },
+        $set_once: {
+          first_connected_at: new Date().toISOString(),
+          first_connected_url: typeof window !== "undefined" ? window.location.href : "",
+        },
       })
     },
     [posthog],
@@ -48,10 +56,11 @@ export function useAnalytics() {
   )
 
   const trackMessageSignFailed = useCallback(
-    (accountId: string, errorMessage: string) => {
+    (accountId: string, error: { code?: string; message: string }) => {
       posthog?.capture("message_sign_failed", {
         account_id: accountId,
-        error_message: errorMessage,
+        error_code: error.code || "UNKNOWN",
+        error_message: error.message,
       })
     },
     [posthog],
@@ -129,6 +138,33 @@ export function useAnalytics() {
     [posthog],
   )
 
+  // New engagement events
+  const trackVerificationPageViewed = useCallback(() => {
+    posthog?.capture("verification_page_viewed", {
+      page_url: typeof window !== "undefined" ? window.location.href : "",
+    })
+  }, [posthog])
+
+  const trackQrCodeDisplayed = useCallback(
+    (accountId: string, method: "qr" | "deeplink") => {
+      posthog?.capture("qr_code_displayed", {
+        account_id: accountId,
+        display_method: method,
+      })
+    },
+    [posthog],
+  )
+
+  const trackDeeplinkOpened = useCallback(
+    (accountId: string) => {
+      posthog?.capture("deeplink_opened", {
+        account_id: accountId,
+        user_agent: typeof window !== "undefined" ? window.navigator.userAgent : "",
+      })
+    },
+    [posthog],
+  )
+
   return {
     // Funnel events
     trackWalletConnected,
@@ -144,5 +180,8 @@ export function useAnalytics() {
     trackSignatureVerificationOpened,
     trackZkProofDownloaded,
     trackExternalVerifierOpened,
+    trackVerificationPageViewed,
+    trackQrCodeDisplayed,
+    trackDeeplinkOpened,
   }
 }
