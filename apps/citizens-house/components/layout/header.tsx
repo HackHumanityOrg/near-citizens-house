@@ -17,27 +17,33 @@ import { useNearWallet } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
 import { useVerification } from "@/hooks/verification"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
+import { FEATURE_FLAGS } from "@/lib/feature-flags"
 
 export function Header() {
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
   const { isVerified, loading: verificationLoading } = useVerification()
 
-  // Show "Get Verified to Vote" as primary when not connected OR connected but not verified
-  const showGetVerifiedAsPrimary = !isConnected || (!verificationLoading && !isVerified)
+  // Show "Get Verified to Vote" when not connected OR connected but not verified
+  const showGetVerified = !isConnected || (!verificationLoading && !isVerified)
 
   // Primary nav item for mobile
-  const primaryNavItem = showGetVerifiedAsPrimary
+  const primaryNavItem = showGetVerified
     ? { label: "Get Verified to Vote", href: "/verification/start", underline: true }
-    : { label: "Proposals", href: "/governance/proposals", underline: false }
+    : { label: "Citizens", href: "/citizens", underline: false }
 
   // Dropdown items (excludes the primary item)
   const dropdownItems = [
-    ...(showGetVerifiedAsPrimary
+    ...(FEATURE_FLAGS.GOVERNANCE_ENABLED && showGetVerified
       ? [{ label: "Proposals", href: "/governance/proposals" }]
-      : [{ label: "Get Verified to Vote", href: "/verification/start" }]),
-    { label: "Citizens", href: "/citizens" },
-    ...(!adminLoading && isAdmin ? [{ label: "Admin", href: "/governance/admin" }] : []),
+      : []),
+    ...(showGetVerified ? [{ label: "Citizens", href: "/citizens" }] : []),
+    ...(FEATURE_FLAGS.GOVERNANCE_ENABLED && !showGetVerified
+      ? [{ label: "Get Verified to Vote", href: "/verification/start" }]
+      : []),
+    ...(FEATURE_FLAGS.GOVERNANCE_ENABLED && !adminLoading && isAdmin
+      ? [{ label: "Admin", href: "/governance/admin" }]
+      : []),
   ]
 
   return (
@@ -125,18 +131,20 @@ export function Header() {
 
         {/* Desktop Navigation - Order: Get Verified (underlined), Proposals, Citizens */}
         <nav className="flex items-center gap-20">
-          {showGetVerifiedAsPrimary && (
+          {showGetVerified && (
             <Link href="/verification/start" className="text-base underline hover:opacity-70 transition-opacity">
               Get Verified to Vote
             </Link>
           )}
-          <Link href="/governance/proposals" className="text-base hover:opacity-70 transition-opacity">
-            Proposals
-          </Link>
+          {FEATURE_FLAGS.GOVERNANCE_ENABLED && (
+            <Link href="/governance/proposals" className="text-base hover:opacity-70 transition-opacity">
+              Proposals
+            </Link>
+          )}
           <Link href="/citizens" className="text-base hover:opacity-70 transition-opacity">
             Citizens
           </Link>
-          {!adminLoading && isAdmin && (
+          {FEATURE_FLAGS.GOVERNANCE_ENABLED && !adminLoading && isAdmin && (
             <Link href="/governance/admin" className="text-base hover:opacity-70 transition-opacity">
               Admin
             </Link>
