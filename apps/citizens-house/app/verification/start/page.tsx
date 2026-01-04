@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@near-citizens/shared"
 import { checkIsVerified } from "@/app/citizens/actions"
@@ -12,7 +12,7 @@ import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-sca
 import { Step3Success } from "../../../components/verification/flow/step-3-success"
 import { ErrorModal } from "../../../components/verification/flow/error-modal"
 
-export default function VerificationStartPage() {
+function VerificationStartContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isConnected, accountId, isLoading, connect, disconnect, signMessage } = useNearWallet()
@@ -211,5 +211,13 @@ export default function VerificationStartPage() {
         onRetry={handleRetry}
       />
     </div>
+  )
+}
+
+export default function VerificationStartPage() {
+  return (
+    <Suspense fallback={<div className="min-h-full bg-[#f2f2f2] dark:bg-neutral-900" />}>
+      <VerificationStartContent />
+    </Suspense>
   )
 }

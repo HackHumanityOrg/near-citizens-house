@@ -48,10 +48,3 @@ export function getRpcProvider(): JsonRpcProvider {
   }
   return rpcProviderInstance
 }
-
-/**
- * Reset provider instance (useful for testing or config changes)
- */
-export function resetProviders(): void {
-  rpcProviderInstance = null
-}

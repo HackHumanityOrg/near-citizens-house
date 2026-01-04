@@ -108,15 +108,22 @@ export const NEAR_CONFIG = {
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse.houseofstake.dev"
 
 // Self.xyz Configuration
-// Disclosure config includes both verification rules (minimumAge, excludedCountries, ofac)
-// and data disclosure requests (nationality). These are used by both frontend SelfAppBuilder
-// and backend SelfBackendVerifier which validate the overlapping fields.
-const DISCLOSURE_CONFIG: VerificationConfig & { nationality: boolean } = {
+// Verification rules are enforced by the backend verifier and contracts.
+// Disclosure requests (like nationality) are frontend-only and returned in discloseOutput.
+const VERIFICATION_CONFIG: VerificationConfig = {
   minimumAge: 18,
   excludedCountries: [],
   ofac: false,
+}
+
+const DISCLOSURE_CONFIG: VerificationConfig & { nationality: boolean } = {
+  ...VERIFICATION_CONFIG,
   nationality: true, // Request nationality disclosure from passport
 }
+
+export const SELF_VERIFICATION_CONFIG = VERIFICATION_CONFIG
+
+const selfEndpointType: "https" | "staging_https" = selfNetworkId === "mainnet" ? "https" : "staging_https"
 
 export const SELF_CONFIG = {
   appName: "NEAR Citizens House",
@@ -131,15 +138,15 @@ export const SELF_CONFIG = {
   get deeplinkCallback() {
     return `${APP_URL}/verification/callback`
   },
-  endpointType: "https" as const,
-  logoBase64: "/self-logo.png",
+  endpointType: selfEndpointType,
+  logoBase64: `${APP_URL}/self-logo.png`,
   // useMockPassport is derived from networkId
   // testnet = mock passports, mainnet = real passports
   get useMockPassport() {
     return this.networkId === "testnet"
   },
-  // Single source of truth for both frontend and backend
-  // Must match exactly for Self.xyz verification to work
+  // Frontend disclosure config (verification rules + disclosure requests)
+  // Verification rules must match SELF_VERIFICATION_CONFIG on the backend
   disclosures: DISCLOSURE_CONFIG,
 }
 

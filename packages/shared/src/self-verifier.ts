@@ -1,5 +1,5 @@
 import { SelfBackendVerifier, type VerificationConfig } from "@selfxyz/core"
-import { SELF_CONFIG } from "./config"
+import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "./config"
 
 export class InMemoryConfigStore {
   private config: VerificationConfig
@@ -29,15 +29,12 @@ let selfBackendVerifier: SelfBackendVerifier | null = null
 
 export function getVerifier() {
   if (!selfBackendVerifier) {
-    // Cast to VerificationConfig to handle readonly vs mutable array type
-    const backendConfig = SELF_CONFIG.disclosures as unknown as VerificationConfig
-
     selfBackendVerifier = new SelfBackendVerifier(
       SELF_CONFIG.scope,
       SELF_CONFIG.endpoint,
       SELF_CONFIG.useMockPassport,
       AllowedAttestationIds,
-      new InMemoryConfigStore(backendConfig),
+      new InMemoryConfigStore(SELF_VERIFICATION_CONFIG),
       "uuid",
     )
   }

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import {
   SELF_CONFIG,
+  SELF_VERIFICATION_CONFIG,
   CONSTANTS,
   verificationDb,
   getVerifier,
@@ -12,7 +13,7 @@ import {
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
 import { updateSession } from "@/lib/session-store"
-import { trackVerificationCompletedServer } from "@/lib/analytics-server"
+import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
@@ -52,16 +53,64 @@ function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
 }
 
 export async function POST(request: NextRequest) {
+  const ofacEnabled = SELF_VERIFICATION_CONFIG.ofac === true
+  const selfNetwork = SELF_CONFIG.networkId
+  let sessionId: string | undefined
+  let accountId: string | undefined
+  let nationality: string | undefined
+  let isValid: boolean | undefined
+  let isMinimumAgeValid: boolean | undefined
+  let isOfacValid: boolean | undefined
+
+  const respondWithError = async ({
+    code,
+    status,
+    details,
+    stage,
+    attestationId,
+  }: {
+    code: Parameters<typeof createVerificationError>[0]
+    status: number
+    details?: string
+    stage: string
+    attestationId?: number | string
+  }) => {
+    const errorResponse = createVerificationError(code, details)
+    try {
+      await trackVerificationFailedServer({
+        distinctId: accountId ?? sessionId ?? "unknown",
+        accountId,
+        sessionId,
+        nationality,
+        attestationId: attestationId ? attestationId.toString() : undefined,
+        errorCode: code,
+        errorReason: errorResponse.reason,
+        stage,
+        selfNetwork,
+        ofacEnabled,
+        isValid,
+        isMinimumAgeValid,
+        isOfacValid,
+      })
+    } catch (error) {
+      console.warn("[Verify] Failed to track verification_failed event", error)
+    }
+
+    return NextResponse.json(errorResponse satisfies SelfVerificationResult, { status })
+  }
+
   try {
     const body = await request.json()
 
     const parseResult = verifyRequestSchema.safeParse(body)
     if (!parseResult.success) {
       const missingFields = parseResult.error.issues.map((i) => i.path.join(".")).join(", ")
-      return NextResponse.json(
-        createVerificationError("MISSING_FIELDS", missingFields) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "MISSING_FIELDS",
+        status: 400,
+        details: missingFields,
+        stage: "request_validation",
+      })
     }
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
@@ -74,22 +123,29 @@ export async function POST(request: NextRequest) {
       const verifier = getVerifier()
       selfVerificationResult = await verifier.verify(attestationId, proof, publicSignals, userContextData)
     } catch (error) {
-      return NextResponse.json(
-        createVerificationError(
-          "VERIFICATION_FAILED",
-          error instanceof Error ? error.message : "Unknown error",
-        ) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "VERIFICATION_FAILED",
+        status: 400,
+        details: error instanceof Error ? error.message : "Unknown error",
+        stage: "self_verify",
+        attestationId,
+      })
     }
+
+    sessionId = selfVerificationResult.userData?.userIdentifier
+    nationality =
+      typeof selfVerificationResult.discloseOutput?.nationality === "string"
+        ? selfVerificationResult.discloseOutput.nationality
+        : undefined
 
     // Self.xyz's isOfacValid: true = user IS ON OFAC sanctions list (blocked), false = NOT on list (allowed)
     // See SDK source: "isOfacValid is true when a person is in OFAC list"
-    const { isValid, isMinimumAgeValid, isOfacValid } = selfVerificationResult.isValidDetails || {}
+    const validity = selfVerificationResult.isValidDetails || {}
+    isValid = validity.isValid
+    isMinimumAgeValid = validity.isMinimumAgeValid
+    isOfacValid = validity.isOfacValid
 
     console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
-
-    const ofacEnabled = SELF_CONFIG.disclosures.ofac === true
 
     // Type guards: ensure SDK returned expected boolean fields
     // When OFAC is enabled, isOfacValid must also be a boolean
@@ -98,13 +154,13 @@ export async function POST(request: NextRequest) {
       typeof isMinimumAgeValid !== "boolean" ||
       (ofacEnabled && typeof isOfacValid !== "boolean")
     ) {
-      return NextResponse.json(
-        createVerificationError(
-          "VERIFICATION_FAILED",
-          "Invalid verifier response structure",
-        ) satisfies SelfVerificationResult,
-        { status: 502 },
-      )
+      return respondWithError({
+        code: "VERIFICATION_FAILED",
+        status: 502,
+        details: "Invalid verifier response structure",
+        stage: "self_verify_response",
+        attestationId,
+      })
     }
     const ofacCheckFailed = ofacEnabled && isOfacValid === true
 
@@ -115,14 +171,22 @@ export async function POST(request: NextRequest) {
           ? "OFAC_CHECK_FAILED"
           : "VERIFICATION_FAILED"
 
-      return NextResponse.json(createVerificationError(errorCode) satisfies SelfVerificationResult, { status: 400 })
+      return respondWithError({
+        code: errorCode,
+        status: 400,
+        stage: "self_verification",
+        attestationId,
+      })
     }
 
     const nullifier = selfVerificationResult.discloseOutput?.nullifier
 
     if (!nullifier) {
-      return NextResponse.json(createVerificationError("NULLIFIER_MISSING") satisfies SelfVerificationResult, {
+      return respondWithError({
+        code: "NULLIFIER_MISSING",
         status: 400,
+        stage: "nullifier_check",
+        attestationId,
       })
     }
 
@@ -131,37 +195,39 @@ export async function POST(request: NextRequest) {
     const jsonString = parseUserDefinedData(userDefinedDataRaw)
 
     if (!jsonString) {
-      return NextResponse.json(
-        createVerificationError(
-          "NEAR_SIGNATURE_MISSING",
-          "Could not extract JSON from userDefinedData",
-        ) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "NEAR_SIGNATURE_MISSING",
+        status: 400,
+        details: "Could not extract JSON from userDefinedData",
+        stage: "signature_parse",
+        attestationId,
+      })
     }
 
     let data: Record<string, unknown>
     try {
       data = JSON.parse(jsonString)
     } catch {
-      return NextResponse.json(
-        createVerificationError(
-          "NEAR_SIGNATURE_MISSING",
-          "Invalid JSON in userDefinedData",
-        ) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "NEAR_SIGNATURE_MISSING",
+        status: 400,
+        details: "Invalid JSON in userDefinedData",
+        stage: "signature_parse",
+        attestationId,
+      })
     }
+
+    accountId = typeof data.accountId === "string" ? data.accountId : undefined
 
     if (!data.accountId || !data.signature || !data.publicKey || !data.nonce) {
       const missingFields = ["accountId", "signature", "publicKey", "nonce"].filter((f) => !data[f]).join(", ")
-      return NextResponse.json(
-        createVerificationError(
-          "NEAR_SIGNATURE_MISSING",
-          `Missing NEP-413 fields: ${missingFields}`,
-        ) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "NEAR_SIGNATURE_MISSING",
+        status: 400,
+        details: `Missing NEP-413 fields: ${missingFields}`,
+        stage: "signature_parse",
+        attestationId,
+      })
     }
 
     let nonce = data.nonce
@@ -169,13 +235,13 @@ export async function POST(request: NextRequest) {
       nonce = Array.from(Buffer.from(nonce, "base64"))
     }
     if (!Array.isArray(nonce) || nonce.length !== 32) {
-      return NextResponse.json(
-        createVerificationError(
-          "NEAR_SIGNATURE_INVALID",
-          `Invalid nonce: expected 32-byte array`,
-        ) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "NEAR_SIGNATURE_INVALID",
+        status: 400,
+        details: "Invalid nonce: expected 32-byte array",
+        stage: "signature_parse",
+        attestationId,
+      })
     }
 
     // Validate signature timestamp freshness
@@ -184,30 +250,33 @@ export async function POST(request: NextRequest) {
     const signatureAge = now - signatureTimestamp
 
     if (signatureTimestamp === 0) {
-      return NextResponse.json(
-        createVerificationError(
-          "SIGNATURE_TIMESTAMP_INVALID",
-          "Timestamp is required",
-        ) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "SIGNATURE_TIMESTAMP_INVALID",
+        status: 400,
+        details: "Timestamp is required",
+        stage: "signature_validate",
+        attestationId,
+      })
     }
 
     if (signatureAge > MAX_SIGNATURE_AGE_MS) {
-      return NextResponse.json(
-        createVerificationError(
-          "SIGNATURE_EXPIRED",
-          `Signed ${Math.round(signatureAge / 1000)}s ago (max ${MAX_SIGNATURE_AGE_MS / 1000}s)`,
-        ) satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "SIGNATURE_EXPIRED",
+        status: 400,
+        details: `Signed ${Math.round(signatureAge / 1000)}s ago (max ${MAX_SIGNATURE_AGE_MS / 1000}s)`,
+        stage: "signature_validate",
+        attestationId,
+      })
     }
 
     if (signatureAge < 0) {
-      return NextResponse.json(
-        createVerificationError("SIGNATURE_TIMESTAMP_INVALID", "Future date detected") satisfies SelfVerificationResult,
-        { status: 400 },
-      )
+      return respondWithError({
+        code: "SIGNATURE_TIMESTAMP_INVALID",
+        status: 400,
+        details: "Future date detected",
+        stage: "signature_validate",
+        attestationId,
+      })
     }
 
     const nearSignature: NearSignatureData = {
@@ -252,20 +321,25 @@ export async function POST(request: NextRequest) {
 
       console.log(`[Verify] Stored verification for account ${nearSignature.accountId}`)
 
-      // Track verification completed with nationality for analytics
-      const nationality = selfVerificationResult.discloseOutput?.nationality
-      if (nationality) {
+      // Track verification completed for analytics
+      try {
         await trackVerificationCompletedServer({
           accountId: nearSignature.accountId,
           nationality,
           attestationId: attestationId.toString(),
+          selfNetwork,
+          ofacEnabled,
+          isValid,
+          isMinimumAgeValid,
+          isOfacValid,
         })
-        console.log(`[Verify] Tracked verification with nationality: ${nationality}`)
+        console.log(`[Verify] Tracked verification completed${nationality ? ` with nationality: ${nationality}` : ""}`)
+      } catch (error) {
+        console.warn("[Verify] Failed to track verification_completed event", error)
       }
 
       // Update session status for deep link callback
       // The userId from Self.xyz is used as the sessionId in our deep link flow
-      const sessionId = selfVerificationResult.userData?.userIdentifier
       if (sessionId) {
         await updateSession(sessionId, {
           status: "success",
@@ -278,7 +352,6 @@ export async function POST(request: NextRequest) {
       const errorCode = errorMessage.includes("already registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
 
       // Update session status for deep link callback
-      const sessionId = selfVerificationResult.userData?.userIdentifier
       if (sessionId) {
         await updateSession(sessionId, {
           status: "error",
@@ -287,13 +360,13 @@ export async function POST(request: NextRequest) {
         console.log(`[Verify] Updated session ${sessionId} with status: error (${errorCode})`)
       }
 
-      return NextResponse.json(
-        createVerificationError(
-          errorCode,
-          error instanceof Error ? error.message : undefined,
-        ) satisfies SelfVerificationResult,
-        { status: 500 },
-      )
+      return respondWithError({
+        code: errorCode,
+        status: 500,
+        details: error instanceof Error ? error.message : undefined,
+        stage: "storage",
+        attestationId,
+      })
     }
 
     return NextResponse.json(
@@ -311,13 +384,12 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     )
   } catch (error) {
-    return NextResponse.json(
-      createVerificationError(
-        "INTERNAL_ERROR",
-        error instanceof Error ? error.message : undefined,
-      ) satisfies SelfVerificationResult,
-      { status: 500 },
-    )
+    return respondWithError({
+      code: "INTERNAL_ERROR",
+      status: 500,
+      details: error instanceof Error ? error.message : undefined,
+      stage: "internal",
+    })
   }
 }
 
