@@ -19,7 +19,7 @@ export function VerificationProgressBar({ currentStep }: VerificationProgressBar
   }
 
   return (
-    <div className="sticky top-[32px] left-0 right-0 z-40 bg-white dark:bg-neutral-900">
+    <div className="sticky top-[32px] left-0 right-0 z-40 bg-white dark:bg-black">
       <div
         className="h-[4px] bg-[#ffda1e] transition-all duration-500 ease-in-out shadow-[0_0_8px_rgba(255,218,30,0.6)]"
         style={{ width: getProgressWidth() }}

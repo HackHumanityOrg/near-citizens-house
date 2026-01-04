@@ -8,7 +8,7 @@ import { VerificationCtaButton } from "./verification-cta-button"
 export function VerificationHero() {
   return (
     <section
-      className="relative -mt-32 bg-white pt-32 dark:bg-neutral-900 flex flex-col gap-[10px] items-center justify-center pb-[80px]"
+      className="relative -mt-32 bg-white pt-32 dark:bg-black flex flex-col gap-[10px] items-center justify-center pb-[80px]"
       style={{
         transform: "translateZ(0)",
         WebkitBackfaceVisibility: "hidden",
@@ -18,18 +18,7 @@ export function VerificationHero() {
     >
       {/* Background gradient - responsive, covers all screen sizes */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 w-full h-full min-w-[1439px] min-h-[916px]">
-          <Image
-            src="/verification-hero-gradient.svg"
-            alt=""
-            fill
-            priority
-            className="object-cover object-center"
-            sizes="100vw"
-          />
-          {/* Dark overlay */}
-          <div className="absolute inset-0 hidden bg-neutral-900/95 dark:block" />
-        </div>
+        <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_2400px_2000px_at_center_bottom,_rgba(255,218,30,0.45)_0%,_rgba(255,244,204,0.25)_40%,_transparent_70%)] dark:bg-[radial-gradient(ellipse_2400px_2000px_at_center_bottom,_rgba(255,218,30,0.25)_0%,_rgba(255,218,30,0.15)_40%,_transparent_70%)]" />
       </div>
 
       {/* Plus pattern - visible on larger screens, positioned relative to centered 1440px container */}
@@ -62,7 +51,7 @@ export function VerificationHero() {
           </div>
 
           {/* Main heading - responsive font sizes */}
-          <div className="flex flex-col justify-center leading-[0] font-fk-grotesk font-normal text-[#111] dark:text-neutral-100 text-center w-full shrink-0">
+          <div className="flex flex-col justify-center leading-[0] font-fk-grotesk font-normal text-[#111] dark:text-[#f5f7fa] text-center w-full shrink-0">
             <h1 className="text-[32px] leading-[36px] sm:text-[48px] sm:leading-[52px] md:text-[64px] md:leading-[68px] xl:text-[80px] xl:leading-[80px]">
               Create your
               <br aria-hidden="true" />
@@ -71,7 +60,7 @@ export function VerificationHero() {
           </div>
 
           {/* Description - responsive font sizes */}
-          <div className="flex flex-col justify-center leading-[0] font-fk-grotesk font-normal text-[#111] dark:text-neutral-100 text-center w-full shrink-0">
+          <div className="flex flex-col justify-center leading-[0] font-fk-grotesk font-normal text-[#111] dark:text-[#f5f7fa] text-center w-full shrink-0">
             <p className="text-[14px] leading-[20px] sm:text-[16px] sm:leading-[24px] md:text-[20px] md:leading-[28px]">
               Verify your account to participate in NEAR governance with enhanced trust and credibility.
             </p>
@@ -79,21 +68,21 @@ export function VerificationHero() {
 
           {/* Time indicator */}
           <div className="flex gap-[8px] h-[36px] items-center justify-center w-full shrink-0">
-            <ClockIcon className="h-[20px] w-[20px] md:h-[24px] md:w-[24px] text-[#111] dark:text-neutral-100 shrink-0" />
-            <div className="flex flex-col justify-center leading-[0] font-fk-grotesk font-normal text-[14px] md:text-[16px] text-[#090909] dark:text-neutral-100 whitespace-nowrap shrink-0">
+            <ClockIcon className="h-[20px] w-[20px] md:h-[24px] md:w-[24px] text-[#111] dark:text-[#f5f5f5] shrink-0" />
+            <div className="flex flex-col justify-center leading-[0] font-fk-grotesk font-normal text-[14px] md:text-[16px] text-[#090909] dark:text-white whitespace-nowrap shrink-0">
               <p className="leading-[20px] md:leading-[24px]">Takes less than 15 minutes</p>
             </div>
           </div>
         </div>
 
         {/* Steps Container - Mobile: stacked, Desktop (1024px+): side-by-side */}
-        <div className="bg-white dark:bg-neutral-800 border-t-[4px] border-[#ffda1e] border-solid flex flex-col lg:flex-row gap-[32px] lg:gap-[56px] items-start justify-center p-[24px] md:p-[40px] shrink-0 w-full max-w-full">
+        <div className="bg-white dark:bg-black border-t-[4px] border-[#ffda1e] border-solid flex flex-col lg:flex-row gap-[32px] lg:gap-[56px] items-start justify-center p-[24px] md:p-[40px] shrink-0 w-full max-w-full">
           {/* Step 1 - Mobile: full width, Desktop (1024px+): w-400px */}
           <div className="flex flex-col gap-[8px] items-start w-full lg:w-[400px] shrink-0">
             {/* Icon + Step label */}
             <div className="flex gap-[8px] h-[40px] items-center shrink-0">
               <WalletIcon className="w-[20px] h-[20px] md:w-[24px] md:h-[24px] text-black dark:text-white shrink-0" />
-              <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#090909] dark:text-neutral-300 font-fk-grotesk font-normal whitespace-nowrap">
+              <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#090909] dark:text-white font-fk-grotesk font-normal whitespace-nowrap">
                 STEP 1
               </p>
             </div>
@@ -104,7 +93,7 @@ export function VerificationHero() {
             </h3>
 
             {/* Description */}
-            <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#757575] dark:text-neutral-400 font-fk-grotesk font-normal">
+            <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#757575] dark:text-[rgba(255,255,255,0.8)] font-fk-grotesk font-normal">
               First, connect your NEAR wallet to begin the identity verification process
             </p>
 
@@ -119,7 +108,7 @@ export function VerificationHero() {
             {/* Icon + Step label */}
             <div className="flex gap-[8px] h-[40px] items-center shrink-0">
               <PassportIcon className="w-[20px] h-[20px] md:w-[24px] md:h-[24px] text-black dark:text-white shrink-0" />
-              <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#090909] dark:text-neutral-300 font-fk-grotesk font-normal whitespace-nowrap">
+              <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#090909] dark:text-white font-fk-grotesk font-normal whitespace-nowrap">
                 STEP 2
               </p>
             </div>
@@ -130,7 +119,7 @@ export function VerificationHero() {
             </h3>
 
             {/* Description */}
-            <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#8e8e93] dark:text-neutral-400 font-fk-grotesk font-normal">
+            <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#8e8e93] dark:text-[rgba(255,255,255,0.8)] font-fk-grotesk font-normal">
               Use the Self mobile app to scan the QR code on your Passport or other Biometric ID document and generate
               your ID proof
             </p>

@@ -24,7 +24,7 @@ export function Step1WalletSignature({
   return (
     <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
       <div className="flex flex-col items-start w-full max-w-[650px]">
-        <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 flex items-center justify-center py-[40px] px-4 sm:px-0 w-full">
+        <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 sm:px-0 w-full">
           <div className="flex flex-col items-center w-full">
             <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
               {/* Card Title */}

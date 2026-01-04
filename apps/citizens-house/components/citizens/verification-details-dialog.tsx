@@ -40,7 +40,7 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl bg-background rounded-[8px] border-none shadow-xl">
+        <DialogContent className="sm:max-w-2xl bg-background dark:bg-black dark:border dark:border-white/20 rounded-[8px] border-none shadow-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[22px] leading-[28px] text-foreground font-fk-grotesk font-medium">
               <ShieldCheck className="h-5 w-5 text-[#ffda1e]" />
@@ -49,7 +49,7 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
           </DialogHeader>
 
           {/* Terminal Output */}
-          <div className="bg-[#1c1c1c] rounded-[12px] p-4 font-mono text-sm h-80 border border-[#333] overflow-x-auto overflow-y-auto">
+          <div className="bg-[#1c1c1c] dark:bg-black/50 rounded-[12px] p-4 font-mono text-sm h-80 border border-[#333] dark:border-white/20 overflow-x-auto overflow-y-auto">
             <pre className="m-0">
               {lines.map((line, i) => (
                 <div key={i} className={getLineClassName(line)}>

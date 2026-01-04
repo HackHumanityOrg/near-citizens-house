@@ -84,9 +84,9 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
         {/* Table Card */}
         <div className="flex flex-col items-center pt-[40px] pb-[80px] w-full">
           <div className="flex flex-col items-center w-full">
-            <div className="bg-secondary/50 flex flex-col items-start rounded-none md:rounded-[16px] w-full max-w-[1276px] md:mx-auto">
+            <div className="bg-secondary/50 dark:bg-black dark:border dark:border-white/10 flex flex-col items-start rounded-none md:rounded-[16px] w-full max-w-[1276px] md:mx-auto">
               {/* Card Header */}
-              <div className="bg-secondary flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-none md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
+              <div className="bg-secondary dark:bg-white/5 flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-none md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
                 <div className="flex items-start px-0 py-[8px]">
                   <p className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] text-foreground font-fk-grotesk font-medium">
                     Verification Records
@@ -112,7 +112,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
               </div>
 
               {/* Table Header - Hidden on mobile */}
-              <div className="hidden md:block bg-secondary border-b border-border px-[40px] py-[16px] w-full">
+              <div className="hidden md:block bg-secondary dark:bg-white/5 border-b border-border dark:border-white/10 px-[40px] py-[16px] w-full">
                 <div className="grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
                   <p className="text-[16px] leading-[24px] text-foreground text-left font-fk-grotesk font-medium">
                     NEAR Account
@@ -140,7 +140,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                   return (
                     <div
                       key={account.nearAccountId}
-                      className={`px-4 py-3 md:px-[40px] md:py-[16px] w-full ${!isLastRow ? "border-b border-border" : ""}`}
+                      className={`px-4 py-3 md:px-[40px] md:py-[16px] w-full ${!isLastRow ? "border-b border-border dark:border-white/10" : ""}`}
                     >
                       {/* Mobile Card Layout */}
                       <div className="md:hidden flex flex-col gap-3">
@@ -164,7 +164,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                             </TooltipTrigger>
                             <TooltipContent
                               side="top"
-                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[12px] py-[6px] text-[12px] leading-[1.4] font-fk-grotesk font-normal"
+                              className="bg-[#1c1c1c] text-[#fcfaf7] dark:bg-[#2a2a2a] dark:text-white rounded-[8px] px-[12px] py-[6px] text-[12px] leading-[1.4] font-fk-grotesk font-normal"
                             >
                               Nullifier: {truncate(account.nullifier, 16)}
                             </TooltipContent>
@@ -210,7 +210,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                             </TooltipTrigger>
                             <TooltipContent
                               side="left"
-                              className="bg-[#1c1c1c] text-[#fcfaf7] rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4] font-fk-grotesk font-normal"
+                              className="bg-[#1c1c1c] text-[#fcfaf7] dark:bg-[#2a2a2a] dark:text-white rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4] font-fk-grotesk font-normal"
                             >
                               Nullifier: {truncate(account.nullifier, 16)}
                             </TooltipContent>

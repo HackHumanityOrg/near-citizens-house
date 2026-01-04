@@ -94,7 +94,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
               Message (NEP-413 hash, hex)
             </label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-[#1c1c1c] text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
+              <code className="flex-1 bg-[#1c1c1c] dark:bg-black/50 dark:border dark:border-white/20 text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
                 {data.nep413Hash}
               </code>
               <Button
@@ -119,7 +119,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
               Public Key (hex)
             </label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-[#1c1c1c] text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
+              <code className="flex-1 bg-[#1c1c1c] dark:bg-black/50 dark:border dark:border-white/20 text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
                 {data.publicKeyHex}
               </code>
               <Button
@@ -145,7 +145,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
               Signature (hex)
             </label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-[#1c1c1c] text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
+              <code className="flex-1 bg-[#1c1c1c] dark:bg-black/50 dark:border dark:border-white/20 text-[#a0a0a0] px-3 py-2 rounded-[8px] text-xs font-mono break-all">
                 {data.signatureHex}
               </code>
               <Button
@@ -170,7 +170,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
             >
               Technical details
             </summary>
-            <div className="mt-2 rounded-[8px] bg-[#1c1c1c] p-3 space-y-1 text-xs text-[#a0a0a0] font-mono">
+            <div className="mt-2 rounded-[8px] bg-[#1c1c1c] dark:bg-black/50 dark:border dark:border-white/20 p-3 space-y-1 text-xs text-[#a0a0a0] font-mono">
               <p>NEP-413 Message Format:</p>
               <p className="pl-2">1. Tag: 2147484061 (4 bytes, little-endian)</p>
               <p className="pl-2">2. Borsh-serialized payload:</p>

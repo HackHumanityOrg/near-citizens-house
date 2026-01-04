@@ -33,7 +33,7 @@ export function ErrorModal({ isOpen, errorMessage: _errorMessage, onClose, onRet
 
       {/* Modal */}
       <div
-        className="relative bg-white dark:bg-neutral-800 flex flex-col items-end p-[40px] rounded-[16px] w-[600px]"
+        className="relative bg-white dark:bg-black border dark:border-white/20 flex flex-col items-end p-[40px] rounded-[16px] w-[600px]"
         role="dialog"
         aria-modal="true"
       >

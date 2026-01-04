@@ -29,9 +29,9 @@ export function VerificationQA() {
   const [openItem, setOpenItem] = useState<string | undefined>(undefined)
 
   return (
-    <section className="flex items-start justify-center bg-white px-4 py-[40px] md:py-[80px] dark:bg-neutral-800">
+    <section className="flex items-start justify-center bg-white px-4 py-[40px] md:py-[80px] dark:bg-black">
       <div className="flex w-full max-w-[1055px] flex-col gap-[32px] md:gap-[61px]">
-        <h3 className="text-[32px] leading-[36px] md:text-[44px] md:leading-[48px] font-fk-grotesk font-medium">
+        <h3 className="text-[32px] leading-[36px] md:text-[44px] md:leading-[48px] font-fk-grotesk font-medium text-black dark:text-white">
           Q&amp;A
         </h3>
         <Accordion
@@ -45,13 +45,13 @@ export function VerificationQA() {
             <AccordionItem
               key={faq.value}
               value={faq.value}
-              className="border-b border-[#171717] pb-[32px] md:pb-[44px] pt-0 dark:border-neutral-700"
+              className="border-b border-[#171717] pb-[32px] md:pb-[44px] pt-0 dark:border-[#e3e3ea]"
             >
               <button
                 className="flex w-full items-start justify-between py-0 text-left transition-all gap-4"
                 onClick={() => setOpenItem(openItem === faq.value ? undefined : faq.value)}
               >
-                <span className="text-[24px] leading-[32px] md:text-[36px] md:leading-[44px] lg:text-[45px] lg:leading-[52px] text-[#171717] dark:text-neutral-100 font-fk-grotesk">
+                <span className="text-[24px] leading-[32px] md:text-[36px] md:leading-[44px] lg:text-[45px] lg:leading-[52px] text-[#171717] dark:text-[#e3e3ea] font-fk-grotesk">
                   {faq.question}
                 </span>
                 <div className="flex h-[13px] w-[13px] shrink-0 items-center justify-center mt-2">
@@ -60,7 +60,7 @@ export function VerificationQA() {
                   />
                 </div>
               </button>
-              <AccordionContent className="pt-[16px] md:pt-[24px] text-[14px] leading-[20px] md:text-[16px] md:leading-[24px] text-[#171717]/90 dark:text-neutral-200">
+              <AccordionContent className="pt-[16px] md:pt-[24px] text-[14px] leading-[20px] md:text-[16px] md:leading-[24px] text-[#171717]/90 dark:text-[#e3e3ea]">
                 <div className="font-fk-grotesk">{faq.answer}</div>
               </AccordionContent>
             </AccordionItem>

@@ -78,17 +78,17 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
 
         <div className="space-y-4">
           {/* Instructions */}
-          <div className="rounded-[12px] bg-[#1c1c1c] p-4 space-y-2">
+          <div className="rounded-[12px] bg-[#1c1c1c] dark:bg-black/50 dark:border dark:border-white/20 p-4 space-y-2">
             <p className="text-[13px] leading-[1.5] text-[#a0a0a0] font-mono">
               <span className="text-[#ffda1e]">1.</span> Install:{" "}
-              <code className="bg-[#333] px-2 py-0.5 rounded text-[#fcfaf7]">npm i -g snarkjs</code>
+              <code className="bg-[#333] dark:bg-white/10 px-2 py-0.5 rounded text-[#fcfaf7]">npm i -g snarkjs</code>
             </p>
             <p className="text-[13px] leading-[1.5] text-[#a0a0a0] font-mono">
               <span className="text-[#ffda1e]">2.</span> Download all three files below
             </p>
             <p className="text-[13px] leading-[1.5] text-[#a0a0a0] font-mono">
               <span className="text-[#ffda1e]">3.</span> Run:{" "}
-              <code className="bg-[#333] px-2 py-0.5 rounded text-[#fcfaf7] text-[11px]">
+              <code className="bg-[#333] dark:bg-white/10 px-2 py-0.5 rounded text-[#fcfaf7] text-[11px]">
                 snarkjs groth16 verify vkey.json public.json proof.json
               </code>
             </p>

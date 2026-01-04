@@ -30,8 +30,8 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
       )}
 
       {/* Success details card */}
-      <div className="w-full max-w-[650px] bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-6 sm:py-10">
-        <div className="w-full max-w-[600px] mx-auto bg-[#f9f9f9] dark:bg-black/30 p-4 sm:p-6 rounded">
+      <div className="w-full max-w-[650px] bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 py-6 sm:py-10">
+        <div className="w-full max-w-[600px] mx-auto bg-[#f9f9f9] dark:bg-white/5 p-4 sm:p-6 rounded">
           {/* Header */}
           <div className="mb-6">
             <h2 className="text-[18px] sm:text-[22px] leading-[28px] text-black dark:text-white font-medium mb-4">

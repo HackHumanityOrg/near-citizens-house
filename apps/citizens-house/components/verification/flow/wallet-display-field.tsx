@@ -12,7 +12,7 @@ export function WalletDisplayField({ walletAddress, onDisconnect }: WalletDispla
       </label>
 
       {/* Display field with disconnect link */}
-      <div className="bg-white dark:bg-neutral-900 border border-[#bababa] dark:border-neutral-700 flex items-center justify-between h-[48px] px-[16px] w-full">
+      <div className="bg-white dark:bg-black border border-[#bababa] dark:border-white/20 flex items-center justify-between h-[48px] px-[16px] w-full">
         <span className="text-[14px] leading-[1.4] font-inter text-[#040404] dark:text-neutral-100">
           {walletAddress}
         </span>

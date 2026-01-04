@@ -149,7 +149,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   return (
     <div className="flex flex-col items-center pb-0 pt-[40px] w-full px-4">
       <div className="flex flex-col items-center w-full">
-        <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 flex items-center justify-center p-4 sm:p-[40px]">
+        <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center p-4 sm:p-[40px]">
           <div className="flex flex-col items-center w-full">
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-[80px] items-start justify-center w-full">
               {/* Left Column: QR Code or Deep Link */}
@@ -180,7 +180,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               </div>
 
               {/* Right Column: Instructions Panel */}
-              <div className="bg-[rgba(242,242,247,0.8)] dark:bg-black/30 w-full lg:w-[503px] p-6 sm:p-[40px] flex flex-col gap-[24px] items-center">
+              <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full lg:w-[503px] p-6 sm:p-[40px] flex flex-col gap-[24px] items-center">
                 {/* How to verify */}
                 <div className="flex flex-col gap-[16px] items-start w-full max-w-[428px]">
                   <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white">

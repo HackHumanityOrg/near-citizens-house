@@ -38,24 +38,24 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #050914;
+  --foreground: #f5f7fa;
+  --card: #071122;
+  --card-foreground: #f5f7fa;
+  --popover: #071122;
+  --popover-foreground: #f5f7fa;
+  --primary: #f5f7fa;
+  --primary-foreground: #050914;
+  --secondary: #071122;
+  --secondary-foreground: #f5f7fa;
+  --muted: #0a0d16;
+  --muted-foreground: rgba(255, 255, 255, 0.8);
+  --accent: #071122;
+  --accent-foreground: #f5f7fa;
   --destructive: oklch(0.396 0.141 25.723);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --border: #e3e3ea;
+  --input: #071122;
+  --ring: rgba(255, 218, 30, 0.5);
 
   /* Semantic vote colors - dark mode */
   --vote-for: oklch(0.723 0.191 149.579); /* green-400 - brighter for dark bg */
