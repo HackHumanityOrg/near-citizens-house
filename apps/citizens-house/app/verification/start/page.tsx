@@ -172,7 +172,7 @@ function VerificationStartContent() {
         {/* Step 1: Wallet Signature */}
         {currentStep === 1 && (
           <>
-            <StepHeader currentStep={1} totalSteps={3} title="Verify your wallet" />
+            <StepHeader currentStep={1} totalSteps={2} title="Verify your wallet" />
             <Step1WalletSignature
               accountId={accountId}
               isConnected={isConnected}
@@ -190,7 +190,7 @@ function VerificationStartContent() {
           <>
             <StepHeader
               currentStep={2}
-              totalSteps={3}
+              totalSteps={2}
               title="Scan QR Code"
               subtitle="Use the Self mobile app to scan this QR code and generate your passport proof."
             />

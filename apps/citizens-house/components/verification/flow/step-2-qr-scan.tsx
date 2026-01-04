@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-citizens/shared"
-import { Loader2 } from "lucide-react"
+import { Loader2, Info, Ban } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { useAnalytics } from "@/lib/analytics"
 
@@ -183,37 +183,29 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full lg:w-[503px] p-6 sm:p-[40px] flex flex-col gap-[24px] items-center">
                 {/* How to verify */}
                 <div className="flex flex-col gap-[16px] items-start w-full max-w-[428px]">
-                  <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white">
-                    How to verify?
-                  </p>
-                  <div className="flex flex-col justify-center text-[14px] sm:text-[16px] text-black dark:text-neutral-200 text-center leading-[0]">
+                  <p className="text-[22px] leading-[28px] font-medium text-black dark:text-white">How to verify?</p>
+                  <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
                     <p className="leading-[24px]">To get verified, you need to follow these steps:</p>
                   </div>
                 </div>
 
                 {/* Numbered Steps */}
                 <div className="flex flex-col gap-[8px] items-start w-full">
-                  <div className="flex gap-[8px] items-start justify-start">
-                    <p className="text-[20px] sm:text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">
-                      01
-                    </p>
-                    <p className="text-[14px] sm:text-[16px] leading-[24px] text-black dark:text-neutral-200 tracking-[0.5px]">
+                  <div className="flex gap-[8px] items-center w-full">
+                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">01</p>
+                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 tracking-[0.5px]">
                       Download the Self app on your mobile device
                     </p>
                   </div>
-                  <div className="flex gap-[8px] items-start justify-start">
-                    <p className="text-[20px] sm:text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">
-                      02
-                    </p>
-                    <p className="text-[14px] sm:text-[16px] leading-[24px] text-black dark:text-neutral-200 tracking-[0.5px]">
+                  <div className="flex gap-[8px] items-center w-full">
+                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">02</p>
+                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 tracking-[0.5px]">
                       Open the app and complete your ID verification
                     </p>
                   </div>
-                  <div className="flex gap-[8px] items-start justify-start">
-                    <p className="text-[20px] sm:text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">
-                      03
-                    </p>
-                    <p className="text-[14px] sm:text-[16px] leading-[24px] text-black dark:text-neutral-200 tracking-[0.5px]">
+                  <div className="flex gap-[8px] items-center w-full">
+                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">03</p>
+                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 tracking-[0.5px]">
                       Return here and scan this QR code with the Self app
                     </p>
                   </div>
@@ -229,12 +221,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                 {/* Privacy Info */}
                 <div className="flex flex-col gap-[8px] items-start w-full">
                   <div className="flex gap-[8px] items-center">
-                    <p className="text-[20px] sm:text-[22px] leading-[28px] text-black dark:text-white">🔒</p>
-                    <div className="flex flex-col justify-center text-[14px] sm:text-[16px] text-black dark:text-neutral-200 text-center leading-[0]">
+                    <Info className="w-[22px] h-[22px] text-black dark:text-white" />
+                    <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
                       <p className="leading-[24px]">Your Privacy is Protected</p>
                     </div>
                   </div>
-                  <p className="text-[14px] sm:text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
+                  <p className="text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
                     Your ID documents are never stored. Only a cryptographic proof of uniqueness is retained.
                   </p>
                 </div>
@@ -242,12 +234,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                 {/* Failed Verification Info */}
                 <div className="flex flex-col gap-[8px] items-start w-full">
                   <div className="flex gap-[8px] items-center">
-                    <p className="text-[20px] sm:text-[22px] leading-[28px] text-black dark:text-white">⚠️</p>
-                    <div className="flex flex-col justify-center text-[14px] sm:text-[16px] text-black dark:text-neutral-200 text-center leading-[0]">
+                    <Ban className="w-[22px] h-[22px] text-black dark:text-white" />
+                    <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
                       <p className="leading-[24px]">Verification Failed</p>
                     </div>
                   </div>
-                  <p className="text-[14px] sm:text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
+                  <p className="text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
                     If your QR code scan returns &quot;Failed verification,&quot; simply redo the signature. The retry
                     function might take longer than usual.
                   </p>
