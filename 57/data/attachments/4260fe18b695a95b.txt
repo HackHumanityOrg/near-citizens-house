@@ -1,3 +1,0 @@
-First: https://rpc.ankr.com/celo
-Second: https://rpc.ankr.com/celo
-Elapsed: 54ms
