@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
         isValid,
         isMinimumAgeValid,
         isOfacValid,
+        timestamp: Date.now(),
       })
     } catch (error) {
       console.warn("[Verify] Failed to track verification_failed event", error)
@@ -332,8 +333,12 @@ export async function POST(request: NextRequest) {
           isValid,
           isMinimumAgeValid,
           isOfacValid,
+          sessionId,
+          timestamp: Date.now(),
         })
-        console.log(`[Verify] Tracked verification completed${nationality ? ` with nationality: ${nationality}` : ""}`)
+        console.log(
+          `[Verify] Tracked verification completed${nationality ? ` with nationality: ${nationality}` : ""}${sessionId ? ` (session: ${sessionId})` : ""}`,
+        )
       } catch (error) {
         console.warn("[Verify] Failed to track verification_completed event", error)
       }

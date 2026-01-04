@@ -24,6 +24,8 @@ export async function trackVerificationCompletedServer(props: {
   isValid?: boolean
   isMinimumAgeValid?: boolean
   isOfacValid?: boolean
+  sessionId?: string
+  timestamp?: number
 }): Promise<void> {
   const ph = getPostHogServer()
   if (!ph) return
@@ -38,6 +40,17 @@ export async function trackVerificationCompletedServer(props: {
     ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
     ...(typeof props.isMinimumAgeValid === "boolean" ? { is_minimum_age_valid: props.isMinimumAgeValid } : {}),
     ...(typeof props.isOfacValid === "boolean" ? { is_ofac_valid: props.isOfacValid } : {}),
+    ...(props.sessionId ? { session_id: props.sessionId } : {}),
+    // Set person properties
+    $set: {
+      near_account: props.accountId,
+      wallet_type: "near",
+      last_verification_at: new Date().toISOString(),
+      ...(props.nationality ? { nationality: props.nationality } : {}),
+    },
+    $set_once: {
+      first_verification_at: new Date().toISOString(),
+    },
   }
 
   // Use captureImmediate to guarantee the HTTP request completes
@@ -46,6 +59,7 @@ export async function trackVerificationCompletedServer(props: {
     distinctId: props.accountId,
     event: "verification_completed",
     properties,
+    timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
   })
 }
 
@@ -56,25 +70,26 @@ export async function trackVerificationFailedServer(props: {
   attestationId?: string
   errorCode: string
   errorReason?: string
-  stage?: string
+  stage: string
   selfNetwork?: string
   ofacEnabled?: boolean
   isValid?: boolean
   isMinimumAgeValid?: boolean
   isOfacValid?: boolean
   sessionId?: string
+  timestamp?: number
 }): Promise<void> {
   const ph = getPostHogServer()
   if (!ph) return
 
   const properties = {
     tracking_source: "server",
+    error_code: props.errorCode,
+    verification_stage: props.stage,
     ...(props.accountId ? { account_id: props.accountId } : {}),
     ...(props.attestationId ? { attestation_id: props.attestationId } : {}),
     ...(props.nationality ? { nationality: props.nationality } : {}),
-    ...(props.errorCode ? { error_code: props.errorCode } : {}),
     ...(props.errorReason ? { error_reason: props.errorReason } : {}),
-    ...(props.stage ? { verification_stage: props.stage } : {}),
     ...(props.selfNetwork ? { self_network: props.selfNetwork } : {}),
     ...(typeof props.ofacEnabled === "boolean" ? { ofac_enabled: props.ofacEnabled } : {}),
     ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
@@ -87,6 +102,7 @@ export async function trackVerificationFailedServer(props: {
     distinctId: props.distinctId,
     event: "verification_failed",
     properties,
+    timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
   })
 }
 
