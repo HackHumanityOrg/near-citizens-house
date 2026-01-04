@@ -43,7 +43,7 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
         <DialogContent className="sm:max-w-2xl bg-background rounded-[8px] border-none shadow-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[22px] leading-[28px] text-foreground font-fk-grotesk font-medium">
-              <ShieldCheck className="h-5 w-5 text-[#00ec97]" />
+              <ShieldCheck className="h-5 w-5 text-[#ffda1e]" />
               Verify Proof
             </DialogTitle>
           </DialogHeader>
@@ -280,9 +280,9 @@ function buildTerminalOutput(
 
 function getLineClassName(line: string): string {
   // Terminal colors for dark background
-  if (line.includes("✓")) return "text-[#00ec97] leading-relaxed whitespace-pre"
+  if (line.includes("✓")) return "text-[#ffda1e] leading-relaxed whitespace-pre"
   if (line.includes("✗") || line.toLowerCase().includes("error")) return "text-[#ff6b6b] leading-relaxed whitespace-pre"
-  if (line.includes("VERIFICATION COMPLETE")) return "text-[#00ec97] font-bold leading-relaxed whitespace-pre"
+  if (line.includes("VERIFICATION COMPLETE")) return "text-[#ffda1e] font-bold leading-relaxed whitespace-pre"
   if (line.includes("VERIFICATION FAILED")) return "text-[#ff6b6b] font-bold leading-relaxed whitespace-pre"
   if (line.startsWith(">")) return "text-[#fcfaf7] leading-relaxed whitespace-pre"
   if (line.includes("════") || line.includes("═══")) return "text-[#666666] leading-relaxed whitespace-pre"

@@ -29,7 +29,7 @@ const SelfQRcodeWrapper = dynamic<SelfQRcodeProps>(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center size-[296px]">
-        <Loader2 className="h-12 w-12 animate-spin text-[#00ec97]" />
+        <Loader2 className="h-12 w-12 animate-spin text-[#ffda1e]" />
       </div>
     ),
   },
@@ -159,7 +159,11 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                     <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-[24px]">
                       Open the Self app to verify
                     </p>
-                    <Button onClick={handleOpenSelfApp} size="lg" className="w-full bg-[#00ec97] hover:bg-[#00d486]">
+                    <Button
+                      onClick={handleOpenSelfApp}
+                      size="lg"
+                      className="w-full bg-[#ffda1e] hover:bg-[#e5c41a] text-black"
+                    >
                       Open Self App
                     </Button>
                   </>

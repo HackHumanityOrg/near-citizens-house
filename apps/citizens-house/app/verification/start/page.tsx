@@ -163,7 +163,7 @@ function VerificationStartContent() {
   }
 
   return (
-    <div className="min-h-full bg-[#f2f2f2] dark:bg-neutral-900">
+    <div className="min-h-full bg-white dark:bg-neutral-900">
       {/* Progress Bar */}
       <VerificationProgressBar currentStep={currentStep} />
 
@@ -226,7 +226,7 @@ function VerificationStartContent() {
 
 export default function VerificationStartPage() {
   return (
-    <Suspense fallback={<div className="min-h-full bg-[#f2f2f2] dark:bg-neutral-900" />}>
+    <Suspense fallback={<div className="min-h-full bg-white dark:bg-neutral-900" />}>
       <VerificationStartContent />
     </Suspense>
   )

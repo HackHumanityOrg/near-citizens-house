@@ -59,7 +59,7 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
               <span className="text-[14px] sm:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
                 Identity Status
               </span>
-              <div className="bg-[rgba(0,236,151,0.8)] px-4 py-2 rounded-full">
+              <div className="bg-[rgba(255,218,30,0.9)] px-4 py-2 rounded-full">
                 <span className="text-[12px] leading-[1.4] text-black font-poppins">Verified</span>
               </div>
             </div>

@@ -151,7 +151,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           className="text-[14px] leading-[1.3] text-foreground tracking-[0.28px] hover:underline inline-flex items-center gap-[6px] font-inter font-semibold"
                         >
                           {account.nearAccountId}
-                          <ExternalLink className="h-3.5 w-3.5 text-[#00ec97]" />
+                          <ExternalLink className="h-3.5 w-3.5 text-[#ffda1e]" />
                         </a>
                         <div className="flex items-center justify-between">
                           <Tooltip>
@@ -195,7 +195,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           className="text-[16px] leading-[1.3] text-foreground tracking-[0.32px] hover:underline inline-flex items-center gap-[8px] font-inter font-semibold"
                         >
                           {account.nearAccountId}
-                          <ExternalLink className="h-4 w-4 text-[#00ec97]" />
+                          <ExternalLink className="h-4 w-4 text-[#ffda1e]" />
                         </a>
 
                         {/* Attestation Type with Nullifier Tooltip - center aligned */}

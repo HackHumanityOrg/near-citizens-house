@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Accordion, AccordionContent, AccordionItem } from "@near-citizens/ui"
-import { ChevronIcon } from "./chevron-icon"
+import { ChevronIcon } from "./icons/chevron-icon"
 
 const faqs = [
   {
@@ -29,13 +29,15 @@ export function VerificationQA() {
   const [openItem, setOpenItem] = useState<string | undefined>(undefined)
 
   return (
-    <section className="flex items-start justify-center bg-white px-0 py-[80px] dark:bg-neutral-800">
-      <div className="flex w-full max-w-[1055px] flex-col gap-[61px] px-6">
-        <h3 className="text-[44px] leading-[48px] font-fk-grotesk font-medium">Q&amp;A</h3>
+    <section className="flex items-start justify-center bg-white px-4 py-[40px] md:py-[80px] dark:bg-neutral-800">
+      <div className="flex w-full max-w-[1055px] flex-col gap-[32px] md:gap-[61px]">
+        <h3 className="text-[32px] leading-[36px] md:text-[44px] md:leading-[48px] font-fk-grotesk font-medium">
+          Q&amp;A
+        </h3>
         <Accordion
           type="single"
           collapsible
-          className="flex w-full flex-col gap-[44px] opacity-[0.88]"
+          className="flex w-full flex-col gap-[32px] md:gap-[44px] opacity-[0.88]"
           value={openItem}
           onValueChange={setOpenItem}
         >
@@ -43,22 +45,22 @@ export function VerificationQA() {
             <AccordionItem
               key={faq.value}
               value={faq.value}
-              className="border-b border-[#171717] pb-[44px] pt-0 dark:border-neutral-700"
+              className="border-b border-[#171717] pb-[32px] md:pb-[44px] pt-0 dark:border-neutral-700"
             >
               <button
-                className="flex w-full items-start justify-between py-0 text-left transition-all"
+                className="flex w-full items-start justify-between py-0 text-left transition-all gap-4"
                 onClick={() => setOpenItem(openItem === faq.value ? undefined : faq.value)}
               >
-                <span className="text-[32px] leading-[40px] text-[#171717] dark:text-neutral-100 md:text-[45px] md:leading-[52px] font-fk-grotesk">
+                <span className="text-[24px] leading-[32px] md:text-[36px] md:leading-[44px] lg:text-[45px] lg:leading-[52px] text-[#171717] dark:text-neutral-100 font-fk-grotesk">
                   {faq.question}
                 </span>
-                <div className="flex h-[13px] w-[13px] shrink-0 items-center justify-center">
+                <div className="flex h-[13px] w-[13px] shrink-0 items-center justify-center mt-2">
                   <ChevronIcon
                     className={`transition-transform duration-200 ${openItem === faq.value ? "rotate-0" : "rotate-90"}`}
                   />
                 </div>
               </button>
-              <AccordionContent className="pt-[24px] text-[16px] leading-[24px] text-[#171717]/90 dark:text-neutral-200">
+              <AccordionContent className="pt-[16px] md:pt-[24px] text-[14px] leading-[20px] md:text-[16px] md:leading-[24px] text-[#171717]/90 dark:text-neutral-200">
                 <div className="font-fk-grotesk">{faq.answer}</div>
               </AccordionContent>
             </AccordionItem>

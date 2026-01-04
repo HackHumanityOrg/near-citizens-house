@@ -1,10 +1,14 @@
-<svg preserveAspectRatio="none" width="100%" height="100%" style="display: block;" viewBox="0 0 1440 800" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0" y="0" width="1440" height="800" fill="#FFDA1E" fill-opacity="0.2" />
-  <rect x="0" y="0" width="1440" height="800" fill="url(#paint0_linear_2017_4173)" />
-  <defs>
-    <linearGradient id="paint0_linear_2017_4173" x1="720" y1="-1537.94" x2="720" y2="800" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFDA1E" />
-      <stop offset="1" stop-color="#F2F2F2" />
-    </linearGradient>
-  </defs>
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 1439 916" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Gradient 001" clip-path="url(#clip0_474_4300)">
+<g clip-path="url(#paint0_diamond_474_4300_clip_path)" data-figma-skip-parse="true"><g transform="matrix(4.86599e-08 -2.1526 2.8728 -8.75878e-08 719.998 2046.93)"><rect x="0" y="0" width="1027.09" height="250.975" fill="url(#paint0_diamond_474_4300)" opacity="1" shape-rendering="crispEdges"/><rect x="0" y="0" width="1027.09" height="250.975" transform="scale(1 -1)" fill="url(#paint0_diamond_474_4300)" opacity="1" shape-rendering="crispEdges"/><rect x="0" y="0" width="1027.09" height="250.975" transform="scale(-1 1)" fill="url(#paint0_diamond_474_4300)" opacity="1" shape-rendering="crispEdges"/><rect x="0" y="0" width="1027.09" height="250.975" transform="scale(-1)" fill="url(#paint0_diamond_474_4300)" opacity="1" shape-rendering="crispEdges"/></g></g><rect id="Rectangle 34624203" x="1440" y="916" width="1440" height="1079" transform="rotate(-180 1440 916)" data-figma-gradient-fill="{&#34;type&#34;:&#34;GRADIENT_DIAMOND&#34;,&#34;stops&#34;:[{&#34;color&#34;:{&#34;r&#34;:1.0,&#34;g&#34;:0.85490196943283081,&#34;b&#34;:0.11764705926179886,&#34;a&#34;:1.0},&#34;position&#34;:0.0},{&#34;color&#34;:{&#34;r&#34;:0.94901961088180542,&#34;g&#34;:0.94901961088180542,&#34;b&#34;:0.94901961088180542,&#34;a&#34;:1.0},&#34;position&#34;:1.0}],&#34;stopsVar&#34;:[{&#34;color&#34;:{&#34;r&#34;:1.0,&#34;g&#34;:0.85490196943283081,&#34;b&#34;:0.11764705926179886,&#34;a&#34;:1.0},&#34;position&#34;:0.0},{&#34;color&#34;:{&#34;r&#34;:0.94901961088180542,&#34;g&#34;:0.94901961088180542,&#34;b&#34;:0.94901961088180542,&#34;a&#34;:1.0},&#34;position&#34;:1.0}],&#34;transform&#34;:{&#34;m00&#34;:9.7319862106814981e-05,&#34;m01&#34;:5745.60058593750,&#34;m02&#34;:-2152.802246093750,&#34;m10&#34;:-4305.209472656250,&#34;m11&#34;:-0.00017517569358460605,&#34;m12&#34;:4199.531738281250},&#34;opacity&#34;:1.0,&#34;blendMode&#34;:&#34;NORMAL&#34;,&#34;visible&#34;:true}"/>
+</g>
+<defs>
+<clipPath id="paint0_diamond_474_4300_clip_path"><rect id="Rectangle 34624203" x="1440" y="916" width="1440" height="1079" transform="rotate(-180 1440 916)"/></clipPath><linearGradient id="paint0_diamond_474_4300" x1="0" y1="0" x2="500" y2="500" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFDA1E"/>
+<stop offset="1" stop-color="#F2F2F2"/>
+</linearGradient>
+<clipPath id="clip0_474_4300">
+<rect width="1439" height="916" fill="white"/>
+</clipPath>
+</defs>
 </svg>

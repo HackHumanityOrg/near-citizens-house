@@ -102,7 +102,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
                 size="citizens-icon"
                 onClick={() => copyToClipboard(data.nep413Hash, "hash")}
               >
-                {copiedField === "hash" ? <Check className="h-4 w-4 text-[#00ec97]" /> : <Copy className="h-4 w-4" />}
+                {copiedField === "hash" ? <Check className="h-4 w-4 text-[#ffda1e]" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
             <p className="text-[11px] leading-[1.4] text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -128,7 +128,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
                 onClick={() => copyToClipboard(data.publicKeyHex, "publicKey")}
               >
                 {copiedField === "publicKey" ? (
-                  <Check className="h-4 w-4 text-[#00ec97]" />
+                  <Check className="h-4 w-4 text-[#ffda1e]" />
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
@@ -154,7 +154,7 @@ export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignature
                 onClick={() => copyToClipboard(data.signatureHex, "signature")}
               >
                 {copiedField === "signature" ? (
-                  <Check className="h-4 w-4 text-[#00ec97]" />
+                  <Check className="h-4 w-4 text-[#ffda1e]" />
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}

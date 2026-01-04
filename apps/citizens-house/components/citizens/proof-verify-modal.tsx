@@ -80,14 +80,14 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
           {/* Instructions */}
           <div className="rounded-[12px] bg-[#1c1c1c] p-4 space-y-2">
             <p className="text-[13px] leading-[1.5] text-[#a0a0a0] font-mono">
-              <span className="text-[#00ec97]">1.</span> Install:{" "}
+              <span className="text-[#ffda1e]">1.</span> Install:{" "}
               <code className="bg-[#333] px-2 py-0.5 rounded text-[#fcfaf7]">npm i -g snarkjs</code>
             </p>
             <p className="text-[13px] leading-[1.5] text-[#a0a0a0] font-mono">
-              <span className="text-[#00ec97]">2.</span> Download all three files below
+              <span className="text-[#ffda1e]">2.</span> Download all three files below
             </p>
             <p className="text-[13px] leading-[1.5] text-[#a0a0a0] font-mono">
-              <span className="text-[#00ec97]">3.</span> Run:{" "}
+              <span className="text-[#ffda1e]">3.</span> Run:{" "}
               <code className="bg-[#333] px-2 py-0.5 rounded text-[#fcfaf7] text-[11px]">
                 snarkjs groth16 verify vkey.json public.json proof.json
               </code>
@@ -141,7 +141,7 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
               href="https://github.com/selfxyz/self/blob/main/contracts/contracts/verifiers/disclose/Verifier_vc_and_disclose.sol"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline text-foreground hover:text-[#00ec97] transition-colors"
+              className="underline text-foreground hover:text-[#ffda1e] transition-colors"
             >
               vc_and_disclose circuit
             </a>{" "}
