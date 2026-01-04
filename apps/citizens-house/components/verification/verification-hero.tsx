@@ -75,8 +75,8 @@ export function VerificationHero() {
           </div>
         </div>
 
-        {/* Steps Container - Mobile: stacked, Desktop (1024px+): side-by-side */}
-        <div className="bg-white dark:bg-black border-t-[4px] border-[#ffda1e] border-solid flex flex-col lg:flex-row gap-[32px] lg:gap-[56px] items-start justify-center p-[24px] md:p-[40px] shrink-0 w-full max-w-full">
+        {/* Steps Container - Mobile: stacked, Desktop (1024px+): side-by-side - Figma node 461:4727 */}
+        <div className="bg-white dark:bg-black border-t-[4px] border-[#ffda1e] border-solid flex flex-col lg:flex-row gap-[32px] lg:gap-[56px] items-start justify-center p-[40px] shrink-0 w-full max-w-full">
           {/* Step 1 - Mobile: full width, Desktop (1024px+): w-400px */}
           <div className="flex flex-col gap-[8px] items-start w-full lg:w-[400px] shrink-0">
             {/* Icon + Step label */}

@@ -180,7 +180,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               </div>
 
               {/* Right Column: Instructions Panel */}
-              <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full lg:w-[503px] p-6 sm:p-[40px] flex flex-col gap-[24px] items-center">
+              <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full lg:w-[503px] p-6 sm:p-[32px] flex flex-col gap-[24px] items-center">
                 {/* How to verify */}
                 <div className="flex flex-col gap-[16px] items-start w-full max-w-[428px]">
                   <p className="text-[22px] leading-[28px] font-medium text-black dark:text-white">How to verify?</p>
@@ -190,23 +190,29 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                 </div>
 
                 {/* Numbered Steps */}
-                <div className="flex flex-col gap-[8px] items-start w-full">
-                  <div className="flex gap-[8px] items-center w-full">
-                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">01</p>
-                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 tracking-[0.5px]">
+                <div className="flex flex-col gap-[16px] items-start w-full">
+                  <div className="flex gap-[8px] items-start w-full">
+                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
+                      01
+                    </p>
+                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
                       Download the Self app on your mobile device
                     </p>
                   </div>
-                  <div className="flex gap-[8px] items-center w-full">
-                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">02</p>
-                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 tracking-[0.5px]">
+                  <div className="flex gap-[8px] items-start w-full">
+                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
+                      02
+                    </p>
+                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
                       Open the app and complete your ID verification
                     </p>
                   </div>
-                  <div className="flex gap-[8px] items-center w-full">
-                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0">03</p>
-                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 tracking-[0.5px]">
-                      Return here and scan this QR code with the Self app
+                  <div className="flex gap-[8px] items-start w-full">
+                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
+                      03
+                    </p>
+                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
+                      Return here and scan the QR code with Self app
                     </p>
                   </div>
                 </div>

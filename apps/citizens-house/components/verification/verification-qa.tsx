@@ -30,14 +30,14 @@ export function VerificationQA() {
 
   return (
     <section className="flex items-start justify-center bg-white px-4 py-[40px] md:py-[80px] dark:bg-black">
-      <div className="flex w-full max-w-[1055px] flex-col gap-[32px] md:gap-[61px]">
+      <div className="flex w-full max-w-[1055px] flex-col gap-[61px]">
         <h3 className="text-[32px] leading-[36px] md:text-[44px] md:leading-[48px] font-fk-grotesk font-medium text-black dark:text-white">
           Q&amp;A
         </h3>
         <Accordion
           type="single"
           collapsible
-          className="flex w-full flex-col gap-[32px] md:gap-[44px] opacity-[0.88]"
+          className="flex w-full flex-col gap-[44px] opacity-[0.88]"
           value={openItem}
           onValueChange={setOpenItem}
         >
@@ -45,13 +45,16 @@ export function VerificationQA() {
             <AccordionItem
               key={faq.value}
               value={faq.value}
-              className="border-b border-[#171717] pb-[32px] md:pb-[44px] pt-0 dark:border-[#e3e3ea]"
+              className="border-b border-[#171717] pb-[44px] pt-0 dark:border-[#e3e3ea]"
             >
               <button
                 className="flex w-full items-start justify-between py-0 text-left transition-all gap-4"
                 onClick={() => setOpenItem(openItem === faq.value ? undefined : faq.value)}
               >
-                <span className="text-[24px] leading-[32px] md:text-[36px] md:leading-[44px] lg:text-[45px] lg:leading-[52px] text-[#171717] dark:text-[#e3e3ea] font-fk-grotesk">
+                <span
+                  className="text-[24px] leading-[32px] md:text-[36px] md:leading-[44px] lg:text-[45px] lg:leading-[52px] text-[#171717] dark:text-[#e3e3ea] font-normal"
+                  style={{ fontFamily: "Roboto, sans-serif" }}
+                >
                   {faq.question}
                 </span>
                 <div className="flex h-[13px] w-[13px] shrink-0 items-center justify-center mt-2">
