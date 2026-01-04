@@ -9,6 +9,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   Identicon,
 } from "@near-citizens/ui"
 import { useNearWallet } from "@near-citizens/shared"
@@ -55,16 +57,22 @@ export function Header() {
           >
             {primaryNavItem.label}
           </Link>
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button className="p-1 hover:opacity-70 transition-opacity" aria-label="Navigation menu">
                 <ChevronDown className="h-2 w-2" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
+            <DropdownMenuContent
+              align="center"
+              className="bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
+            >
               {dropdownItems.map((item) => (
                 <DropdownMenuItem key={item.href} asChild>
-                  <Link href={item.href} className="cursor-pointer">
+                  <Link
+                    href={item.href}
+                    className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
+                  >
                     {item.label}
                   </Link>
                 </DropdownMenuItem>
@@ -79,15 +87,24 @@ export function Header() {
             <Loader2 className="h-5 w-5 animate-spin" />
           </button>
         ) : isConnected ? (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button className="hover:opacity-70 transition-opacity" aria-label="Account menu">
                 <Identicon value={accountId || ""} size={32} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <div className="px-3 py-2 text-sm text-muted-foreground border-b truncate max-w-[200px]">{accountId}</div>
-              <DropdownMenuItem onClick={disconnect} className="cursor-pointer">
+            <DropdownMenuContent
+              align="end"
+              className="bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
+            >
+              <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
+                {accountId}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
+              <DropdownMenuItem
+                onClick={disconnect}
+                className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
+              >
                 Disconnect
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -134,16 +151,25 @@ export function Header() {
               Connecting...
             </Button>
           ) : isConnected ? (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   <Identicon value={accountId || ""} size={48} />
                   <ChevronDown className="h-6 w-6" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[200px]">
-                <div className="px-3 py-2 text-sm text-muted-foreground border-b">{accountId}</div>
-                <DropdownMenuItem onClick={disconnect} className="cursor-pointer">
+              <DropdownMenuContent
+                align="end"
+                className="min-w-[200px] bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
+              >
+                <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
+                  {accountId}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
+                <DropdownMenuItem
+                  onClick={disconnect}
+                  className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
+                >
                   Disconnect
                 </DropdownMenuItem>
               </DropdownMenuContent>
