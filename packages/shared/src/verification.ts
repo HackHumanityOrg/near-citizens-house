@@ -7,6 +7,7 @@ import { PublicKey } from "@near-js/crypto"
 import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
+import { getSigningMessage } from "./config"
 import type { ParsedSignatureData, ProofData, Nep413Payload } from "./contracts/verification"
 
 export type { ParsedSignatureData, ProofData, Nep413Payload }
@@ -126,6 +127,8 @@ export function parseUserContextData(userContextDataRaw: string): ParsedSignatur
       signature: data.signature,
       publicKey: data.publicKey,
       nonce,
+      challenge: typeof data.challenge === "string" ? data.challenge : undefined,
+      recipient: typeof data.recipient === "string" ? data.recipient : undefined,
     }
   } catch {
     return null
@@ -203,8 +206,9 @@ export function buildProofData(
 ): ProofData | null {
   if (!sigData) return null
 
-  const challenge = "Identify myself"
-  const nep413Hash = computeNep413Hash(challenge, sigData.nonce, sigData.accountId)
+  const challenge = sigData.challenge ?? getSigningMessage()
+  const recipient = sigData.recipient ?? sigData.accountId
+  const nep413Hash = computeNep413Hash(challenge, sigData.nonce, recipient)
   const publicKeyHex = extractEd25519PublicKeyHex(sigData.publicKey)
 
   return {
@@ -219,7 +223,7 @@ export function buildProofData(
       signature: sigData.signature,
       nonce: Buffer.from(sigData.nonce).toString("base64"),
       challenge,
-      recipient: sigData.accountId,
+      recipient,
     },
     userContextData: account.userContextData,
     nearSignatureVerification: {

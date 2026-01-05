@@ -56,7 +56,6 @@ pub struct ContractV2 {
     pub backend_wallet: AccountId,
     pub nullifiers: LookupSet<String>,
     pub verifications: UnorderedMap<AccountId, VersionedVerification>,
-    pub used_signatures: LookupSet<[u8; 64]>,
     pub paused: bool,
     // NEW field
     pub my_new_field: u64,
@@ -86,7 +85,6 @@ fn contract_mut(&mut self) -> &mut ContractV2 {
         backend_wallet: old_contract.backend_wallet,
         nullifiers: old_contract.nullifiers,
         verifications: old_contract.verifications,
-        used_signatures: old_contract.used_signatures,
         paused: old_contract.paused,
         my_new_field: 0,  // Default value for migrated contracts
     });

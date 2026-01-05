@@ -20,56 +20,10 @@
 //! 3. Update `into_current()` to migrate from all older versions
 //! 4. Update the `Verification` type alias to point to the new struct
 //!
-//! ```ignore
-//! pub enum VersionedVerification {
-//!     V1(VerificationV1),  // 0x00 - original (NEVER REMOVE)
-//!     Latest(Verification), // 0x01 - current version
-//! }
-//! ```
-//!
 //! ### Borsh Serialization Warning
 //!
 //! Borsh uses enum discriminants (0x00, 0x01, etc.) based on declaration order.
 //! **CRITICAL:** Never reorder, remove, or insert variants - only append at the end.
-//!
-//! ## Usage Example
-//!
-//! ```rust,ignore
-//! use near_sdk::{env, near, AccountId, Promise, Gas, PromiseResult};
-//! use verified_accounts::interface::ext_verified_accounts;
-//!
-//! #[near(contract_state)]
-//! pub struct MyContract {
-//!     verification_contract: AccountId,
-//! }
-//!
-//! #[near]
-//! impl MyContract {
-//!     pub fn do_verified_action(&mut self) -> Promise {
-//!         ext_verified_accounts::ext(self.verification_contract.clone())
-//!             .with_static_gas(Gas::from_tgas(5))
-//!             .is_verified(env::predecessor_account_id())
-//!             .then(
-//!                 Self::ext(env::current_account_id())
-//!                     .with_static_gas(Gas::from_tgas(10))
-//!                     .callback_verified_action()
-//!             )
-//!     }
-//!
-//!     #[private]
-//!     pub fn callback_verified_action(&mut self) {
-//!         let is_verified: bool = match env::promise_result(0) {
-//!             PromiseResult::Successful(data) => {
-//!                 // NEAR cross-contract calls use JSON serialization by default
-//!                 near_sdk::serde_json::from_slice(&data).unwrap_or(false)
-//!             }
-//!             _ => false,
-//!         };
-//!         assert!(is_verified, "Account must be verified");
-//!         // Proceed with action...
-//!     }
-//! }
-//! ```
 
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
@@ -255,10 +209,7 @@ impl From<&VersionedVerification> for VerificationSummary {
 /// ## Important: Serialization Format
 ///
 /// **NEAR cross-contract calls use JSON serialization by default**.
-/// When handling promise results in callbacks, you should use:
-/// ```ignore
-/// near_sdk::serde_json::from_slice(&data)
-/// ```
+/// When handling promise results in callbacks, use `near_sdk::serde_json::from_slice(&data)`.
 /// The types in this crate derive both `Serialize`/`Deserialize` (for JSON)
 /// and `BorshSerialize`/`BorshDeserialize` (for storage) to support both.
 ///

@@ -39,6 +39,8 @@ const validUserContextJson = {
   signature: "test-signature-base64",
   publicKey: testPublicKey,
   nonce: Buffer.from(standardNonce).toString("base64"),
+  challenge: "Identify myself",
+  recipient: testRecipient,
 }
 
 const validUserContextHex = Buffer.from(JSON.stringify(validUserContextJson)).toString("hex")
@@ -339,6 +341,8 @@ describe("Near Citizens House", () => {
             expect(result).not.toBeNull()
             expect(result?.accountId).toBe(testAccountId)
             expect(result?.publicKey).toBe(testPublicKey)
+            expect(result?.challenge).toBe("Identify myself")
+            expect(result?.recipient).toBe(testRecipient)
           })
 
           it("should parse valid plain JSON input", async () => {
@@ -745,6 +749,8 @@ describe("Near Citizens House", () => {
           signature: "test-sig-base64",
           publicKey: testPublicKey,
           nonce: standardNonce,
+          challenge: "Identify myself",
+          recipient: testRecipient,
         }
 
         describe("Happy Path", () => {

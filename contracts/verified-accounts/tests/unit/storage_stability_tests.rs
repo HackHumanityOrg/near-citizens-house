@@ -29,7 +29,6 @@ These discriminants are used as storage prefixes for NEAR SDK collections.
 ## Expected Values
 - Nullifiers: 0x00
 - Accounts: 0x01
-- UsedSignatures: 0x02
 "#
 )]
 #[allure_test]
@@ -40,8 +39,6 @@ fn test_storage_key_discriminants_are_stable() {
         near_sdk::borsh::to_vec(&StorageKey::Nullifiers).expect("Nullifiers should serialize");
     let accounts_bytes =
         near_sdk::borsh::to_vec(&StorageKey::Accounts).expect("Accounts should serialize");
-    let signatures_bytes = near_sdk::borsh::to_vec(&StorageKey::UsedSignatures)
-        .expect("UsedSignatures should serialize");
 
     assert_eq!(
         nullifiers_bytes.first().copied(),
@@ -52,11 +49,6 @@ fn test_storage_key_discriminants_are_stable() {
         accounts_bytes.first().copied(),
         Some(0x01),
         "StorageKey::Accounts discriminant changed! This will corrupt verification data."
-    );
-    assert_eq!(
-        signatures_bytes.first().copied(),
-        Some(0x02),
-        "StorageKey::UsedSignatures discriminant changed! This will corrupt signature data."
     );
 }
 

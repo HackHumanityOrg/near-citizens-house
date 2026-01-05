@@ -228,12 +228,19 @@ export type VerificationSummary = z.infer<typeof verificationSummarySchema>
 // ============================================================================
 
 // Parsed NEAR signature data from user context (subset of nearSignatureDataSchema)
-export const parsedSignatureDataSchema = nearSignatureDataSchema.pick({
-  accountId: true,
-  signature: true,
-  publicKey: true,
-  nonce: true,
-})
+export const parsedSignatureDataSchema = nearSignatureDataSchema
+  .pick({
+    accountId: true,
+    signature: true,
+    publicKey: true,
+    nonce: true,
+    challenge: true,
+    recipient: true,
+  })
+  .partial({
+    challenge: true,
+    recipient: true,
+  })
 
 export type ParsedSignatureData = z.infer<typeof parsedSignatureDataSchema>
 

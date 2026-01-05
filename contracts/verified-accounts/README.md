@@ -98,6 +98,14 @@ user_context_data: String,
 3. **Nullifier Protection**: Prevents same passport from being registered multiple times
 4. **Account Protection**: Prevents re-verification of already verified accounts
 
+### Backend Requirements (Operational)
+
+- Verify `signature_data.public_key` is an active full-access key for `signature_data.account_id` via RPC `view_access_key`.
+- Enforce one-time challenges and nonce TTL (expire and reject replayed signatures).
+- Bind the signature to this service by including the contract ID and domain in `signature_data.challenge`.
+- Ensure `signature_data.recipient` equals the account being verified (contract requirement).
+- Log and rate-limit verification writes to detect anomalies.
+
 ## Architecture
 
 \`\`\`
@@ -140,3 +148,5 @@ ls -lh target/near/verified_accounts.wasm
 - Always use `cargo near build` for proper ABI generation
 - Contract state changes are permanent and irreversible
 - Storage costs are covered by the contract account balance
+- Use a multisig or hardware-secured backend wallet and rotate keys on compromise
+- Monitor verification write rate, storage growth, and account balance for anomalies

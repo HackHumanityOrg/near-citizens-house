@@ -16,7 +16,7 @@ const proposalIdSchema = z.number().int().min(0)
 export async function getProposal(id: number): Promise<SputnikProposal | null> {
   const parsed = proposalIdSchema.safeParse(id)
   if (!parsed.success) {
-    console.error("[SputnikDAO] Invalid proposal ID:", z.treeifyError(parsed.error))
+    console.error("[SputnikDAO] Invalid proposal ID:", parsed.error.format())
     return null
   }
   return sputnikDaoDb.getProposal(parsed.data)
@@ -30,7 +30,7 @@ export async function getProposal(id: number): Promise<SputnikProposal | null> {
 export async function getProposals(fromIndex: number = 0, limit: number = 20): Promise<SputnikProposal[]> {
   const params = paginationSchema.safeParse({ page: fromIndex, pageSize: limit })
   if (!params.success) {
-    console.error("[SputnikDAO] Invalid pagination:", z.treeifyError(params.error))
+    console.error("[SputnikDAO] Invalid pagination:", params.error.format())
     return []
   }
   return sputnikDaoDb.getProposals(params.data.page, params.data.pageSize)
@@ -62,7 +62,7 @@ export async function getProposalsReversed(
 ): Promise<{ proposals: SputnikProposal[]; hasMore: boolean; total: number }> {
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
-    console.error("[SputnikDAO] Invalid pagination:", z.treeifyError(params.error))
+    console.error("[SputnikDAO] Invalid pagination:", params.error.format())
     return { proposals: [], hasMore: false, total: 0 }
   }
 
@@ -103,8 +103,8 @@ export async function hasVoted(proposalId: number, accountId: string): Promise<b
 
   if (!idResult.success || !accountResult.success) {
     console.error("[SputnikDAO] Invalid params:", {
-      proposalId: idResult.error ? z.treeifyError(idResult.error) : undefined,
-      accountId: accountResult.error ? z.treeifyError(accountResult.error) : undefined,
+      proposalId: idResult.error ? idResult.error.format() : undefined,
+      accountId: accountResult.error ? accountResult.error.format() : undefined,
     })
     return false
   }
@@ -127,8 +127,8 @@ export async function getUserVote(
 
   if (!idResult.success || !accountResult.success) {
     console.error("[SputnikDAO] Invalid params:", {
-      proposalId: idResult.error ? z.treeifyError(idResult.error) : undefined,
-      accountId: accountResult.error ? z.treeifyError(accountResult.error) : undefined,
+      proposalId: idResult.error ? idResult.error.format() : undefined,
+      accountId: accountResult.error ? accountResult.error.format() : undefined,
     })
     return null
   }

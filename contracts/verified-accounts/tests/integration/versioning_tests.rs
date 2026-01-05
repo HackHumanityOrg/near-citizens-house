@@ -537,11 +537,11 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
 #[allure_suite_label("Verified Accounts Integration Tests")]
 #[allure_sub_suite("Versioning")]
 #[allure_severity("critical")]
-#[allure_tags("integration", "versioning", "upgrade", "signature")]
-#[allure_description("Upgrade test: Signature replay protection persists across upgrade.")]
+#[allure_tags("integration", "versioning", "upgrade", "account-uniqueness")]
+#[allure_description("Upgrade test: Account uniqueness persists across upgrade.")]
 #[allure_test]
 #[tokio::test]
-async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
+async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let v1_wasm = load_v1_wasm();
     let backend = worker.dev_create_account().await?;
@@ -565,7 +565,7 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
 
     // Store verification with specific signature in V1
     let user = worker.dev_create_account().await?;
-    let nonce: [u8; 32] = [42u8; 32]; // Fixed nonce for replay test
+    let nonce: [u8; 32] = [42u8; 32]; // Fixed nonce for repeat attempt
     let challenge = "Identify myself";
     let recipient = user.id().to_string();
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
@@ -596,7 +596,7 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
     let v2_wasm = load_v2_wasm();
     let _ = contract_account.deploy(&v2_wasm).await?;
 
-    // Try to replay signature with V2 code - should fail
+    // Try to store a second verification for the same account - should fail
     let result = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
@@ -621,13 +621,13 @@ async fn test_upgrade_signature_protection_persists() -> anyhow::Result<()> {
         .await?;
 
     step(
-        "Verify signature replay protection persists after upgrade",
+        "Verify account uniqueness persists after upgrade",
         || {
             assert!(result.is_failure());
             let failure_msg = format!("{:?}", result.failures());
             assert!(
-                failure_msg.contains("Signature already used"),
-                "Expected signature error, got: {}",
+                failure_msg.contains("NEAR account already verified"),
+                "Expected account uniqueness error, got: {}",
                 failure_msg
             );
         },

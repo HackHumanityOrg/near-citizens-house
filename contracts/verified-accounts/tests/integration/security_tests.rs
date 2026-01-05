@@ -1,6 +1,6 @@
 //! Security tests for verified-accounts contract
 //!
-//! Tests for signature replay attack prevention, batch size limits, and storage economics.
+//! Tests for replay attempt rejection, batch size limits, and storage economics.
 
 use crate::helpers::{generate_nep413_signature, init, test_self_proof, WASM_PATH};
 use allure_rs::prelude::*;
@@ -12,7 +12,7 @@ use serde_json::json;
 #[allure_sub_suite("Security")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "security", "replay-attack")]
-#[allure_description("Verifies that signature replay attacks are prevented. Defense-in-depth ensures both account-already-verified and signature-already-used checks catch replay attempts.")]
+#[allure_description("Verifies that replay attempts are rejected by account uniqueness.")]
 #[allure_test]
 #[tokio::test]
 async fn test_signature_replay_rejected() -> anyhow::Result<()> {
@@ -58,9 +58,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
     });
 
     // Now try to replay the EXACT SAME signature with a DIFFERENT nullifier
-    // In a scenario where the account check might be bypassed, the signature tracking
-    // provides a second layer of defense. In practice, the account check ("NEAR account
-    // already verified") will catch this first, but signature tracking adds defense-in-depth.
+    // Account uniqueness should reject this attempt.
     let result = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
@@ -83,13 +81,13 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify signature replay is rejected", || {
-        // This should fail - the signature tracking or account check will catch it
+    step("Verify replay is rejected", || {
+        // This should fail - the account uniqueness check should catch it
         assert!(result.is_failure());
         let failure_msg = format!("{:?}", result.failures());
         assert!(
-            failure_msg.contains("Signature already used"),
-            "Expected replay to be rejected by signature tracking, got: {}",
+            failure_msg.contains("NEAR account already verified"),
+            "Expected replay to be rejected by account uniqueness, got: {}",
             failure_msg
         );
     });

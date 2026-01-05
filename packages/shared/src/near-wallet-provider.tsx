@@ -108,7 +108,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   }, [nearConnector])
 
   const signMessage = useCallback(
-    async (_message: string): Promise<NearSignatureData> => {
+    async (message: string): Promise<NearSignatureData> => {
       if (!nearConnector || !accountId) {
         throw new Error("Wallet not connected")
       }
@@ -121,7 +121,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         )
       }
 
-      const messageToSign = CONSTANTS.SIGNING_MESSAGE
+      const messageToSign = message || CONSTANTS.SIGNING_MESSAGE
 
       try {
         const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(32)))

@@ -39,7 +39,7 @@
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
     "ethers": "^6.16.0",
-    "zod": "^4.2.1"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^25",

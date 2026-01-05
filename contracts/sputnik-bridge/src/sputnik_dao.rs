@@ -3,31 +3,6 @@
 //! This module provides a typed interface for making cross-contract calls to
 //! SputnikDAO v2 contracts. It generates the `ext_sputnik_dao` module with
 //! cross-contract call builders via the `#[ext_contract]` macro.
-//!
-//! ## Usage Example
-//!
-//! ```rust,ignore
-//! use near_sdk::{env, near, AccountId, Promise, Gas};
-//! use crate::sputnik_dao::{ext_sputnik_dao, ProposalInput, ProposalKind};
-//!
-//! #[near(contract_state)]
-//! pub struct MyContract {
-//!     sputnik_dao: AccountId,
-//! }
-//!
-//! #[near]
-//! impl MyContract {
-//!     pub fn create_vote_proposal(&mut self, description: String) -> Promise {
-//!         ext_sputnik_dao::ext(self.sputnik_dao.clone())
-//!             .with_static_gas(Gas::from_tgas(30))
-//!             .with_attached_deposit(env::attached_deposit())
-//!             .add_proposal(ProposalInput {
-//!                 description,
-//!                 kind: ProposalKind::Vote,
-//!             })
-//!     }
-//! }
-//! ```
 
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::U128;

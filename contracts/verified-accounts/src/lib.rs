@@ -41,6 +41,8 @@
 //!   - NEAR smart contracts cannot query on-chain access keys (SDK limitation)
 //!   - The backend MUST verify the signing key is registered for the account
 //!     via RPC (`view_access_key`) before submitting verifications
+//!   - The backend MUST enforce one-time challenges with TTLs to prevent replays
+//!   - The backend MUST bind the challenge to this service (include contract ID/domain)
 //!
 //! ## On-Chain Verification
 //! The contract independently verifies:
@@ -81,7 +83,6 @@ const MAX_BATCH_SIZE: usize = 100;
 pub enum StorageKey {
     Nullifiers,
     Accounts,
-    UsedSignatures,
 }
 
 /// NEAR signature data
@@ -186,8 +187,6 @@ pub struct ContractV1 {
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
     pub verifications: UnorderedMap<AccountId, VersionedVerification>,
-    /// Set of used signatures
-    pub used_signatures: LookupSet<[u8; 64]>,
     /// Whether the contract is paused
     pub paused: bool,
 }
@@ -249,7 +248,6 @@ impl VersionedContract {
             backend_wallet,
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
             verifications: UnorderedMap::new(StorageKey::Accounts),
-            used_signatures: LookupSet::new(StorageKey::UsedSignatures),
             paused: false,
         })
     }
@@ -296,18 +294,14 @@ impl VersionedContract {
         //
         // match old_state {
         //     VersionedContract::V1(v1) => {
-        //         // Clean up any orphan keys if needed
-        //         // old_collection.clear();
-        //
         //         VersionedContract::V2(ContractV2 {
         //             backend_wallet: v1.backend_wallet,
         //             nullifiers: v1.nullifiers,
         //             verifications: v1.verifications,
-        //             used_signatures: v1.used_signatures,
         //             paused: v1.paused,
-        //             new_field: default_value,
         //         })
         //     }
+
         //     VersionedContract::V2(v2) => VersionedContract::V2(v2),
         // }
 
@@ -481,14 +475,6 @@ impl VersionedContract {
         // Verify the NEAR signature
         Self::verify_near_signature(&signature_data);
 
-        // Prevent signature replay
-        let mut sig_array = [0u8; 64];
-        sig_array.copy_from_slice(&signature_data.signature);
-        assert!(
-            !contract.used_signatures.contains(&sig_array),
-            "Signature already used - potential replay attack"
-        );
-
         // Prevent duplicate nullifiers
         assert!(
             !contract.nullifiers.contains(&nullifier),
@@ -512,7 +498,6 @@ impl VersionedContract {
         };
 
         // Store verification and tracking data
-        contract.used_signatures.insert(&sig_array);
         contract.nullifiers.insert(&nullifier);
         contract
             .verifications

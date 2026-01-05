@@ -3,21 +3,27 @@ import { revalidateTag } from "next/cache"
 import {
   SELF_CONFIG,
   SELF_VERIFICATION_CONFIG,
-  CONSTANTS,
+  getSigningMessage,
   verificationDb,
   getVerifier,
+  getRpcProvider,
+  verifyNearSignature,
   verifyRequestSchema,
   createVerificationError,
   type SelfVerificationResult,
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
-import { updateSession } from "@/lib/session-store"
+import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
 const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
+
+// Clock skew tolerance (10 seconds)
+// Allows for minor time differences between client and server
+const CLOCK_SKEW_MS = 10 * 1000
 
 function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
   if (!userDefinedDataRaw) return null
@@ -50,6 +56,36 @@ function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
   }
 
   return jsonString
+}
+
+function isFullAccessPermission(permission: unknown): boolean {
+  if (permission === "FullAccess") {
+    return true
+  }
+
+  if (permission && typeof permission === "object" && "FullAccess" in permission) {
+    return true
+  }
+
+  return false
+}
+
+async function hasFullAccessKey(accountId: string, publicKey: string): Promise<boolean> {
+  const provider = getRpcProvider()
+
+  try {
+    const accessKey = (await provider.query({
+      request_type: "view_access_key",
+      finality: "final",
+      account_id: accountId,
+      public_key: publicKey,
+    })) as { permission?: unknown }
+
+    return isFullAccessPermission(accessKey.permission)
+  } catch (error) {
+    console.warn("[Verify] Failed to query access key", error)
+    return false
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -260,21 +296,107 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (signatureAge > MAX_SIGNATURE_AGE_MS) {
+    // Allow clock skew in both directions
+    if (signatureAge > MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS) {
       return respondWithError({
         code: "SIGNATURE_EXPIRED",
         status: 400,
-        details: `Signed ${Math.round(signatureAge / 1000)}s ago (max ${MAX_SIGNATURE_AGE_MS / 1000}s)`,
+        details: `Signed ${Math.round(signatureAge / 1000)}s ago (max ${(MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS) / 1000}s with clock skew)`,
         stage: "signature_validate",
         attestationId,
       })
     }
 
-    if (signatureAge < 0) {
+    // Allow future timestamps within clock skew tolerance
+    if (signatureAge < -CLOCK_SKEW_MS) {
       return respondWithError({
         code: "SIGNATURE_TIMESTAMP_INVALID",
         status: 400,
-        details: "Future date detected",
+        details: `Future timestamp exceeds clock skew tolerance (${CLOCK_SKEW_MS / 1000}s)`,
+        stage: "signature_validate",
+        attestationId,
+      })
+    }
+
+    const expectedChallenge = getSigningMessage()
+    const challenge = typeof data.challenge === "string" ? data.challenge : ""
+    const recipient = typeof data.recipient === "string" ? data.recipient : ""
+
+    if (!challenge || !recipient) {
+      const missingFields = ["challenge", "recipient"].filter((field) => !data[field]).join(", ")
+      return respondWithError({
+        code: "NEAR_SIGNATURE_MISSING",
+        status: 400,
+        details: `Missing NEP-413 fields: ${missingFields}`,
+        stage: "signature_parse",
+        attestationId,
+      })
+    }
+
+    if (challenge !== expectedChallenge) {
+      return respondWithError({
+        code: "NEAR_SIGNATURE_INVALID",
+        status: 400,
+        details: "Challenge does not match this service",
+        stage: "signature_validate",
+        attestationId,
+      })
+    }
+
+    if (recipient !== data.accountId) {
+      return respondWithError({
+        code: "NEAR_SIGNATURE_INVALID",
+        status: 400,
+        details: "Recipient must match accountId",
+        stage: "signature_validate",
+        attestationId,
+      })
+    }
+
+    const signatureCheck = verifyNearSignature(
+      expectedChallenge,
+      data.signature as string,
+      data.publicKey as string,
+      nonce as number[],
+      recipient,
+    )
+
+    if (!signatureCheck.valid) {
+      return respondWithError({
+        code: "NEAR_SIGNATURE_INVALID",
+        status: 400,
+        details: signatureCheck.error || "Signature verification failed",
+        stage: "signature_validate",
+        attestationId,
+      })
+    }
+
+    const isFullAccess = await hasFullAccessKey(data.accountId as string, data.publicKey as string)
+    if (!isFullAccess) {
+      return respondWithError({
+        code: "NEAR_SIGNATURE_INVALID",
+        status: 400,
+        details: "Public key is not an active full-access key",
+        stage: "signature_validate",
+        attestationId,
+      })
+    }
+
+    const nonceBase64 = Buffer.from(nonce as number[]).toString("base64")
+    // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations
+    const remainingValidityMs = MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS - signatureAge
+    const nonceTtlSeconds = Math.max(60, Math.ceil(remainingValidityMs / 1000)) // Min 60s to handle processing time
+    const nonceReserved = await reserveSignatureNonce(data.accountId as string, nonceBase64, nonceTtlSeconds)
+
+    if (!nonceReserved) {
+      console.warn(`[Verify] Nonce replay attempt detected for account ${data.accountId}`, {
+        nonceBase64,
+        attestationId,
+      })
+      return respondWithError({
+        code: "NEAR_SIGNATURE_INVALID",
+        status: 400,
+        details: "Nonce already used",
         stage: "signature_validate",
         attestationId,
       })
@@ -284,10 +406,10 @@ export async function POST(request: NextRequest) {
       accountId: data.accountId as string,
       signature: data.signature as string,
       publicKey: data.publicKey as string,
-      challenge: CONSTANTS.SIGNING_MESSAGE,
+      challenge: expectedChallenge,
       timestamp: signatureTimestamp,
       nonce: nonce as number[],
-      recipient: data.accountId as string,
+      recipient,
     }
 
     // Note: NEAR signature verification is performed by the smart contract (single source of truth)

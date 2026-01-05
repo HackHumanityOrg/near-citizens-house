@@ -1,6 +1,5 @@
 "use server"
 
-import { z } from "zod"
 import { bridgeContract, verificationDb, nearAccountIdSchema, type BridgeInfo } from "@near-citizens/shared"
 
 /**
@@ -69,7 +68,7 @@ export async function getCitizenRole(): Promise<string | null> {
 export async function checkVerificationStatus(accountId: string): Promise<boolean> {
   const parsed = nearAccountIdSchema.safeParse(accountId)
   if (!parsed.success) {
-    console.error("[Server Action] Invalid account ID:", z.treeifyError(parsed.error))
+    console.error("[Server Action] Invalid account ID:", parsed.error.format())
     return false
   }
 

@@ -98,61 +98,6 @@ fn test_happy_path_store_verification() {
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
 #[allure_sub_suite("Store Verification")]
-#[allure_severity("critical")]
-#[allure_tags("unit", "replay-protection")]
-#[allure_description(
-    "Verifies signature replay protection rejects storing the same signature twice."
-)]
-#[allure_test]
-#[test]
-fn test_signature_replay_rejected() {
-    let (mut contract, user, signer, nonce) =
-        step("Initialize contract with valid signature", || {
-            let backend = accounts(1);
-            let user = accounts(2);
-            let context = get_context(backend.clone());
-            testing_env!(context.build());
-            let contract = VersionedContract::new(backend);
-            let signer = create_signer(&user);
-            let nonce = vec![1u8; 32];
-            (contract, user, signer, nonce)
-        });
-
-    step("Store first verification successfully", || {
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &nonce, &user);
-        contract.store_verification(
-            "nullifier_one".to_string(),
-            user.clone(),
-            "1".to_string(),
-            sig_data,
-            test_self_proof(),
-            "ctx".to_string(),
-        );
-        assert!(contract.is_verified(user.clone()));
-    });
-
-    step("Attempt replay with same signature nonce", || {
-        assert_panic_with(
-            || {
-                let replay_sig =
-                    create_valid_signature(&signer, &user, "Identify myself", &nonce, &user);
-                contract.store_verification(
-                    "nullifier_two".to_string(),
-                    user.clone(),
-                    "1".to_string(),
-                    replay_sig,
-                    test_self_proof(),
-                    "ctx".to_string(),
-                );
-            },
-            "Signature already used - potential replay attack",
-        );
-    });
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Store Verification")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "timestamp")]
 #[allure_description(

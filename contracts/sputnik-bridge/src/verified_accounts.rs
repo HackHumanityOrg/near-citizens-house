@@ -3,16 +3,6 @@
 //! This module provides a minimal typed interface for making cross-contract calls
 //! to the verified-accounts oracle contract. Only the methods needed by the bridge
 //! contract are included.
-//!
-//! ## Usage
-//!
-//! ```rust,ignore
-//! use crate::verified_accounts::ext_verified_accounts;
-//!
-//! ext_verified_accounts::ext(self.verified_accounts_contract.clone())
-//!     .with_static_gas(Gas::from_tgas(5))
-//!     .is_verified(account_id)
-//! ```
 
 use near_sdk::{ext_contract, AccountId};
 

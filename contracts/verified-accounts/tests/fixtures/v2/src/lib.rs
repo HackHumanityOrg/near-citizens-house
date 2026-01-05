@@ -45,7 +45,6 @@
 //! ## On-Chain Verification
 //! The contract independently verifies:
 //! - NEP-413 Ed25519 signatures (cryptographic validity only)
-//! - Signature uniqueness (replay protection)
 //! - Nullifier uniqueness (one identity per person)
 //! - Account uniqueness (one identity per NEAR account)
 
@@ -81,7 +80,6 @@ const MAX_BATCH_SIZE: usize = 100;
 pub enum StorageKey {
     Nullifiers,
     Accounts,
-    UsedSignatures,
 }
 
 /// NEAR signature data
@@ -186,8 +184,6 @@ pub struct ContractV1 {
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
     pub verifications: UnorderedMap<AccountId, VersionedVerification>,
-    /// Set of used signatures
-    pub used_signatures: LookupSet<[u8; 64]>,
     /// Whether the contract is paused
     pub paused: bool,
 }
@@ -201,8 +197,6 @@ pub struct ContractV2 {
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
     pub verifications: UnorderedMap<AccountId, VersionedVerification>,
-    /// Set of used signatures
-    pub used_signatures: LookupSet<[u8; 64]>,
     /// Whether the contract is paused
     pub paused: bool,
     /// Timestamp when contract was upgraded from V1 to V2
@@ -231,10 +225,6 @@ impl VersionedContract {
                     verifications: std::mem::replace(
                         &mut v1.verifications,
                         UnorderedMap::new(StorageKey::Accounts),
-                    ),
-                    used_signatures: std::mem::replace(
-                        &mut v1.used_signatures,
-                        LookupSet::new(StorageKey::UsedSignatures),
                     ),
                     paused: v1.paused,
                     upgrade_timestamp: env::block_timestamp(),
@@ -297,7 +287,6 @@ impl VersionedContract {
             backend_wallet,
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
             verifications: UnorderedMap::new(StorageKey::Accounts),
-            used_signatures: LookupSet::new(StorageKey::UsedSignatures),
             paused: false,
         })
     }
@@ -341,7 +330,6 @@ impl VersionedContract {
                 backend_wallet: v1.backend_wallet,
                 nullifiers: v1.nullifiers,
                 verifications: v1.verifications,
-                used_signatures: v1.used_signatures,
                 paused: v1.paused,
                 upgrade_timestamp: env::block_timestamp(),
             }),
@@ -517,14 +505,6 @@ impl VersionedContract {
         // Verify the NEAR signature
         Self::verify_near_signature(&signature_data);
 
-        // Prevent signature replay
-        let mut sig_array = [0u8; 64];
-        sig_array.copy_from_slice(&signature_data.signature);
-        assert!(
-            !contract.used_signatures.contains(&sig_array),
-            "Signature already used - potential replay attack"
-        );
-
         // Prevent duplicate nullifiers
         assert!(
             !contract.nullifiers.contains(&nullifier),
@@ -549,7 +529,6 @@ impl VersionedContract {
         };
 
         // Store verification and tracking data
-        contract.used_signatures.insert(&sig_array);
         contract.nullifiers.insert(&nullifier);
         contract
             .verifications

@@ -91,6 +91,8 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
       signature: nearSignature.signature,
       nonce: nonceBase64,
       timestamp: nearSignature.timestamp,
+      challenge: nearSignature.challenge,
+      recipient: nearSignature.recipient,
     })
 
     const endpoint = SELF_CONFIG.endpoint

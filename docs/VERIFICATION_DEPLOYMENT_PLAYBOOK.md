@@ -200,7 +200,12 @@ near contract call-function as-read-only $CONTRACT.$PARENT get_backend_wallet \
 
 ## Step 5: Set Up Redis
 
-Session storage requires Redis. Options:
+Redis is required for:
+
+- **Session storage**: User verification flow state
+- **NEP-413 signature nonces**: One-time use tracking + TTL (replay attack prevention)
+
+Options:
 
 - **Vercel Marketplace** (recommended): Add Upstash integration - auto-injects `REDIS_URL`
 - **Upstash** (direct): [upstash.com](https://upstash.com/)
@@ -211,6 +216,8 @@ Connection string format:
 ```
 redis://default:PASSWORD@host:port
 ```
+
+**Security Note**: Redis must support key expiration (TTL) for nonce management. All listed providers support this feature.
 
 ---
 

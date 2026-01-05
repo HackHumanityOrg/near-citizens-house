@@ -169,6 +169,11 @@ export const USERJOT_CONFIG = {
 }
 
 // Application Constants
+export function getSigningMessage(): string {
+  const contractId = NEAR_CONFIG.verificationContractId || "unknown-contract"
+  return `Identify myself for ${contractId} at ${APP_URL}`
+}
+
 export const CONSTANTS = {
-  SIGNING_MESSAGE: "Identify myself",
+  SIGNING_MESSAGE: getSigningMessage(),
 }

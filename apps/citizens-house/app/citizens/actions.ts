@@ -9,6 +9,7 @@ import {
   parseUserContextData,
   verifyNearSignature,
   buildProofData,
+  getSigningMessage,
   nearAccountIdSchema,
   type Verification,
   type ProofData,
@@ -85,12 +86,15 @@ async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Pr
         let signatureError: string | undefined
 
         if (sigData) {
+          const signatureChallenge = sigData.challenge || getSigningMessage()
+          const signatureRecipient = sigData.recipient || sigData.accountId
+
           const sigResult = verifyNearSignature(
-            "Identify myself",
+            signatureChallenge,
             sigData.signature,
             sigData.publicKey,
             sigData.nonce,
-            sigData.accountId,
+            signatureRecipient,
           )
           signatureValid = sigResult.valid
           if (!sigResult.valid) {
@@ -166,7 +170,7 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
   // Validate input parameters with safeParse
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
-    console.error("[Actions] Invalid pagination:", z.treeifyError(params.error))
+    console.error("[Actions] Invalid pagination:", params.error.format())
     return { accounts: [], total: 0 }
   }
 
@@ -181,7 +185,7 @@ export async function checkIsVerified(nearAccountId: string): Promise<boolean> {
   // Validate account ID format
   const parsed = nearAccountIdSchema.safeParse(nearAccountId)
   if (!parsed.success) {
-    console.error("[Actions] Invalid account ID:", z.treeifyError(parsed.error))
+    console.error("[Actions] Invalid account ID:", parsed.error.format())
     return false
   }
 

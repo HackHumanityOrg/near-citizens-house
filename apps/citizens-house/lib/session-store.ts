@@ -14,6 +14,8 @@ interface Session {
 
 // Session expiration time (5 minutes)
 const SESSION_TTL_SECONDS = 5 * 60
+// Signature nonce TTL (10 minutes)
+const NONCE_TTL_SECONDS = 10 * 60
 
 let redis: RedisClientType | null = null
 
@@ -81,4 +83,22 @@ export async function updateSession(
 export async function deleteSession(sessionId: string): Promise<void> {
   const client = await getRedisClient()
   await client.del(getSessionKey(sessionId))
+}
+
+function getNonceKey(accountId: string, nonceBase64: string): string {
+  return `self-nonce:${accountId}:${nonceBase64}`
+}
+
+export async function reserveSignatureNonce(
+  accountId: string,
+  nonceBase64: string,
+  ttlSeconds: number = NONCE_TTL_SECONDS,
+): Promise<boolean> {
+  const client = await getRedisClient()
+  const key = getNonceKey(accountId, nonceBase64)
+  const result = await client.set(key, "1", {
+    EX: ttlSeconds,
+    NX: true,
+  })
+  return result === "OK"
 }
