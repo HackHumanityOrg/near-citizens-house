@@ -82,17 +82,18 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   }, [nearSignature.accountId, isMobile, analytics])
 
   // Build SelfApp during render using useMemo
+  // Include signature data in QR code, but omit challenge/recipient (backend rebuilds these)
   const selfApp = useMemo(() => {
     const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
 
+    // Omit challenge and recipient to reduce QR code size
+    // Backend reconstructs: challenge = getSigningMessage(), recipient = accountId
     const userDefinedData = JSON.stringify({
       accountId: nearSignature.accountId,
       publicKey: nearSignature.publicKey,
       signature: nearSignature.signature,
       nonce: nonceBase64,
       timestamp: nearSignature.timestamp,
-      challenge: nearSignature.challenge,
-      recipient: nearSignature.recipient,
     })
 
     const endpoint = SELF_CONFIG.endpoint

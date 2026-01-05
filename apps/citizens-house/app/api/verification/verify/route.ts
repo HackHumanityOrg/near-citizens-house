@@ -25,6 +25,11 @@ const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
 // Allows for minor time differences between client and server
 const CLOCK_SKEW_MS = 10 * 1000
 
+/**
+ * Parse userDefinedData to extract signature JSON.
+ * The QR code contains signature data without challenge/recipient (to reduce size).
+ * Backend reconstructs these from known values.
+ */
 function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
   if (!userDefinedDataRaw) return null
 
@@ -228,6 +233,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse NEAR signature from userDefinedData
+    // QR code contains signature data without challenge/recipient (to reduce size)
+    // Backend reconstructs these from known values
     const userDefinedDataRaw = selfVerificationResult.userData?.userDefinedData
     const jsonString = parseUserDefinedData(userDefinedDataRaw)
 
@@ -318,40 +325,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Reconstruct challenge and recipient from known values
+    // (not included in QR code to reduce size)
     const expectedChallenge = getSigningMessage()
-    const challenge = typeof data.challenge === "string" ? data.challenge : ""
-    const recipient = typeof data.recipient === "string" ? data.recipient : ""
-
-    if (!challenge || !recipient) {
-      const missingFields = ["challenge", "recipient"].filter((field) => !data[field]).join(", ")
-      return respondWithError({
-        code: "NEAR_SIGNATURE_MISSING",
-        status: 400,
-        details: `Missing NEP-413 fields: ${missingFields}`,
-        stage: "signature_parse",
-        attestationId,
-      })
-    }
-
-    if (challenge !== expectedChallenge) {
-      return respondWithError({
-        code: "NEAR_SIGNATURE_INVALID",
-        status: 400,
-        details: "Challenge does not match this service",
-        stage: "signature_validate",
-        attestationId,
-      })
-    }
-
-    if (recipient !== data.accountId) {
-      return respondWithError({
-        code: "NEAR_SIGNATURE_INVALID",
-        status: 400,
-        details: "Recipient must match accountId",
-        stage: "signature_validate",
-        attestationId,
-      })
-    }
+    const recipient = data.accountId as string // NEP-413 recipient must match accountId
 
     const signatureCheck = verifyNearSignature(
       expectedChallenge,
@@ -429,13 +406,25 @@ export async function POST(request: NextRequest) {
         publicSignals: publicSignals.map(String),
       }
 
+      // Store signature data for on-chain re-verification
+      // challenge and recipient are omitted - backend reconstructs them from:
+      //   challenge = getSigningMessage()
+      //   recipient = accountId
+      const fullUserContextData = JSON.stringify({
+        accountId: data.accountId,
+        publicKey: data.publicKey,
+        signature: data.signature,
+        nonce: nonceBase64,
+        timestamp: signatureTimestamp,
+      })
+
       await verificationDb.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
         attestationId: attestationId.toString(),
         signatureData: nearSignature,
         selfProofData,
-        userContextData,
+        userContextData: fullUserContextData,
       } satisfies VerificationDataWithSignature)
 
       // Revalidate the verifications cache so new verification appears immediately
