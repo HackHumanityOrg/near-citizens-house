@@ -1,3 +1,0 @@
-First: https://1rpc.io/celo
-Second: https://1rpc.io/celo
-Elapsed: 137ms
