@@ -11,7 +11,7 @@
 
 import { getRedisClient } from "./redis"
 import { getAccountCreationDate } from "./bigquery"
-import { ACCOUNT_AGE_CONFIG } from "@near-citizens/shared"
+import { ACCOUNT_AGE_CONFIG, NEAR_CONFIG } from "@near-citizens/shared"
 
 function getAccountCreationCacheKey(accountId: string): string {
   return `account-creation:${accountId}`
@@ -52,6 +52,14 @@ export interface AccountAgeCheckResult {
  * - Account created 30+ days ago - allowed
  */
 export async function checkAccountAge(accountId: string): Promise<AccountAgeCheckResult> {
+  // Skip account age check on testnet (no BigQuery data available for testnet)
+  if (NEAR_CONFIG.networkId === "testnet") {
+    return {
+      allowed: true,
+      reason: "Testnet - account age check skipped",
+    }
+  }
+
   const cacheKey = getAccountCreationCacheKey(accountId)
 
   // Try to get Redis client, but don't fail if unavailable

@@ -31,7 +31,7 @@ describeIfCredentials("Near Citizens House", () => {
     describe("getAccountCreationDate", () => {
       describe("mainnet accounts", () => {
         it("returns genesis_account for 'near' (mainnet genesis account)", async () => {
-          const result = await getAccountCreationDate("near", "mainnet")
+          const result = await getAccountCreationDate("near")
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -41,7 +41,7 @@ describeIfCredentials("Near Citizens House", () => {
         }, 30000)
 
         it("returns genesis_account for 'system' (mainnet genesis account)", async () => {
-          const result = await getAccountCreationDate("system", "mainnet")
+          const result = await getAccountCreationDate("system")
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -51,7 +51,7 @@ describeIfCredentials("Near Citizens House", () => {
 
         it("returns creation date for a known old account", async () => {
           // aurora.near is a well-known account created early in NEAR's history
-          const result = await getAccountCreationDate("aurora.near", "mainnet")
+          const result = await getAccountCreationDate("aurora.near")
 
           expect(result.success).toBe(true)
           if (result.success) {
@@ -65,27 +65,7 @@ describeIfCredentials("Near Citizens House", () => {
         }, 30000)
 
         it("returns not_found for non-existent account", async () => {
-          const result = await getAccountCreationDate("this-account-definitely-does-not-exist-12345.near", "mainnet")
-
-          expect(result.success).toBe(false)
-          if (!result.success) {
-            expect(result.error).toBe("not_found")
-          }
-        }, 30000)
-      })
-
-      describe("testnet accounts", () => {
-        it("returns genesis_account for 'near' (testnet genesis account)", async () => {
-          const result = await getAccountCreationDate("near", "testnet")
-
-          expect(result.success).toBe(false)
-          if (!result.success) {
-            expect(result.error).toBe("genesis_account")
-          }
-        }, 30000)
-
-        it("returns not_found for non-existent testnet account", async () => {
-          const result = await getAccountCreationDate("nonexistent-test-account-xyz-98765.testnet", "testnet")
+          const result = await getAccountCreationDate("this-account-definitely-does-not-exist-12345.near")
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -97,7 +77,7 @@ describeIfCredentials("Near Citizens House", () => {
       describe("account ID handling", () => {
         it("handles sub-accounts correctly", async () => {
           // relay.aurora.near is a sub-account
-          const result = await getAccountCreationDate("relay.aurora.near", "mainnet")
+          const result = await getAccountCreationDate("relay.aurora.near")
 
           // Should either find the account or return not_found (not crash)
           expect(["not_found", "genesis_account"].includes(result.success ? "" : result.error) || result.success).toBe(
@@ -108,7 +88,7 @@ describeIfCredentials("Near Citizens House", () => {
         it("handles implicit accounts (64-char hex)", async () => {
           // Random hex that likely doesn't exist
           const implicitAccount = "0".repeat(64)
-          const result = await getAccountCreationDate(implicitAccount, "mainnet")
+          const result = await getAccountCreationDate(implicitAccount)
 
           // Should return not_found for non-existent implicit account
           expect(result.success).toBe(false)
@@ -119,7 +99,7 @@ describeIfCredentials("Near Citizens House", () => {
 
         it("handles eth-implicit accounts (0x-prefixed)", async () => {
           const ethImplicitAccount = `0x${"0".repeat(40)}`
-          const result = await getAccountCreationDate(ethImplicitAccount, "mainnet")
+          const result = await getAccountCreationDate(ethImplicitAccount)
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -129,7 +109,7 @@ describeIfCredentials("Near Citizens House", () => {
 
         it("handles deterministic accounts (0s-prefixed)", async () => {
           const deterministicAccount = `0s${"0".repeat(40)}`
-          const result = await getAccountCreationDate(deterministicAccount, "mainnet")
+          const result = await getAccountCreationDate(deterministicAccount)
 
           expect(result.success).toBe(false)
           if (!result.success) {

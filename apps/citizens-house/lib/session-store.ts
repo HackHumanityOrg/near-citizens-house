@@ -1,7 +1,7 @@
 // Redis-backed session store for tracking verification status
 // Sessions are stored with automatic TTL expiration
 
-import { getRedisClient, createClient, type RedisClientType } from "redis"
+import { createClient, type RedisClientType } from "redis"
 import { logger } from "./logger"
 
 type SessionStatus = "pending" | "success" | "error"

@@ -16,13 +16,9 @@
 
 import { BigQuery } from "@google-cloud/bigquery"
 
-// NEAR BigQuery public dataset configuration
-const NEAR_DATASET = {
-  mainnet: "bigquery-public-data.crypto_near_mainnet_us",
-  testnet: "bigquery-public-data.crypto_near_testnet_us",
-} as const
-
-type Network = keyof typeof NEAR_DATASET
+// NEAR BigQuery public dataset - only mainnet data is available
+// Note: There is no public testnet dataset in BigQuery
+const NEAR_DATASET = "bigquery-public-data.crypto_near_mainnet_us"
 
 const NEAR_IMPLICIT_ACCOUNT_ID = /^[0-9a-f]{64}$/
 const ETH_IMPLICIT_ACCOUNT_ID = /^0x[0-9a-f]{40}$/
@@ -139,7 +135,6 @@ async function queryFirstActionRow(
   const [rows] = await client.query({
     query,
     params: { accountId, actionKinds },
-    location: "US",
   })
 
   return rows && rows.length > 0 ? (rows[0] as BigQueryRow) : null
@@ -168,31 +163,19 @@ export type AccountCreationQueryResult = AccountCreationResult | AccountCreation
 /**
  * Query the account creation date from NEAR BigQuery public dataset.
  *
+ * Always queries the mainnet dataset (testnet data is not available in BigQuery).
+ * For testnet deployments, account age verification should be skipped at a higher level.
+ *
  * Looks for the first CREATE_ACCOUNT action for named accounts, TRANSFER for implicit
  * accounts, and DETERMINISTIC_STATE_INIT for deterministic accounts.
  * Genesis accounts (created at network launch) may not have CREATE_ACCOUNT actions.
  *
  * @param accountId - The NEAR account ID to look up
- * @param network - "mainnet" or "testnet" (defaults based on NEXT_PUBLIC_NEAR_NETWORK)
  */
-export async function getAccountCreationDate(
-  accountId: string,
-  network?: Network,
-): Promise<AccountCreationQueryResult> {
-  const resolvedNetwork = network || (process.env.NEXT_PUBLIC_NEAR_NETWORK as Network) || "testnet"
-  const dataset = NEAR_DATASET[resolvedNetwork]
-
-  if (!dataset) {
-    return {
-      success: false,
-      accountId,
-      error: "query_error",
-      message: `Unknown network: ${resolvedNetwork}`,
-    }
-  }
-
+export async function getAccountCreationDate(accountId: string): Promise<AccountCreationQueryResult> {
   const client = getBigQueryClient()
   const accountKind = getAccountKind(accountId)
+  const dataset = NEAR_DATASET
 
   try {
     const createAccountRow = await queryFirstActionRow(client, dataset, accountId, ["CREATE_ACCOUNT"])
@@ -244,7 +227,6 @@ export async function getAccountCreationDate(
     const [existsRows] = await client.query({
       query: existsQuery,
       params: { accountId },
-      location: "US",
     })
 
     if (existsRows && existsRows.length > 0) {

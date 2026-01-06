@@ -14,6 +14,11 @@ const hasCredentials = !!(process.env.GCP_BIGQUERY_CREDENTIALS || process.env.GO
 // UNIT TESTS (Mocked)
 // =============================================================================
 
+// Create a hoisted mock for network ID that can be changed between tests
+const { mockNetworkId } = vi.hoisted(() => ({
+  mockNetworkId: { value: "mainnet" as "mainnet" | "testnet" },
+}))
+
 // Mock the BigQuery module for unit tests
 vi.mock("./bigquery", () => ({
   getAccountCreationDate: vi.fn(),
@@ -29,6 +34,11 @@ vi.mock("@near-citizens/shared", () => ({
   ACCOUNT_AGE_CONFIG: {
     minAccountAgeMs: 30 * 24 * 60 * 60 * 1000, // 30 days
     cacheTimeoutSeconds: 24 * 60 * 60, // 24 hours
+  },
+  NEAR_CONFIG: {
+    get networkId() {
+      return mockNetworkId.value
+    },
   },
 }))
 
@@ -340,6 +350,32 @@ describe("Near Citizens House", () => {
 
           expect(result.allowed).toBe(true)
           expect(result.reason).toBe("Genesis account")
+        })
+      })
+
+      describe("testnet bypass", () => {
+        beforeEach(() => {
+          mockNetworkId.value = "testnet"
+        })
+
+        afterEach(() => {
+          mockNetworkId.value = "mainnet"
+        })
+
+        it("allows any account on testnet without BigQuery check", async () => {
+          const result = await checkAccountAge("any-account.testnet")
+
+          expect(result.allowed).toBe(true)
+          expect(result.reason).toContain("Testnet")
+          expect(mockGetAccountCreationDate).not.toHaveBeenCalled()
+          expect(mockRedisClient.get).not.toHaveBeenCalled()
+        })
+
+        it("bypasses account age check for brand new accounts on testnet", async () => {
+          const result = await checkAccountAge("brand-new-account.testnet")
+
+          expect(result.allowed).toBe(true)
+          expect(result.reason).toBe("Testnet - account age check skipped")
         })
       })
     })
