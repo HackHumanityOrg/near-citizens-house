@@ -65,7 +65,7 @@ export function Header() {
           </Link>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <button className="p-1 hover:opacity-70 transition-opacity" aria-label="Navigation menu">
+              <button className="p-1 cursor-pointer hover:opacity-70 transition-opacity" aria-label="Navigation menu">
                 <ChevronDown className="h-2 w-2" />
               </button>
             </DropdownMenuTrigger>
@@ -89,13 +89,13 @@ export function Header() {
 
         {/* Mobile Wallet Button - Right */}
         {isLoading ? (
-          <button disabled className="p-1 opacity-50" aria-label="Connecting wallet">
+          <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
             <Loader2 className="h-5 w-5 animate-spin" />
           </button>
         ) : isConnected ? (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <button aria-label="Account menu">
+              <button aria-label="Account menu" className="cursor-pointer">
                 <Identicon value={accountId || ""} size={32} />
               </button>
             </DropdownMenuTrigger>
@@ -116,7 +116,7 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <button onClick={connect} className="p-1" aria-label="Connect wallet">
+          <button onClick={connect} className="p-1 cursor-pointer" aria-label="Connect wallet">
             <Wallet className="h-5 w-5" />
           </button>
         )}
@@ -161,7 +161,7 @@ export function Header() {
           ) : isConnected ? (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2">
+                <button className="flex items-center gap-2 cursor-pointer">
                   <Identicon value={accountId || ""} size={48} />
                   <ChevronDown className="h-6 w-6" />
                 </button>

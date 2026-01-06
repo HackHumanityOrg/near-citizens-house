@@ -48,7 +48,7 @@ export function VerificationQA() {
               className="border-b border-[#171717] pb-[44px] pt-0 dark:border-[#e3e3ea]"
             >
               <button
-                className="flex w-full items-start justify-between py-0 text-left transition-all gap-4"
+                className="flex w-full items-start justify-between py-0 text-left transition-all gap-4 cursor-pointer"
                 onClick={() => setOpenItem(openItem === faq.value ? undefined : faq.value)}
               >
                 <span

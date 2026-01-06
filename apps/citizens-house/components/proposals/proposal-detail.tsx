@@ -313,7 +313,10 @@ export function ProposalDetail({
             <div className="pt-4 border-t">
               {!isConnected ? (
                 <p className="text-sm text-muted-foreground text-center">
-                  <button onClick={connect} className="text-primary font-medium underline hover:no-underline">
+                  <button
+                    onClick={connect}
+                    className="text-primary font-medium underline cursor-pointer hover:no-underline"
+                  >
                     Connect wallet to vote
                   </button>
                 </p>

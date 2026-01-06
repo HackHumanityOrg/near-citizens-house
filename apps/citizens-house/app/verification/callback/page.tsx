@@ -250,7 +250,7 @@ function VerifyCallbackContent() {
                 {/* Continue Button */}
                 <button
                   onClick={handleContinue}
-                  className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
+                  className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
                 >
                   Continue
                 </button>
@@ -302,14 +302,14 @@ function VerifyCallbackContent() {
                 {isNonRetryableError(errorCode) ? (
                   <button
                     onClick={handleGoBack}
-                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
+                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
                   >
                     Go Back
                   </button>
                 ) : (
                   <button
                     onClick={handleTryAgain}
-                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
+                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
                   >
                     Try Again
                   </button>

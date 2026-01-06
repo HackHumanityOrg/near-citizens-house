@@ -18,7 +18,11 @@ export function ThemeToggle() {
 
   if (!hydrated) {
     return (
-      <button type="button" className="text-foreground hover:opacity-70 transition-opacity" aria-label="Toggle theme">
+      <button
+        type="button"
+        className="text-foreground cursor-pointer hover:opacity-70 transition-opacity"
+        aria-label="Toggle theme"
+      >
         <Sun className="h-6 w-6" />
       </button>
     )
@@ -27,7 +31,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
-      className="text-foreground hover:opacity-70 transition-opacity"
+      className="text-foreground cursor-pointer hover:opacity-70 transition-opacity"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
     >

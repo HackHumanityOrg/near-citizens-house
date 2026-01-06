@@ -23,7 +23,7 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
       {onVoteForProposals && (
         <button
           onClick={onVoteForProposals}
-          className="bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded font-inter font-medium text-base leading-5 mb-10 hover:opacity-90 transition-opacity"
+          className="bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded font-inter font-medium text-base leading-5 mb-10 cursor-pointer hover:opacity-90 transition-opacity"
         >
           Vote for Proposals
         </button>
@@ -70,7 +70,7 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
             <div className="mt-6 pt-6 flex justify-center">
               <button
                 onClick={onDisconnect}
-                className="text-base leading-5 text-[#040404] dark:text-neutral-200 font-inter font-medium py-2.5 hover:opacity-70 transition-opacity"
+                className="text-base leading-5 text-[#040404] dark:text-neutral-200 font-inter font-medium py-2.5 cursor-pointer hover:opacity-70 transition-opacity"
               >
                 Disconnect Wallet
               </button>

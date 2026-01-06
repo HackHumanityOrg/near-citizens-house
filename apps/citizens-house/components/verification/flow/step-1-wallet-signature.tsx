@@ -64,7 +64,7 @@ export function Step1WalletSignature({
                       <button
                         onClick={onSign}
                         disabled={isSigning}
-                        className="flex-1 bg-[#040404] dark:bg-white flex gap-[8px] h-[56px] items-center justify-center px-[24px] py-[14px] rounded-[4px] min-h-px min-w-px hover:opacity-90 transition-opacity disabled:opacity-50"
+                        className="flex-1 bg-[#040404] dark:bg-white flex gap-[8px] h-[56px] items-center justify-center px-[24px] py-[14px] rounded-[4px] min-h-px min-w-px cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
                           {isSigning ? "Signing..." : "Sign Message"}
@@ -78,7 +78,7 @@ export function Step1WalletSignature({
                     <button
                       onClick={onConnect}
                       disabled={isLoading}
-                      className="flex-1 bg-[#040404] dark:bg-white flex gap-[8px] h-[56px] items-center justify-center px-[24px] py-[14px] rounded-[4px] min-h-px min-w-px hover:opacity-90 transition-opacity disabled:opacity-50"
+                      className="flex-1 bg-[#040404] dark:bg-white flex gap-[8px] h-[56px] items-center justify-center px-[24px] py-[14px] rounded-[4px] min-h-px min-w-px cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
                         {isLoading ? "Connecting..." : "Connect NEAR Wallet"}

@@ -71,7 +71,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
           {isNonRetryable ? (
             <button
               onClick={onClose}
-              className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] hover:opacity-90 transition-opacity"
+              className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] cursor-pointer hover:opacity-90 transition-opacity"
             >
               <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
                 Close
@@ -80,7 +80,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
           ) : (
             <button
               onClick={onRetry}
-              className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] hover:opacity-90 transition-opacity"
+              className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] cursor-pointer hover:opacity-90 transition-opacity"
             >
               <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
                 Sign Message

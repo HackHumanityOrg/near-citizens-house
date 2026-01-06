@@ -32,7 +32,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <div className="flex gap-4 justify-center">
           <button
             onClick={() => reset()}
-            className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg transition-colors cursor-pointer"
           >
             Try again
           </button>

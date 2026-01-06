@@ -19,7 +19,7 @@ export function WalletDisplayField({ walletAddress, onDisconnect }: WalletDispla
         <button
           type="button"
           onClick={onDisconnect}
-          className="text-[16px] text-[#171717] dark:text-neutral-300 underline hover:opacity-70 transition-opacity"
+          className="text-[16px] text-[#171717] dark:text-neutral-300 underline cursor-pointer hover:opacity-70 transition-opacity"
         >
           Disconnect
         </button>
