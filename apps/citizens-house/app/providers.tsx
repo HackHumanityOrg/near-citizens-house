@@ -1,8 +1,8 @@
 "use client"
 
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useRef } from "react"
 import { SWRConfig } from "swr"
-import { NearWalletProvider } from "@near-citizens/shared"
+import { NearWalletProvider, useNearWallet } from "@near-citizens/shared"
 import { ErrorBoundary } from "@near-citizens/ui"
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react"
@@ -27,6 +27,8 @@ export function Providers({ children }: ProvidersProps) {
             <Suspense fallback={null}>
               <PostHogPageview />
             </Suspense>
+            {/* Global PostHog identification based on NEAR wallet connection */}
+            <PostHogIdentifier />
             {children}
           </ErrorBoundary>
         </NearWalletProvider>
@@ -91,6 +93,49 @@ export function PostHogPageview() {
       posthog.capture("$pageview", { $current_url: url })
     }
   }, [pathname, searchParams, posthog])
+
+  return null
+}
+
+/**
+ * Global PostHog identification component.
+ * Automatically identifies users by their NEAR wallet address when connected.
+ * This ensures all events are attributed to the correct user, even on page reload.
+ */
+export function PostHogIdentifier() {
+  const posthog = usePostHog()
+  const { accountId, isConnected } = useNearWallet()
+  const identifiedAccountRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!posthog) return
+
+    if (isConnected && accountId) {
+      // Only identify if we haven't already identified this account
+      if (identifiedAccountRef.current !== accountId) {
+        // PostHog identify() signature: identify(distinctId, userPropertiesToSet, userPropertiesToSetOnce)
+        posthog.identify(
+          accountId,
+          // Properties to $set (updated on every identify)
+          {
+            near_account: accountId,
+            wallet_type: "near",
+            near_network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
+          },
+          // Properties to $set_once (only set if not already set)
+          {
+            first_connected_at: new Date().toISOString(),
+            first_connected_url: typeof window !== "undefined" ? window.location.href : "",
+          },
+        )
+        identifiedAccountRef.current = accountId
+      }
+    } else if (!isConnected && identifiedAccountRef.current) {
+      // User disconnected - reset PostHog to anonymous state
+      posthog.reset()
+      identifiedAccountRef.current = null
+    }
+  }, [posthog, accountId, isConnected])
 
   return null
 }

@@ -50,6 +50,7 @@ export async function trackVerificationCompletedServer(props: {
     },
     $set_once: {
       first_verification_at: new Date().toISOString(),
+      ...(props.nationality ? { first_nationality: props.nationality } : {}),
     },
   }
 
@@ -82,6 +83,22 @@ export async function trackVerificationFailedServer(props: {
   const ph = getPostHogServer()
   if (!ph) return
 
+  // Build person properties only if we have a valid accountId
+  // (distinctId might be sessionId or "unknown" for early failures)
+  const personProps =
+    props.accountId && props.nationality
+      ? {
+          $set: {
+            near_account: props.accountId,
+            last_failed_verification_at: new Date().toISOString(),
+            nationality: props.nationality,
+          },
+          $set_once: {
+            first_nationality: props.nationality,
+          },
+        }
+      : {}
+
   const properties = {
     tracking_source: "server",
     error_code: props.errorCode,
@@ -96,6 +113,7 @@ export async function trackVerificationFailedServer(props: {
     ...(typeof props.isMinimumAgeValid === "boolean" ? { is_minimum_age_valid: props.isMinimumAgeValid } : {}),
     ...(typeof props.isOfacValid === "boolean" ? { is_ofac_valid: props.isOfacValid } : {}),
     ...(props.sessionId ? { session_id: props.sessionId } : {}),
+    ...personProps,
   }
 
   await ph.captureImmediate({

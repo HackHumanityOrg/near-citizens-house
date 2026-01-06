@@ -6,35 +6,16 @@ import { useCallback } from "react"
 export function useAnalytics() {
   const posthog = usePostHog()
 
-  // User identification
-  const identifyUser = useCallback(
-    (accountId: string) => {
-      posthog?.identify(accountId, {
-        $set: {
-          near_account: accountId,
-          wallet_type: "near",
-          near_network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
-        },
-        $set_once: {
-          first_connected_at: new Date().toISOString(),
-          first_connected_url: typeof window !== "undefined" ? window.location.href : "",
-        },
-      })
-    },
-    [posthog],
-  )
-
-  const resetUser = useCallback(() => {
-    posthog?.reset()
-  }, [posthog])
+  // Note: User identification is handled globally by PostHogIdentifier in providers.tsx
+  // This ensures all events are attributed to the connected NEAR wallet automatically
 
   // Funnel events
   const trackWalletConnected = useCallback(
     (accountId: string) => {
-      identifyUser(accountId)
+      // Identification happens automatically via PostHogIdentifier
       posthog?.capture("wallet_connected", { account_id: accountId })
     },
-    [posthog, identifyUser],
+    [posthog],
   )
 
   const trackWalletDisconnected = useCallback(
@@ -43,9 +24,9 @@ export function useAnalytics() {
         account_id: accountId,
         step_reached: stepReached,
       })
-      resetUser()
+      // Reset happens automatically via PostHogIdentifier when wallet disconnects
     },
-    [posthog, resetUser],
+    [posthog],
   )
 
   const trackMessageSigned = useCallback(
