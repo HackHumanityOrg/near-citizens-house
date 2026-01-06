@@ -2,6 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useRef } from "react"
 import { useNearWallet } from "@near-citizens/shared"
 import { Button, cn } from "@near-citizens/ui"
 
@@ -18,8 +20,34 @@ export function VerificationCtaButton({
   labelDisconnected = "Connect NEAR Wallet",
   labelConnected = "Get Verified",
 }: VerificationCtaButtonProps) {
+  const router = useRouter()
   const { isConnected, connect, isLoading } = useNearWallet()
   const label = isConnected ? labelConnected : labelDisconnected
+
+  // Track the initial connection state AFTER loading completes
+  // This distinguishes "already connected on page load" from "just connected"
+  const initialConnectionStateRef = useRef<boolean | null>(null)
+  const hasNavigated = useRef(false)
+
+  // Capture initial connection state only AFTER wallet SDK finishes loading
+  useEffect(() => {
+    if (!isLoading && initialConnectionStateRef.current === null) {
+      initialConnectionStateRef.current = isConnected
+    }
+  }, [isLoading, isConnected])
+
+  // Auto-navigate to verification start after wallet connection
+  useEffect(() => {
+    // Only navigate if:
+    // 1. Wallet SDK has finished loading
+    // 2. User is now connected
+    // 3. User was NOT connected when loading completed (they just connected)
+    // 4. We haven't already navigated
+    if (!isLoading && isConnected && initialConnectionStateRef.current === false && !hasNavigated.current) {
+      hasNavigated.current = true
+      router.push("/verification/start")
+    }
+  }, [isLoading, isConnected, router])
 
   // Exact Figma specs: pl-8px pr-24px py-8px, gap-12px, icon: 32x32 with 8px padding
   const sizeClassName = size === "steps" ? "h-[56px]" : ""
