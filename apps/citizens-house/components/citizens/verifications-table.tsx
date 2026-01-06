@@ -105,7 +105,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                       rel="noopener noreferrer"
                       className="text-[14px] md:text-[16px] leading-[24px] text-muted-foreground underline hover:text-foreground transition-colors font-fk-grotesk font-medium"
                     >
-                      View contract on NearBlocks
+                      View verification smart contract
                     </a>
                   </div>
                 </div>
