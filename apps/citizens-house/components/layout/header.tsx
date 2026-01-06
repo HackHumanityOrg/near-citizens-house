@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   Button,
   ThemeToggle,
@@ -19,6 +20,8 @@ import { Loader2, ChevronDown, Wallet } from "lucide-react"
 import { FEATURE_FLAGS } from "@/lib/feature-flags"
 
 export function Header() {
+  const pathname = usePathname()
+  const hideWalletConnector = pathname === "/" || pathname === "/verification"
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
 
@@ -49,39 +52,40 @@ export function Header() {
           {/* Future non-governance routes would go here without flags */}
         </nav>
 
-        {/* Mobile Wallet Button - Right */}
-        {isLoading ? (
-          <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </button>
-        ) : isConnected ? (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button aria-label="Account menu" className="cursor-pointer">
-                <Identicon value={accountId || ""} size={32} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
-            >
-              <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
-                {accountId}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
-              <DropdownMenuItem
-                onClick={disconnect}
-                className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
+        {/* Mobile Wallet Button - Right (hidden on landing page) */}
+        {!hideWalletConnector &&
+          (isLoading ? (
+            <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </button>
+          ) : isConnected ? (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button aria-label="Account menu" className="cursor-pointer">
+                  <Identicon value={accountId || ""} size={32} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
               >
-                Disconnect
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <button onClick={connect} className="p-1 cursor-pointer" aria-label="Connect wallet">
-            <Wallet className="h-5 w-5" />
-          </button>
-        )}
+                <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
+                  {accountId}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
+                <DropdownMenuItem
+                  onClick={disconnect}
+                  className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
+                >
+                  Disconnect
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <button onClick={connect} className="p-1 cursor-pointer" aria-label="Connect wallet">
+              <Wallet className="h-5 w-5" />
+            </button>
+          ))}
       </div>
 
       {/* Desktop Header */}
@@ -109,42 +113,43 @@ export function Header() {
           {/* Future non-governance routes would go here without flags */}
         </nav>
 
-        {/* Desktop Right Side: Wallet + Theme Toggle */}
+        {/* Desktop Right Side: Wallet (hidden on landing page) + Theme Toggle */}
         <div className="flex items-center gap-10 ml-auto">
-          {isLoading ? (
-            <Button variant="citizens-primary" size="citizens-xl" disabled>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Connecting...
-            </Button>
-          ) : isConnected ? (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 cursor-pointer">
-                  <Identicon value={accountId || ""} size={48} />
-                  <ChevronDown className="h-6 w-6" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="min-w-[200px] bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
-              >
-                <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
-                  {accountId}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
-                <DropdownMenuItem
-                  onClick={disconnect}
-                  className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
+          {!hideWalletConnector &&
+            (isLoading ? (
+              <Button variant="citizens-primary" size="citizens-xl" disabled>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Connecting...
+              </Button>
+            ) : isConnected ? (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 cursor-pointer">
+                    <Identicon value={accountId || ""} size={48} />
+                    <ChevronDown className="h-6 w-6" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="min-w-[200px] bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
                 >
-                  Disconnect
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
-              Connect Wallet
-            </Button>
-          )}
+                  <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
+                    {accountId}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
+                  <DropdownMenuItem
+                    onClick={disconnect}
+                    className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
+                  >
+                    Disconnect
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
+                Connect Wallet
+              </Button>
+            ))}
 
           <ThemeToggle />
         </div>
