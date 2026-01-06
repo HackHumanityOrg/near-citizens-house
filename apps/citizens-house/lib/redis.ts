@@ -10,6 +10,7 @@
  */
 
 import { createClient } from "redis"
+import { logger, Op } from "./logger"
 
 // Type for the Redis client returned by createClient
 type RedisClient = ReturnType<typeof createClient>
@@ -36,11 +37,16 @@ export async function getRedisClient(): Promise<RedisClient> {
       const client = createClient({
         url: redisUrl,
       })
-      client.on("error", (err) => console.error("[Redis] Client Error:", err))
+      client.on("error", (err) =>
+        logger.error("Redis client error", {
+          operation: Op.REDIS.CONNECT,
+          error_message: err instanceof Error ? err.message : String(err),
+        }),
+      )
 
       try {
         await client.connect()
-        console.log("[Redis] Connected successfully")
+        logger.info("Redis connected successfully", { operation: Op.REDIS.CONNECT })
         return client
       } catch (err) {
         // Reset the promise so subsequent calls can retry

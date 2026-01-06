@@ -17,7 +17,7 @@ import {
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { checkAccountAge } from "@/lib/account-age"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
-import { createApiEvent, logger } from "@/lib/logger"
+import { createApiEvent, logger, Op } from "@/lib/logger"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
@@ -91,7 +91,7 @@ async function hasFullAccessKey(accountId: string, publicKey: string): Promise<b
     return isFullAccessPermission(accessKey.permission)
   } catch (error) {
     logger.warn("Failed to query access key", {
-      operation: "verification.access_key_check",
+      operation: Op.VERIFICATION.ACCESS_KEY_CHECK,
       account_id: accountId,
       error_message: error instanceof Error ? error.message : "Unknown error",
     })
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       })
     } catch (error) {
       logger.warn("Failed to track verification_failed event", {
-        operation: "verification.analytics",
+        operation: Op.VERIFICATION.ANALYTICS,
         error_message: error instanceof Error ? error.message : "Unknown error",
       })
     }
@@ -403,11 +403,13 @@ export async function POST(request: NextRequest) {
       const errorStatus = hasAccountAge ? 400 : 500
       const errorMessage = hasAccountAge ? accountAgeResult.reason || "Account too new" : "Unable to verify account age"
 
-      console.log(`[Verify] Account age check failed for ${data.accountId}:`, {
+      logger.warn("Account age check failed", {
+        operation: Op.VERIFICATION.ACCOUNT_AGE,
+        account_id: data.accountId as string,
         reason: accountAgeResult.reason,
-        createdAt: accountAgeResult.createdAt,
-        accountAgeDays: accountAgeResult.accountAgeDays,
-        errorCode,
+        created_at: accountAgeResult.createdAt,
+        account_age_days: accountAgeResult.accountAgeDays,
+        error_code: errorCode,
       })
 
       // Update session status for deep link callback (mobile flow)
@@ -417,7 +419,11 @@ export async function POST(request: NextRequest) {
           error: errorMessage,
           errorCode,
         })
-        console.log(`[Verify] Updated session ${sessionId} with status: error (${errorCode})`)
+        logger.debug("Updated session with error status", {
+          operation: Op.VERIFICATION.SESSION_UPDATE,
+          session_id: sessionId,
+          error_code: errorCode,
+        })
       }
 
       return respondWithError({
@@ -431,9 +437,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`[Verify] Account age check passed for ${data.accountId}:`, {
-      createdAt: accountAgeResult.createdAt,
-      accountAgeDays: accountAgeResult.accountAgeDays,
+    logger.info("Account age check passed", {
+      operation: Op.VERIFICATION.ACCOUNT_AGE,
+      account_id: data.accountId as string,
+      created_at: accountAgeResult.createdAt,
+      account_age_days: accountAgeResult.accountAgeDays,
     })
 
     const nonceBase64 = Buffer.from(nonce as number[]).toString("base64")
@@ -444,9 +452,9 @@ export async function POST(request: NextRequest) {
 
     if (!nonceReserved) {
       logger.warn("Nonce replay attempt detected", {
-        operation: "verification.nonce_check",
+        operation: Op.VERIFICATION.NONCE_CHECK,
         account_id: data.accountId as string,
-        "verification.attestation_id": attestationId.toString(),
+        attestation_id: attestationId.toString(),
         nonce_base64: nonceBase64,
       })
       return respondWithError({
@@ -530,7 +538,7 @@ export async function POST(request: NextRequest) {
         })
       } catch (error) {
         logger.warn("Failed to track verification_completed event", {
-          operation: "verification.analytics",
+          operation: Op.VERIFICATION.ANALYTICS,
           account_id: nearSignature.accountId,
           error_message: error instanceof Error ? error.message : "Unknown error",
         })

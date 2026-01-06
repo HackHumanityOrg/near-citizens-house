@@ -15,6 +15,7 @@
  */
 
 import { BigQuery } from "@google-cloud/bigquery"
+import { logger, Op } from "./logger"
 
 // NEAR BigQuery public dataset - only mainnet data is available
 // Note: There is no public testnet dataset in BigQuery
@@ -63,7 +64,10 @@ function createBigQueryClient(): BigQuery {
         },
       })
     } catch (error) {
-      console.error("[BigQuery] Failed to parse GCP_BIGQUERY_CREDENTIALS:", error)
+      logger.error("Failed to parse GCP_BIGQUERY_CREDENTIALS", {
+        operation: Op.BIGQUERY.INIT,
+        error_message: error instanceof Error ? error.message : String(error),
+      })
       throw new Error("Invalid GCP_BIGQUERY_CREDENTIALS format")
     }
   }
@@ -246,7 +250,11 @@ export async function getAccountCreationDate(accountId: string): Promise<Account
       message: "Account not found in NEAR blockchain data",
     }
   } catch (error) {
-    console.error(`[BigQuery] Error querying account creation for ${accountId}:`, error)
+    logger.error("Error querying account creation", {
+      operation: Op.BIGQUERY.QUERY,
+      account_id: accountId,
+      error_message: error instanceof Error ? error.message : "Unknown query error",
+    })
     return {
       success: false,
       accountId,

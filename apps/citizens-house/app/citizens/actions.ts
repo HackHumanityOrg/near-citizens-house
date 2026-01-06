@@ -14,7 +14,7 @@ import {
   type Verification,
   type ProofData,
 } from "@near-citizens/shared"
-import { createServerActionEvent, logger } from "@/lib/logger"
+import { createServerActionEvent, logger, Op } from "@/lib/logger"
 
 const paginationSchema = z.object({
   page: z.number().int().min(0).max(100000),
@@ -67,7 +67,7 @@ async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Pr
           // Log successful verification with RPC endpoint used
           if (zkResult.isValid && zkResult.rpcUrl) {
             logger.debug("ZK proof verified", {
-              operation: "verification.zk_verify",
+              operation: Op.VERIFICATION.ZK_VERIFY,
               account_id: account.nearAccountId,
               rpc_url: zkResult.rpcUrl,
             })
@@ -75,7 +75,7 @@ async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Pr
         } catch (error) {
           // Graceful degradation: RPC failed but account is verified by contract
           logger.warn("ZK re-verification failed, but account is contract-verified", {
-            operation: "verification.zk_verify",
+            operation: Op.VERIFICATION.ZK_VERIFY,
             account_id: account.nearAccountId,
             error_message: error instanceof Error ? error.message : String(error),
           })
@@ -132,7 +132,7 @@ async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Pr
       } catch (error) {
         // Final catch-all: Always display account even if verification completely fails
         logger.error("Unexpected error verifying account", {
-          operation: "verification.verify_account",
+          operation: Op.VERIFICATION.VERIFY_ACCOUNT,
           account_id: account.nearAccountId,
           error_message: error instanceof Error ? error.message : String(error),
         })

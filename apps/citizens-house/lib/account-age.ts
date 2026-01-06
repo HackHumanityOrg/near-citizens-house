@@ -12,6 +12,7 @@
 import { getRedisClient } from "./redis"
 import { getAccountCreationDate } from "./bigquery"
 import { ACCOUNT_AGE_CONFIG, NEAR_CONFIG } from "@near-citizens/shared"
+import { logger, Op } from "./logger"
 
 function getAccountCreationCacheKey(accountId: string): string {
   return `account-creation:${accountId}`
@@ -67,7 +68,10 @@ export async function checkAccountAge(accountId: string): Promise<AccountAgeChec
   try {
     client = await getRedisClient()
   } catch (error) {
-    console.warn("[AccountAge] Redis unavailable, falling back to BigQuery:", error)
+    logger.warn("Redis unavailable, falling back to BigQuery", {
+      operation: Op.REDIS.CONNECT,
+      error_message: error instanceof Error ? error.message : String(error),
+    })
   }
 
   // Check cache first (if Redis available)
@@ -78,16 +82,29 @@ export async function checkAccountAge(accountId: string): Promise<AccountAgeChec
       const cachedData = await client.get(cacheKey)
       if (cachedData) {
         creationInfo = JSON.parse(cachedData) as CachedAccountCreation
-        console.log(`[AccountAge] Cache hit for ${accountId}, createdAt: ${creationInfo.createdAt}`)
+        logger.debug("Account creation cache hit", {
+          operation: Op.ACCOUNT_AGE.CACHE_READ,
+          account_id: accountId,
+          created_at: creationInfo.createdAt,
+          cache_hit: true,
+        })
       }
     } catch (error) {
-      console.warn("[AccountAge] Cache read failed:", error)
+      logger.warn("Cache read failed", {
+        operation: Op.ACCOUNT_AGE.CACHE_READ,
+        account_id: accountId,
+        error_message: error instanceof Error ? error.message : String(error),
+      })
     }
   }
 
   if (!creationInfo) {
     // Fetch from BigQuery
-    console.log(`[AccountAge] Cache miss for ${accountId}, querying BigQuery`)
+    logger.debug("Account creation cache miss, querying BigQuery", {
+      operation: Op.ACCOUNT_AGE.CACHE_READ,
+      account_id: accountId,
+      cache_hit: false,
+    })
     const queryResult = await getAccountCreationDate(accountId)
 
     if (!queryResult.success) {
@@ -98,10 +115,20 @@ export async function checkAccountAge(accountId: string): Promise<AccountAgeChec
           fetchedAt: Date.now(),
           isGenesis: true,
         }
-        console.log(`[AccountAge] Account ${accountId} is a genesis account - allowed`)
+        logger.info("Genesis account detected", {
+          operation: Op.ACCOUNT_AGE.CHECK,
+          account_id: accountId,
+          is_genesis: true,
+          allowed: true,
+        })
       } else {
         // Query failed or account not found - reject verification (fail closed)
-        console.error(`[AccountAge] Failed to fetch account info for ${accountId}:`, queryResult.error)
+        logger.error("Failed to fetch account info", {
+          operation: Op.ACCOUNT_AGE.QUERY,
+          account_id: accountId,
+          error_type: queryResult.error,
+          error_message: queryResult.message,
+        })
         return {
           allowed: false,
           reason: queryResult.error === "not_found" ? "Account not found" : "Unable to verify account age",
@@ -121,16 +148,28 @@ export async function checkAccountAge(accountId: string): Promise<AccountAgeChec
         await client.set(cacheKey, JSON.stringify(creationInfo), {
           EX: ACCOUNT_AGE_CONFIG.cacheTimeoutSeconds,
         })
-        console.log(`[AccountAge] Cached creation info for ${accountId}`)
+        logger.debug("Cached account creation info", {
+          operation: Op.ACCOUNT_AGE.CACHE_WRITE,
+          account_id: accountId,
+        })
       } catch (error) {
-        console.warn("[AccountAge] Cache write failed:", error)
+        logger.warn("Cache write failed", {
+          operation: Op.ACCOUNT_AGE.CACHE_WRITE,
+          account_id: accountId,
+          error_message: error instanceof Error ? error.message : String(error),
+        })
       }
     }
   }
 
   // Genesis accounts are allowed - they're the most established
   if (creationInfo.isGenesis || creationInfo.createdAt === null) {
-    console.log(`[AccountAge] Account ${accountId} is a genesis account - allowed`)
+    logger.info("Genesis account allowed", {
+      operation: Op.ACCOUNT_AGE.CHECK,
+      account_id: accountId,
+      is_genesis: true,
+      allowed: true,
+    })
     return {
       allowed: true,
       reason: "Genesis account",
@@ -143,9 +182,12 @@ export async function checkAccountAge(accountId: string): Promise<AccountAgeChec
   const accountAgeMs = now - creationInfo.createdAt
   const accountAgeDays = Math.floor(accountAgeMs / (24 * 60 * 60 * 1000))
 
-  console.log(
-    `[AccountAge] Account ${accountId} created ${accountAgeDays} days ago (${new Date(creationInfo.createdAt).toISOString()})`,
-  )
+  logger.info("Account age calculated", {
+    operation: Op.ACCOUNT_AGE.CHECK,
+    account_id: accountId,
+    account_age_days: accountAgeDays,
+    created_at: new Date(creationInfo.createdAt).toISOString(),
+  })
 
   // Check if account meets minimum age requirement
   if (accountAgeMs < ACCOUNT_AGE_CONFIG.minAccountAgeMs) {
