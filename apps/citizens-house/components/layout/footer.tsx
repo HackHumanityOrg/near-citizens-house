@@ -1,10 +1,16 @@
+import Link from "next/link"
+
 export function Footer() {
   return (
     <footer className="bg-white dark:bg-black border-t border-black/10 dark:border-black">
       {/* Desktop Footer */}
       <div className="hidden md:flex items-end justify-end p-20">
-        {/* Built by HackHumanity • GitHub */}
+        {/* Citizens • Built by HackHumanity • GitHub */}
         <div className="flex items-center gap-6">
+          <Link href="/citizens" className="text-sm text-[#040404] dark:text-white hover:opacity-70 transition-opacity">
+            Citizens
+          </Link>
+          <span className="text-sm text-[#040404] dark:text-white">•</span>
           <a
             href="https://hackhumanity.com"
             target="_blank"
@@ -37,7 +43,7 @@ export function Footer() {
       </div>
 
       {/* Mobile Footer */}
-      <div className="flex md:hidden flex-col items-end gap-5 p-6">
+      <div className="flex md:hidden flex-col items-center gap-5 p-6">
         {/* GitHub icon */}
         <a
           href="https://github.com/HackHumanityOrg/near-citizens-house"
@@ -59,15 +65,21 @@ export function Footer() {
           </svg>
         </a>
 
-        {/* Built by HackHumanity */}
-        <a
-          href="https://hackhumanity.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-[#040404] dark:text-white hover:opacity-70 transition-opacity tracking-[0.14px]"
-        >
-          Built by HackHumanity
-        </a>
+        {/* Citizens • Built by HackHumanity */}
+        <div className="flex items-center gap-2">
+          <Link href="/citizens" className="text-sm text-[#040404] dark:text-white hover:opacity-70 transition-opacity">
+            Citizens
+          </Link>
+          <span className="text-sm text-[#040404] dark:text-white">•</span>
+          <a
+            href="https://hackhumanity.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-[#040404] dark:text-white hover:opacity-70 transition-opacity tracking-[0.14px]"
+          >
+            Built by HackHumanity
+          </a>
+        </div>
       </div>
     </footer>
   )
