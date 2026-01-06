@@ -460,8 +460,9 @@ NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT=verification-v1.widefile4023.testnet
 
 # Backend wallet (for signing transactions)
 NEAR_ACCOUNT_ID=widefile4023.testnet
-# IMPORTANT: Never store private keys in .env files for production!
-# Use keychain signing (sign-with-keychain) as shown in deployment steps above.
+NEAR_PRIVATE_KEY=ed25519:...
+# Note: For Vercel deployment, private key must be set as environment variable.
+# The keychain signing in CLI examples above is for local operations only.
 ```
 
 ---

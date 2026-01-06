@@ -207,9 +207,9 @@ Redis is required for:
 
 Options:
 
-- **Vercel Marketplace** (recommended): Add Upstash integration - auto-injects `REDIS_URL`
-- **Upstash** (direct): [upstash.com](https://upstash.com/)
-- **Redis Labs**: [redis.com/try-free](https://redis.com/try-free/)
+- **Redis Cloud** (recommended): Add via Vercel Marketplace - auto-injects `REDIS_URL`
+- **Upstash**: [upstash.com](https://upstash.com/)
+- **Any Redis provider**: Must support key expiration (TTL)
 
 Connection string format:
 
@@ -223,7 +223,19 @@ redis://default:PASSWORD@host:port
 
 ## Step 6: Deploy Frontend to Vercel
 
-### 6.1 Connect repository
+### Option A: One-Click Deploy (Recommended)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,GCP_BIGQUERY_CREDENTIALS&envDescription=Production%20deployment.%20Mark%20NEAR_PRIVATE_KEY%20as%20Sensitive%20in%20Vercel%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs&skippable-integrations=1)
+
+1. Connect GitHub and create the repository
+2. Add Redis Cloud store (or skip to configure manually)
+3. Fill in environment variables from Steps 0-4
+4. Deploy
+5. **Important**: After deployment, go to Project Settings → Environment Variables and mark `NEAR_PRIVATE_KEY` as **Sensitive** (click edit → check "Sensitive"). This ensures the private key cannot be read again.
+
+### Option B: Manual Setup
+
+#### 6.1 Connect repository
 
 1. Go to [vercel.com](https://vercel.com)
 2. Import your GitHub repository
@@ -248,24 +260,40 @@ Vercel auto-detects pnpm workspace from the lockfile and installs all workspace 
 
 **Required:**
 
-| Variable                                 | Example                                | Notes                                             |
-| ---------------------------------------- | -------------------------------------- | ------------------------------------------------- |
-| `NEXT_PUBLIC_NEAR_NETWORK`               | `testnet`                              | or `mainnet`                                      |
-| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | `verification-v1.your-account.testnet` | `$CONTRACT.$PARENT`                               |
-| `NEXT_PUBLIC_SELF_NETWORK`               | `mainnet`                              | `mainnet` for real passports                      |
-| `NEXT_PUBLIC_APP_URL`                    | `https://your-app.vercel.app`          |                                                   |
-| `NEAR_ACCOUNT_ID`                        | `backend-wallet.your-account.testnet`  | `$BACKEND_WALLET.$PARENT` - Sensitive             |
-| `NEAR_PRIVATE_KEY`                       | `ed25519:...`                          | Sensitive                                         |
-| `REDIS_URL`                              | `redis://...`                          | Sensitive (auto-set if using Upstash integration) |
+| Variable                                 | Example                                | Notes                                        |
+| ---------------------------------------- | -------------------------------------- | -------------------------------------------- |
+| `NEXT_PUBLIC_NEAR_NETWORK`               | `testnet`                              | or `mainnet`                                 |
+| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | `verification-v1.your-account.testnet` | `$CONTRACT.$PARENT`                          |
+| `NEXT_PUBLIC_SELF_NETWORK`               | `mainnet`                              | `mainnet` for real passports                 |
+| `NEXT_PUBLIC_APP_URL`                    | `https://your-app.vercel.app`          |                                              |
+| `NEAR_ACCOUNT_ID`                        | `backend-wallet.your-account.testnet`  | `$BACKEND_WALLET.$PARENT`                    |
+| `NEAR_PRIVATE_KEY`                       | `ed25519:...`                          | **Mark as Sensitive in Vercel after deploy** |
+| `REDIS_URL`                              | `redis://...`                          | Auto-set by Redis Cloud integration          |
+| `GCP_BIGQUERY_CREDENTIALS`               | `{"type":"service_account",...}`       | Mainnet only - for account age verification  |
 
 **Optional:**
 
-| Variable                         | Purpose                                                 |
-| -------------------------------- | ------------------------------------------------------- |
-| `NEXT_PUBLIC_NEAR_RPC_URL`       | Custom NEAR RPC (default: rpc.mainnet/testnet.near.org) |
-| `CELO_RPC_URL`                   | Custom Celo RPC (default: forno.celo.org)               |
-| `NEXT_PUBLIC_POSTHOG_KEY`        | PostHog analytics                                       |
-| `NEXT_PUBLIC_USERJOT_PROJECT_ID` | UserJot feedback widget                                 |
+| Variable                               | Purpose                                                 |
+| -------------------------------------- | ------------------------------------------------------- |
+| `NEXT_PUBLIC_NEAR_RPC_URL`             | Custom NEAR RPC (default: rpc.mainnet/testnet.near.org) |
+| `CELO_RPC_URL`                         | Custom Celo RPC (default: forno.celo.org)               |
+| `NEXT_PUBLIC_POSTHOG_KEY`              | PostHog analytics                                       |
+| `NEXT_PUBLIC_USERJOT_PROJECT_ID`       | UserJot feedback widget                                 |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect support (MyNearWallet, Unity Wallet)      |
+
+**Security notes:**
+
+After deployment, mark `NEAR_PRIVATE_KEY` as **Sensitive** in the Vercel dashboard:
+
+1. Go to Project Settings → Environment Variables
+2. Click the three dots next to `NEAR_PRIVATE_KEY` → Edit
+3. Check the **Sensitive** checkbox and save
+
+Once marked as Sensitive, the value can never be read again (even by project owners). This protects your private key from accidental exposure.
+
+**Network-specific notes:**
+
+- `GCP_BIGQUERY_CREDENTIALS`: Only required for **mainnet** deployments. On testnet, account age verification is skipped automatically. For mainnet, this is used to verify accounts are at least 30 days old (Sybil resistance). Create a GCP service account with BigQuery read access and paste the JSON credentials.
 
 ---
 
