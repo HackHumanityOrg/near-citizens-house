@@ -1,7 +1,8 @@
 // Redis-backed session store for tracking verification status
 // Sessions are stored with automatic TTL expiration
 
-import { getRedisClient } from "./redis"
+import { createClient, type RedisClientType } from "redis"
+import { logger } from "./logger"
 
 type SessionStatus = "pending" | "success" | "error"
 
@@ -17,6 +18,30 @@ interface Session {
 const SESSION_TTL_SECONDS = 5 * 60
 // Signature nonce TTL (10 minutes)
 const NONCE_TTL_SECONDS = 10 * 60
+
+let redis: RedisClientType | null = null
+
+async function getRedisClient(): Promise<RedisClientType> {
+  if (!redis) {
+    const redisUrl = process.env.REDIS_URL
+    if (!redisUrl) {
+      throw new Error("REDIS_URL environment variable is not set")
+    }
+
+    redis = createClient({
+      url: redisUrl,
+    })
+    redis.on("error", (err) =>
+      logger.error("Redis client error", {
+        operation: "redis.connection",
+        error_message: err instanceof Error ? err.message : String(err),
+      }),
+    )
+    await redis.connect()
+    logger.info("Redis connected successfully", { operation: "redis.connection" })
+  }
+  return redis
+}
 
 function getSessionKey(sessionId: string): string {
   return `self-session:${sessionId}`
