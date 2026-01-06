@@ -154,117 +154,136 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   }
 
   return (
-    <div className="flex flex-col items-center pb-0 pt-[40px] w-full px-4">
-      <div className="flex flex-col items-center w-full">
-        <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center p-4 sm:p-[40px]">
-          <div className="flex flex-col items-center w-full">
-            <div className="flex flex-col lg:flex-row gap-8 lg:gap-[80px] items-start justify-center w-full">
-              {/* Left Column: QR Code or Deep Link */}
-              <div className="flex flex-col items-center pt-0 lg:pt-[40px] w-full lg:w-auto">
-                {/* Mobile: Open Self App button */}
-                <div className="md:hidden flex flex-col items-center w-full">
-                  <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-[24px]">
-                    Open the Self app to verify
-                  </p>
-                  <Button
-                    onClick={handleOpenSelfApp}
-                    size="lg"
-                    className="w-full bg-[#ffda1e] hover:bg-[#e5c41a] text-black"
-                  >
-                    Open Self App
-                  </Button>
+    <div className="w-full">
+      <div className="flex flex-col gap-[24px] items-center text-center w-full py-[40px] px-4">
+        <p className="text-[18px] sm:text-[22px] leading-[28px] text-[#878787] dark:text-[#a3a3a3] font-medium">
+          Step 2 of 2
+        </p>
+        <h1 className="text-[32px] sm:text-[44px] leading-[40px] sm:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium md:hidden">
+          Verify with Self
+        </h1>
+        <h1 className="hidden md:block text-[32px] sm:text-[44px] leading-[40px] sm:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+          Scan QR Code
+        </h1>
+        <p className="text-[20px] sm:text-[28px] leading-[28px] sm:leading-[36px] text-black dark:text-neutral-200 font-normal md:hidden">
+          Open the Self app to verify your passport and complete verification.
+        </p>
+        <p className="hidden md:block text-[20px] sm:text-[28px] leading-[28px] sm:leading-[36px] text-black dark:text-neutral-200 font-normal">
+          Use the Self mobile app to scan this QR code and generate your passport proof.
+        </p>
+      </div>
+      <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
+        <div className="flex flex-col items-center w-full">
+          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center p-4 sm:p-[40px]">
+            <div className="flex flex-col items-center w-full">
+              <div className="flex flex-col lg:flex-row gap-8 lg:gap-[80px] items-start justify-center w-full">
+                {/* Left Column: QR Code or Deep Link */}
+                <div className="flex flex-col items-center pt-0 lg:pt-[40px] w-full lg:w-auto">
+                  {/* Mobile: Open Self App button */}
+                  <div className="md:hidden flex flex-col items-center w-full">
+                    <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-[24px]">
+                      Open the Self app to verify
+                    </p>
+                    <Button
+                      onClick={handleOpenSelfApp}
+                      size="lg"
+                      className="w-full bg-[#ffda1e] hover:bg-[#e5c41a] text-black"
+                    >
+                      Open Self App
+                    </Button>
+                  </div>
+
+                  {/* Desktop: QR Code */}
+                  <div className="hidden md:flex flex-col items-center">
+                    <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-4">
+                      Scan the QR code to use the Self app.
+                    </p>
+                    <div className="size-[240px] sm:size-[296px]">
+                      <SelfQRcodeWrapper selfApp={selfAppDesktop} onSuccess={handleSuccess} onError={handleError} />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Desktop: QR Code */}
-                <div className="hidden md:flex flex-col items-center">
-                  <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-4">
-                    Scan the QR code to use the Self app.
-                  </p>
-                  <div className="size-[240px] sm:size-[296px]">
-                    <SelfQRcodeWrapper selfApp={selfAppDesktop} onSuccess={handleSuccess} onError={handleError} />
+                {/* Right Column: Instructions Panel */}
+                <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full lg:w-[503px] p-6 sm:p-[32px] flex flex-col gap-[24px] items-center">
+                  {/* How to verify */}
+                  <div className="flex flex-col gap-[16px] items-start w-full max-w-[428px]">
+                    <p className="text-[22px] leading-[28px] font-medium text-black dark:text-white">How to verify?</p>
+                    <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
+                      <p className="leading-[24px]">To get verified, you need to follow these steps:</p>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Right Column: Instructions Panel */}
-              <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full lg:w-[503px] p-6 sm:p-[32px] flex flex-col gap-[24px] items-center">
-                {/* How to verify */}
-                <div className="flex flex-col gap-[16px] items-start w-full max-w-[428px]">
-                  <p className="text-[22px] leading-[28px] font-medium text-black dark:text-white">How to verify?</p>
-                  <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
-                    <p className="leading-[24px]">To get verified, you need to follow these steps:</p>
+                  {/* Numbered Steps */}
+                  <div className="flex flex-col gap-[16px] items-start w-full">
+                    <div className="flex gap-[8px] items-start w-full">
+                      <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
+                        01
+                      </p>
+                      <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
+                        Download the Self app on your mobile device
+                      </p>
+                    </div>
+                    <div className="flex gap-[8px] items-start w-full">
+                      <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
+                        02
+                      </p>
+                      <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
+                        Open the app and complete your ID verification
+                      </p>
+                    </div>
+                    <div className="flex gap-[8px] items-start w-full">
+                      <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
+                        03
+                      </p>
+                      {/* Mobile text */}
+                      <p className="md:hidden text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
+                        Tap the button above to open Self and complete verification
+                      </p>
+                      {/* Desktop text */}
+                      <p className="hidden md:block text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
+                        Return here and scan the QR code with Self app
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Numbered Steps */}
-                <div className="flex flex-col gap-[16px] items-start w-full">
-                  <div className="flex gap-[8px] items-start w-full">
-                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
-                      01
-                    </p>
-                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
-                      Download the Self app on your mobile device
+                  {/* Divider */}
+                  <div className="h-px w-full relative">
+                    <div className="absolute h-0 left-0 right-0 top-[calc(50%+0.5px)] translate-y-[-50%]">
+                      <div className="absolute inset-[-1px_0_0_0] border-t border-black dark:border-white" />
+                    </div>
+                  </div>
+
+                  {/* Privacy Info */}
+                  <div className="flex flex-col gap-[8px] items-start w-full">
+                    <div className="flex gap-[8px] items-center">
+                      <Info className="w-[22px] h-[22px] text-black dark:text-white" />
+                      <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
+                        <p className="leading-[24px]">Your Privacy is Protected</p>
+                      </div>
+                    </div>
+                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
+                      Your ID documents are never stored. Only a cryptographic proof of uniqueness is retained.
                     </p>
                   </div>
-                  <div className="flex gap-[8px] items-start w-full">
-                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
-                      02
-                    </p>
-                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
-                      Open the app and complete your ID verification
-                    </p>
-                  </div>
-                  <div className="flex gap-[8px] items-start w-full">
-                    <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
-                      03
-                    </p>
+
+                  {/* Failed Verification Info */}
+                  <div className="flex flex-col gap-[8px] items-start w-full">
+                    <div className="flex gap-[8px] items-center">
+                      <Ban className="w-[22px] h-[22px] text-black dark:text-white" />
+                      <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
+                        <p className="leading-[24px]">Verification Failed</p>
+                      </div>
+                    </div>
                     {/* Mobile text */}
-                    <p className="md:hidden text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
-                      Tap the button above to open Self and complete verification
+                    <p className="md:hidden text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
+                      If verification fails, simply redo the signature.
                     </p>
                     {/* Desktop text */}
-                    <p className="hidden md:block text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
-                      Return here and scan the QR code with Self app
+                    <p className="hidden md:block text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
+                      If your QR code scan returns &quot;Failed verification,&quot; simply redo the signature.
                     </p>
                   </div>
-                </div>
-
-                {/* Divider */}
-                <div className="h-px w-full relative">
-                  <div className="absolute h-0 left-0 right-0 top-[calc(50%+0.5px)] translate-y-[-50%]">
-                    <div className="absolute inset-[-1px_0_0_0] border-t border-black dark:border-white" />
-                  </div>
-                </div>
-
-                {/* Privacy Info */}
-                <div className="flex flex-col gap-[8px] items-start w-full">
-                  <div className="flex gap-[8px] items-center">
-                    <Info className="w-[22px] h-[22px] text-black dark:text-white" />
-                    <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
-                      <p className="leading-[24px]">Your Privacy is Protected</p>
-                    </div>
-                  </div>
-                  <p className="text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
-                    Your ID documents are never stored. Only a cryptographic proof of uniqueness is retained.
-                  </p>
-                </div>
-
-                {/* Failed Verification Info */}
-                <div className="flex flex-col gap-[8px] items-start w-full">
-                  <div className="flex gap-[8px] items-center">
-                    <Ban className="w-[22px] h-[22px] text-black dark:text-white" />
-                    <div className="flex flex-col justify-center text-[16px] font-fk-grotesk text-black dark:text-neutral-200 text-center leading-[0]">
-                      <p className="leading-[24px]">Verification Failed</p>
-                    </div>
-                  </div>
-                  {/* Mobile text */}
-                  <p className="md:hidden text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
-                    If verification fails, simply redo the signature.
-                  </p>
-                  {/* Desktop text */}
-                  <p className="hidden md:block text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
-                    If your QR code scan returns &quot;Failed verification,&quot; simply redo the signature.
-                  </p>
                 </div>
               </div>
             </div>

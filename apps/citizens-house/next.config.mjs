@@ -11,6 +11,14 @@ const nextConfig = {
   turbopack: {},
   webpack: (config) => {
     config.resolve.fallback = { fs: false, net: false, tls: false }
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      {
+        module: /require-in-the-middle/,
+        message:
+          /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
+      },
+    ]
     return config
   },
   transpilePackages: ["@hot-labs/near-connect", "@walletconnect/sign-client"],

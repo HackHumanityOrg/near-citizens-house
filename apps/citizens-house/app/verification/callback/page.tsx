@@ -325,13 +325,23 @@ function VerifyCallbackContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-[#f2f2f2] dark:bg-neutral-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-[650px] bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
-        <div className="flex flex-col items-center gap-6">
-          <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
-          <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-            Loading...
-          </h1>
+    <div className="min-h-screen bg-[#f2f2f2] dark:bg-neutral-900 flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[650px]">
+        <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+          <div className="flex flex-col items-center gap-6">
+            <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
+            <div className="flex flex-col items-center gap-4 text-center">
+              <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+                Verifying...
+              </h1>
+              <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+                Please wait while we complete your verification
+              </p>
+              <p className="text-[14px] leading-[20px] text-[#757575] dark:text-[#a3a3a3] mt-2">
+                This may take a few moments. Do not close this page.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

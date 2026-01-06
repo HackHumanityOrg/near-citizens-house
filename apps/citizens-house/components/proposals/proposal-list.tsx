@@ -8,7 +8,7 @@ import {
   getProposalCategory,
   PROPOSAL_CATEGORY_LABELS,
 } from "@near-citizens/shared"
-import { ProposalCard } from "./proposal-card"
+import { ProposalCard, ProposalCardSkeleton } from "./proposal-card"
 import { getProposalsReversed } from "@/lib/actions/sputnik-dao"
 import { Loader2 } from "lucide-react"
 
@@ -135,6 +135,35 @@ export function ProposalList({ initialProposals, initialHasMore, showAllKinds = 
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+export function ProposalListSkeleton({ showAllKinds = false }: { showAllKinds?: boolean }) {
+  const cards = Array.from({ length: 6 })
+  const tabs = Array.from({ length: 4 })
+
+  return (
+    <div className="space-y-6">
+      {showAllKinds && (
+        <div className="grid w-full grid-cols-4 gap-2">
+          {tabs.map((_, index) => (
+            <div key={index} className="h-9 rounded-md bg-muted animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {cards.map((_, index) => (
+            <ProposalCardSkeleton key={index} />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-center pt-4">
+        <div className="h-10 w-28 rounded-md bg-muted animate-pulse" />
+      </div>
     </div>
   )
 }

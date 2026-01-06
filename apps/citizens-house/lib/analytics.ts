@@ -19,7 +19,7 @@ export function useAnalytics() {
   )
 
   const trackWalletDisconnected = useCallback(
-    (accountId: string | null, stepReached: number) => {
+    (accountId: string | null, stepReached: string) => {
       posthog?.capture("wallet_disconnected", {
         account_id: accountId,
         step_reached: stepReached,

@@ -5,19 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, Badge } from
 import { type TransformedPolicy, type WeightOrRatio, formatProposalBond } from "@near-citizens/shared"
 import { getBridgeInfo } from "@/lib/actions/bridge"
 import { getPolicy } from "@/lib/actions/sputnik-dao"
-import {
-  Loader2,
-  Wallet,
-  Users,
-  FileText,
-  Settings,
-  Shield,
-  Globe,
-  Clock,
-  Coins,
-  Vote,
-  Link as LinkIcon,
-} from "lucide-react"
+import { Wallet, Users, FileText, Settings, Shield, Globe, Clock, Coins, Vote, Link as LinkIcon } from "lucide-react"
 
 /**
  * Formats a vote threshold for display.
@@ -42,6 +30,10 @@ function formatThreshold(threshold: WeightOrRatio, suffix = "", fallback = "N/A"
   return fallback
 }
 
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+}
+
 export function BridgeInfoCard() {
   const { data, isLoading, error } = useSWRImmutable("bridge-and-policy", async () => {
     const [bridgeInfo, daoPolicy] = await Promise.all([getBridgeInfo(), getPolicy()])
@@ -52,12 +44,99 @@ export function BridgeInfoCard() {
   const policy = data?.policy ?? null
 
   if (isLoading) {
+    const statCards = Array.from({ length: 5 })
+    const configItems = Array.from({ length: 4 })
+    const policyItems = Array.from({ length: 4 })
+    const roleCards = Array.from({ length: 3 })
+
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {statCards.map((_, index) => (
+            <Card key={index} className="py-4">
+              <CardContent className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="h-5 w-40" />
+              </div>
+              <Skeleton className="h-4 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {configItems.map((_, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <Skeleton className="h-4 w-4 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="h-5 w-40" />
+              </div>
+              <Skeleton className="h-4 w-56" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {policyItems.map((_, index) => (
+                <div key={index} className="flex justify-between items-start p-3 rounded-lg bg-muted/50">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-5 w-28" />
+            </div>
+            <Skeleton className="h-4 w-56" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4">
+              {roleCards.map((_, index) => (
+                <div key={index} className="p-4 rounded-lg border bg-card h-full flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <div className="space-y-3">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 

@@ -1,7 +1,6 @@
 import { Suspense } from "react"
-import { ProposalList } from "@/components/proposals/proposal-list"
+import { ProposalList, ProposalListSkeleton } from "@/components/proposals/proposal-list"
 import { getProposalsReversed } from "@/lib/actions/sputnik-dao"
-import { Loader2 } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -21,8 +20,9 @@ export default function AdminAllProposalsPage() {
 
       <Suspense
         fallback={
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div role="status" aria-live="polite">
+            <ProposalListSkeleton showAllKinds />
+            <span className="sr-only">Loading proposals...</span>
           </div>
         }
       >

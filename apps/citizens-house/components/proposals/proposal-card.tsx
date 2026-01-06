@@ -6,6 +6,10 @@ import { VoteProgress } from "./vote-progress"
 import { User, Hash } from "lucide-react"
 import { extractProposalTitle } from "@/lib/utils/proposal"
 
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+}
+
 interface ProposalCardProps {
   proposal: SputnikProposal
 }
@@ -49,5 +53,33 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
         </CardContent>
       </Card>
     </Link>
+  )
+}
+
+export function ProposalCardSkeleton() {
+  return (
+    <Card className="h-full">
+      <CardHeader className="space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Skeleton className="h-6 w-[64px] rounded-full" />
+            <Skeleton className="h-5 w-[180px]" />
+          </div>
+          <Skeleton className="h-6 w-[72px]" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3 w-3 rounded-full" />
+          <Skeleton className="h-4 w-[120px]" />
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="space-y-2">
+          <Skeleton className="h-2 w-full" />
+          <Skeleton className="h-2 w-4/5" />
+          <Skeleton className="h-2 w-3/5" />
+        </div>
+      </CardContent>
+    </Card>
   )
 }

@@ -1,104 +1,71 @@
-import Link from "next/link"
-import { List } from "lucide-react"
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@near-citizens/ui"
-
-function Skeleton({ className }: { className?: string }) {
+function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-muted ${className}`} />
 }
 
 export default function VerificationsLoading() {
-  return (
-    <div className="min-h-screen bg-linear-to-b from-background to-background/80">
-      <div className="container mx-auto px-4 pt-4 pb-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center mb-2">
-            <Link href="/verification">
-              <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
-                ← Back to Verification
-              </Button>
-            </Link>
-          </div>
-          <div className="text-center space-y-2 mb-6">
-            <div className="flex items-center justify-center gap-2">
-              <List className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">Verified Accounts</h1>
-            </div>
-            <p className="text-muted-foreground">All NEAR accounts verified through Self.xyz passport proofs</p>
-          </div>
+  const rows = Array.from({ length: 5 })
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Verification Records</CardTitle>
-              <CardDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                {/* text-sm = 14px height, matches "Showing X of Y verified accounts" */}
-                <Skeleton className="h-[14px] w-[220px]" />
-                {/* text-xs = 12px height, matches "View contract on NearBlocks" */}
-                <Skeleton className="h-[12px] w-[160px]" />
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border bg-card">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[180px]">NEAR Account</TableHead>
-                      <TableHead className="min-w-[120px]">Attestation Type</TableHead>
-                      <TableHead className="min-w-[140px]">User ID</TableHead>
-                      <TableHead className="min-w-[120px]">Nullifier</TableHead>
-                      <TableHead className="min-w-[180px]">Verified At</TableHead>
-                      <TableHead className="min-w-[100px]">Verify</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        {/* NEAR Account: font-mono text-sm = 14px */}
-                        <TableCell className="font-mono text-sm">
-                          <Skeleton className="h-[14px] w-[140px]" />
-                        </TableCell>
-                        {/* Attestation Type: font-medium (default 14px) */}
-                        <TableCell className="font-medium">
-                          <Skeleton className="h-[14px] w-[70px]" />
-                        </TableCell>
-                        {/* User ID: font-mono text-xs = 12px */}
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          <Skeleton className="h-[12px] w-[100px]" />
-                        </TableCell>
-                        {/* Nullifier: font-mono text-xs = 12px */}
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          <Skeleton className="h-[12px] w-[80px]" />
-                        </TableCell>
-                        {/* Verified At: text-sm = 14px */}
-                        <TableCell className="text-sm text-muted-foreground">
-                          <Skeleton className="h-[14px] w-[160px]" />
-                        </TableCell>
-                        {/* Verify: Button size="sm" with icon + text */}
-                        <TableCell>
-                          <Button variant="outline" size="sm" disabled className="opacity-50">
-                            <Skeleton className="h-4 w-4 rounded-full" />
-                            <span className="ml-1">Details</span>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+  return (
+    <div className="min-h-screen bg-background dark:bg-black">
+      <div className="flex flex-col gap-[24px] items-center w-full pt-8 pb-12 md:pt-[80px] md:pb-[80px]">
+        <div className="flex flex-col items-center w-full px-4 md:px-0">
+          <Skeleton className="h-[32px] w-[180px] md:h-[48px] md:w-[240px]" />
+        </div>
+
+        <div className="flex items-center justify-center w-full px-4 md:px-0">
+          <Skeleton className="h-[24px] w-[320px] md:h-[36px] md:w-[520px]" />
+        </div>
+
+        <div className="flex flex-col items-center pt-[40px] pb-[80px] w-full">
+          <div className="flex flex-col items-center w-full">
+            <div className="bg-secondary/50 dark:bg-black dark:border dark:border-white/10 flex flex-col items-start rounded-none md:rounded-[16px] w-full max-w-[1276px] md:mx-auto">
+              <div className="bg-secondary dark:bg-white/5 flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-none md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
+                <div className="flex items-start px-0 py-[8px] w-full">
+                  <Skeleton className="h-[24px] w-[240px]" />
+                </div>
+                <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between w-full">
+                  <Skeleton className="h-[14px] w-[220px]" />
+                  <Skeleton className="h-[16px] w-[220px]" />
+                </div>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="hidden md:block bg-secondary dark:bg-white/5 border-b border-border dark:border-white/10 px-[40px] py-[16px] w-full">
+                <div className="grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
+                  <Skeleton className="h-[16px] w-[160px]" />
+                  <Skeleton className="h-[16px] w-[120px] justify-self-center" />
+                  <Skeleton className="h-[14px] w-[160px] justify-self-center" />
+                  <Skeleton className="h-[16px] w-[80px] justify-self-end" />
+                </div>
+              </div>
+
+              {rows.map((_, index) => (
+                <div
+                  key={index}
+                  className={`px-4 py-3 md:px-[40px] md:py-[16px] w-full ${index !== rows.length - 1 ? "border-b border-border dark:border-white/10" : ""}`}
+                >
+                  <div className="md:hidden flex flex-col gap-3">
+                    <Skeleton className="h-[18px] w-[200px]" />
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-[28px] w-[120px] rounded-full" />
+                      <Skeleton className="h-[36px] w-[96px] rounded-[4px]" />
+                    </div>
+                    <Skeleton className="h-[12px] w-[160px]" />
+                  </div>
+
+                  <div className="hidden md:grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
+                    <Skeleton className="h-[18px] w-[220px]" />
+                    <div className="flex justify-center">
+                      <Skeleton className="h-[32px] w-[96px] rounded-full" />
+                    </div>
+                    <Skeleton className="h-[14px] w-[180px] justify-self-center" />
+                    <div className="flex justify-end">
+                      <Skeleton className="h-[40px] w-[96px] rounded-[4px]" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

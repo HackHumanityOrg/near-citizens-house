@@ -1,25 +1,76 @@
 "use client"
 
 import { useState, useEffect, useRef, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@near-citizens/shared"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { useAnalytics } from "@/lib/analytics"
-import { VerificationProgressBar } from "../../../components/verification/flow/verification-progress-bar"
-import { StepHeader } from "../../../components/verification/flow/step-header"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
 import { Step3Success } from "../../../components/verification/flow/step-3-success"
 import { ErrorModal } from "../../../components/verification/flow/error-modal"
 
+enum VerificationProgressStep {
+  NotConnected = "not_connected",
+  WalletConnected = "wallet_connected",
+  MessageSigned = "message_signed",
+  VerificationComplete = "verification_complete",
+}
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-full bg-white dark:bg-black">
+      <div className="w-full">
+        <div className="flex flex-col gap-[24px] items-center text-center w-full py-[40px] px-4">
+          <Skeleton className="h-[22px] w-[120px] sm:h-[28px] sm:w-[140px]" />
+          <Skeleton className="h-[32px] w-[240px] sm:h-[44px] sm:w-[320px]" />
+          <Skeleton className="h-[24px] w-[320px] sm:h-[28px] sm:w-[420px]" />
+        </div>
+
+        <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
+          <div className="flex flex-col items-start w-full max-w-[650px]">
+            <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 sm:px-0 w-full">
+              <div className="flex flex-col items-center w-full">
+                <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
+                  <div className="flex h-[30.945px] items-center justify-center w-full">
+                    <div className="w-full">
+                      <Skeleton className="h-[24px] w-[260px]" />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 w-full">
+                    <Skeleton className="h-[14px] w-full" />
+                    <Skeleton className="h-[14px] w-5/6" />
+                  </div>
+
+                  <div className="flex flex-col gap-[16px] items-start py-[8px] px-0 w-full">
+                    <div className="flex gap-[16px] items-center pt-[24px] pb-0 px-0 w-full">
+                      <Skeleton className="h-[56px] w-full rounded-[4px]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function VerificationStartContent() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const { isConnected, accountId, isLoading, connect, disconnect, signMessage } = useNearWallet()
   const analytics = useAnalytics()
 
   // State management
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
+  const [currentStep, setCurrentStep] = useState<VerificationProgressStep>(VerificationProgressStep.NotConnected)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
   const [sessionId] = useState<string>(() => crypto.randomUUID())
   const [isSigning, setIsSigning] = useState(false)
@@ -39,6 +90,22 @@ function VerificationStartContent() {
     }
   }, [analytics])
 
+  useEffect(() => {
+    if (!isConnected) {
+      if (currentStep !== VerificationProgressStep.NotConnected) {
+        setCurrentStep(VerificationProgressStep.NotConnected)
+      }
+      if (nearSignature) {
+        setNearSignature(null)
+      }
+      return
+    }
+
+    if (currentStep === VerificationProgressStep.NotConnected) {
+      setCurrentStep(VerificationProgressStep.WalletConnected)
+    }
+  }, [isConnected, currentStep, nearSignature])
+
   // Check if already verified on mount
   useEffect(() => {
     const checkVerification = async () => {
@@ -49,7 +116,7 @@ function VerificationStartContent() {
         const isVerified = await checkIsVerified(accountId)
         if (isVerified) {
           // Skip to success step
-          setCurrentStep(3)
+          setCurrentStep(VerificationProgressStep.VerificationComplete)
         }
       } catch (error) {
         console.error("Error checking verification:", error)
@@ -67,19 +134,26 @@ function VerificationStartContent() {
     const sessionIdParam = searchParams?.get("sessionId")
     const errorParam = searchParams?.get("error")
     const errorCodeParam = searchParams?.get("errorCode")
+    let handled = false
 
     if (status === "success" && sessionIdParam) {
       // Verification successful from mobile flow
-      setCurrentStep(3)
+      setCurrentStep(VerificationProgressStep.VerificationComplete)
+      handled = true
     } else if (status === "error") {
       // Verification failed from mobile flow
       const message = errorParam || "Verification failed. Please try again."
       setErrorMessage(message)
       setErrorCode(errorCodeParam)
       setIsErrorModalOpen(true)
-      setCurrentStep(1)
+      setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
+      handled = true
     }
-  }, [searchParams])
+
+    if (handled) {
+      router.replace(pathname, { scroll: false })
+    }
+  }, [searchParams, isConnected, router, pathname])
 
   // Track wallet connection
   useEffect(() => {
@@ -116,7 +190,7 @@ function VerificationStartContent() {
 
       analytics.trackMessageSigned(accountId)
       setNearSignature(signature)
-      setCurrentStep(2)
+      setCurrentStep(VerificationProgressStep.MessageSigned)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to sign message"
       const errorCode = message.includes("rejected") || message.includes("cancelled") ? "USER_REJECTED" : "UNKNOWN"
@@ -131,7 +205,7 @@ function VerificationStartContent() {
   // Handle verification success
   const handleVerificationSuccess = () => {
     setErrorMessage(null)
-    setCurrentStep(3)
+    setCurrentStep(VerificationProgressStep.VerificationComplete)
   }
 
   // Handle verification error
@@ -147,7 +221,7 @@ function VerificationStartContent() {
     setErrorMessage(null)
     setErrorCode(null)
     setNearSignature(null)
-    setCurrentStep(1)
+    setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
   }
 
   // Handle disconnect
@@ -159,7 +233,7 @@ function VerificationStartContent() {
     disconnect()
     setNearSignature(null)
     setErrorMessage(null)
-    setCurrentStep(1)
+    setCurrentStep(VerificationProgressStep.NotConnected)
   }
 
   // Handle vote for proposals
@@ -169,59 +243,34 @@ function VerificationStartContent() {
 
   return (
     <div className="min-h-full bg-white dark:bg-black">
-      {/* Progress Bar */}
-      <VerificationProgressBar currentStep={currentStep} />
-
       {/* Main Content */}
       <div className="w-full">
         {/* Step 1: Wallet Signature */}
-        {currentStep === 1 && (
-          <>
-            <StepHeader currentStep={1} totalSteps={2} title="Verify your wallet" />
-            <Step1WalletSignature
-              accountId={accountId}
-              isConnected={isConnected}
-              isLoading={isLoading || isCheckingVerification}
-              isSigning={isSigning}
-              onConnect={handleConnect}
-              onDisconnect={handleDisconnect}
-              onSign={handleSignMessage}
-            />
-          </>
+        {(currentStep === VerificationProgressStep.NotConnected ||
+          currentStep === VerificationProgressStep.WalletConnected) && (
+          <Step1WalletSignature
+            accountId={accountId}
+            isConnected={isConnected}
+            isLoading={isLoading || isCheckingVerification}
+            isSigning={isSigning}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+            onSign={handleSignMessage}
+          />
         )}
 
         {/* Step 2: QR Scan */}
-        {currentStep === 2 && nearSignature && (
-          <>
-            {/* Mobile header */}
-            <div className="md:hidden">
-              <StepHeader
-                currentStep={2}
-                totalSteps={2}
-                title="Verify with Self"
-                subtitle="Open the Self app to verify your passport and complete verification."
-              />
-            </div>
-            {/* Desktop header */}
-            <div className="hidden md:block">
-              <StepHeader
-                currentStep={2}
-                totalSteps={2}
-                title="Scan QR Code"
-                subtitle="Use the Self mobile app to scan this QR code and generate your passport proof."
-              />
-            </div>
-            <Step2QrScan
-              nearSignature={nearSignature}
-              sessionId={sessionId}
-              onSuccess={handleVerificationSuccess}
-              onError={handleVerificationError}
-            />
-          </>
+        {currentStep === VerificationProgressStep.MessageSigned && nearSignature && (
+          <Step2QrScan
+            nearSignature={nearSignature}
+            sessionId={sessionId}
+            onSuccess={handleVerificationSuccess}
+            onError={handleVerificationError}
+          />
         )}
 
         {/* Step 3: Success */}
-        {currentStep === 3 && accountId && (
+        {currentStep === VerificationProgressStep.VerificationComplete && accountId && (
           <Step3Success
             accountId={accountId}
             onDisconnect={handleDisconnect}
@@ -244,7 +293,7 @@ function VerificationStartContent() {
 
 export default function VerificationStartPage() {
   return (
-    <Suspense fallback={<div className="min-h-full bg-white dark:bg-black" />}>
+    <Suspense fallback={<LoadingFallback />}>
       <VerificationStartContent />
     </Suspense>
   )

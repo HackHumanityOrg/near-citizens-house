@@ -4,7 +4,11 @@ import { useNearWallet } from "@near-citizens/shared"
 import { useIsAdmin } from "@/hooks/admin"
 import { AdminNav } from "@/components/admin/admin-nav"
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@near-citizens/ui"
-import { Loader2, ShieldAlert, LogIn, Wallet } from "lucide-react"
+import { ShieldAlert, LogIn, Wallet } from "lucide-react"
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { accountId, connect, isLoading: walletLoading } = useNearWallet()
@@ -12,10 +16,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Show loading state
   if (walletLoading || adminLoading) {
+    const navItems = Array.from({ length: 5 })
+
     return (
       <div className="min-h-screen">
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+        <div className="flex">
+          <nav className="w-64 border-r bg-muted/30 p-4 min-h-[calc(100vh-4rem)]">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <div className="space-y-2">
+              {navItems.map((_, index) => (
+                <Skeleton key={index} className="h-9 w-full" />
+              ))}
+            </div>
+          </nav>
+          <main className="flex-1 p-6">
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-64" />
+              <div className="grid md:grid-cols-2 gap-6">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </main>
         </div>
       </div>
     )
