@@ -38,7 +38,7 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
               Verification Complete
             </h2>
             <p className="text-[14px] sm:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
-              Your identity is verified on-chain and you have authenticated with Discourse.
+              Your identity is verified on-chain and linked to your NEAR wallet.
             </p>
           </div>
 
