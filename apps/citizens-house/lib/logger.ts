@@ -34,6 +34,69 @@ const SEVERITY_MAP: Record<LogLevel, { text: string; number: SeverityNumber }> =
 const SAMPLE_RATE_SUCCESS = 0.1 // Keep 10% of successful requests
 const SLOW_REQUEST_THRESHOLD_MS = 2000 // Always keep requests slower than 2s
 
+// =============================================================================
+// Operation Constants
+// =============================================================================
+// Use these constants for consistent operation naming across the codebase.
+// Format: MODULE.OPERATION where MODULE is the domain and OPERATION is the action.
+//
+// Usage:
+//   import { Op } from "@/lib/logger"
+//   logger.info("Message", { operation: Op.VERIFICATION.ACCOUNT_AGE, ... })
+// =============================================================================
+
+/** Redis connection and operations */
+export const OpRedis = {
+  /** Redis client connection lifecycle */
+  CONNECT: "redis.connect",
+} as const
+
+/** BigQuery operations for blockchain data queries */
+export const OpBigQuery = {
+  /** BigQuery client initialization */
+  INIT: "bigquery.init",
+  /** Query execution */
+  QUERY: "bigquery.query",
+} as const
+
+/** Account age verification operations */
+export const OpAccountAge = {
+  /** Reading from cache (hit or miss) */
+  CACHE_READ: "account_age.cache_read",
+  /** Writing to cache */
+  CACHE_WRITE: "account_age.cache_write",
+  /** BigQuery lookup for account creation date */
+  QUERY: "account_age.query",
+  /** Final age eligibility check */
+  CHECK: "account_age.check",
+} as const
+
+/** Verification API operations */
+export const OpVerification = {
+  /** Full-access key validation */
+  ACCESS_KEY_CHECK: "verification.access_key_check",
+  /** Account age eligibility check */
+  ACCOUNT_AGE: "verification.account_age",
+  /** Signature nonce validation */
+  NONCE_CHECK: "verification.nonce_check",
+  /** Session state updates */
+  SESSION_UPDATE: "verification.session_update",
+  /** Analytics event tracking */
+  ANALYTICS: "verification.analytics",
+  /** ZK proof re-verification */
+  ZK_VERIFY: "verification.zk_verify",
+  /** Full account verification */
+  VERIFY_ACCOUNT: "verification.verify_account",
+} as const
+
+/** Namespace for all operation constants */
+export const Op = {
+  REDIS: OpRedis,
+  BIGQUERY: OpBigQuery,
+  ACCOUNT_AGE: OpAccountAge,
+  VERIFICATION: OpVerification,
+} as const
+
 /**
  * Base attributes included in every log
  */

@@ -25,6 +25,7 @@ function VerificationStartContent() {
   const [isSigning, setIsSigning] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
 
   const trackedWalletRef = useRef<string | null>(null)
@@ -65,6 +66,7 @@ function VerificationStartContent() {
     const status = searchParams?.get("status")
     const sessionIdParam = searchParams?.get("sessionId")
     const errorParam = searchParams?.get("error")
+    const errorCodeParam = searchParams?.get("errorCode")
 
     if (status === "success" && sessionIdParam) {
       // Verification successful from mobile flow
@@ -73,6 +75,7 @@ function VerificationStartContent() {
       // Verification failed from mobile flow
       const message = errorParam || "Verification failed. Please try again."
       setErrorMessage(message)
+      setErrorCode(errorCodeParam)
       setIsErrorModalOpen(true)
       setCurrentStep(1)
     }
@@ -132,8 +135,9 @@ function VerificationStartContent() {
   }
 
   // Handle verification error
-  const handleVerificationError = (error: string) => {
+  const handleVerificationError = (error: string, code?: string) => {
     setErrorMessage(error)
+    setErrorCode(code || null)
     setIsErrorModalOpen(true)
   }
 
@@ -141,6 +145,7 @@ function VerificationStartContent() {
   const handleRetry = () => {
     setIsErrorModalOpen(false)
     setErrorMessage(null)
+    setErrorCode(null)
     setNearSignature(null)
     setCurrentStep(1)
   }
@@ -216,7 +221,8 @@ function VerificationStartContent() {
       {/* Error Modal */}
       <ErrorModal
         isOpen={isErrorModalOpen}
-        errorMessage={errorMessage || "An error occurred"}
+        errorMessage={errorMessage || undefined}
+        errorCode={errorCode || undefined}
         onClose={() => setIsErrorModalOpen(false)}
         onRetry={handleRetry}
       />

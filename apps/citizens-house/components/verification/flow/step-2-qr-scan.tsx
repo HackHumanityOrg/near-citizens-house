@@ -39,7 +39,7 @@ interface Step2QrScanProps {
   nearSignature: NearSignatureData
   sessionId: string
   onSuccess: () => void
-  onError: (error: string) => void
+  onError: (error: string, code?: string) => void
 }
 
 export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: Step2QrScanProps) {
@@ -144,9 +144,9 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   }
 
   const handleError = () => {
-    analytics.trackVerificationFailed(nearSignature.accountId, "verification_failed", "Verification failed")
+    analytics.trackVerificationFailed(nearSignature.accountId, "QR_SCAN_FAILED", "QR scan verification failed")
     setVerificationStatus("error")
-    onError("Verification failed. Please try again.")
+    onError("Verification failed. Please try again.", "QR_SCAN_FAILED")
   }
 
   return (

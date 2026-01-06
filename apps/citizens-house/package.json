@@ -7,9 +7,12 @@
     "build": "next build --webpack",
     "start": "next start --webpack -p 3000",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
     "@hookform/resolvers": "^5.2.2",
     "@near-citizens/shared": "workspace:*",
     "@near-citizens/ui": "workspace:*",

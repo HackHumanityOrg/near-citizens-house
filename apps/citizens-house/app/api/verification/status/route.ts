@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       status: session.status,
       accountId: session.accountId,
       error: session.error,
+      errorCode: session.errorCode,
     })
   } catch (error) {
     event.setStatus(500)
