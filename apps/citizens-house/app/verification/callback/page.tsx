@@ -4,16 +4,7 @@ import { useEffect, useState, Suspense, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAnalytics } from "@/lib/analytics"
 import { Loader2 } from "lucide-react"
-import { VERIFICATION_ERROR_MESSAGES, type VerificationErrorCode } from "@near-citizens/shared"
-
-function getErrorMessage(errorCode: string | null): string {
-  if (!errorCode) return "An unexpected error occurred. Please try again."
-  // Check if it's a known error code
-  if (errorCode in VERIFICATION_ERROR_MESSAGES) {
-    return VERIFICATION_ERROR_MESSAGES[errorCode as VerificationErrorCode]
-  }
-  return errorCode
-}
+import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
 
 type VerificationStatus = "checking" | "success" | "error" | "expired"
 
@@ -25,6 +16,7 @@ function VerifyCallbackContent() {
   const [status, setStatus] = useState<VerificationStatus>("checking")
   const [accountId, setAccountId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const trackedResultRef = useRef(false)
 
   // Track verification result when status changes
@@ -38,11 +30,12 @@ function VerifyCallbackContent() {
       // Get accountId from localStorage if available
       const storedSession = sessionId ? localStorage.getItem(`self-session-${sessionId}`) : null
       const storedAccountId = storedSession ? JSON.parse(storedSession).accountId : "unknown"
-      const errorCode = status === "expired" ? "TIMEOUT" : "VERIFICATION_FAILED"
-      analytics.trackVerificationFailed(storedAccountId, errorCode, errorMessage || undefined)
+      // Use actual error code if available, fallback to generic codes
+      const trackingErrorCode = errorCode || (status === "expired" ? "TIMEOUT" : "VERIFICATION_FAILED")
+      analytics.trackVerificationFailed(storedAccountId, trackingErrorCode, errorMessage || undefined)
       trackedResultRef.current = true
     }
-  }, [status, accountId, sessionId, errorMessage, analytics])
+  }, [status, accountId, sessionId, errorMessage, errorCode, analytics])
 
   useEffect(() => {
     if (!sessionId) {
@@ -113,7 +106,10 @@ function VerifyCallbackContent() {
           return true
         } else if (data.status === "error") {
           setStatus("error")
-          setErrorMessage(getErrorMessage(data.error))
+          // Use errorCode if available, fall back to error field for backwards compatibility
+          const code = data.errorCode || data.error
+          setErrorCode(code)
+          setErrorMessage(getErrorMessage(code))
           return true
         } else if (data.status === "expired") {
           setStatus("expired")
@@ -177,7 +173,18 @@ function VerifyCallbackContent() {
   }
 
   const handleTryAgain = () => {
-    router.push(`/verification/start?status=error&error=${encodeURIComponent(errorMessage || "Unknown error")}`)
+    const params = new URLSearchParams({
+      status: "error",
+      error: errorMessage || "Unknown error",
+    })
+    if (errorCode) {
+      params.set("errorCode", errorCode)
+    }
+    router.push(`/verification/start?${params.toString()}`)
+  }
+
+  const handleGoBack = () => {
+    router.push("/verification")
   }
 
   return (
@@ -276,10 +283,12 @@ function VerifyCallbackContent() {
 
               <div className="flex flex-col items-center gap-4 text-center w-full">
                 <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-                  Verification Failed
+                  {getErrorTitle(errorCode)}
                 </h1>
                 <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
-                  There was an issue with your verification
+                  {isNonRetryableError(errorCode)
+                    ? "This verification cannot be completed"
+                    : "There was an issue with your verification"}
                 </p>
 
                 {/* Error Message */}
@@ -289,13 +298,22 @@ function VerifyCallbackContent() {
                   </p>
                 </div>
 
-                {/* Try Again Button */}
-                <button
-                  onClick={handleTryAgain}
-                  className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
-                >
-                  Try Again
-                </button>
+                {/* Action Button - different for retryable vs non-retryable errors */}
+                {isNonRetryableError(errorCode) ? (
+                  <button
+                    onClick={handleGoBack}
+                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
+                  >
+                    Go Back
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleTryAgain}
+                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] hover:opacity-90 transition-opacity"
+                  >
+                    Try Again
+                  </button>
+                )}
               </div>
             </div>
           </div>

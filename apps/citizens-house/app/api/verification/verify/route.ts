@@ -15,6 +15,7 @@ import {
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
+import { checkAccountAge } from "@/lib/account-age"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
 import { createApiEvent, logger } from "@/lib/logger"
 
@@ -393,6 +394,48 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Check account age (must be at least 30 days old)
+    // This is a Sybil resistance measure - prevents creating new accounts for verification
+    const accountAgeResult = await checkAccountAge(data.accountId as string)
+    if (!accountAgeResult.allowed) {
+      const hasAccountAge = typeof accountAgeResult.accountAgeDays === "number"
+      const errorCode = hasAccountAge ? "ACCOUNT_TOO_NEW" : "INTERNAL_ERROR"
+      const errorStatus = hasAccountAge ? 400 : 500
+      const errorMessage = hasAccountAge ? accountAgeResult.reason || "Account too new" : "Unable to verify account age"
+
+      console.log(`[Verify] Account age check failed for ${data.accountId}:`, {
+        reason: accountAgeResult.reason,
+        createdAt: accountAgeResult.createdAt,
+        accountAgeDays: accountAgeResult.accountAgeDays,
+        errorCode,
+      })
+
+      // Update session status for deep link callback (mobile flow)
+      if (sessionId) {
+        await updateSession(sessionId, {
+          status: "error",
+          error: errorMessage,
+          errorCode,
+        })
+        console.log(`[Verify] Updated session ${sessionId} with status: error (${errorCode})`)
+      }
+
+      return respondWithError({
+        code: errorCode,
+        status: errorStatus,
+        details: hasAccountAge
+          ? `Account is only ${accountAgeResult.accountAgeDays} days old`
+          : "Account age verification unavailable",
+        stage: "account_age_check",
+        attestationId,
+      })
+    }
+
+    console.log(`[Verify] Account age check passed for ${data.accountId}:`, {
+      createdAt: accountAgeResult.createdAt,
+      accountAgeDays: accountAgeResult.accountAgeDays,
+    })
+
     const nonceBase64 = Buffer.from(nonce as number[]).toString("base64")
     // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations
     const remainingValidityMs = MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS - signatureAge
@@ -503,19 +546,20 @@ export async function POST(request: NextRequest) {
         event.set("session_updated", true)
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : ""
-      const errorCode = errorMessage.includes("already registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
+      const errorMsg = error instanceof Error ? error.message : ""
+      const errCode = errorMsg.includes("already registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
 
       // Update session status for deep link callback
       if (sessionId) {
         await updateSession(sessionId, {
           status: "error",
-          error: errorCode,
+          error: errorMsg || "Failed to store verification",
+          errorCode: errCode,
         })
       }
 
       return respondWithError({
-        code: errorCode,
+        code: errCode,
         status: 500,
         details: error instanceof Error ? error.message : undefined,
         stage: "storage",

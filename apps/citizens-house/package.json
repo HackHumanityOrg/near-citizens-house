@@ -10,6 +10,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
     "@hookform/resolvers": "^5.2.2",
     "@near-citizens/shared": "workspace:*",
     "@near-citizens/ui": "workspace:*",

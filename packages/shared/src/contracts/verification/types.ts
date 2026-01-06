@@ -107,6 +107,7 @@ export const verificationErrorCodeSchema = z.enum([
   "DUPLICATE_PASSPORT",
   "STORAGE_FAILED",
   "INTERNAL_ERROR",
+  "ACCOUNT_TOO_NEW",
 ])
 
 export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
@@ -125,6 +126,7 @@ export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> 
   DUPLICATE_PASSPORT: "This passport has already been registered",
   STORAGE_FAILED: "Failed to store verification",
   INTERNAL_ERROR: "Internal server error",
+  ACCOUNT_TOO_NEW: "Account must be at least 30 days old",
 } as const
 
 // Verification error response schema
