@@ -1,15 +1,20 @@
 "use server"
 
 import { bridgeContract, verificationDb, nearAccountIdSchema, type BridgeInfo } from "@near-citizens/shared"
+import { createServerActionEvent } from "@/lib/logger"
 
 /**
  * Get bridge contract configuration
  */
 export async function getBridgeInfo(): Promise<BridgeInfo | null> {
+  const event = createServerActionEvent("bridge.getInfo")
   try {
-    return await bridgeContract.getInfo()
+    const info = await bridgeContract.getInfo()
+    event.info("Bridge info fetched")
+    return info
   } catch (error) {
-    console.error("[Server Action] Error fetching bridge info:", error)
+    event.setError(error instanceof Error ? error : { message: "Unknown error" })
+    event.error("Error fetching bridge info")
     return null
   }
 }
@@ -18,10 +23,14 @@ export async function getBridgeInfo(): Promise<BridgeInfo | null> {
  * Get the backend wallet address
  */
 export async function getBackendWallet(): Promise<string | null> {
+  const event = createServerActionEvent("bridge.getBackendWallet")
   try {
-    return await bridgeContract.getBackendWallet()
+    const wallet = await bridgeContract.getBackendWallet()
+    event.info("Backend wallet fetched")
+    return wallet
   } catch (error) {
-    console.error("[Server Action] Error fetching backend wallet:", error)
+    event.setError(error instanceof Error ? error : { message: "Unknown error" })
+    event.error("Error fetching backend wallet")
     return null
   }
 }
@@ -30,10 +39,14 @@ export async function getBackendWallet(): Promise<string | null> {
  * Get the SputnikDAO contract address
  */
 export async function getSputnikDaoAddress(): Promise<string | null> {
+  const event = createServerActionEvent("bridge.getSputnikDao")
   try {
-    return await bridgeContract.getSputnikDao()
+    const address = await bridgeContract.getSputnikDao()
+    event.info("SputnikDAO address fetched")
+    return address
   } catch (error) {
-    console.error("[Server Action] Error fetching SputnikDAO address:", error)
+    event.setError(error instanceof Error ? error : { message: "Unknown error" })
+    event.error("Error fetching SputnikDAO address")
     return null
   }
 }
@@ -42,10 +55,14 @@ export async function getSputnikDaoAddress(): Promise<string | null> {
  * Get the verified accounts contract address
  */
 export async function getVerifiedAccountsContract(): Promise<string | null> {
+  const event = createServerActionEvent("bridge.getVerifiedAccountsContract")
   try {
-    return await bridgeContract.getVerifiedAccountsContract()
+    const contract = await bridgeContract.getVerifiedAccountsContract()
+    event.info("Verified accounts contract fetched")
+    return contract
   } catch (error) {
-    console.error("[Server Action] Error fetching verified accounts contract:", error)
+    event.setError(error instanceof Error ? error : { message: "Unknown error" })
+    event.error("Error fetching verified accounts contract")
     return null
   }
 }
@@ -54,10 +71,14 @@ export async function getVerifiedAccountsContract(): Promise<string | null> {
  * Get the citizen role name
  */
 export async function getCitizenRole(): Promise<string | null> {
+  const event = createServerActionEvent("bridge.getCitizenRole")
   try {
-    return await bridgeContract.getCitizenRole()
+    const role = await bridgeContract.getCitizenRole()
+    event.info("Citizen role fetched")
+    return role
   } catch (error) {
-    console.error("[Server Action] Error fetching citizen role:", error)
+    event.setError(error instanceof Error ? error : { message: "Unknown error" })
+    event.error("Error fetching citizen role")
     return null
   }
 }
@@ -66,16 +87,24 @@ export async function getCitizenRole(): Promise<string | null> {
  * Check if an account is verified
  */
 export async function checkVerificationStatus(accountId: string): Promise<boolean> {
+  const event = createServerActionEvent("bridge.checkVerificationStatus")
+  event.setUser({ account_id: accountId })
+
   const parsed = nearAccountIdSchema.safeParse(accountId)
   if (!parsed.success) {
-    console.error("[Server Action] Invalid account ID:", parsed.error.format())
+    event.setError({ code: "INVALID_ACCOUNT_ID", message: "Invalid account ID format" })
+    event.error("Invalid account ID")
     return false
   }
 
   try {
-    return await verificationDb.isVerified(parsed.data)
+    const isVerified = await verificationDb.isVerified(parsed.data)
+    event.set("is_verified", isVerified)
+    event.info("Verification status checked")
+    return isVerified
   } catch (error) {
-    console.error("[Server Action] Error checking verification:", error)
+    event.setError(error instanceof Error ? error : { message: "Unknown error" })
+    event.error("Error checking verification")
     return false
   }
 }

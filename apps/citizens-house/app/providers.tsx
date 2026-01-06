@@ -1,12 +1,11 @@
 "use client"
 
-import { Suspense, useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { SWRConfig } from "swr"
 import { NearWalletProvider, useNearWallet } from "@near-citizens/shared"
 import { ErrorBoundary } from "@near-citizens/ui"
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react"
-import { usePathname, useSearchParams } from "next/navigation"
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -24,9 +23,6 @@ export function Providers({ children }: ProvidersProps) {
       >
         <NearWalletProvider>
           <ErrorBoundary>
-            <Suspense fallback={null}>
-              <PostHogPageview />
-            </Suspense>
             {/* Global PostHog identification based on NEAR wallet connection */}
             <PostHogIdentifier />
             {children}
@@ -42,18 +38,18 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
       posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
         api_host: "/ingest",
-        ui_host: "https://us.i.posthog.com",
-        // Use latest config defaults
+        ui_host: "https://us.posthog.com",
+        // Use latest config defaults (enables strictMinimumDuration and content_ignorelist for rageclicks)
         defaults: "2025-11-30",
-        // Pageview handling
-        capture_pageview: false, // Manual capture for SPA
+        // Pageview handling - defaults: "2025-11-30" sets capture_pageview: 'history_change' automatically
         capture_pageleave: true,
-        // Exception autocapture - captures $exception events via window.onerror and onunhandledrejection
+        // Dead click capture - tracks clicks on non-responsive elements
+        capture_dead_clicks: true,
+        // Exception autocapture - captures uncaught errors via window.onerror and unhandledrejection
         capture_exceptions: true,
         // Heatmaps - captures mouse movements, clicks, rageclicks, and scroll depth
         enable_heatmaps: true,
         // Session recording configuration
-        disable_session_recording: false,
         session_recording: {
           // Privacy: mask all input values by default
           maskAllInputs: true,
@@ -63,6 +59,14 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           maskInputOptions: {
             password: true,
           },
+        },
+        // Console log recording - captures console.log, console.warn, console.error in session replays
+        enable_recording_console_log: true,
+        // Debug mode in development - enables verbose logging
+        loaded: (posthog) => {
+          if (process.env.NODE_ENV === "development") {
+            posthog.debug()
+          }
         },
       })
 
@@ -77,24 +81,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return <PHProvider client={posthog}>{children}</PHProvider>
-}
-
-export function PostHogPageview() {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const posthog = usePostHog()
-
-  useEffect(() => {
-    if (pathname && posthog) {
-      let url = window.origin + pathname
-      if (searchParams.toString()) {
-        url = url + "?" + searchParams.toString()
-      }
-      posthog.capture("$pageview", { $current_url: url })
-    }
-  }, [pathname, searchParams, posthog])
-
-  return null
 }
 
 /**

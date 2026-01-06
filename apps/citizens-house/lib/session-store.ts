@@ -2,6 +2,7 @@
 // Sessions are stored with automatic TTL expiration
 
 import { createClient, type RedisClientType } from "redis"
+import { logger } from "./logger"
 
 type SessionStatus = "pending" | "success" | "error"
 
@@ -29,9 +30,14 @@ async function getRedisClient(): Promise<RedisClientType> {
     redis = createClient({
       url: redisUrl,
     })
-    redis.on("error", (err) => console.error("[Redis] Client Error:", err))
+    redis.on("error", (err) =>
+      logger.error("Redis client error", {
+        operation: "redis.connection",
+        error_message: err instanceof Error ? err.message : String(err),
+      }),
+    )
     await redis.connect()
-    console.log("[Redis] Connected successfully")
+    logger.info("Redis connected successfully", { operation: "redis.connection" })
   }
   return redis
 }

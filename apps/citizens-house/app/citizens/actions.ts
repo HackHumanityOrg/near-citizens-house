@@ -14,6 +14,7 @@ import {
   type Verification,
   type ProofData,
 } from "@near-citizens/shared"
+import { createServerActionEvent, logger } from "@/lib/logger"
 
 const paginationSchema = z.object({
   page: z.number().int().min(0).max(100000),
@@ -65,14 +66,19 @@ async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Pr
 
           // Log successful verification with RPC endpoint used
           if (zkResult.isValid && zkResult.rpcUrl) {
-            console.log(`[Verification] ZK proof verified for ${account.nearAccountId} via ${zkResult.rpcUrl}`)
+            logger.debug("ZK proof verified", {
+              operation: "verification.zk_verify",
+              account_id: account.nearAccountId,
+              rpc_url: zkResult.rpcUrl,
+            })
           }
         } catch (error) {
           // Graceful degradation: RPC failed but account is verified by contract
-          console.warn(
-            `[Verification] ZK re-verification failed for ${account.nearAccountId}, but account is contract-verified:`,
-            error instanceof Error ? error.message : error,
-          )
+          logger.warn("ZK re-verification failed, but account is contract-verified", {
+            operation: "verification.zk_verify",
+            account_id: account.nearAccountId,
+            error_message: error instanceof Error ? error.message : String(error),
+          })
           zkResult = {
             isValid: false, // Mark as not re-verified (but don't fail)
             publicSignalsCount: account.selfProof.publicSignals.length,
@@ -125,10 +131,11 @@ async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Pr
         }
       } catch (error) {
         // Final catch-all: Always display account even if verification completely fails
-        console.error(
-          `[Verification] Unexpected error verifying ${account.nearAccountId}:`,
-          error instanceof Error ? error.message : error,
-        )
+        logger.error("Unexpected error verifying account", {
+          operation: "verification.verify_account",
+          account_id: account.nearAccountId,
+          error_message: error instanceof Error ? error.message : String(error),
+        })
         return {
           account: {
             nearAccountId: account.nearAccountId,
@@ -167,14 +174,23 @@ const getCachedVerifications = unstable_cache(fetchAndVerifyVerifications, ["ver
  * All verification (ZK proof via Celo + NEAR signature) happens server-side.
  */
 export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
+  const event = createServerActionEvent("citizens.getVerificationsWithStatus")
+  event.set("page", page)
+  event.set("page_size", pageSize)
+
   // Validate input parameters with safeParse
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
-    console.error("[Actions] Invalid pagination:", params.error.format())
+    event.setError({ code: "INVALID_PAGINATION", message: "Invalid pagination parameters" })
+    event.error("Invalid pagination")
     return { accounts: [], total: 0 }
   }
 
-  return getCachedVerifications(params.data.page * params.data.pageSize, params.data.pageSize)
+  const result = await getCachedVerifications(params.data.page * params.data.pageSize, params.data.pageSize)
+  event.set("accounts_returned", result.accounts.length)
+  event.set("total", result.total)
+  event.info("Verifications fetched with status")
+  return result
 }
 
 /**
@@ -182,17 +198,25 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
  * Used by the UI to skip verification steps for already-verified accounts.
  */
 export async function checkIsVerified(nearAccountId: string): Promise<boolean> {
+  const event = createServerActionEvent("citizens.checkIsVerified")
+  event.setUser({ account_id: nearAccountId })
+
   // Validate account ID format
   const parsed = nearAccountIdSchema.safeParse(nearAccountId)
   if (!parsed.success) {
-    console.error("[Actions] Invalid account ID:", parsed.error.format())
+    event.setError({ code: "INVALID_ACCOUNT_ID", message: "Invalid account ID format" })
+    event.error("Invalid account ID")
     return false
   }
 
   try {
-    return await verificationDb.isVerified(parsed.data)
+    const isVerified = await verificationDb.isVerified(parsed.data)
+    event.set("is_verified", isVerified)
+    event.info("Verification status checked")
+    return isVerified
   } catch (error) {
-    console.error("Error checking account verification:", error)
+    event.setError(error instanceof Error ? error : { message: "Unknown error" })
+    event.error("Error checking account verification")
     return false
   }
 }

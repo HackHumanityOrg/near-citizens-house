@@ -16,6 +16,7 @@ import {
 } from "@near-citizens/shared"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
+import { createApiEvent, logger } from "@/lib/logger"
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
@@ -88,12 +89,19 @@ async function hasFullAccessKey(accountId: string, publicKey: string): Promise<b
 
     return isFullAccessPermission(accessKey.permission)
   } catch (error) {
-    console.warn("[Verify] Failed to query access key", error)
+    logger.warn("Failed to query access key", {
+      operation: "verification.access_key_check",
+      account_id: accountId,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    })
     return false
   }
 }
 
 export async function POST(request: NextRequest) {
+  // Create wide event for this request
+  const event = createApiEvent("verification.verify", request)
+
   const ofacEnabled = SELF_VERIFICATION_CONFIG.ofac === true
   const selfNetwork = SELF_CONFIG.networkId
   let sessionId: string | undefined
@@ -102,6 +110,12 @@ export async function POST(request: NextRequest) {
   let isValid: boolean | undefined
   let isMinimumAgeValid: boolean | undefined
   let isOfacValid: boolean | undefined
+
+  // Set initial verification context
+  event.setVerification({
+    self_network: selfNetwork,
+    ofac_enabled: ofacEnabled,
+  })
 
   const respondWithError = async ({
     code,
@@ -117,6 +131,14 @@ export async function POST(request: NextRequest) {
     attestationId?: number | string
   }) => {
     const errorResponse = createVerificationError(code, details)
+
+    // Update wide event with error context
+    event.setStatus(status)
+    event.setError({ code, message: errorResponse.reason })
+    event.setVerification({ stage, attestation_id: attestationId?.toString() })
+    event.setUser({ account_id: accountId, session_id: sessionId })
+    event.error(`Verification failed: ${code}`)
+
     try {
       await trackVerificationFailedServer({
         distinctId: accountId ?? sessionId ?? "unknown",
@@ -135,7 +157,10 @@ export async function POST(request: NextRequest) {
         timestamp: Date.now(),
       })
     } catch (error) {
-      console.warn("[Verify] Failed to track verification_failed event", error)
+      logger.warn("Failed to track verification_failed event", {
+        operation: "verification.analytics",
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
     }
 
     return NextResponse.json(errorResponse satisfies SelfVerificationResult, { status })
@@ -157,7 +182,8 @@ export async function POST(request: NextRequest) {
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
 
-    console.log(`[Verify] Starting verification for attestation ${attestationId}`)
+    // Update wide event with attestation ID
+    event.setVerification({ attestation_id: attestationId.toString(), stage: "started" })
 
     let selfVerificationResult
 
@@ -187,7 +213,15 @@ export async function POST(request: NextRequest) {
     isMinimumAgeValid = validity.isMinimumAgeValid
     isOfacValid = validity.isOfacValid
 
-    console.log(`[Verify] Self verification result:`, { isValid, isMinimumAgeValid, isOfacValid })
+    // Update wide event with verification results
+    event.setVerification({
+      is_valid: isValid,
+      is_minimum_age_valid: isMinimumAgeValid,
+      is_ofac_valid: isOfacValid,
+      nationality,
+      stage: "self_verified",
+    })
+    event.setUser({ session_id: sessionId })
 
     // Type guards: ensure SDK returned expected boolean fields
     // When OFAC is enabled, isOfacValid must also be a boolean
@@ -366,9 +400,11 @@ export async function POST(request: NextRequest) {
     const nonceReserved = await reserveSignatureNonce(data.accountId as string, nonceBase64, nonceTtlSeconds)
 
     if (!nonceReserved) {
-      console.warn(`[Verify] Nonce replay attempt detected for account ${data.accountId}`, {
-        nonceBase64,
-        attestationId,
+      logger.warn("Nonce replay attempt detected", {
+        operation: "verification.nonce_check",
+        account_id: data.accountId as string,
+        "verification.attestation_id": attestationId.toString(),
+        nonce_base64: nonceBase64,
       })
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
@@ -431,7 +467,9 @@ export async function POST(request: NextRequest) {
       // Next.js 16 requires a cacheLife profile as second argument
       revalidateTag("verifications", "max")
 
-      console.log(`[Verify] Stored verification for account ${nearSignature.accountId}`)
+      // Update wide event with success context
+      event.setUser({ account_id: nearSignature.accountId })
+      event.setVerification({ nullifier: nullifier.toString(), stage: "stored" })
 
       // Track verification completed for analytics
       try {
@@ -447,11 +485,12 @@ export async function POST(request: NextRequest) {
           sessionId,
           timestamp: Date.now(),
         })
-        console.log(
-          `[Verify] Tracked verification completed${nationality ? ` with nationality: ${nationality}` : ""}${sessionId ? ` (session: ${sessionId})` : ""}`,
-        )
       } catch (error) {
-        console.warn("[Verify] Failed to track verification_completed event", error)
+        logger.warn("Failed to track verification_completed event", {
+          operation: "verification.analytics",
+          account_id: nearSignature.accountId,
+          error_message: error instanceof Error ? error.message : "Unknown error",
+        })
       }
 
       // Update session status for deep link callback
@@ -461,7 +500,7 @@ export async function POST(request: NextRequest) {
           status: "success",
           accountId: nearSignature.accountId,
         })
-        console.log(`[Verify] Updated session ${sessionId} with status: success`)
+        event.set("session_updated", true)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : ""
@@ -473,7 +512,6 @@ export async function POST(request: NextRequest) {
           status: "error",
           error: errorCode,
         })
-        console.log(`[Verify] Updated session ${sessionId} with status: error (${errorCode})`)
       }
 
       return respondWithError({
@@ -484,6 +522,11 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
+
+    // Emit successful verification wide event
+    event.setStatus(200)
+    event.setVerification({ stage: "completed" })
+    event.info("Verification completed successfully")
 
     return NextResponse.json(
       {

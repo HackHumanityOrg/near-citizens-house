@@ -125,6 +125,21 @@ export async function trackVerificationFailedServer(props: {
 }
 
 /**
+ * Capture a server-side exception to PostHog
+ * Used by instrumentation.ts for automatic error tracking
+ */
+export async function captureServerException(
+  error: Error,
+  distinctId?: string,
+  additionalProperties?: Record<string, unknown>,
+): Promise<void> {
+  const ph = getPostHogServer()
+  if (!ph) return
+
+  await ph.captureException(error, distinctId, additionalProperties)
+}
+
+/**
  * Gracefully shutdown PostHog server instance
  * Ensures all queued events are flushed before shutdown
  */
