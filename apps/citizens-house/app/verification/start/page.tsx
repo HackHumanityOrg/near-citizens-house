@@ -193,12 +193,24 @@ function VerificationStartContent() {
         {/* Step 2: QR Scan */}
         {currentStep === 2 && nearSignature && (
           <>
-            <StepHeader
-              currentStep={2}
-              totalSteps={2}
-              title="Scan QR Code"
-              subtitle="Use the Self mobile app to scan this QR code and generate your passport proof."
-            />
+            {/* Mobile header */}
+            <div className="md:hidden">
+              <StepHeader
+                currentStep={2}
+                totalSteps={2}
+                title="Verify with Self"
+                subtitle="Open the Self app to verify your passport and complete verification."
+              />
+            </div>
+            {/* Desktop header */}
+            <div className="hidden md:block">
+              <StepHeader
+                currentStep={2}
+                totalSteps={2}
+                title="Scan QR Code"
+                subtitle="Use the Self mobile app to scan this QR code and generate your passport proof."
+              />
+            </div>
             <Step2QrScan
               nearSignature={nearSignature}
               sessionId={sessionId}

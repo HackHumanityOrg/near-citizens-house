@@ -50,44 +50,25 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   )
   const trackedStartRef = useRef(false)
   const trackedQrDisplayRef = useRef(false)
-  const [isMobile, setIsMobile] = useState(false)
-
-  // Detect mobile device
-  useEffect(() => {
-    const checkMobile = () => {
-      const userAgent = navigator.userAgent.toLowerCase()
-      const isMobileDevice =
-        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent) || window.innerWidth < 768
-      setIsMobile(isMobileDevice)
-    }
-
-    checkMobile()
-    window.addEventListener("resize", checkMobile)
-    return () => window.removeEventListener("resize", checkMobile)
-  }, [])
 
   // Track verification started and QR code displayed
   useEffect(() => {
     if (!trackedStartRef.current) {
-      const method = isMobile ? "deeplink" : "qr"
+      const method = window.innerWidth < 768 ? "deeplink" : "qr"
       analytics.trackVerificationStarted(nearSignature.accountId, method)
       trackedStartRef.current = true
     }
 
     if (!trackedQrDisplayRef.current) {
-      const method = isMobile ? "deeplink" : "qr"
+      const method = window.innerWidth < 768 ? "deeplink" : "qr"
       analytics.trackQrCodeDisplayed(nearSignature.accountId, method)
       trackedQrDisplayRef.current = true
     }
-  }, [nearSignature.accountId, isMobile, analytics])
+  }, [nearSignature.accountId, analytics])
 
-  // Build SelfApp during render using useMemo
-  // Include signature data in QR code, but omit challenge/recipient (backend rebuilds these)
-  const selfApp = useMemo(() => {
+  // Build SelfApp for QR code (desktop)
+  const selfAppDesktop = useMemo(() => {
     const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
-
-    // Omit challenge and recipient to reduce QR code size
-    // Backend reconstructs: challenge = getSigningMessage(), recipient = accountId
     const userDefinedData = JSON.stringify({
       accountId: nearSignature.accountId,
       publicKey: nearSignature.publicKey,
@@ -96,28 +77,51 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
       timestamp: nearSignature.timestamp,
     })
 
-    const endpoint = SELF_CONFIG.endpoint
-
     return new SelfAppBuilder({
       version: 2,
       appName: SELF_CONFIG.appName,
       scope: SELF_CONFIG.scope,
-      endpoint: endpoint,
+      endpoint: SELF_CONFIG.endpoint,
       logoBase64: SELF_CONFIG.logoBase64,
       userId: sessionId,
       endpointType: SELF_CONFIG.endpointType,
       userIdType: "uuid",
       userDefinedData: userDefinedData,
       disclosures: SELF_CONFIG.disclosures,
-      deeplinkCallback: isMobile ? `${SELF_CONFIG.deeplinkCallback}?sessionId=${sessionId}` : undefined,
     }).build()
-  }, [nearSignature, sessionId, isMobile])
+  }, [nearSignature, sessionId])
 
-  const deeplink = useMemo(() => getUniversalLink(selfApp), [selfApp])
+  // Build SelfApp for deeplink (mobile)
+  const selfAppMobile = useMemo(() => {
+    const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
+    const userDefinedData = JSON.stringify({
+      accountId: nearSignature.accountId,
+      publicKey: nearSignature.publicKey,
+      signature: nearSignature.signature,
+      nonce: nonceBase64,
+      timestamp: nearSignature.timestamp,
+    })
+
+    return new SelfAppBuilder({
+      version: 2,
+      appName: SELF_CONFIG.appName,
+      scope: SELF_CONFIG.scope,
+      endpoint: SELF_CONFIG.endpoint,
+      logoBase64: SELF_CONFIG.logoBase64,
+      userId: sessionId,
+      endpointType: SELF_CONFIG.endpointType,
+      userIdType: "uuid",
+      userDefinedData: userDefinedData,
+      disclosures: SELF_CONFIG.disclosures,
+      deeplinkCallback: `${SELF_CONFIG.deeplinkCallback}?sessionId=${sessionId}`,
+    }).build()
+  }, [nearSignature, sessionId])
+
+  const deeplink = useMemo(() => getUniversalLink(selfAppMobile), [selfAppMobile])
 
   // Store session ID in localStorage for mobile flow
   useEffect(() => {
-    if (isMobile) {
+    try {
       localStorage.setItem(
         `self-session-${sessionId}`,
         JSON.stringify({
@@ -126,18 +130,18 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
           timestamp: Date.now(),
         }),
       )
+    } catch {
+      // Storage may be restricted in private browsing or embedded webviews
     }
-  }, [sessionId, nearSignature.accountId, isMobile])
+  }, [sessionId, nearSignature.accountId])
 
   const handleOpenSelfApp = () => {
-    if (isMobile) {
-      analytics.trackDeeplinkOpened(nearSignature.accountId)
-      window.open(deeplink, "_blank")
-    }
+    analytics.trackDeeplinkOpened(nearSignature.accountId)
+    window.open(deeplink, "_blank")
   }
 
   const handleSuccess = () => {
-    const method = isMobile ? "deeplink" : "qr"
+    const method = window.innerWidth < 768 ? "deeplink" : "qr"
     analytics.trackVerificationCompleted(nearSignature.accountId, method)
     setVerificationStatus("success")
     onSuccess()
@@ -157,29 +161,29 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-[80px] items-start justify-center w-full">
               {/* Left Column: QR Code or Deep Link */}
               <div className="flex flex-col items-center pt-0 lg:pt-[40px] w-full lg:w-auto">
-                {isMobile ? (
-                  <>
-                    <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-[24px]">
-                      Open the Self app to verify
-                    </p>
-                    <Button
-                      onClick={handleOpenSelfApp}
-                      size="lg"
-                      className="w-full bg-[#ffda1e] hover:bg-[#e5c41a] text-black"
-                    >
-                      Open Self App
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-4">
-                      Scan the QR code to use the Self app.
-                    </p>
-                    <div className="size-[240px] sm:size-[296px]">
-                      <SelfQRcodeWrapper selfApp={selfApp} onSuccess={handleSuccess} onError={handleError} />
-                    </div>
-                  </>
-                )}
+                {/* Mobile: Open Self App button */}
+                <div className="md:hidden flex flex-col items-center w-full">
+                  <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-[24px]">
+                    Open the Self app to verify
+                  </p>
+                  <Button
+                    onClick={handleOpenSelfApp}
+                    size="lg"
+                    className="w-full bg-[#ffda1e] hover:bg-[#e5c41a] text-black"
+                  >
+                    Open Self App
+                  </Button>
+                </div>
+
+                {/* Desktop: QR Code */}
+                <div className="hidden md:flex flex-col items-center">
+                  <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-4">
+                    Scan the QR code to use the Self app.
+                  </p>
+                  <div className="size-[240px] sm:size-[296px]">
+                    <SelfQRcodeWrapper selfApp={selfAppDesktop} onSuccess={handleSuccess} onError={handleError} />
+                  </div>
+                </div>
               </div>
 
               {/* Right Column: Instructions Panel */}
@@ -214,7 +218,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                     <p className="text-[24px] leading-[32px] font-medium text-[#090909] dark:text-white shrink-0 min-w-[40px]">
                       03
                     </p>
-                    <p className="text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
+                    {/* Mobile text */}
+                    <p className="md:hidden text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
+                      Tap the button above to open Self and complete verification
+                    </p>
+                    {/* Desktop text */}
+                    <p className="hidden md:block text-[16px] leading-[24px] font-fk-grotesk text-black dark:text-neutral-200 pt-[4px]">
                       Return here and scan the QR code with Self app
                     </p>
                   </div>
@@ -248,9 +257,13 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                       <p className="leading-[24px]">Verification Failed</p>
                     </div>
                   </div>
-                  <p className="text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
-                    If your QR code scan returns &quot;Failed verification,&quot; simply redo the signature. The retry
-                    function might take longer than usual.
+                  {/* Mobile text */}
+                  <p className="md:hidden text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
+                    If verification fails, simply redo the signature.
+                  </p>
+                  {/* Desktop text */}
+                  <p className="hidden md:block text-[16px] leading-[24px] font-fk-grotesk text-[#757575] dark:text-[#a3a3a3] w-full">
+                    If your QR code scan returns &quot;Failed verification,&quot; simply redo the signature.
                   </p>
                 </div>
               </div>
