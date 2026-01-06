@@ -1,6 +1,6 @@
 "use client"
 
-import Avatar from "boring-avatars"
+import { User } from "lucide-react"
 
 interface IdenticonProps {
   value: string
@@ -8,13 +8,16 @@ interface IdenticonProps {
   className?: string
 }
 
-// Colors based on accent yellow with opacity (#FFDA1EE5 = 90% opacity)
-const AVATAR_COLORS = ["#FFDA1EE5", "#FFDA1ECC", "#FFDA1EB3", "#FFDA1E99", "#FFDA1E80"]
+export function Identicon({ size = 48, className }: IdenticonProps) {
+  // Icon size is roughly 60% of the container for good proportions
+  const iconSize = Math.round(size * 0.6)
 
-export function Identicon({ value, size = 48, className }: IdenticonProps) {
   return (
-    <div className={className} style={{ width: size, height: size }}>
-      <Avatar name={value} size={size} variant="marble" colors={AVATAR_COLORS} />
+    <div
+      className={`flex items-center justify-center rounded-full bg-[#FFDA1E] ${className || ""}`}
+      style={{ width: size, height: size }}
+    >
+      <User size={iconSize} className="text-black" strokeWidth={1.5} />
     </div>
   )
 }
