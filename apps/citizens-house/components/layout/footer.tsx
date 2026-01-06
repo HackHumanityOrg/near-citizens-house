@@ -1,19 +1,9 @@
-import Image from "next/image"
-import Link from "next/link"
-
 export function Footer() {
   return (
     <footer className="bg-white dark:bg-black border-t border-black/10 dark:border-black">
       {/* Desktop Footer */}
-      <div className="hidden md:flex items-end justify-between p-20">
-        {/* Left side: Logo - Figma node 72:39784-39785 */}
-        <Link href="/" className="flex flex-col items-start shrink-0 w-[316px]">
-          <div className="relative h-[56px] w-[240.63px]">
-            <Image src="/logo.svg" alt="NEAR Citizens House" fill className="object-contain dark:invert" />
-          </div>
-        </Link>
-
-        {/* Right side: Built by HackHumanity • GitHub */}
+      <div className="hidden md:flex items-end justify-end p-20">
+        {/* Built by HackHumanity • GitHub */}
         <div className="flex items-center gap-6">
           <a
             href="https://hackhumanity.com"
