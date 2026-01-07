@@ -23,8 +23,6 @@ export function Header() {
   const pathname = usePathname()
   const isLandingOrVerification = pathname === "/" || pathname === "/verification"
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
-  // Hide connect button on landing/verification pages, but always show profile menu when connected
-  const hideConnectButton = isLandingOrVerification && !isConnected
   const { isAdmin, loading: adminLoading } = useIsAdmin()
 
   return (
@@ -55,8 +53,8 @@ export function Header() {
         </nav>
 
         {/* Mobile Wallet Button - Right */}
-        {/* Show loading when connecting, profile when connected, connect button only on non-landing pages */}
-        {isLoading ? (
+        {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
+        {isLandingOrVerification && !isConnected ? null : isLoading ? (
           <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
             <Loader2 className="h-5 w-5 animate-spin" />
           </button>
@@ -83,11 +81,11 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : !hideConnectButton ? (
+        ) : (
           <button onClick={connect} className="p-1 cursor-pointer" aria-label="Connect wallet">
             <Wallet className="h-5 w-5" />
           </button>
-        ) : null}
+        )}
       </div>
 
       {/* Desktop Header */}
@@ -116,9 +114,9 @@ export function Header() {
         </nav>
 
         {/* Desktop Right Side: Wallet + Theme Toggle */}
-        {/* Show loading when connecting, profile when connected, connect button only on non-landing pages */}
+        {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
         <div className="flex items-center gap-10 ml-auto">
-          {isLoading ? (
+          {isLandingOrVerification && !isConnected ? null : isLoading ? (
             <Button variant="citizens-primary" size="citizens-xl" disabled>
               <Loader2 className="h-4 w-4 animate-spin" />
               Connecting...
@@ -147,11 +145,11 @@ export function Header() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : !hideConnectButton ? (
+          ) : (
             <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
               Connect Wallet
             </Button>
-          ) : null}
+          )}
 
           <ThemeToggle />
         </div>
