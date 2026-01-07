@@ -111,7 +111,6 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse
 // Verification rules are enforced by the backend verifier and contracts.
 // Disclosure requests (like nationality) are frontend-only and returned in discloseOutput.
 const VERIFICATION_CONFIG: VerificationConfig = {
-  minimumAge: 18,
   excludedCountries: [],
   ofac: false,
 }

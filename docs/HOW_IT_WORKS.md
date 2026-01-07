@@ -4,9 +4,9 @@
 
 The user connects their NEAR wallet and signs a message using the NEP-413 standard, which proves they control the wallet. This signature is embedded in Self.xyz QR code as "user context data"—an arbitrary JSON object that Self.xyz carries throughout the verification process.
 
-The user scans this QR with the Self.xyz mobile app, which reads their passport's NFC chip and generates a Groth16 zero-knowledge proof. This proof confirms the passport is valid, the person is 18+, and they're not on sanctions lists—without revealing any personal information. After the proof is generated, the Self app calls the `/api/verify` endpoint with the proof and user context data.
+The user scans this QR with the Self.xyz mobile app, which reads their passport's NFC chip and generates a Groth16 zero-knowledge proof. This proof confirms the passport is valid—without revealing any personal information. OFAC sanctions checking can be enabled optionally. After the proof is generated, the Self app calls the `/api/verify` endpoint with the proof and user context data.
 
-The web app backend receives the proof and validates it using the Self SDK (checking proof validity, age requirement, and optionally OFAC sanctions). It then extracts the NEAR signature from the user context data and validates the format and timestamp freshness (signatures must be <10 minutes old). The backend does not cryptographically verify the signature—that happens on-chain.
+The web app backend receives the proof and validates it using the Self SDK (checking proof validity and optionally OFAC sanctions). It then extracts the NEAR signature from the user context data and validates the format and timestamp freshness (signatures must be <10 minutes old). The backend does not cryptographically verify the signature—that happens on-chain.
 
 The backend calls `store_verification()` using `backend_wallet` on the contract. The contract verifies that the caller is the authorized `backend_wallet`, then performs on-chain NEP-413 signature verification using Ed25519. It also checks that the nullifier (a unique hash derived from the passport) hasn't been used before, and that the account isn't already verified. This ensures one passport can only verify one NEAR account.
 
@@ -31,7 +31,7 @@ sequenceDiagram
     SelfApp->>BW: POST /api/verify (proof + user context data)
 
     BW->>BW: Verify ZK proof (Self SDK)
-    BW->>BW: Validate age ≥18, OFAC
+    BW->>BW: Validate OFAC (if enabled)
     BW->>BW: Extract signature, validate format & freshness
     BW->>Contract: store_verification()
 
