@@ -2,7 +2,7 @@
 
 [![Tests](https://img.shields.io/endpoint?url=https://hackhumanityorg.github.io/near-citizens-house/test-results.json)](https://github.com/HackHumanityOrg/near-citizens-house/actions)
 [![Allure Report](https://img.shields.io/badge/Allure_Report-View-blueviolet)](https://hackhumanityorg.github.io/near-citizens-house/)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,GCP_BIGQUERY_CREDENTIALS&envDescription=Production%20deployment.%20Mark%20NEAR_PRIVATE_KEY%20as%20Sensitive%20in%20Vercel%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs&skippable-integrations=1)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,GCP_BIGQUERY_CREDENTIALS,NEXT_PUBLIC_USERJOT_PROJECT_ID,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID&envDescription=Production%20deployment.%20Mark%20NEAR_PRIVATE_KEY%20as%20Sensitive%20in%20Vercel%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs&skippable-integrations=1)
 
 A pnpm workspace monorepo for NEAR governance and identity verification.
 
@@ -10,8 +10,7 @@ Click the Deploy button to deploy your own instance. You'll need to deploy the [
 
 ## Project Structure
 
-- **apps/verified-accounts** - Identity verification app (port 3000)
-- **apps/citizens-house** - DAO governance app (port 3001)
+- **apps/citizens-house** - Main Next.js app with identity verification & governance (port 3000)
 - **packages/ui** - Shared UI components (shadcn/ui)
 - **packages/shared** - NEAR/Self.xyz integrations
 - **contracts/** - NEAR smart contracts (Rust)
@@ -22,14 +21,8 @@ Click the Deploy button to deploy your own instance. You'll need to deploy the [
 # Install dependencies
 pnpm install
 
-# Run verification app (port 3000)
-pnpm dev:verification
-
-# Run governance app (port 3001)
-pnpm dev:governance
-
-# Run both apps
-pnpm dev:all
+# Run the app (port 3000)
+pnpm dev
 ```
 
 ## About Identity Verification

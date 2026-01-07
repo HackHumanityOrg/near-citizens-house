@@ -105,7 +105,7 @@ export const NEAR_CONFIG = {
 }
 
 // App URL (single app after merge of verification and governance)
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse.houseofstake.dev"
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse.org"
 
 // Self.xyz Configuration
 // Verification rules are enforced by the backend verifier and contracts.
