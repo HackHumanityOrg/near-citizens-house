@@ -1,55 +1,18 @@
 //! # Verified Accounts Contract
 //!
-//! A NEAR smart contract that links real-world passport identity to NEAR wallets
-//! using Self.xyz zero-knowledge proofs and on-chain signature verification.
+//! Links Self.xyz ZK passport proofs to NEAR accounts with on-chain NEP-413 signature checks.
 //!
-//! # Versioning Strategy
+//! ## Versioning
+//! - Contract state: `VersionedContract` (append-only enum; migrate in `contract_mut()`).
+//! - Records: `VersionedVerification` for lazy per-record upgrades (see `interface.rs`).
+//! - Use `migrate()` + `#[init(ignore_state)]` only for breaking, non-lazy changes.
 //!
-//! This contract uses two levels of versioning to support upgrades without migrations:
-//!
-//! ## Contract State Versioning (`VersionedContract`)
-//!
-//! The main contract state is wrapped in a `VersionedContract` enum. When you need
-//! to add new top-level fields (e.g., rate limiting, admin list):
-//!
-//! 1. Create a new `ContractV2` struct with the new fields
-//! 2. Append `V2(ContractV2)` variant to `VersionedContract` (NEVER reorder)
-//! 3. Update `contract_mut()` to migrate from V1 to V2 on first write
-//! 4. Update view method accessors to handle both versions
-//!
-//! ## Record Versioning (`VersionedVerification`)
-//!
-//! Individual verification records use a `VersionedVerification` enum. This enables
-//! lazy migration - old records are upgraded only when read, avoiding expensive
-//! batch migrations. See `interface.rs` for the implementation.
-//!
-//! ## Explicit Migration (`migrate()`)
-//!
-//! For breaking changes that can't be handled lazily, use the `migrate()` method
-//! with `#[init(ignore_state)]` to perform one-time state transformations.
-//!
-//! # Security Model
-//!
-//! This contract operates with a trusted backend model:
-//!
-//! ## Trust Assumptions
-//! - The `backend_wallet` is trusted to only submit valid Self.xyz ZK proofs
-//! - The contract cannot verify ZK proofs on-chain (prohibitively expensive)
-//! - **The `backend_wallet` is trusted to verify account ownership off-chain**
-//!   - NEP-413 signatures prove cryptographic validity, NOT that the public key
-//!     is a valid access key for the claimed account
-//!   - NEAR smart contracts cannot query on-chain access keys (SDK limitation)
-//!   - The backend MUST verify the signing key is registered for the account
-//!     via RPC (`view_access_key`) before submitting verifications
-//!   - The backend MUST enforce one-time challenges with TTLs to prevent replays
-//!   - The backend MUST bind the challenge to this service (include contract ID/domain)
-//!
-//! ## On-Chain Verification
-//! The contract independently verifies:
-//! - NEP-413 Ed25519 signatures (cryptographic validity only)
-//! - Signature uniqueness (replay protection)
-//! - Nullifier uniqueness (one identity per person)
-//! - Account uniqueness (one identity per NEAR account)
+//! ## Security Model
+//! - Backend verifies ZK proofs and account ownership off-chain; the contract cannot verify proofs.
+//! - NEP-413 checks here are cryptographic only; backend must validate access keys via RPC,
+//!   enforce one-time challenges with TTLs, and bind challenges to this contract.
+//! - On-chain enforcement: signature validity, signature uniqueness, nullifier uniqueness,
+//!   and account uniqueness.
 
 #![allow(clippy::too_many_arguments)]
 
@@ -154,19 +117,10 @@ fn emit_event<T: Serialize>(event_name: &str, data: &T) {
 
 // ==================== Contract State Versioning ====================
 
-/// Versioned contract state for upgrade support.
+/// Versioned contract state for upgrades.
 ///
-/// This enum wraps the contract state to allow future upgrades without
-/// requiring state migrations. When you need to add new fields to the
-/// contract state:
-///
-/// 1. Create a new struct (e.g., `ContractV2`) with the new fields
-/// 2. Append a new variant to this enum (e.g., `V2(ContractV2)`)
-/// 3. Update `contract_mut()` to migrate V1 -> V2 on first write
-/// 4. Update field accessor methods to handle both versions for reads
-///
-/// **CRITICAL:** Never reorder, remove, or insert variants - only append at the end.
-/// Borsh uses enum discriminants (0x00, 0x01, etc.) based on declaration order.
+/// Append new variants only and migrate in `contract_mut()`.
+/// Never reorder or remove variants; Borsh discriminants are order-based.
 #[derive(PanicOnDefault)]
 #[near(contract_state)]
 pub enum VersionedContract {
@@ -252,36 +206,11 @@ impl VersionedContract {
         })
     }
 
-    /// Migrate contract state from a previous version.
+    /// One-time state migration after deploying new code.
     ///
-    /// This method is called after deploying new contract code to perform
-    /// one-time state transformations. It uses `#[init(ignore_state)]` to
-    /// bypass normal state deserialization and manually read the old state.
-    ///
-    /// ## When to Use
-    ///
-    /// Use this for breaking changes that can't be handled by lazy migration:
-    /// - Restructuring collections (e.g., splitting a map into two)
-    /// - Removing fields (to clean up orphan storage keys)
-    /// - Complex data transformations
-    ///
-    /// ## Example Usage
-    ///
-    /// Deploy new contract code with migrate as init function:
-    /// ```bash
-    /// cargo near deploy build-non-reproducible-wasm CONTRACT_ID.testnet \
-    ///   with-init-call migrate json-args '{}' \
-    ///   prepaid-gas '300 Tgas' attached-deposit '0 NEAR' \
-    ///   network-config testnet sign-with-keychain send
-    /// ```
-    ///
-    /// ## Security
-    ///
-    /// The `#[private]` attribute ensures only the contract account itself can call
-    /// this method (predecessor == current_account). This is satisfied during deploy
-    /// when using `--initFunction migrate`. The `#[init(ignore_state)]` attribute
-    /// allows reading the old state format before the new code's state structure
-    /// is applied.
+    /// Use only for breaking changes that cannot be handled lazily. This uses
+    /// `#[init(ignore_state)]` to read old state and `#[private]` to restrict callers.
+    /// See `docs/UPGRADING.md` for details and examples.
     #[init(ignore_state)]
     #[private]
     pub fn migrate() -> Self {

@@ -153,7 +153,16 @@ pub fn into_current(self) -> VerificationV2 {
 1. **Test locally:**
 
    ```bash
-   ./scripts/build_test_fixtures.sh
+   # From contracts/verified-accounts
+   cargo near build non-reproducible-wasm
+   mkdir -p tests/fixtures/v1
+   cp target/near/verified_accounts.wasm tests/fixtures/v1/verified_accounts.wasm
+
+   cd tests/fixtures/v2
+   cargo near build non-reproducible-wasm
+   cp target/near/verified_accounts_v2_fixture.wasm verified_accounts.wasm
+   cd ../../..
+
    cargo test --features integration-tests --test integration versioning
    ```
 
@@ -191,13 +200,19 @@ pub fn into_current(self) -> VerificationV2 {
 
 ## Testing Upgrades
 
-The `upgrade-simulation` feature flag enables testing the upgrade path:
+Integration tests use the V1 and V2 WASM fixtures in `tests/fixtures/v1` and `tests/fixtures/v2`. Rebuild them with:
 
 ```bash
-# Build both versions
-./scripts/build_test_fixtures.sh
+# From contracts/verified-accounts
+cargo near build non-reproducible-wasm
+mkdir -p tests/fixtures/v1
+cp target/near/verified_accounts.wasm tests/fixtures/v1/verified_accounts.wasm
 
-# Run versioning tests
+cd tests/fixtures/v2
+cargo near build non-reproducible-wasm
+cp target/near/verified_accounts_v2_fixture.wasm verified_accounts.wasm
+cd ../../..
+
 cargo test --features integration-tests --test integration versioning
 ```
 
@@ -212,8 +227,8 @@ Tests in `versioning_tests.rs` deploy V1, store data, upgrade to V2, and verify:
 
 If an upgrade causes issues:
 
-1. **Redeploy the previous WASM** - State migrations are lazy, so unmodified V1 data remains V1
-2. **Note:** Any V1 data that was read (and thus migrated to V2) during the bad deployment may need manual attention
+1. **Redeploy the previous WASM** - Data stays in V1 unless it was explicitly migrated (`migrate()`) or moved by a first-write upgrade in `contract_mut()`.
+2. **Note:** Record conversions on read are in-memory only unless written back; only persisted migrations need manual attention.
 
 For critical contracts, consider:
 

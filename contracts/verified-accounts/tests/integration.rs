@@ -37,3 +37,6 @@ mod edge_case_tests;
 
 #[path = "integration/versioning_tests.rs"]
 mod versioning_tests;
+
+#[path = "integration/stress_tests.rs"]
+mod stress_tests;

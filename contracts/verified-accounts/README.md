@@ -1,4 +1,4 @@
-# NEAR Verification Database Contract
+# Verified Accounts Contract
 
 Smart contract for storing Self.xyz passport verification records on NEAR blockchain with on-chain signature verification.
 
@@ -18,46 +18,34 @@ Smart contract for storing Self.xyz passport verification records on NEAR blockc
 - `cargo-near` for contract builds
 - `wasm-opt` from binaryen (for optimization)
 
-\`\`\`bash
-
+```bash
 # Set correct Rust version (required for NEAR compatibility)
-
-rustup override set 1.86
+rustup override set 1.86.0
 rustup target add wasm32-unknown-unknown
-
 # Build contract
-
 cargo near build non-reproducible-wasm
-
 # Output: target/near/verified_accounts.wasm
-
-\`\`\`
+```
 
 ## Deploying
 
-\`\`\`bash
-
+```bash
 # Create contract account
-
 near account create-account fund-myself CONTRACT_ID '2 NEAR' \
  autogenerate-new-keypair save-to-keychain \
  sign-as YOUR_ACCOUNT network-config testnet sign-with-keychain send
-
 # Deploy contract
-
 near contract deploy CONTRACT_ID \
  use-file target/near/verified_accounts.wasm \
  without-init-call \
  network-config testnet sign-with-keychain send
-
 # Initialize with backend wallet
-
 near contract call-function as-transaction CONTRACT_ID new \
  json-args '{"backend_wallet":"YOUR_BACKEND_ACCOUNT"}' \
  prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' \
  sign-as YOUR_BACKEND_ACCOUNT \
  network-config testnet sign-with-keychain send
-\`\`\`
+```
 
 ## Contract Methods
 
@@ -65,31 +53,33 @@ near contract call-function as-transaction CONTRACT_ID new \
 
 **`store_verification`** - Store a verified passport-wallet association with ZK proof
 
-\`\`\`rust
+```rust
 pub fn store_verification(
-&mut self,
-nullifier: String,
-near_account_id: AccountId,
-attestation_id: String,
-signature_data: NearSignatureData,
-self_proof: SelfProofData,
-user_context_data: String,
+    &mut self,
+    nullifier: String,
+    near_account_id: AccountId,
+    attestation_id: String,
+    signature_data: NearSignatureData,
+    self_proof: SelfProofData,
+    user_context_data: String,
 )
-\`\`\`
+```
 
 **`update_backend_wallet`** - Change the backend wallet address
 **`pause`** / **`unpause`** - Emergency controls
 
 ### Read Methods (Public)
 
-- `get_account(near_account_id: AccountId) -> Option<VerifiedAccountInfo>` - Get verification info (without ZK proof)
-- `get_account_with_proof(near_account_id: AccountId) -> Option<VerifiedAccount>` - Get full data with ZK proof
-- `is_account_verified(near_account_id: AccountId) -> bool` - Simple boolean check
+- `get_verification(account_id: AccountId) -> Option<VerificationSummary>` - Verification summary (no ZK proof)
+- `get_full_verification(account_id: AccountId) -> Option<Verification>` - Full record with ZK proof
+- `is_verified(account_id: AccountId) -> bool` - Simple boolean check
 - `get_backend_wallet() -> AccountId` - Get backend wallet address
 - `get_verified_count() -> u64` - Get total verified count
-- `get_verified_accounts(from_index: u64, limit: u64) -> Vec<VerifiedAccount>` - Paginated list
-- `are_accounts_verified(account_ids: Vec<AccountId>) -> Vec<bool>` - Batch verification check
+- `list_verifications(from_index: u64, limit: u64) -> Vec<Verification>` - Paginated list
+- `are_verified(account_ids: Vec<AccountId>) -> Vec<bool>` - Batch verification check
+- `get_verifications(account_ids: Vec<AccountId>) -> Vec<Option<VerificationSummary>>` - Batch summaries
 - `is_paused() -> bool` - Check if contract is paused
+- `get_state_version() -> u8` - Contract state version (diagnostics)
 
 ## Security
 
@@ -122,20 +112,14 @@ Blockchain Storage (permanent)
 
 ## Development
 
-\`\`\`bash
-
+```bash
 # Build for development
-
 cargo near build non-reproducible-wasm
-
 # Run tests
-
 cargo test
-
 # Check contract size
-
 ls -lh target/near/verified_accounts.wasm
-\`\`\`
+```
 
 ## Deployed Contracts
 

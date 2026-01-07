@@ -1,29 +1,11 @@
 //! # Verified Accounts Interface
 //!
-//! This module provides a typed interface for making cross-contract calls to the
-//! NEAR verified accounts oracle contract. Other NEAR contracts can use these types
-//! and the generated `ext_verified_accounts` module for type-safe cross-contract calls.
+//! Typed interface and data types for cross-contract calls to verified-accounts.
 //!
 //! ## Versioning
-//!
-//! This module uses versioned types to support contract upgrades without migrations:
-//! - `VersionedVerification` - enum wrapper for verification records stored on-chain
-//! - `Verification` - type alias for the current version (currently `VerificationV1`)
-//!
-//! Old records are automatically upgraded when read (lazy migration).
-//!
-//! ### Adding New Versions
-//!
-//! When you need to add fields to verification records:
-//! 1. Create a new struct (e.g., `VerificationV2`) with the new fields
-//! 2. Append a new variant to `VersionedVerification` (NEVER reorder existing variants)
-//! 3. Update `into_current()` to migrate from all older versions
-//! 4. Update the `Verification` type alias to point to the new struct
-//!
-//! ### Borsh Serialization Warning
-//!
-//! Borsh uses enum discriminants (0x00, 0x01, etc.) based on declaration order.
-//! **CRITICAL:** Never reorder, remove, or insert variants - only append at the end.
+//! - `VersionedVerification` wraps stored records; `Verification` aliases the current version.
+//! - Append enum variants only; migrate in `into_current()`. Borsh order is binding.
+//! - Old records are lazily upgraded on read.
 
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
@@ -33,17 +15,8 @@ use near_sdk::{ext_contract, AccountId, NearSchema};
 
 /// Versioned verification record for on-chain storage.
 ///
-/// This enum allows the contract to upgrade the verification structure
-/// without requiring data migrations. Old records are lazily upgraded
-/// when read via `into_current()`.
-///
-/// ## Borsh Serialization
-///
-/// Borsh serializes enums with a 1-byte discriminant based on declaration order:
-/// - `0x00` = V1 (original format)
-///
-/// **CRITICAL:** Never reorder, remove, or insert variants - only append at the end.
-/// Doing so will corrupt existing on-chain data.
+/// Append-only enum; old records migrate in `into_current()`.
+/// Never reorder variants; Borsh discriminants are order-based.
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum VersionedVerification {
