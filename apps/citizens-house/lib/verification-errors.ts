@@ -11,12 +11,7 @@ import { VERIFICATION_ERROR_MESSAGES, type VerificationErrorCode } from "@near-c
  * Error codes that indicate non-recoverable issues.
  * Users cannot retry verification with the same account/passport.
  */
-export const NON_RETRYABLE_ERRORS = [
-  "ACCOUNT_TOO_NEW",
-  "DUPLICATE_PASSPORT",
-  "MINIMUM_AGE_NOT_MET",
-  "OFAC_CHECK_FAILED",
-] as const
+export const NON_RETRYABLE_ERRORS = ["DUPLICATE_PASSPORT", "MINIMUM_AGE_NOT_MET", "OFAC_CHECK_FAILED"] as const
 
 export type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
 
@@ -25,8 +20,6 @@ export type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
  */
 export function getErrorTitle(errorCode: string | null | undefined): string {
   switch (errorCode) {
-    case "ACCOUNT_TOO_NEW":
-      return "Account Too New"
     case "DUPLICATE_PASSPORT":
       return "Already Verified"
     case "MINIMUM_AGE_NOT_MET":
@@ -51,8 +44,6 @@ export function getErrorMessage(errorCode: string | null | undefined, fallbackMe
   }
 
   switch (errorCode) {
-    case "ACCOUNT_TOO_NEW":
-      return "Your NEAR account must be at least 30 days old to complete verification. This helps prevent Sybil attacks. Please wait until your account is old enough, or use an established account."
     case "DUPLICATE_PASSPORT":
       return "This passport has already been used to verify another NEAR account. Each passport can only verify one account."
     case "MINIMUM_AGE_NOT_MET":

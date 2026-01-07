@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["**/*.test.ts"],
+    passWithNoTests: true,
     setupFiles: ["allure-vitest/setup"],
     reporters: [
       "default",
