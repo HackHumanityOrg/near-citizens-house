@@ -1,30 +1,8 @@
-"use client"
-
-/**
- * Route-Level Error Boundary
- *
- * This component catches errors that occur in route components and sends them to PostHog.
- * Unlike global-error.tsx, this runs within the root layout so styling is preserved.
- *
- * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling#using-error-boundaries
- * @see https://posthog.com/docs/error-tracking/installation/nextjs
- */
-
-import posthog from "posthog-js"
 import Link from "next/link"
-import { useEffect } from "react"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => {
-    // Capture the exception in PostHog
-    posthog.captureException(error, {
-      error_boundary: "route",
-      error_digest: error.digest,
-    })
-  }, [error])
-
+export default function NotFound() {
   return (
     <div className="bg-white dark:bg-black">
       {/* Hero Section - Fixed height with gradient background */}
@@ -47,20 +25,17 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         {/* Title and description - centered in hero */}
         <div className="relative flex flex-col gap-[16px] items-center justify-center h-full px-6 z-10">
           <h1 className="text-[30px] leading-[36px] md:text-[62px] md:leading-[72px] font-fk-grotesk font-medium text-black dark:text-white text-center">
-            Something Went Wrong
+            Page Not Found
           </h1>
           <p className="text-[20px] leading-[1.4] font-fk-grotesk font-normal text-black dark:text-white text-center max-w-[600px]">
-            An error occurred while loading this page. Please try again or go back to the homepage.
+            The page you&apos;re looking for doesn&apos;t exist or has been moved.
           </p>
         </div>
       </section>
 
       {/* Button Section */}
-      <section className="flex justify-center gap-4 w-full px-6 md:px-0 py-[40px] md:py-[60px]">
-        <Button onClick={() => reset()} variant="citizens-primary" size="citizens-xl">
-          Try Again
-        </Button>
-        <Button asChild variant="citizens-outline" size="citizens-xl">
+      <section className="flex justify-center w-full px-6 md:px-0 py-[40px] md:py-[60px]">
+        <Button asChild variant="citizens-primary" size="citizens-xl">
           <Link href="/">Go to Homepage</Link>
         </Button>
       </section>
