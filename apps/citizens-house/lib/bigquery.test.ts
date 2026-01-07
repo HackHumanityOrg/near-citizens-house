@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest"
+import type { AccountCreationQueryResult } from "./bigquery"
 import { getAccountCreationDate } from "./bigquery"
 
 // Check if BigQuery credentials are available
@@ -20,6 +21,16 @@ const hasCredentials = !!(process.env.GCP_BIGQUERY_CREDENTIALS || process.env.GO
 
 // Skip all tests if no credentials
 const describeIfCredentials = hasCredentials ? describe : describe.skip
+
+/**
+ * Helper to assert that the result is not a quota exceeded error.
+ * Fails the test with a clear message if quota is exceeded.
+ */
+function assertNotQuotaExceeded(result: AccountCreationQueryResult): void {
+  if (!result.success && result.error === "quota_exceeded") {
+    expect.fail(`BigQuery quota exceeded. Enable billing or wait for quota reset. Message: ${result.message}`)
+  }
+}
 
 describeIfCredentials("Near Citizens House", () => {
   describeIfCredentials("BigQuery Integration Tests", () => {
@@ -32,6 +43,7 @@ describeIfCredentials("Near Citizens House", () => {
       describe("mainnet accounts", () => {
         it("returns genesis_account for 'near' (mainnet genesis account)", async () => {
           const result = await getAccountCreationDate("near")
+          assertNotQuotaExceeded(result)
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -42,6 +54,7 @@ describeIfCredentials("Near Citizens House", () => {
 
         it("returns genesis_account for 'system' (mainnet genesis account)", async () => {
           const result = await getAccountCreationDate("system")
+          assertNotQuotaExceeded(result)
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -52,6 +65,7 @@ describeIfCredentials("Near Citizens House", () => {
         it("returns creation date for a known old account", async () => {
           // aurora.near is a well-known account created early in NEAR's history
           const result = await getAccountCreationDate("aurora.near")
+          assertNotQuotaExceeded(result)
 
           expect(result.success).toBe(true)
           if (result.success) {
@@ -66,6 +80,7 @@ describeIfCredentials("Near Citizens House", () => {
 
         it("returns not_found for non-existent account", async () => {
           const result = await getAccountCreationDate("this-account-definitely-does-not-exist-12345.near")
+          assertNotQuotaExceeded(result)
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -78,6 +93,7 @@ describeIfCredentials("Near Citizens House", () => {
         it("handles sub-accounts correctly", async () => {
           // relay.aurora.near is a sub-account
           const result = await getAccountCreationDate("relay.aurora.near")
+          assertNotQuotaExceeded(result)
 
           // Should either find the account or return not_found (not crash)
           expect(["not_found", "genesis_account"].includes(result.success ? "" : result.error) || result.success).toBe(
@@ -89,6 +105,7 @@ describeIfCredentials("Near Citizens House", () => {
           // Random hex that likely doesn't exist
           const implicitAccount = "0".repeat(64)
           const result = await getAccountCreationDate(implicitAccount)
+          assertNotQuotaExceeded(result)
 
           // Should return not_found for non-existent implicit account
           expect(result.success).toBe(false)
@@ -100,6 +117,7 @@ describeIfCredentials("Near Citizens House", () => {
         it("handles eth-implicit accounts (0x-prefixed)", async () => {
           const ethImplicitAccount = `0x${"0".repeat(40)}`
           const result = await getAccountCreationDate(ethImplicitAccount)
+          assertNotQuotaExceeded(result)
 
           expect(result.success).toBe(false)
           if (!result.success) {
@@ -110,6 +128,7 @@ describeIfCredentials("Near Citizens House", () => {
         it("handles deterministic accounts (0s-prefixed)", async () => {
           const deterministicAccount = `0s${"0".repeat(40)}`
           const result = await getAccountCreationDate(deterministicAccount)
+          assertNotQuotaExceeded(result)
 
           expect(result.success).toBe(false)
           if (!result.success) {

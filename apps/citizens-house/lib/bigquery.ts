@@ -21,6 +21,10 @@ import { logger, Op } from "./logger"
 // Note: There is no public testnet dataset in BigQuery
 const NEAR_DATASET = "bigquery-public-data.crypto_near_mainnet_us"
 
+// NEAR mainnet genesis date - used for partition filtering to reduce query costs
+// Genesis occurred on April 22, 2020 (Phase 2/unrestricted was October 13, 2020)
+const NEAR_GENESIS_DATE = "2020-04-22"
+
 const NEAR_IMPLICIT_ACCOUNT_ID = /^[0-9a-f]{64}$/
 const ETH_IMPLICIT_ACCOUNT_ID = /^0x[0-9a-f]{40}$/
 const DETERMINISTIC_ACCOUNT_ID = /^0s[0-9a-f]{40}$/
@@ -124,13 +128,17 @@ async function queryFirstActionRow(
   accountId: string,
   actionKinds: string[],
 ): Promise<BigQueryRow | null> {
+  // Use block_date partition filter to reduce bytes scanned and query costs
+  // The receipt_actions table is partitioned by block_date (DATE type)
+  // Using DATE() function ensures proper type conversion for the partition filter
   const query = `
     SELECT 
       block_date,
       block_height,
       block_timestamp_utc
     FROM \`${dataset}.receipt_actions\`
-    WHERE action_kind IN UNNEST(@actionKinds)
+    WHERE block_date >= DATE(@genesisDate)
+      AND action_kind IN UNNEST(@actionKinds)
       AND receipt_receiver_account_id = @accountId
     ORDER BY block_height ASC
     LIMIT 1
@@ -138,10 +146,21 @@ async function queryFirstActionRow(
 
   const [rows] = await client.query({
     query,
-    params: { accountId, actionKinds },
+    params: { accountId, actionKinds, genesisDate: NEAR_GENESIS_DATE },
   })
 
   return rows && rows.length > 0 ? (rows[0] as BigQueryRow) : null
+}
+
+/**
+ * Check if an error is a BigQuery quota exceeded error
+ */
+function isQuotaExceededError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase()
+    return message.includes("quota exceeded") || message.includes("quotaexceeded")
+  }
+  return false
 }
 
 /**
@@ -158,7 +177,7 @@ export interface AccountCreationResult {
 export interface AccountCreationError {
   success: false
   accountId: string
-  error: "not_found" | "query_error" | "genesis_account"
+  error: "not_found" | "query_error" | "genesis_account" | "quota_exceeded"
   message: string
 }
 
@@ -220,17 +239,19 @@ export async function getAccountCreationDate(accountId: string): Promise<Account
 
     // Account might be a genesis account or doesn't exist
     // Check if account exists by looking for any transaction
+    // Use block_date partition filter to reduce query costs
     const existsQuery = `
       SELECT 1
       FROM \`${dataset}.transactions\`
-      WHERE signer_account_id = @accountId
-         OR receiver_account_id = @accountId
+      WHERE block_date >= DATE(@genesisDate)
+        AND (signer_account_id = @accountId
+         OR receiver_account_id = @accountId)
       LIMIT 1
     `
 
     const [existsRows] = await client.query({
       query: existsQuery,
-      params: { accountId },
+      params: { accountId, genesisDate: NEAR_GENESIS_DATE },
     })
 
     if (existsRows && existsRows.length > 0) {
@@ -250,16 +271,33 @@ export async function getAccountCreationDate(accountId: string): Promise<Account
       message: "Account not found in NEAR blockchain data",
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown query error"
+
+    // Check for quota exceeded error
+    if (isQuotaExceededError(error)) {
+      logger.warn("BigQuery quota exceeded", {
+        operation: Op.BIGQUERY.QUERY,
+        account_id: accountId,
+        error_message: errorMessage,
+      })
+      return {
+        success: false,
+        accountId,
+        error: "quota_exceeded",
+        message: "BigQuery quota exceeded. Please try again later or enable billing.",
+      }
+    }
+
     logger.error("Error querying account creation", {
       operation: Op.BIGQUERY.QUERY,
       account_id: accountId,
-      error_message: error instanceof Error ? error.message : "Unknown query error",
+      error_message: errorMessage,
     })
     return {
       success: false,
       accountId,
       error: "query_error",
-      message: error instanceof Error ? error.message : "Unknown query error",
+      message: errorMessage,
     }
   }
 }
