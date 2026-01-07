@@ -1,18 +1,21 @@
 export function ChevronIcon({ className }: { className?: string }) {
   return (
     <svg
-      width="13"
-      height="13"
-      viewBox="0 0 13.5594 13.4806"
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      preserveAspectRatio="none"
     >
-      <g>
-        <line x1="0.339943" y1="13.1407" x2="12.1656" y2="1.31506" stroke="currentColor" strokeWidth="0.961504" />
-        <path d="M0.106174 0.480753L13.0786 0.480752L13.0786 13.4532" stroke="currentColor" strokeWidth="0.961504" />
-      </g>
+      {/* Down arrow - vertical line with angled bottom */}
+      <path
+        d="M9 2L9 14M9 14L4 9M9 14L14 9"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

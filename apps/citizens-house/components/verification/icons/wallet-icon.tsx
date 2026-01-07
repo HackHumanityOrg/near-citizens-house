@@ -1,4 +1,4 @@
-// Font Awesome Regular Wallet icon
+// Font Awesome Pro 6.5.1 Regular Wallet icon
 export function WalletIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -9,7 +9,7 @@ export function WalletIcon({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <path d="M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V192c0-35.3-28.7-64-64-64H80c-8.8 0-16-7.2-16-16s7.2-16 16-16H464c8.8 0 16-7.2 16-16s-7.2-16-16-16H64zM48 96c0-8.8 7.2-16 16-16H448c8.8 0 16 7.2 16 16V416c0 8.8-7.2 16-16 16H64c-8.8 0-16-7.2-16-16V96zm336 96a32 32 0 1 1 0 64 32 32 0 1 1 0-64z" />
+      <path d="M88 32C39.4 32 0 71.4 0 120V392c0 48.6 39.4 88 88 88H424c48.6 0 88-39.4 88-88V216c0-48.6-39.4-88-88-88H120c-13.3 0-24 10.7-24 24s10.7 24 24 24H424c22.1 0 40 17.9 40 40V392c0 22.1-17.9 40-40 40H88c-22.1 0-40-17.9-40-40V120c0-22.1 17.9-40 40-40H456c13.3 0 24-10.7 24-24s-10.7-24-24-24H88zM384 336a32 32 0 1 0 0-64 32 32 0 1 0 0 64z" />
     </svg>
   )
 }

@@ -26,14 +26,14 @@ function LoadingFallback() {
     <div className="min-h-full bg-white dark:bg-black">
       <div className="w-full">
         <div className="flex flex-col gap-[24px] items-center text-center w-full py-[40px] px-4">
-          <Skeleton className="h-[22px] w-[120px] sm:h-[28px] sm:w-[140px]" />
-          <Skeleton className="h-[32px] w-[240px] sm:h-[44px] sm:w-[320px]" />
-          <Skeleton className="h-[24px] w-[320px] sm:h-[28px] sm:w-[420px]" />
+          <Skeleton className="h-[22px] w-[120px] md:h-[28px] md:w-[140px]" />
+          <Skeleton className="h-[32px] w-[240px] md:h-[44px] md:w-[320px]" />
+          <Skeleton className="h-[24px] w-[320px] md:h-[28px] md:w-[420px]" />
         </div>
 
         <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
           <div className="flex flex-col items-start w-full max-w-[650px]">
-            <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 sm:px-0 w-full">
+            <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
               <div className="flex flex-col items-center w-full">
                 <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
                   <div className="flex h-[30.945px] items-center justify-center w-full">

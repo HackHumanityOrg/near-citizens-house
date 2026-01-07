@@ -156,32 +156,29 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   return (
     <div className="w-full">
       <div className="flex flex-col gap-[24px] items-center text-center w-full py-[40px] px-4">
-        <p className="text-[18px] sm:text-[22px] leading-[28px] text-[#878787] dark:text-[#a3a3a3] font-medium">
+        <p className="text-[18px] md:text-[22px] leading-[28px] text-[#878787] dark:text-[#a3a3a3] font-medium">
           Step 2 of 2
         </p>
-        <h1 className="text-[32px] sm:text-[44px] leading-[40px] sm:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium md:hidden">
-          Verify with Self
+        <h1 className="text-[32px] md:text-[44px] leading-[40px] md:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+          Verify Identity
         </h1>
-        <h1 className="hidden md:block text-[32px] sm:text-[44px] leading-[40px] sm:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-          Scan QR Code
-        </h1>
-        <p className="text-[20px] sm:text-[28px] leading-[28px] sm:leading-[36px] text-black dark:text-neutral-200 font-normal md:hidden">
+        <p className="text-[20px] md:text-[28px] leading-[28px] md:leading-[36px] text-black dark:text-neutral-200 font-normal md:hidden">
           Open the Self app to verify your passport and complete verification.
         </p>
-        <p className="hidden md:block text-[20px] sm:text-[28px] leading-[28px] sm:leading-[36px] text-black dark:text-neutral-200 font-normal">
+        <p className="hidden md:block text-[20px] md:text-[28px] leading-[28px] md:leading-[36px] text-black dark:text-neutral-200 font-normal">
           Use the Self mobile app to scan this QR code and generate your passport proof.
         </p>
       </div>
       <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
         <div className="flex flex-col items-center w-full">
-          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center p-4 sm:p-[40px]">
+          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center p-4 md:p-[40px]">
             <div className="flex flex-col items-center w-full">
-              <div className="flex flex-col lg:flex-row gap-8 lg:gap-[80px] items-start justify-center w-full">
+              <div className="flex flex-col md:flex-row gap-8 md:gap-[80px] items-start justify-center w-full">
                 {/* Left Column: QR Code or Deep Link */}
-                <div className="flex flex-col items-center pt-0 lg:pt-[40px] w-full lg:w-auto">
+                <div className="flex flex-col items-center pt-0 md:pt-[40px] w-full md:w-auto">
                   {/* Mobile: Open Self App button */}
                   <div className="md:hidden flex flex-col items-center w-full">
-                    <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-[24px]">
+                    <p className="text-[18px] md:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-[24px]">
                       Open the Self app to verify
                     </p>
                     <Button
@@ -195,17 +192,17 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
 
                   {/* Desktop: QR Code */}
                   <div className="hidden md:flex flex-col items-center">
-                    <p className="text-[18px] sm:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-4">
+                    <p className="text-[18px] md:text-[22px] leading-[28px] font-medium text-black dark:text-white text-center mb-4">
                       Scan the QR code to use the Self app.
                     </p>
-                    <div className="size-[240px] sm:size-[296px]">
+                    <div className="size-[240px] md:size-[296px]">
                       <SelfQRcodeWrapper selfApp={selfAppDesktop} onSuccess={handleSuccess} onError={handleError} />
                     </div>
                   </div>
                 </div>
 
                 {/* Right Column: Instructions Panel */}
-                <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full lg:w-[503px] p-6 sm:p-[32px] flex flex-col gap-[24px] items-center">
+                <div className="bg-[rgba(242,242,247,0.8)] dark:bg-white/5 w-full md:w-[503px] p-6 md:p-[32px] flex flex-col gap-[24px] items-center">
                   {/* How to verify */}
                   <div className="flex flex-col gap-[16px] items-start w-full max-w-[428px]">
                     <p className="text-[22px] leading-[28px] font-medium text-black dark:text-white">How to verify?</p>

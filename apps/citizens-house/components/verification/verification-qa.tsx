@@ -7,7 +7,7 @@ import { ChevronIcon } from "./icons/chevron-icon"
 const faqs = [
   {
     value: "faq-1",
-    question: "Why Become a NEAR Verified Account?",
+    question: "Why become a NEAR Verified Account?",
     answer:
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
   },
@@ -29,11 +29,12 @@ export function VerificationQA() {
   const [openItem, setOpenItem] = useState<string | undefined>(undefined)
 
   return (
-    <section className="flex items-start justify-center bg-white px-4 py-[40px] md:py-[80px] dark:bg-black">
+    <section className="flex items-start justify-center bg-white dark:bg-[#181921] px-6 md:px-[80px] py-[40px] md:py-[80px]">
       <div className="flex w-full max-w-[1055px] flex-col gap-[61px]">
-        <h3 className="text-[32px] leading-[36px] md:text-[44px] md:leading-[48px] font-fk-grotesk font-medium text-black dark:text-white">
+        {/* Q&A Heading - Figma: 62px/72px, FK Grotesk Medium, text-black */}
+        <h2 className="text-[44px] leading-[48px] md:text-[62px] md:leading-[72px] font-fk-grotesk font-medium text-black dark:text-white">
           Q&amp;A
-        </h3>
+        </h2>
         <Accordion
           type="single"
           collapsible
@@ -45,21 +46,19 @@ export function VerificationQA() {
             <AccordionItem
               key={faq.value}
               value={faq.value}
-              className="border-b border-[#171717] pb-[44px] pt-0 dark:border-[#e3e3ea]"
+              className="border-b border-[#171717] dark:border-[#e3e3ea] pb-[44px] pt-0"
             >
               <button
                 className="flex w-full items-start justify-between py-0 text-left transition-all gap-4 cursor-pointer"
                 onClick={() => setOpenItem(openItem === faq.value ? undefined : faq.value)}
               >
-                <span
-                  className="text-[24px] leading-[32px] md:text-[36px] md:leading-[44px] lg:text-[45px] lg:leading-[52px] text-[#171717] dark:text-[#e3e3ea] font-normal"
-                  style={{ fontFamily: "Roboto, sans-serif" }}
-                >
+                {/* Question text - Figma: FK Grotesk Medium, 30px/36px, text-[#171717] */}
+                <span className="text-[24px] leading-[32px] md:text-[30px] md:leading-[36px] text-[#171717] dark:text-[#e3e3ea] font-fk-grotesk font-medium">
                   {faq.question}
                 </span>
-                <div className="flex h-[13px] w-[13px] shrink-0 items-center justify-center mt-2">
+                <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center mt-1 text-[#171717] dark:text-[#e3e3ea]">
                   <ChevronIcon
-                    className={`transition-transform duration-200 ${openItem === faq.value ? "rotate-0" : "rotate-90"}`}
+                    className={`transition-transform duration-200 ${openItem === faq.value ? "rotate-180" : "rotate-0"}`}
                   />
                 </div>
               </button>

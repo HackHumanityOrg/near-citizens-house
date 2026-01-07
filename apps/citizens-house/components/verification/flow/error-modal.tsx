@@ -41,7 +41,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
 
       {/* Modal */}
       <div
-        className="relative bg-white dark:bg-black border dark:border-white/20 flex flex-col items-end p-6 sm:p-[40px] rounded-[16px] w-full max-w-[600px]"
+        className="relative bg-white dark:bg-black border dark:border-white/20 flex flex-col items-end p-6 md:p-[40px] rounded-[16px] w-full max-w-[600px]"
         role="dialog"
         aria-modal="true"
       >
@@ -54,7 +54,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
             </p>
             {/* Title */}
             <div className="flex items-center">
-              <div className="flex flex-col font-inter font-semibold justify-center leading-[0] text-[20px] sm:text-[24px] text-[#090909] dark:text-white tracking-[0.48px]">
+              <div className="flex flex-col font-inter font-semibold justify-center leading-[0] text-[20px] md:text-[24px] text-[#090909] dark:text-white tracking-[0.48px]">
                 <p className="leading-[1.2]">{getErrorTitle(errorCode)}</p>
               </div>
             </div>

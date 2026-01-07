@@ -10,11 +10,11 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
   return (
     <div className="flex flex-col items-center w-full px-4">
       {/* Title section */}
-      <div className="flex flex-col items-center gap-2 pt-12 sm:pt-20 pb-6">
-        <h1 className="text-[32px] sm:text-[44px] leading-[40px] sm:leading-[48px] text-black dark:text-white font-fk-grotesk font-medium text-center">
+      <div className="flex flex-col items-center gap-2 pt-12 md:pt-20 pb-6">
+        <h1 className="text-[32px] md:text-[44px] leading-[40px] md:leading-[48px] text-black dark:text-white font-fk-grotesk font-medium text-center">
           Verification Complete
         </h1>
-        <p className="text-[20px] sm:text-[28px] leading-[28px] sm:leading-[36px] text-black dark:text-neutral-200 font-normal text-center">
+        <p className="text-[20px] md:text-[28px] leading-[28px] md:leading-[36px] text-black dark:text-neutral-200 font-normal text-center">
           Now you can start voting
         </p>
       </div>
@@ -30,14 +30,14 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
       )}
 
       {/* Success details card */}
-      <div className="w-full max-w-[650px] bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 py-6 sm:py-10">
-        <div className="w-full max-w-[600px] mx-auto bg-[#f9f9f9] dark:bg-white/5 p-4 sm:p-6 rounded">
+      <div className="w-full max-w-[650px] bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 py-6 md:py-10">
+        <div className="w-full max-w-[600px] mx-auto bg-[#f9f9f9] dark:bg-white/5 p-4 md:p-6 rounded">
           {/* Header */}
           <div className="mb-6">
-            <h2 className="text-[18px] sm:text-[22px] leading-[28px] text-black dark:text-white font-medium mb-4">
+            <h2 className="text-[18px] md:text-[22px] leading-[28px] text-black dark:text-white font-medium mb-4">
               Verification Complete
             </h2>
-            <p className="text-[14px] sm:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
+            <p className="text-[14px] md:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
               Your identity is verified on-chain and linked to your NEAR wallet.
             </p>
           </div>
@@ -45,18 +45,18 @@ export function Step3Success({ accountId, onDisconnect, onVoteForProposals }: St
           {/* Account details */}
           <div className="space-y-0">
             {/* NEAR Account row */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 sm:py-6 border-b border-[rgba(0,0,0,0.16)] dark:border-neutral-700 gap-2">
-              <span className="text-[14px] sm:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 md:py-6 border-b border-[rgba(0,0,0,0.16)] dark:border-neutral-700 gap-2">
+              <span className="text-[14px] md:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
                 NEAR Account
               </span>
-              <span className="text-[14px] sm:text-base leading-6 text-black dark:text-white font-fk-grotesk font-bold break-all">
+              <span className="text-[14px] md:text-base leading-6 text-black dark:text-white font-fk-grotesk font-bold break-all">
                 {accountId}
               </span>
             </div>
 
             {/* Identity Status row */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 sm:py-6 border-b border-[rgba(0,0,0,0.16)] dark:border-neutral-700 gap-2">
-              <span className="text-[14px] sm:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 md:py-6 border-b border-[rgba(0,0,0,0.16)] dark:border-neutral-700 gap-2">
+              <span className="text-[14px] md:text-base leading-6 text-black dark:text-neutral-200 font-fk-grotesk">
                 Identity Status
               </span>
               <div className="bg-[rgba(255,218,30,0.9)] px-4 py-2 rounded-full">

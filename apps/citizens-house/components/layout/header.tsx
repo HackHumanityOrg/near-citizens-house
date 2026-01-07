@@ -21,8 +21,10 @@ import { FEATURE_FLAGS } from "@/lib/feature-flags"
 
 export function Header() {
   const pathname = usePathname()
-  const hideWalletConnector = pathname === "/" || pathname === "/verification"
+  const isLandingOrVerification = pathname === "/" || pathname === "/verification"
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
+  // Hide connect button on landing/verification pages, but always show profile menu when connected
+  const hideConnectButton = isLandingOrVerification && !isConnected
   const { isAdmin, loading: adminLoading } = useIsAdmin()
 
   return (
@@ -52,40 +54,40 @@ export function Header() {
           {/* Future non-governance routes would go here without flags */}
         </nav>
 
-        {/* Mobile Wallet Button - Right (hidden on landing page) */}
-        {!hideWalletConnector &&
-          (isLoading ? (
-            <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
-              <Loader2 className="h-5 w-5 animate-spin" />
-            </button>
-          ) : isConnected ? (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <button aria-label="Account menu" className="cursor-pointer">
-                  <Identicon value={accountId || ""} size={32} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
+        {/* Mobile Wallet Button - Right */}
+        {/* Show loading when connecting, profile when connected, connect button only on non-landing pages */}
+        {isLoading ? (
+          <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </button>
+        ) : isConnected ? (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button aria-label="Account menu" className="cursor-pointer">
+                <Identicon value={accountId || ""} size={32} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
+            >
+              <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
+                {accountId}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
+              <DropdownMenuItem
+                onClick={disconnect}
+                className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
               >
-                <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
-                  {accountId}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
-                <DropdownMenuItem
-                  onClick={disconnect}
-                  className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
-                >
-                  Disconnect
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <button onClick={connect} className="p-1 cursor-pointer" aria-label="Connect wallet">
-              <Wallet className="h-5 w-5" />
-            </button>
-          ))}
+                Disconnect
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : !hideConnectButton ? (
+          <button onClick={connect} className="p-1 cursor-pointer" aria-label="Connect wallet">
+            <Wallet className="h-5 w-5" />
+          </button>
+        ) : null}
       </div>
 
       {/* Desktop Header */}
@@ -113,43 +115,43 @@ export function Header() {
           {/* Future non-governance routes would go here without flags */}
         </nav>
 
-        {/* Desktop Right Side: Wallet (hidden on landing page) + Theme Toggle */}
+        {/* Desktop Right Side: Wallet + Theme Toggle */}
+        {/* Show loading when connecting, profile when connected, connect button only on non-landing pages */}
         <div className="flex items-center gap-10 ml-auto">
-          {!hideWalletConnector &&
-            (isLoading ? (
-              <Button variant="citizens-primary" size="citizens-xl" disabled>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Connecting...
-              </Button>
-            ) : isConnected ? (
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 cursor-pointer">
-                    <Identicon value={accountId || ""} size={48} />
-                    <ChevronDown className="h-6 w-6" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="min-w-[200px] bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
+          {isLoading ? (
+            <Button variant="citizens-primary" size="citizens-xl" disabled>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting...
+            </Button>
+          ) : isConnected ? (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 cursor-pointer">
+                  <Identicon value={accountId || ""} size={48} />
+                  <ChevronDown className="h-6 w-6" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="min-w-[200px] bg-white dark:bg-black border-[rgba(0,0,0,0.1)] dark:border-white/20"
+              >
+                <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
+                  {accountId}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
+                <DropdownMenuItem
+                  onClick={disconnect}
+                  className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
                 >
-                  <DropdownMenuLabel className="max-w-[200px] truncate font-inter text-[14px] text-[#757575] dark:text-[#a3a3a3]">
-                    {accountId}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-[rgba(0,0,0,0.1)] dark:bg-white/20" />
-                  <DropdownMenuItem
-                    onClick={disconnect}
-                    className="cursor-pointer font-inter text-[14px] text-[#090909] dark:text-neutral-200"
-                  >
-                    Disconnect
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
-                Connect Wallet
-              </Button>
-            ))}
+                  Disconnect
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : !hideConnectButton ? (
+            <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
+              Connect Wallet
+            </Button>
+          ) : null}
 
           <ThemeToggle />
         </div>

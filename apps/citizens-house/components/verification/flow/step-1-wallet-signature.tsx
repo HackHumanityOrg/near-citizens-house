@@ -22,16 +22,16 @@ export function Step1WalletSignature({
   return (
     <div className="w-full">
       <div className="flex flex-col gap-[24px] items-center text-center w-full py-[40px] px-4">
-        <p className="text-[18px] sm:text-[22px] leading-[28px] text-[#878787] dark:text-[#a3a3a3] font-medium">
+        <p className="text-[18px] md:text-[22px] leading-[28px] text-[#878787] dark:text-[#a3a3a3] font-medium">
           Step 1 of 2
         </p>
-        <h1 className="text-[32px] sm:text-[44px] leading-[40px] sm:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+        <h1 className="text-[32px] md:text-[44px] leading-[40px] md:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium">
           Verify your wallet
         </h1>
       </div>
       <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
         <div className="flex flex-col items-start w-full max-w-[650px]">
-          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 sm:px-0 w-full">
+          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
             <div className="flex flex-col items-center w-full">
               <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
                 {/* Card Title */}

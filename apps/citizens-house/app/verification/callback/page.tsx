@@ -192,14 +192,14 @@ function VerifyCallbackContent() {
       <div className="w-full max-w-[650px]">
         {/* Checking Status */}
         {status === "checking" && (
-          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
             <div className="flex flex-col items-center gap-6">
               <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
               <div className="flex flex-col items-center gap-4 text-center">
-                <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+                <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
                   Verifying...
                 </h1>
-                <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+                <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
                   Please wait while we complete your verification
                 </p>
                 <p className="text-[14px] leading-[20px] text-[#757575] dark:text-[#a3a3a3] mt-2">
@@ -212,7 +212,7 @@ function VerifyCallbackContent() {
 
         {/* Success Status */}
         {status === "success" && (
-          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
             <div className="flex flex-col items-center gap-6">
               {/* Success Icon */}
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[rgba(0,236,151,0.15)]">
@@ -228,10 +228,10 @@ function VerifyCallbackContent() {
               </div>
 
               <div className="flex flex-col items-center gap-4 text-center w-full">
-                <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+                <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
                   Verification Complete!
                 </h1>
-                <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+                <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
                   Your identity has been successfully verified
                 </p>
 
@@ -261,7 +261,7 @@ function VerifyCallbackContent() {
 
         {/* Error/Expired Status */}
         {(status === "error" || status === "expired") && (
-          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
             <div className="flex flex-col items-center gap-6">
               {/* Error Icon */}
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[rgba(239,68,68,0.15)]">
@@ -282,10 +282,10 @@ function VerifyCallbackContent() {
               </div>
 
               <div className="flex flex-col items-center gap-4 text-center w-full">
-                <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+                <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
                   {getErrorTitle(errorCode)}
                 </h1>
-                <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+                <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
                   {isNonRetryableError(errorCode)
                     ? "This verification cannot be completed"
                     : "There was an issue with your verification"}
@@ -293,7 +293,7 @@ function VerifyCallbackContent() {
 
                 {/* Error Message */}
                 <div className="w-full bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.3)] rounded p-4 mt-2">
-                  <p className="text-[14px] sm:text-[16px] leading-[20px] sm:leading-[24px] text-[#ef4444] dark:text-[#f87171]">
+                  <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#ef4444] dark:text-[#f87171]">
                     {errorMessage || "An unexpected error occurred"}
                   </p>
                 </div>
@@ -327,14 +327,14 @@ function LoadingFallback() {
   return (
     <div className="min-h-screen bg-[#f2f2f2] dark:bg-neutral-900 flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-[650px]">
-        <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 sm:px-10">
+        <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
           <div className="flex flex-col items-center gap-6">
             <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
             <div className="flex flex-col items-center gap-4 text-center">
-              <h1 className="text-[28px] sm:text-[32px] leading-[36px] sm:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
+              <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
                 Verifying...
               </h1>
-              <p className="text-[16px] sm:text-[18px] leading-[24px] sm:leading-[28px] text-black dark:text-neutral-200">
+              <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
                 Please wait while we complete your verification
               </p>
               <p className="text-[14px] leading-[20px] text-[#757575] dark:text-[#a3a3a3] mt-2">
