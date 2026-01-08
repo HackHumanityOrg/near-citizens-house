@@ -110,7 +110,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
                     rgba(253,221,57,0.2) 20%,
                     rgba(249,230,136,0.15) 40%,
                     transparent 70%
-                  ), #000;
+                  ), #181921;
                 }
                 h1 { color: #fff; }
                 p { color: #e5e5e5; }
