@@ -7,7 +7,7 @@ import { Button, Card, CardHeader, CardTitle, CardContent } from "@near-citizens
 import { ShieldAlert, LogIn, Wallet } from "lucide-react"
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

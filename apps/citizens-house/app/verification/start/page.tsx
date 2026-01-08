@@ -19,7 +19,7 @@ enum VerificationProgressStep {
 }
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
 }
 
 function LoadingFallback() {

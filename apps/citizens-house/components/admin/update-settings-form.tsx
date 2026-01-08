@@ -27,7 +27,7 @@ const updateBackendWalletSchema = z.object({
 type UpdateBackendWalletData = z.infer<typeof updateBackendWalletSchema>
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
 }
 
 export function UpdateSettingsForm() {

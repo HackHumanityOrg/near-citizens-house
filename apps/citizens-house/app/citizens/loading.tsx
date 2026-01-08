@@ -1,7 +1,7 @@
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
 }
 
 export default function VerificationsLoading() {
@@ -26,9 +26,11 @@ export default function VerificationsLoading() {
           <StarPattern className="w-full h-full text-[#FFDA1E] dark:text-[#FFDA1E]/30" idPrefix="citizensLoadingStar" />
         </div>
 
-        {/* Title Skeleton */}
+        {/* Title */}
         <div className="relative flex flex-col items-center justify-start pt-[24px] md:pt-[40px] h-full px-4 md:px-8 z-10">
-          <Skeleton className="h-[40px] w-[180px] md:h-[72px] md:w-[280px]" />
+          <h1 className="font-fk-grotesk font-medium text-[36px] md:text-[62px] leading-[40px] md:leading-[72px] text-black dark:text-white text-center">
+            Citizens
+          </h1>
         </div>
       </section>
 
@@ -36,7 +38,7 @@ export default function VerificationsLoading() {
       <div className="relative z-10 -mt-[240px] md:-mt-[280px] pb-[80px]">
         <div className="flex flex-col items-center w-full px-4 md:px-[82px]">
           {/* Table Card */}
-          <div className="bg-[#f8fafc] dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex flex-col items-start rounded-[16px] w-full max-w-[1276px]">
+          <div className="bg-[#f8fafc] dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex flex-col items-start rounded-[16px] w-full max-w-[1276px]">
             {/* Card Header */}
             <div className="flex flex-col gap-[8px] items-start px-[16px] py-[16px] md:px-[40px] rounded-t-[16px] w-full">
               <div className="flex items-start px-0 py-[8px]">
@@ -50,12 +52,12 @@ export default function VerificationsLoading() {
 
             {/* Table Header - Desktop only */}
             <div className="hidden md:block bg-[#e2e8f0] dark:bg-white/10 border-b border-[#cbd5e1] dark:border-white/10 px-[40px] py-[16px] w-full">
-              <div className="flex items-start justify-between w-full">
-                <Skeleton className="h-[28px] w-[140px]" />
-                <div className="flex items-center justify-between flex-1 ml-[40px]">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex-1 flex items-center justify-between">
+                  <Skeleton className="h-[28px] w-[120px]" />
                   <Skeleton className="h-[28px] w-[130px]" />
-                  <Skeleton className="h-[28px] w-[100px]" />
-                  <Skeleton className="h-[28px] w-[77px]" />
+                  <Skeleton className="h-[28px] w-[90px]" />
+                  <Skeleton className="h-[28px] w-[50px]" />
                 </div>
               </div>
             </div>
@@ -78,17 +80,19 @@ export default function VerificationsLoading() {
 
                 {/* Desktop Row Layout */}
                 <div className="hidden md:flex items-center justify-between w-full">
-                  <div className="flex gap-[8px] items-center w-[373.5px]">
-                    <Skeleton className="h-[28px] w-[200px]" />
-                  </div>
-                  <div className="flex items-center justify-between flex-1 ml-[40px]">
-                    <div className="flex gap-[8px] items-center justify-center min-w-[97px] px-[8px] py-[7px]">
-                      <Skeleton className="h-[32px] w-[80px] rounded-full" />
+                  <div className="flex-1 flex items-center justify-between">
+                    <div className="flex gap-[8px] items-center w-[373.5px]">
+                      <Skeleton className="h-[28px] w-[200px]" />
                     </div>
-                    <div className="flex gap-[8px] items-center justify-center min-w-[97px] pl-[8px] py-[7px]">
-                      <Skeleton className="h-[20px] w-[180px]" />
+                    <div className="flex items-center justify-between w-[792px]">
+                      <div className="flex gap-[8px] items-center justify-center min-w-[97px] px-[8px] py-[7px]">
+                        <Skeleton className="h-[32px] w-[80px] rounded-full" />
+                      </div>
+                      <div className="flex gap-[8px] items-center justify-center min-w-[97px] pl-[8px] pr-0 py-[7px]">
+                        <Skeleton className="h-[20px] w-[200px]" />
+                      </div>
+                      <Skeleton className="h-[32px] w-[77px] rounded-[4px]" />
                     </div>
-                    <Skeleton className="h-[32px] w-[77px] rounded-[4px]" />
                   </div>
                 </div>
               </div>

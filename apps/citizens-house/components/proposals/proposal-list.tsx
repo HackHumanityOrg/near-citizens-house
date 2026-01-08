@@ -148,7 +148,7 @@ export function ProposalListSkeleton({ showAllKinds = false }: { showAllKinds?: 
       {showAllKinds && (
         <div className="grid w-full grid-cols-4 gap-2">
           {tabs.map((_, index) => (
-            <div key={index} className="h-9 rounded-md bg-muted animate-pulse" />
+            <div key={index} className="h-9 rounded-md bg-[#e2e8f0] dark:bg-white/10 animate-pulse" />
           ))}
         </div>
       )}
@@ -162,7 +162,7 @@ export function ProposalListSkeleton({ showAllKinds = false }: { showAllKinds?: 
       </div>
 
       <div className="flex justify-center pt-4">
-        <div className="h-10 w-28 rounded-md bg-muted animate-pulse" />
+        <div className="h-10 w-28 rounded-md bg-[#e2e8f0] dark:bg-white/10 animate-pulse" />
       </div>
     </div>
   )

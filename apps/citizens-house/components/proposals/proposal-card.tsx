@@ -7,7 +7,7 @@ import { User, Hash } from "lucide-react"
 import { extractProposalTitle } from "@/lib/utils/proposal"
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className}`} />
+  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
 }
 
 interface ProposalCardProps {
