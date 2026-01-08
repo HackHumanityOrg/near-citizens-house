@@ -21,7 +21,7 @@ import { FEATURE_FLAGS } from "@/lib/feature-flags"
 
 export function Header() {
   const pathname = usePathname()
-  const isLandingOrVerification = pathname === "/" || pathname === "/verification"
+  const isLandingOrVerification = pathname === "/" || pathname?.startsWith("/verification")
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
 
