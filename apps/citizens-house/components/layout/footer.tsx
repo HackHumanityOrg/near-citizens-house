@@ -74,7 +74,15 @@ export function Footer() {
       {/* Desktop Footer - Copyright Section */}
       <div className="hidden md:flex items-center justify-between px-[80px] py-[24px] border-t border-[rgba(0,0,0,0.1)] dark:border-[#2a2c3b]">
         <p className="text-[14px] leading-[14px] text-[#8e8e93] dark:text-[#b3b3b3] font-fk-grotesk">
-          © NEAR Citizens House {new Date().getFullYear()}. All rights reserved.
+          © {new Date().getFullYear()} Hack Humanity.{" "}
+          <a
+            href="https://github.com/HackHumanityOrg/near-citizens-house/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:opacity-70 transition-opacity"
+          >
+            MIT License
+          </a>
         </p>
       </div>
 
@@ -138,7 +146,15 @@ export function Footer() {
       {/* Mobile Footer - Copyright */}
       <div className="flex md:hidden items-center justify-start px-[24px] py-[24px] border-t border-[rgba(0,0,0,0.1)] dark:border-[#2a2c3b]">
         <p className="text-[14px] leading-[14px] text-[#8e8e93] dark:text-[#b3b3b3] font-fk-grotesk">
-          © NEAR Citizens House {new Date().getFullYear()}. All rights reserved.
+          © {new Date().getFullYear()} Hack Humanity.{" "}
+          <a
+            href="https://github.com/HackHumanityOrg/near-citizens-house/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:opacity-70 transition-opacity"
+          >
+            MIT License
+          </a>
         </p>
       </div>
     </footer>
