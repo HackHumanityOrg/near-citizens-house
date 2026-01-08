@@ -22,7 +22,6 @@ export async function trackVerificationCompletedServer(props: {
   selfNetwork?: string
   ofacEnabled?: boolean
   isValid?: boolean
-  isMinimumAgeValid?: boolean
   isOfacValid?: boolean
   sessionId?: string
   timestamp?: number
@@ -38,7 +37,6 @@ export async function trackVerificationCompletedServer(props: {
     ...(props.selfNetwork ? { self_network: props.selfNetwork } : {}),
     ...(typeof props.ofacEnabled === "boolean" ? { ofac_enabled: props.ofacEnabled } : {}),
     ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
-    ...(typeof props.isMinimumAgeValid === "boolean" ? { is_minimum_age_valid: props.isMinimumAgeValid } : {}),
     ...(typeof props.isOfacValid === "boolean" ? { is_ofac_valid: props.isOfacValid } : {}),
     ...(props.sessionId ? { session_id: props.sessionId } : {}),
     // Set person properties
@@ -75,7 +73,6 @@ export async function trackVerificationFailedServer(props: {
   selfNetwork?: string
   ofacEnabled?: boolean
   isValid?: boolean
-  isMinimumAgeValid?: boolean
   isOfacValid?: boolean
   sessionId?: string
   timestamp?: number
@@ -110,7 +107,6 @@ export async function trackVerificationFailedServer(props: {
     ...(props.selfNetwork ? { self_network: props.selfNetwork } : {}),
     ...(typeof props.ofacEnabled === "boolean" ? { ofac_enabled: props.ofacEnabled } : {}),
     ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
-    ...(typeof props.isMinimumAgeValid === "boolean" ? { is_minimum_age_valid: props.isMinimumAgeValid } : {}),
     ...(typeof props.isOfacValid === "boolean" ? { is_ofac_valid: props.isOfacValid } : {}),
     ...(props.sessionId ? { session_id: props.sessionId } : {}),
     ...personProps,

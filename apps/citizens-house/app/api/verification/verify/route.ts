@@ -109,7 +109,6 @@ export async function POST(request: NextRequest) {
   let accountId: string | undefined
   let nationality: string | undefined
   let isValid: boolean | undefined
-  let isMinimumAgeValid: boolean | undefined
   let isOfacValid: boolean | undefined
 
   // Set initial verification context
@@ -153,7 +152,6 @@ export async function POST(request: NextRequest) {
         selfNetwork,
         ofacEnabled,
         isValid,
-        isMinimumAgeValid,
         isOfacValid,
         timestamp: Date.now(),
       })
@@ -211,13 +209,11 @@ export async function POST(request: NextRequest) {
     // See SDK source: "isOfacValid is true when a person is in OFAC list"
     const validity = selfVerificationResult.isValidDetails || {}
     isValid = validity.isValid
-    isMinimumAgeValid = validity.isMinimumAgeValid
     isOfacValid = validity.isOfacValid
 
     // Update wide event with verification results
     event.setVerification({
       is_valid: isValid,
-      is_minimum_age_valid: isMinimumAgeValid,
       is_ofac_valid: isOfacValid,
       nationality,
       stage: "self_verified",
@@ -226,11 +222,7 @@ export async function POST(request: NextRequest) {
 
     // Type guards: ensure SDK returned expected boolean fields
     // When OFAC is enabled, isOfacValid must also be a boolean
-    if (
-      typeof isValid !== "boolean" ||
-      typeof isMinimumAgeValid !== "boolean" ||
-      (ofacEnabled && typeof isOfacValid !== "boolean")
-    ) {
+    if (typeof isValid !== "boolean" || (ofacEnabled && typeof isOfacValid !== "boolean")) {
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 502,
@@ -241,12 +233,8 @@ export async function POST(request: NextRequest) {
     }
     const ofacCheckFailed = ofacEnabled && isOfacValid === true
 
-    if (!isValid || !isMinimumAgeValid || ofacCheckFailed) {
-      const errorCode = !isMinimumAgeValid
-        ? "MINIMUM_AGE_NOT_MET"
-        : ofacCheckFailed
-          ? "OFAC_CHECK_FAILED"
-          : "VERIFICATION_FAILED"
+    if (!isValid || ofacCheckFailed) {
+      const errorCode = ofacCheckFailed ? "OFAC_CHECK_FAILED" : "VERIFICATION_FAILED"
 
       return respondWithError({
         code: errorCode,
@@ -531,7 +519,6 @@ export async function POST(request: NextRequest) {
           selfNetwork,
           ofacEnabled,
           isValid,
-          isMinimumAgeValid,
           isOfacValid,
           sessionId,
           timestamp: Date.now(),

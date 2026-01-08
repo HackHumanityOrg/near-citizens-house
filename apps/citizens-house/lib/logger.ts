@@ -146,7 +146,6 @@ export interface VerificationContext {
   self_network?: string
   ofac_enabled?: boolean
   is_valid?: boolean
-  is_minimum_age_valid?: boolean
   is_ofac_valid?: boolean
   stage?: string
 }

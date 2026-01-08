@@ -97,7 +97,6 @@ export type VerifyRequest = z.infer<typeof verifyRequestSchema>
 export const verificationErrorCodeSchema = z.enum([
   "MISSING_FIELDS",
   "VERIFICATION_FAILED",
-  "MINIMUM_AGE_NOT_MET",
   "OFAC_CHECK_FAILED",
   "NULLIFIER_MISSING",
   "NEAR_SIGNATURE_INVALID",
@@ -116,7 +115,6 @@ export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
 export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
   MISSING_FIELDS: "Missing required fields",
   VERIFICATION_FAILED: "Verification failed",
-  MINIMUM_AGE_NOT_MET: "Minimum age requirement not met (must be 18+)",
   OFAC_CHECK_FAILED: "OFAC verification failed",
   NULLIFIER_MISSING: "Nullifier missing from proof",
   NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
