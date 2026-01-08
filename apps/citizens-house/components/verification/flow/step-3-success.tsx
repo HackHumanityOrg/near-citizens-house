@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "../icons/star-pattern"
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform } from "framer-motion"
 
 interface Step3SuccessProps {
   accountId: string
@@ -11,25 +12,34 @@ interface Step3SuccessProps {
   onVoteForProposals?: () => void
 }
 
+type AnimationPhase = "initial" | "labelsOut" | "merging" | "checkmark" | "complete"
+
 export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
-  const [animationPhase, setAnimationPhase] = useState<"initial" | "animating" | "complete">("initial")
+  const shouldReduceMotion = useReducedMotion()
+  const [phase, setPhase] = useState<AnimationPhase>(shouldReduceMotion ? "complete" : "initial")
+
+  // Motion value for checkmark path - prevents flash by linking opacity to pathLength
+  const pathLength = useMotionValue(0)
+  // Opacity fades in quickly once pathLength starts (prevents initial flash)
+  const checkmarkOpacity = useTransform(pathLength, [0, 0.05, 0.15], [0, 0, 1])
 
   useEffect(() => {
-    // Start animation after 500ms
-    const timer1 = setTimeout(() => {
-      setAnimationPhase("animating")
-    }, 500)
-
-    // Complete animation after 1000ms (500ms delay + 500ms animation)
-    const timer2 = setTimeout(() => {
-      setAnimationPhase("complete")
-    }, 1000)
-
-    return () => {
-      clearTimeout(timer1)
-      clearTimeout(timer2)
+    if (shouldReduceMotion) {
+      return
     }
-  }, [])
+
+    const timers = [
+      setTimeout(() => setPhase("labelsOut"), 500),
+      setTimeout(() => setPhase("merging"), 800),
+      setTimeout(() => setPhase("checkmark"), 1600),
+      setTimeout(() => setPhase("complete"), 2100),
+    ]
+
+    return () => timers.forEach(clearTimeout)
+  }, [shouldReduceMotion])
+
+  const showMerging = phase === "merging" || phase === "checkmark" || phase === "complete"
+  const showFinalCircle = phase === "checkmark" || phase === "complete"
 
   return (
     <div className="w-full">
@@ -52,71 +62,181 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
 
         {/* Content in hero */}
         <div className="relative flex flex-col items-center justify-start -mt-[8px] md:pt-[16px] h-full px-8 md:px-4 z-10">
-          {/* Stepper container - consistent width */}
-          <div className="w-full max-w-[600px] px-[40px] md:px-[60px] relative">
-            {/* Two-step stepper (initial state) */}
-            <div
-              className={`grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px] transition-all duration-500 ease-out ${
-                animationPhase === "initial" ? "opacity-100" : "opacity-0 pointer-events-none"
-              }`}
-            >
-              {/* Step 1 circle - completed */}
-              <div className="col-start-1 row-start-1 flex items-center justify-center">
-                <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
-                  <Check className="w-5 h-5 text-white" strokeWidth={3} />
-                </div>
+          {/* Animation container - consistent width */}
+          <div className="w-full max-w-[600px] px-[40px] md:px-[60px] relative h-[160px]">
+            {/* Two-step stepper with morphing circles */}
+            <div className="absolute inset-0 flex flex-col items-center">
+              {/* Circles and line container */}
+              <div className="relative w-full flex items-center justify-between h-[40px]">
+                {/* Left circle (Step 1) - uses CSS for positioning, JS for scale/opacity */}
+                <motion.div
+                  className="absolute left-0 flex items-center justify-center"
+                  style={{ willChange: "transform, opacity" }}
+                  initial={false}
+                  animate={{
+                    scale: showMerging ? 0 : 1,
+                    opacity: showMerging ? 0 : 1,
+                    x: showMerging ? "50%" : 0,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 120,
+                    damping: 18,
+                  }}
+                >
+                  <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full w-[40px] h-[40px]">
+                    <motion.div
+                      animate={{ opacity: phase === "labelsOut" || showMerging ? 0 : 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                    </motion.div>
+                  </div>
+                </motion.div>
+
+                {/* Connecting line */}
+                <motion.div
+                  className="absolute left-[40px] right-[40px] h-[40px] flex items-center px-[16px] md:px-[24px]"
+                  initial={false}
+                  animate={{
+                    opacity: phase === "labelsOut" ? 0.5 : showMerging ? 0 : 1,
+                    scaleX: showMerging ? 0 : 1,
+                  }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="w-full h-[1px] bg-black dark:bg-white/40" />
+                </motion.div>
+
+                {/* Right circle (Step 2) - uses CSS for positioning, JS for scale/opacity */}
+                <motion.div
+                  className="absolute right-0 flex items-center justify-center"
+                  style={{ willChange: "transform, opacity" }}
+                  initial={false}
+                  animate={{
+                    scale: showMerging ? 0 : 1,
+                    opacity: showMerging ? 0 : 1,
+                    x: showMerging ? "-50%" : 0,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 120,
+                    damping: 18,
+                  }}
+                >
+                  <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full w-[40px] h-[40px]">
+                    <motion.div
+                      animate={{ opacity: phase === "labelsOut" || showMerging ? 0 : 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                    </motion.div>
+                  </div>
+                </motion.div>
+
+                {/* Large merged circle (appears at center) */}
+                <AnimatePresence>
+                  {showMerging && (
+                    <motion.div
+                      className="absolute left-1/2 top-1/2 flex items-center justify-center"
+                      style={{
+                        willChange: "transform, opacity",
+                        x: "-50%",
+                        y: "-50%",
+                      }}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 180,
+                        damping: 18,
+                        delay: 0.2,
+                      }}
+                    >
+                      {/* Pulse/glow effect - uses same size as circle */}
+                      {phase === "complete" && (
+                        <motion.div
+                          className="absolute rounded-full bg-[#007a4d] w-[60px] h-[60px] md:w-[80px] md:h-[80px]"
+                          initial={{ scale: 1, opacity: 0.4 }}
+                          animate={{
+                            scale: [1, 1.4, 1.4],
+                            opacity: [0.4, 0, 0],
+                          }}
+                          transition={{
+                            duration: 0.8,
+                            ease: "easeOut",
+                          }}
+                        />
+                      )}
+
+                      <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full w-[60px] h-[60px] md:w-[80px] md:h-[80px]">
+                        {/* Animated SVG checkmark that draws itself */}
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="w-8 h-8 md:w-10 md:h-10"
+                          style={{ overflow: "visible" }}
+                        >
+                          <motion.path
+                            d="M4.5 12.75l6 6 9-13.5"
+                            stroke="white"
+                            strokeWidth={3}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            // Use 0.9 instead of 1 to prevent Safari flash at end
+                            animate={{ pathLength: showFinalCircle ? 0.9 : 0 }}
+                            style={{
+                              pathLength,
+                              opacity: checkmarkOpacity,
+                              strokeDashoffset: 0,
+                            }}
+                            transition={{
+                              type: "tween",
+                              duration: 0.5,
+                              ease: "easeOut",
+                            }}
+                          />
+                        </svg>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
-              {/* Connecting line */}
-              <div className="col-start-2 row-start-1 h-[40px] flex items-center px-[16px] md:px-[24px]">
-                <div className="w-full h-[1px] bg-black dark:bg-white/40" />
-              </div>
-
-              {/* Step 2 circle - completed */}
-              <div className="col-start-3 row-start-1 flex items-center justify-center">
-                <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
-                  <Check className="w-5 h-5 text-white" strokeWidth={3} />
-                </div>
-              </div>
-
-              {/* Labels */}
-              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
-                NEAR Wallet Verified
-              </span>
-              <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
-                Identity Verified
-              </span>
-            </div>
-
-            {/* Merged single circle (final state) */}
-            <div
-              className={`absolute inset-0 flex flex-col items-center justify-start gap-[24px] md:gap-[32px] transition-opacity duration-500 ease-out ${
-                animationPhase === "initial" ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {/* Large green checkmark */}
-              <div
-                className={`border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full shrink-0 transition-transform duration-500 ease-out ${
-                  animationPhase === "initial"
-                    ? "w-[40px] min-w-[40px] h-[40px] min-h-[40px] scale-50"
-                    : "w-[60px] min-w-[60px] h-[60px] min-h-[60px] md:w-[80px] md:min-w-[80px] md:h-[80px] md:min-h-[80px] scale-100"
-                }`}
+              {/* Labels - fade out before merge */}
+              <motion.div
+                className="w-full flex justify-between mt-[16px]"
+                initial={false}
+                animate={{
+                  opacity: phase === "initial" ? 1 : 0,
+                  y: phase === "initial" ? 0 : -10,
+                }}
+                transition={{ duration: 0.3 }}
               >
-                <Check
-                  className={`text-white ${animationPhase === "initial" ? "w-5 h-5" : "w-8 h-8 md:w-10 md:h-10"}`}
-                  strokeWidth={3}
-                />
-              </div>
+                <span className="font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+                  NEAR Wallet Verified
+                </span>
+                <span className="font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+                  Identity Verified
+                </span>
+              </motion.div>
 
-              {/* Success message - fades in after merge */}
-              <h1
-                className={`font-fk-grotesk font-medium text-[20px] md:text-[24px] leading-[28px] md:leading-[32px] text-[#007a4d] text-center transition-opacity duration-500 ease-out ${
-                  animationPhase === "complete" ? "opacity-100" : "opacity-0"
-                }`}
-                style={{ transitionDelay: animationPhase === "complete" ? "200ms" : "0ms" }}
-              >
-                NEAR Verified Account successfully created
-              </h1>
+              {/* Success message - slides up and fades in */}
+              <AnimatePresence>
+                {phase === "complete" && (
+                  <motion.h1
+                    className="absolute top-[80px] md:top-[100px] left-0 right-0 font-fk-grotesk font-medium text-[20px] md:text-[24px] leading-[28px] md:leading-[32px] text-[#007a4d] text-center"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 24,
+                    }}
+                  >
+                    NEAR Verified Account successfully created
+                  </motion.h1>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
