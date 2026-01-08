@@ -175,9 +175,9 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
         </div>
 
         {/* Step indicator - positioned in upper area of hero */}
-        <div className="relative flex flex-col items-center justify-start pt-[40px] md:pt-[60px] h-full px-4 z-10">
-          {/* Stepper - matches card width, extra padding for label overflow */}
-          <div className="w-full max-w-[920px] px-[60px] md:px-[80px]">
+        <div className="relative flex flex-col items-center justify-start pt-[40px] md:pt-[60px] h-full px-8 md:px-4 z-10">
+          {/* Stepper - consistent width across all steps */}
+          <div className="w-full max-w-[600px] px-[40px] md:px-[60px]">
             {/* Fixed-width columns for circles (40px each), flexible middle for line */}
             <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
               {/* Step 1 circle - completed (green with checkmark) */}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { toast } from "sonner"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@near-citizens/shared"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { useAnalytics } from "@/lib/analytics"
@@ -191,6 +192,7 @@ function VerificationStartContent() {
       analytics.trackMessageSigned(accountId)
       setNearSignature(signature)
       setCurrentStep(VerificationProgressStep.MessageSigned)
+      toast.success("Successfully Verified NEAR Wallet.")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to sign message"
       const errorCode = message.includes("rejected") || message.includes("cancelled") ? "USER_REJECTED" : "UNKNOWN"
@@ -206,6 +208,7 @@ function VerificationStartContent() {
   const handleVerificationSuccess = () => {
     setErrorMessage(null)
     setCurrentStep(VerificationProgressStep.VerificationComplete)
+    toast.success("Successfully Verified Identity.")
   }
 
   // Handle verification error
