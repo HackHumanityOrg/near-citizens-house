@@ -42,7 +42,7 @@ const SLOW_REQUEST_THRESHOLD_MS = 2000 // Always keep requests slower than 2s
 //
 // Usage:
 //   import { Op } from "@/lib/logger"
-//   logger.info("Message", { operation: Op.VERIFICATION.ACCOUNT_AGE, ... })
+//   logger.info("Message", { operation: Op.VERIFICATION.VERIFY_ACCOUNT, ... })
 // =============================================================================
 
 /** Redis connection and operations */
@@ -51,32 +51,10 @@ export const OpRedis = {
   CONNECT: "redis.connect",
 } as const
 
-/** BigQuery operations for blockchain data queries */
-export const OpBigQuery = {
-  /** BigQuery client initialization */
-  INIT: "bigquery.init",
-  /** Query execution */
-  QUERY: "bigquery.query",
-} as const
-
-/** Account age verification operations */
-export const OpAccountAge = {
-  /** Reading from cache (hit or miss) */
-  CACHE_READ: "account_age.cache_read",
-  /** Writing to cache */
-  CACHE_WRITE: "account_age.cache_write",
-  /** BigQuery lookup for account creation date */
-  QUERY: "account_age.query",
-  /** Final age eligibility check */
-  CHECK: "account_age.check",
-} as const
-
 /** Verification API operations */
 export const OpVerification = {
   /** Full-access key validation */
   ACCESS_KEY_CHECK: "verification.access_key_check",
-  /** Account age eligibility check */
-  ACCOUNT_AGE: "verification.account_age",
   /** Signature nonce validation */
   NONCE_CHECK: "verification.nonce_check",
   /** Session state updates */
@@ -92,8 +70,6 @@ export const OpVerification = {
 /** Namespace for all operation constants */
 export const Op = {
   REDIS: OpRedis,
-  BIGQUERY: OpBigQuery,
-  ACCOUNT_AGE: OpAccountAge,
   VERIFICATION: OpVerification,
 } as const
 
