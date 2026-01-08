@@ -1,5 +1,8 @@
 "use client"
 
+import { Button } from "@near-citizens/ui"
+import { StarPattern } from "../icons/star-pattern"
+
 interface Step1WalletSignatureProps {
   accountId: string | null
   isConnected: boolean
@@ -21,35 +24,82 @@ export function Step1WalletSignature({
 }: Step1WalletSignatureProps) {
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-[24px] items-center text-center w-full py-[40px] px-4">
-        <p className="text-[18px] md:text-[22px] leading-[28px] text-[#878787] dark:text-[#a3a3a3] font-medium">
-          Step 1 of 2
-        </p>
-        <h1 className="text-[32px] md:text-[44px] leading-[40px] md:leading-[48px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-          Verify your wallet
-        </h1>
-      </div>
-      <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
+      {/* Hero Section with gradient background - extends behind header */}
+      <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
+        {/* Yellow gradient background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
+        </div>
+
+        {/* Star pattern - positioned near right edge */}
+        <div
+          className="absolute top-[100px] md:top-[120px] w-[372px] h-[246px] pointer-events-none z-0"
+          style={{
+            left: "min(calc(50% + 360px), calc(100% - 200px))",
+          }}
+        >
+          <StarPattern className="w-full h-full text-[#FFDA1E] dark:text-[#FFDA1E]/30" idPrefix="step1Star" />
+        </div>
+
+        {/* Step indicator - positioned in upper area of hero */}
+        <div className="relative flex flex-col items-center justify-start pt-[40px] md:pt-[60px] h-full px-8 md:px-4 z-10">
+          {/* Stepper - consistent width across all steps */}
+          <div className="w-full max-w-[600px] px-[40px] md:px-[60px]">
+            {/* Fixed-width columns for circles (40px each), flexible middle for line */}
+            <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
+              {/* Step 1 circle */}
+              <div className="col-start-1 row-start-1 flex items-center justify-center">
+                <div className="border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]">
+                  <span className="font-fk-grotesk font-medium md:font-bold text-[20px] leading-[28px] text-[#090909] dark:text-white">
+                    1
+                  </span>
+                </div>
+              </div>
+
+              {/* Connecting line - equidistant from both circles, vertically centered */}
+              <div className="col-start-2 row-start-1 h-[40px] flex items-center px-[16px] md:px-[24px]">
+                <div className="w-full h-[1px] bg-black dark:bg-white/40" />
+              </div>
+
+              {/* Step 2 circle */}
+              <div className="col-start-3 row-start-1 flex items-center justify-center">
+                <div className="border-2 border-[rgba(128,128,128,0.55)] dark:border-white/30 flex items-center justify-center rounded-full size-[40px]">
+                  <span className="font-fk-grotesk font-medium text-[20px] leading-[28px] text-[rgba(128,128,128,0.55)] dark:text-white/30">
+                    2
+                  </span>
+                </div>
+              </div>
+
+              {/* Labels row - overflow their 40px columns, centered under circles */}
+              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk md:font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">
+                Verify NEAR Wallet
+              </span>
+              <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[rgba(128,128,128,0.55)] dark:text-white/30 whitespace-nowrap text-center">
+                Verify Identity
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Card Section - overlaps with hero via negative margin */}
+      <div className="relative z-10 flex flex-col items-center pb-[80px] -mt-[40px] w-full px-4">
         <div className="flex flex-col items-start w-full max-w-[650px]">
-          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
+          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[24px] flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
             <div className="flex flex-col items-center w-full">
               <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
                 {/* Card Title */}
-                <div className="flex h-[30.945px] items-center justify-center w-full">
-                  <div className="w-full">
-                    <div className="flex flex-col font-inter font-semibold justify-center leading-[0] text-[24px] text-[#090909] dark:text-white tracking-[0.48px] w-full">
-                      <p className="leading-[1.2]">Sign Verification Message</p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-center w-full">
+                  <p className="font-fk-grotesk font-medium text-[24px] leading-[32px] text-[#090909] dark:text-white w-full">
+                    Sign Verification Message
+                  </p>
                 </div>
 
                 {/* Description */}
-                <div className="flex flex-col font-inter font-normal justify-center leading-[0] text-[14px] text-[#090909] dark:text-neutral-200 w-full">
-                  <p className="leading-[1.4]">
-                    Sign a message to prove your own this NEAR wallet. This signature will be cryptographically linked
-                    to your identity proof.
-                  </p>
-                </div>
+                <p className="font-fk-grotesk text-[16px] leading-[28px] text-[#090909] dark:text-neutral-200 w-full">
+                  Sign a message to prove your own this NEAR wallet. This signature will be cryptographically linked to
+                  your identity proof.
+                </p>
 
                 {/* Content */}
                 <div className="flex flex-col gap-[16px] items-start py-[8px] px-0 w-full">
@@ -59,17 +109,17 @@ export function Step1WalletSignature({
                       <div className="flex flex-col gap-[12px] items-start w-full">
                         {/* Wallet Display */}
                         <div className="flex flex-col gap-[8px] w-full">
-                          <label className="text-[14px] leading-[1.4] font-inter font-semibold text-[#36394a] dark:text-neutral-200 tracking-[0.28px]">
+                          <label className="font-fk-grotesk text-[14px] leading-[14px] text-[#36394a] dark:text-neutral-200">
                             Connected Wallet
                           </label>
-                          <div className="bg-white dark:bg-black border border-[#bababa] dark:border-white/20 flex items-center justify-between h-[48px] px-[16px] w-full">
-                            <span className="text-[14px] leading-[1.4] font-inter text-[#040404] dark:text-neutral-100">
+                          <div className="bg-white dark:bg-black border border-[#bababa] dark:border-white/20 rounded-[4px] flex items-center justify-between h-[48px] px-[16px] w-full">
+                            <span className="font-fk-grotesk text-[16px] leading-[28px] text-[#040404] dark:text-neutral-100">
                               {accountId}
                             </span>
                             <button
                               type="button"
                               onClick={onDisconnect}
-                              className="text-[16px] text-[#171717] dark:text-neutral-300 underline cursor-pointer hover:opacity-70 transition-opacity"
+                              className="font-fk-grotesk text-[16px] leading-[1.4] text-[#171717] dark:text-neutral-300 underline cursor-pointer hover:opacity-70 transition-opacity"
                             >
                               Disconnect
                             </button>
@@ -77,36 +127,34 @@ export function Step1WalletSignature({
                         </div>
 
                         {/* Help Text */}
-                        <p className="font-inter font-medium leading-[1.4] text-[12px] text-[rgba(27,31,38,0.72)] dark:text-[#a3a3a3] w-full">
+                        <p className="font-fk-grotesk text-[12px] leading-[20px] text-[rgba(27,31,38,0.72)] dark:text-[#a3a3a3] w-full">
                           This will open your wallet to sign a message. No transaction fee required.
                         </p>
                       </div>
 
                       {/* Button section */}
                       <div className="flex gap-[16px] items-center pt-[24px] pb-0 px-0 w-full">
-                        <button
+                        <Button
                           onClick={onSign}
                           disabled={isSigning}
-                          className="flex-1 bg-[#040404] dark:bg-white flex gap-[8px] h-[56px] items-center justify-center px-[24px] py-[14px] rounded-[4px] min-h-px min-w-px cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="citizens-primary"
+                          className="flex-1 h-[56px] text-[16px]"
                         >
-                          <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
-                            {isSigning ? "Signing..." : "Sign Message"}
-                          </p>
-                        </button>
+                          {isSigning ? "Signing..." : "Sign Message"}
+                        </Button>
                       </div>
                     </>
                   ) : (
                     /* Connect Wallet Button */
                     <div className="flex gap-[16px] items-center pt-[24px] pb-0 px-0 w-full">
-                      <button
+                      <Button
                         onClick={onConnect}
                         disabled={isLoading}
-                        className="flex-1 bg-[#040404] dark:bg-white flex gap-[8px] h-[56px] items-center justify-center px-[24px] py-[14px] rounded-[4px] min-h-px min-w-px cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="citizens-primary"
+                        className="flex-1 h-[56px] text-[16px]"
                       >
-                        <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
-                          {isLoading ? "Connecting..." : "Connect NEAR Wallet"}
-                        </p>
-                      </button>
+                        {isLoading ? "Connecting..." : "Connect NEAR Wallet"}
+                      </Button>
                     </div>
                   )}
                 </div>

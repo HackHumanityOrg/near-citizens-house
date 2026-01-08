@@ -2,7 +2,7 @@ import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 export default function SupportPage() {
   return (
-    <div className="bg-white dark:bg-black">
+    <div className="bg-white dark:bg-[#181921]">
       {/* Hero Section - Fixed height with gradient background */}
       <section className="relative h-[280px] md:h-[400px] -mt-32 pt-32 overflow-hidden">
         {/* Yellow gradient background - contained within hero */}

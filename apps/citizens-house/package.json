@@ -27,6 +27,7 @@
     "@vercel/toolbar": "^0.1.41",
     "autoprefixer": "^10.4.23",
     "date-fns": "^4.1.0",
+    "framer-motion": "^12.24.12",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.562.0",
     "next": "^16.1.1",

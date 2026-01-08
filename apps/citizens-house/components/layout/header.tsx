@@ -21,7 +21,7 @@ import { FEATURE_FLAGS } from "@/lib/feature-flags"
 
 export function Header() {
   const pathname = usePathname()
-  const isLandingOrVerification = pathname === "/" || pathname === "/verification"
+  const isLandingOrVerification = pathname === "/" || pathname?.startsWith("/verification")
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
 
@@ -31,7 +31,7 @@ export function Header() {
       <div className="flex md:hidden items-center justify-between px-6 py-6">
         {/* Mobile Logo - Left */}
         <Link href="/" className="flex items-center shrink-0">
-          <Image src="/logo-mobile.svg" alt="NEAR Citizens House" width={61} height={26} className="dark:invert" />
+          <Image src="/logo-mobile.svg" alt="NEAR Citizens House" width={80} height={34} className="dark:invert" />
         </Link>
 
         {/* Mobile Navigation - Center */}

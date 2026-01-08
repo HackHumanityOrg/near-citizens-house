@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { toast } from "sonner"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@near-citizens/shared"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { useAnalytics } from "@/lib/analytics"
@@ -23,34 +24,64 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-full bg-white dark:bg-black">
-      <div className="w-full">
-        <div className="flex flex-col gap-[24px] items-center text-center w-full py-[40px] px-4">
-          <Skeleton className="h-[22px] w-[120px] md:h-[28px] md:w-[140px]" />
-          <Skeleton className="h-[32px] w-[240px] md:h-[44px] md:w-[320px]" />
-          <Skeleton className="h-[24px] w-[320px] md:h-[28px] md:w-[420px]" />
+    <div className="w-full">
+      {/* Hero Section with gradient background */}
+      <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
+        {/* Yellow gradient background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
         </div>
 
-        <div className="flex flex-col items-center pb-0 pt-0 w-full px-4">
-          <div className="flex flex-col items-start w-full max-w-[650px]">
-            <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
-              <div className="flex flex-col items-center w-full">
-                <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
-                  <div className="flex h-[30.945px] items-center justify-center w-full">
-                    <div className="w-full">
-                      <Skeleton className="h-[24px] w-[260px]" />
-                    </div>
-                  </div>
+        {/* Stepper skeleton */}
+        <div className="relative flex flex-col items-center justify-start pt-[40px] md:pt-[60px] h-full px-8 md:px-4 z-10">
+          <div className="w-full max-w-[600px] px-[40px] md:px-[60px]">
+            <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
+              {/* Step 1 circle skeleton */}
+              <div className="col-start-1 row-start-1 flex items-center justify-center">
+                <Skeleton className="size-[40px] rounded-full" />
+              </div>
 
-                  <div className="flex flex-col gap-2 w-full">
-                    <Skeleton className="h-[14px] w-full" />
-                    <Skeleton className="h-[14px] w-5/6" />
-                  </div>
+              {/* Connecting line */}
+              <div className="col-start-2 row-start-1 h-[40px] flex items-center px-[16px] md:px-[24px]">
+                <div className="w-full h-[1px] bg-black/20 dark:bg-white/20" />
+              </div>
 
-                  <div className="flex flex-col gap-[16px] items-start py-[8px] px-0 w-full">
-                    <div className="flex gap-[16px] items-center pt-[24px] pb-0 px-0 w-full">
-                      <Skeleton className="h-[56px] w-full rounded-[4px]" />
-                    </div>
+              {/* Step 2 circle skeleton */}
+              <div className="col-start-3 row-start-1 flex items-center justify-center">
+                <Skeleton className="size-[40px] rounded-full" />
+              </div>
+
+              {/* Labels skeleton */}
+              <div className="col-start-1 row-start-2 justify-self-center">
+                <Skeleton className="h-[28px] w-[120px] md:w-[160px]" />
+              </div>
+              <div className="col-start-3 row-start-2 justify-self-center">
+                <Skeleton className="h-[28px] w-[100px] md:w-[120px]" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Card Section */}
+      <div className="relative z-10 flex flex-col items-center pb-[80px] -mt-[40px] w-full px-4">
+        <div className="flex flex-col items-start w-full max-w-[650px]">
+          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[24px] flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
+            <div className="flex flex-col items-center w-full">
+              <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
+                {/* Card Title skeleton */}
+                <Skeleton className="h-[32px] w-[280px]" />
+
+                {/* Description skeleton */}
+                <div className="flex flex-col gap-2 w-full">
+                  <Skeleton className="h-[28px] w-full" />
+                  <Skeleton className="h-[28px] w-5/6" />
+                </div>
+
+                {/* Button skeleton */}
+                <div className="flex flex-col gap-[16px] items-start py-[8px] px-0 w-full">
+                  <div className="flex gap-[16px] items-center pt-[24px] pb-0 px-0 w-full">
+                    <Skeleton className="h-[56px] w-full rounded-[4px]" />
                   </div>
                 </div>
               </div>
@@ -191,6 +222,7 @@ function VerificationStartContent() {
       analytics.trackMessageSigned(accountId)
       setNearSignature(signature)
       setCurrentStep(VerificationProgressStep.MessageSigned)
+      toast.success("Successfully Verified NEAR Wallet.")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to sign message"
       const errorCode = message.includes("rejected") || message.includes("cancelled") ? "USER_REJECTED" : "UNKNOWN"
@@ -206,6 +238,7 @@ function VerificationStartContent() {
   const handleVerificationSuccess = () => {
     setErrorMessage(null)
     setCurrentStep(VerificationProgressStep.VerificationComplete)
+    toast.success("Successfully Verified Identity.")
   }
 
   // Handle verification error

@@ -1,3 +1,5 @@
+import { StarPattern } from "@/components/verification/icons/star-pattern"
+
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-muted ${className}`} />
 }
@@ -6,65 +8,91 @@ export default function VerificationsLoading() {
   const rows = Array.from({ length: 5 })
 
   return (
-    <div className="min-h-screen bg-background dark:bg-black">
-      <div className="flex flex-col gap-[24px] items-center w-full pt-8 pb-12 md:pt-[80px] md:pb-[80px]">
-        <div className="flex flex-col items-center w-full px-4 md:px-0">
-          <Skeleton className="h-[32px] w-[180px] md:h-[48px] md:w-[240px]" />
+    <div className="w-full">
+      {/* Hero Section with gradient background */}
+      <section className="relative h-[480px] md:h-[560px] -mt-32 pt-32 overflow-hidden">
+        {/* Yellow gradient background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_top,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_top,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
         </div>
 
-        <div className="flex items-center justify-center w-full px-4 md:px-0">
-          <Skeleton className="h-[24px] w-[320px] md:h-[36px] md:w-[520px]" />
+        {/* Star pattern - positioned near right edge */}
+        <div
+          className="absolute top-[140px] md:top-[160px] w-[372px] h-[246px] pointer-events-none z-0"
+          style={{
+            left: "min(calc(50% + 360px), calc(100% - 200px))",
+          }}
+        >
+          <StarPattern className="w-full h-full text-[#FFDA1E] dark:text-[#FFDA1E]/30" idPrefix="citizensLoadingStar" />
         </div>
 
-        <div className="flex flex-col items-center pt-[40px] pb-[80px] w-full">
-          <div className="flex flex-col items-center w-full">
-            <div className="bg-secondary/50 dark:bg-black dark:border dark:border-white/10 flex flex-col items-start rounded-none md:rounded-[16px] w-full max-w-[1276px] md:mx-auto">
-              <div className="bg-secondary dark:bg-white/5 flex flex-col gap-[8px] items-start px-4 py-3 md:px-[40px] md:py-[16px] rounded-none md:rounded-tl-[16px] md:rounded-tr-[16px] w-full">
-                <div className="flex items-start px-0 py-[8px] w-full">
-                  <Skeleton className="h-[24px] w-[240px]" />
-                </div>
-                <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between w-full">
-                  <Skeleton className="h-[14px] w-[220px]" />
-                  <Skeleton className="h-[16px] w-[220px]" />
-                </div>
+        {/* Title Skeleton */}
+        <div className="relative flex flex-col items-center justify-start pt-[24px] md:pt-[40px] h-full px-4 md:px-8 z-10">
+          <Skeleton className="h-[40px] w-[180px] md:h-[72px] md:w-[280px]" />
+        </div>
+      </section>
+
+      {/* Table Section - overlaps hero */}
+      <div className="relative z-10 -mt-[240px] md:-mt-[280px] pb-[80px]">
+        <div className="flex flex-col items-center w-full px-4 md:px-[82px]">
+          {/* Table Card */}
+          <div className="bg-[#f8fafc] dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex flex-col items-start rounded-[16px] w-full max-w-[1276px]">
+            {/* Card Header */}
+            <div className="flex flex-col gap-[8px] items-start px-[16px] py-[16px] md:px-[40px] rounded-t-[16px] w-full">
+              <div className="flex items-start px-0 py-[8px]">
+                <Skeleton className="h-[28px] w-[200px]" />
               </div>
-
-              <div className="hidden md:block bg-secondary dark:bg-white/5 border-b border-border dark:border-white/10 px-[40px] py-[16px] w-full">
-                <div className="grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
-                  <Skeleton className="h-[16px] w-[160px]" />
-                  <Skeleton className="h-[16px] w-[120px] justify-self-center" />
-                  <Skeleton className="h-[14px] w-[160px] justify-self-center" />
-                  <Skeleton className="h-[16px] w-[80px] justify-self-end" />
-                </div>
+              <div className="flex flex-col gap-[8px] md:flex-row md:items-center md:justify-between w-full">
+                <Skeleton className="h-[14px] w-[260px]" />
+                <Skeleton className="h-[28px] w-[120px]" />
               </div>
-
-              {rows.map((_, index) => (
-                <div
-                  key={index}
-                  className={`px-4 py-3 md:px-[40px] md:py-[16px] w-full ${index !== rows.length - 1 ? "border-b border-border dark:border-white/10" : ""}`}
-                >
-                  <div className="md:hidden flex flex-col gap-3">
-                    <Skeleton className="h-[18px] w-[200px]" />
-                    <div className="flex items-center justify-between">
-                      <Skeleton className="h-[28px] w-[120px] rounded-full" />
-                      <Skeleton className="h-[36px] w-[96px] rounded-[4px]" />
-                    </div>
-                    <Skeleton className="h-[12px] w-[160px]" />
-                  </div>
-
-                  <div className="hidden md:grid grid-cols-[1fr_150px_220px_100px] items-center gap-4">
-                    <Skeleton className="h-[18px] w-[220px]" />
-                    <div className="flex justify-center">
-                      <Skeleton className="h-[32px] w-[96px] rounded-full" />
-                    </div>
-                    <Skeleton className="h-[14px] w-[180px] justify-self-center" />
-                    <div className="flex justify-end">
-                      <Skeleton className="h-[40px] w-[96px] rounded-[4px]" />
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
+
+            {/* Table Header - Desktop only */}
+            <div className="hidden md:block bg-[#e2e8f0] dark:bg-white/10 border-b border-[#cbd5e1] dark:border-white/10 px-[40px] py-[16px] w-full">
+              <div className="flex items-start justify-between w-full">
+                <Skeleton className="h-[28px] w-[140px]" />
+                <div className="flex items-center justify-between flex-1 ml-[40px]">
+                  <Skeleton className="h-[28px] w-[130px]" />
+                  <Skeleton className="h-[28px] w-[100px]" />
+                  <Skeleton className="h-[28px] w-[77px]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Table Body */}
+            {rows.map((_, index) => (
+              <div
+                key={index}
+                className={`px-[16px] py-[16px] md:px-[40px] w-full ${index !== rows.length - 1 ? "border-b border-[#cbd5e1] dark:border-white/10" : ""}`}
+              >
+                {/* Mobile Card Layout */}
+                <div className="md:hidden flex flex-col gap-[12px]">
+                  <Skeleton className="h-[28px] w-[200px]" />
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-[32px] w-[80px] rounded-full" />
+                    <Skeleton className="h-[32px] w-[77px] rounded-[4px]" />
+                  </div>
+                  <Skeleton className="h-[20px] w-[180px]" />
+                </div>
+
+                {/* Desktop Row Layout */}
+                <div className="hidden md:flex items-center justify-between w-full">
+                  <div className="flex gap-[8px] items-center w-[373.5px]">
+                    <Skeleton className="h-[28px] w-[200px]" />
+                  </div>
+                  <div className="flex items-center justify-between flex-1 ml-[40px]">
+                    <div className="flex gap-[8px] items-center justify-center min-w-[97px] px-[8px] py-[7px]">
+                      <Skeleton className="h-[32px] w-[80px] rounded-full" />
+                    </div>
+                    <div className="flex gap-[8px] items-center justify-center min-w-[97px] pl-[8px] py-[7px]">
+                      <Skeleton className="h-[20px] w-[180px]" />
+                    </div>
+                    <Skeleton className="h-[32px] w-[77px] rounded-[4px]" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
