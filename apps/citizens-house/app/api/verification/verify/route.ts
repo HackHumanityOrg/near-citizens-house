@@ -15,7 +15,6 @@ import {
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
-import { checkAccountAge } from "@/lib/account-age"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
 import { createApiEvent, logger, Op } from "@/lib/logger"
 
@@ -381,56 +380,6 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
-
-    // Check account age (must be at least 30 days old)
-    // This is a Sybil resistance measure - prevents creating new accounts for verification
-    const accountAgeResult = await checkAccountAge(data.accountId as string)
-    if (!accountAgeResult.allowed) {
-      const hasAccountAge = typeof accountAgeResult.accountAgeDays === "number"
-      const errorCode = hasAccountAge ? "ACCOUNT_TOO_NEW" : "INTERNAL_ERROR"
-      const errorStatus = hasAccountAge ? 400 : 500
-      const errorMessage = hasAccountAge ? accountAgeResult.reason || "Account too new" : "Unable to verify account age"
-
-      logger.warn("Account age check failed", {
-        operation: Op.VERIFICATION.ACCOUNT_AGE,
-        account_id: data.accountId as string,
-        reason: accountAgeResult.reason,
-        created_at: accountAgeResult.createdAt,
-        account_age_days: accountAgeResult.accountAgeDays,
-        error_code: errorCode,
-      })
-
-      // Update session status for deep link callback (mobile flow)
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          error: errorMessage,
-          errorCode,
-        })
-        logger.debug("Updated session with error status", {
-          operation: Op.VERIFICATION.SESSION_UPDATE,
-          session_id: sessionId,
-          error_code: errorCode,
-        })
-      }
-
-      return respondWithError({
-        code: errorCode,
-        status: errorStatus,
-        details: hasAccountAge
-          ? `Account is only ${accountAgeResult.accountAgeDays} days old`
-          : "Account age verification unavailable",
-        stage: "account_age_check",
-        attestationId,
-      })
-    }
-
-    logger.info("Account age check passed", {
-      operation: Op.VERIFICATION.ACCOUNT_AGE,
-      account_id: data.accountId as string,
-      created_at: accountAgeResult.createdAt,
-      account_age_days: accountAgeResult.accountAgeDays,
-    })
 
     const nonceBase64 = Buffer.from(nonce as number[]).toString("base64")
     // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations

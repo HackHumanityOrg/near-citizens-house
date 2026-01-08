@@ -159,18 +159,6 @@ export const CELO_CONFIG = {
   rpcUrl: process.env.CELO_RPC_URL || defaultCeloRpcUrl,
 }
 
-// Account age verification config
-// Uses NEAR BigQuery public dataset to verify account creation date
-export const ACCOUNT_AGE_CONFIG = {
-  // Minimum account age: 30 days in milliseconds
-  // Accounts must exist for at least this long before verification
-  // This is a Sybil resistance measure - prevents creating new accounts just for verification
-  minAccountAgeMs: 30 * 24 * 60 * 60 * 1000,
-  // Cache TTL for account creation date: 24 hours in seconds
-  // Account creation date never changes, so long cache is safe
-  cacheTimeoutSeconds: 24 * 60 * 60,
-}
-
 // UserJot Configuration (Feedback Widget)
 export const USERJOT_CONFIG = {
   projectId: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID || "",
