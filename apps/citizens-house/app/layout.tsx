@@ -39,7 +39,7 @@ export default function RootLayout({
     // suppressHydrationWarning required for next-themes - theme stored in localStorage causes hydration mismatch
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased pt-8 flex flex-col min-h-screen bg-white dark:bg-black`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased pt-8 flex flex-col min-h-screen bg-white dark:bg-[#181921]`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
