@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useAnalytics } from "@/lib/analytics"
 import { Loader2 } from "lucide-react"
 import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
+import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 type VerificationStatus = "checking" | "success" | "error" | "expired"
 
@@ -168,9 +169,12 @@ function VerifyCallbackContent() {
     }
   }, [sessionId])
 
-  const handleContinue = () => {
-    router.push(`/verification/start?status=success&sessionId=${sessionId}`)
-  }
+  // Auto-redirect on success (skip the intermediate "Continue" screen)
+  useEffect(() => {
+    if (status === "success" && accountId) {
+      router.push(`/verification/start?status=success&sessionId=${sessionId}`)
+    }
+  }, [status, accountId, sessionId, router])
 
   const handleTryAgain = () => {
     const params = new URLSearchParams({
@@ -183,141 +187,149 @@ function VerifyCallbackContent() {
     router.push(`/verification/start?${params.toString()}`)
   }
 
-  const handleGoBack = () => {
-    router.push("/verification")
+  const handleGoHome = () => {
+    router.push("/")
   }
 
   return (
-    <div className="min-h-screen bg-[#f2f2f2] dark:bg-neutral-900 flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[650px]">
-        {/* Checking Status */}
-        {status === "checking" && (
-          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
-            <div className="flex flex-col items-center gap-6">
-              <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
-              <div className="flex flex-col items-center gap-4 text-center">
-                <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-                  Verifying...
-                </h1>
-                <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
-                  Please wait while we complete your verification
-                </p>
-                <p className="text-[14px] leading-[20px] text-[#757575] dark:text-[#a3a3a3] mt-2">
-                  This may take a few moments. Do not close this page.
-                </p>
+    <div className="w-full">
+      {/* Hero Section with gradient background */}
+      <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
+        {/* Yellow gradient background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
+        </div>
+
+        {/* Star pattern - positioned near right edge */}
+        <div
+          className="absolute top-[100px] md:top-[120px] w-[372px] h-[246px] pointer-events-none z-0"
+          style={{
+            left: "min(calc(50% + 360px), calc(100% - 200px))",
+          }}
+        >
+          <StarPattern className="w-full h-full text-[#FFDA1E] dark:text-[#FFDA1E]/30" idPrefix="callbackStar" />
+        </div>
+
+        {/* Stepper - shows step 2 active */}
+        <div className="relative flex flex-col items-center justify-start pt-[40px] md:pt-[60px] h-full px-8 md:px-4 z-10">
+          <div className="w-full max-w-[600px] px-[40px] md:px-[60px]">
+            <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
+              {/* Step 1 circle - completed */}
+              <div className="col-start-1 row-start-1 flex items-center justify-center">
+                <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
               </div>
+
+              {/* Connecting line */}
+              <div className="col-start-2 row-start-1 h-[40px] flex items-center px-[16px] md:px-[24px]">
+                <div className="w-full h-[1px] bg-black dark:bg-white/40" />
+              </div>
+
+              {/* Step 2 circle - active */}
+              <div className="col-start-3 row-start-1 flex items-center justify-center">
+                <div className="border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]">
+                  <span className="font-fk-grotesk font-medium md:font-bold text-[20px] leading-[28px] text-[#090909] dark:text-white">
+                    2
+                  </span>
+                </div>
+              </div>
+
+              {/* Labels */}
+              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+                NEAR Wallet Verified
+              </span>
+              <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk md:font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">
+                Verify Identity
+              </span>
             </div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* Success Status */}
-        {status === "success" && (
-          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
-            <div className="flex flex-col items-center gap-6">
-              {/* Success Icon */}
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[rgba(0,236,151,0.15)]">
-                <svg
-                  className="w-8 h-8 text-[#00ec97]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-
-              <div className="flex flex-col items-center gap-4 text-center w-full">
-                <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-                  Verification Complete!
-                </h1>
-                <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
-                  Your identity has been successfully verified
-                </p>
-
-                {/* Account Info */}
-                {accountId && (
-                  <div className="w-full bg-[rgba(0,236,151,0.08)] border border-[rgba(0,236,151,0.3)] rounded p-4 mt-2">
-                    <p className="text-[14px] leading-[20px] text-black dark:text-neutral-200 mb-2">
-                      Your NEAR account is now verified:
-                    </p>
-                    <p className="text-[16px] leading-[24px] font-mono font-semibold text-[#111] dark:text-white break-all">
-                      {accountId}
-                    </p>
-                  </div>
-                )}
-
-                {/* Continue Button */}
-                <button
-                  onClick={handleContinue}
-                  className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Error/Expired Status */}
-        {(status === "error" || status === "expired") && (
-          <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
-            <div className="flex flex-col items-center gap-6">
-              {/* Error Icon */}
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[rgba(239,68,68,0.15)]">
-                <svg
-                  className="w-8 h-8 text-[#ef4444]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-
-              <div className="flex flex-col items-center gap-4 text-center w-full">
-                <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-                  {getErrorTitle(errorCode)}
-                </h1>
-                <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
-                  {isNonRetryableError(errorCode)
-                    ? "This verification cannot be completed"
-                    : "There was an issue with your verification"}
-                </p>
-
-                {/* Error Message */}
-                <div className="w-full bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.3)] rounded p-4 mt-2">
-                  <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#ef4444] dark:text-[#f87171]">
-                    {errorMessage || "An unexpected error occurred"}
+      {/* Card Section */}
+      <div className="relative z-10 flex flex-col items-center pb-[80px] -mt-[40px] w-full px-4">
+        <div className="flex flex-col items-start w-full max-w-[650px]">
+          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[24px] flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
+            {/* Checking Status */}
+            {status === "checking" && (
+              <div className="flex flex-col items-center gap-6 w-full max-w-[520px]">
+                <Loader2 className="h-16 w-16 animate-spin text-[#FFDA1E]" />
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <h1 className="text-[24px] md:text-[28px] leading-[32px] md:leading-[36px] text-[#090909] dark:text-white font-fk-grotesk font-medium">
+                    Verifying...
+                  </h1>
+                  <p className="text-[16px] leading-[28px] text-[#090909] dark:text-neutral-200 font-fk-grotesk">
+                    Please wait while we complete your verification
+                  </p>
+                  <p className="text-[14px] leading-[20px] text-[#757575] dark:text-neutral-400 font-fk-grotesk">
+                    This may take a few moments. Do not close this page.
                   </p>
                 </div>
-
-                {/* Action Button - different for retryable vs non-retryable errors */}
-                {isNonRetryableError(errorCode) ? (
-                  <button
-                    onClick={handleGoBack}
-                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
-                  >
-                    Go Back
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleTryAgain}
-                    className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] px-6 py-3.5 rounded-[4px] font-inter font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
-                  >
-                    Try Again
-                  </button>
-                )}
               </div>
-            </div>
+            )}
+
+            {/* Error/Expired Status */}
+            {(status === "error" || status === "expired") && (
+              <div className="flex flex-col items-center gap-6 w-full max-w-[520px]">
+                {/* Error Icon */}
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[rgba(239,68,68,0.15)]">
+                  <svg className="w-8 h-8 text-[#ef4444]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+
+                <div className="flex flex-col items-center gap-4 text-center w-full">
+                  <h1 className="text-[24px] md:text-[28px] leading-[32px] md:leading-[36px] text-[#090909] dark:text-white font-fk-grotesk font-medium">
+                    {getErrorTitle(errorCode)}
+                  </h1>
+                  <p className="text-[16px] leading-[28px] text-[#090909] dark:text-neutral-200 font-fk-grotesk">
+                    {isNonRetryableError(errorCode)
+                      ? "This verification cannot be completed"
+                      : "There was an issue with your verification"}
+                  </p>
+
+                  {/* Error Message */}
+                  <div className="w-full bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.3)] rounded-[8px] p-4 mt-2">
+                    <p className="text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] text-[#ef4444] dark:text-[#f87171] font-fk-grotesk">
+                      {errorMessage || "An unexpected error occurred"}
+                    </p>
+                  </div>
+
+                  {/* Action Button */}
+                  {isNonRetryableError(errorCode) ? (
+                    <button
+                      onClick={handleGoHome}
+                      className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] h-[56px] px-6 rounded-[4px] font-fk-grotesk font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
+                    >
+                      Back to Home
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleTryAgain}
+                      className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] h-[56px] px-6 rounded-[4px] font-fk-grotesk font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
+                    >
+                      Try Again
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
@@ -325,21 +337,86 @@ function VerifyCallbackContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-[#f2f2f2] dark:bg-neutral-900 flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[650px]">
-        <div className="bg-white dark:bg-neutral-800 border border-[rgba(0,0,0,0.1)] dark:border-neutral-700 py-10 px-6 md:px-10">
-          <div className="flex flex-col items-center gap-6">
-            <Loader2 className="h-16 w-16 animate-spin text-[#00ec97]" />
-            <div className="flex flex-col items-center gap-4 text-center">
-              <h1 className="text-[28px] md:text-[32px] leading-[36px] md:leading-[40px] text-[#111] dark:text-white font-fk-grotesk font-medium">
-                Verifying...
-              </h1>
-              <p className="text-[16px] md:text-[18px] leading-[24px] md:leading-[28px] text-black dark:text-neutral-200">
-                Please wait while we complete your verification
-              </p>
-              <p className="text-[14px] leading-[20px] text-[#757575] dark:text-[#a3a3a3] mt-2">
-                This may take a few moments. Do not close this page.
-              </p>
+    <div className="w-full">
+      {/* Hero Section with gradient background */}
+      <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
+        {/* Yellow gradient background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
+        </div>
+
+        {/* Star pattern - positioned near right edge */}
+        <div
+          className="absolute top-[100px] md:top-[120px] w-[372px] h-[246px] pointer-events-none z-0"
+          style={{
+            left: "min(calc(50% + 360px), calc(100% - 200px))",
+          }}
+        >
+          <StarPattern className="w-full h-full text-[#FFDA1E] dark:text-[#FFDA1E]/30" idPrefix="callbackLoadingStar" />
+        </div>
+
+        {/* Stepper skeleton - shows step 2 active */}
+        <div className="relative flex flex-col items-center justify-start pt-[40px] md:pt-[60px] h-full px-8 md:px-4 z-10">
+          <div className="w-full max-w-[600px] px-[40px] md:px-[60px]">
+            <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
+              {/* Step 1 circle - completed */}
+              <div className="col-start-1 row-start-1 flex items-center justify-center">
+                <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Connecting line */}
+              <div className="col-start-2 row-start-1 h-[40px] flex items-center px-[16px] md:px-[24px]">
+                <div className="w-full h-[1px] bg-black dark:bg-white/40" />
+              </div>
+
+              {/* Step 2 circle - active */}
+              <div className="col-start-3 row-start-1 flex items-center justify-center">
+                <div className="border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]">
+                  <span className="font-fk-grotesk font-medium md:font-bold text-[20px] leading-[28px] text-[#090909] dark:text-white">
+                    2
+                  </span>
+                </div>
+              </div>
+
+              {/* Labels */}
+              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+                NEAR Wallet Verified
+              </span>
+              <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk md:font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">
+                Verify Identity
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Card Section */}
+      <div className="relative z-10 flex flex-col items-center pb-[80px] -mt-[40px] w-full px-4">
+        <div className="flex flex-col items-start w-full max-w-[650px]">
+          <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[24px] flex items-center justify-center py-[40px] px-4 md:px-0 w-full">
+            <div className="flex flex-col items-center gap-6">
+              <Loader2 className="h-16 w-16 animate-spin text-[#FFDA1E]" />
+              <div className="flex flex-col items-center gap-4 text-center max-w-[520px]">
+                <h1 className="text-[24px] md:text-[28px] leading-[32px] md:leading-[36px] text-[#090909] dark:text-white font-fk-grotesk font-medium">
+                  Verifying...
+                </h1>
+                <p className="text-[16px] leading-[28px] text-[#090909] dark:text-neutral-200 font-fk-grotesk">
+                  Please wait while we complete your verification
+                </p>
+                <p className="text-[14px] leading-[20px] text-[#757575] dark:text-neutral-400 font-fk-grotesk">
+                  This may take a few moments. Do not close this page.
+                </p>
+              </div>
             </div>
           </div>
         </div>
