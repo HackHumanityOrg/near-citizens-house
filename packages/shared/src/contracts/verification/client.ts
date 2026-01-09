@@ -104,47 +104,88 @@ export class NearContractDatabase implements IVerificationDatabase {
   }
 
   /**
-   * Poll for verification confirmation with exponential backoff
-   * Used after fire-and-forget transaction submission to confirm success
+   * Wrap a promise with a timeout to prevent infinite hangs
    */
-  private async pollForVerification(
-    nearAccountId: string,
-    maxAttempts: number = 10,
-    initialDelayMs: number = 500,
-  ): Promise<boolean> {
-    let delay = initialDelayMs
+  private withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`[NearContractDB] ${operation} timed out after ${ms}ms`)), ms),
+      ),
+    ])
+  }
+
+  /**
+   * Check if we're on mainnet (for network-aware timing)
+   */
+  private isMainnet(): boolean {
+    return this.contractId.endsWith(".near")
+  }
+
+  /**
+   * Poll for verification confirmation with exponential backoff
+   * Uses network-aware timing (mainnet needs longer delays)
+   */
+  private async pollForVerification(nearAccountId: string): Promise<boolean> {
+    // Network-aware polling configuration
+    // Mainnet blocks take longer to finalize (~2-3s), testnet is faster (~1s)
+    const isMainnet = this.isMainnet()
+    const maxAttempts = isMainnet ? 15 : 10
+    const initialDelayMs = isMainnet ? 2000 : 500
+    const maxDelayMs = isMainnet ? 8000 : 5000
+    const rpcCallTimeout = 10000 // 10 seconds per RPC call
+
+    let delayMs = initialDelayMs
+
+    console.log(
+      `[NearContractDB] Starting poll (${isMainnet ? "mainnet" : "testnet"}): ${maxAttempts} attempts, ${initialDelayMs}ms initial delay`,
+    )
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const verified = await this.isVerified(nearAccountId)
+        // Add timeout to individual verification check to prevent hanging
+        const verified = await this.withTimeout(
+          this.isVerifiedInternal(nearAccountId),
+          rpcCallTimeout,
+          `poll attempt ${attempt}`,
+        )
         if (verified) {
           console.log(`[NearContractDB] Verification confirmed on attempt ${attempt}`)
           return true
         }
+        console.log(`[NearContractDB] Poll attempt ${attempt}: not yet verified`)
       } catch (error) {
         // Log but continue polling - RPC might be temporarily unavailable
-        console.warn(`[NearContractDB] Poll attempt ${attempt} failed:`, error)
+        const errMsg = error instanceof Error ? error.message : String(error)
+        console.warn(`[NearContractDB] Poll attempt ${attempt} failed: ${errMsg}`)
       }
 
       if (attempt < maxAttempts) {
-        await this.delay(delay)
-        // Exponential backoff with cap at 5 seconds
-        delay = Math.min(delay * 1.5, 5000)
+        await this.delay(delayMs)
+        // Exponential backoff with network-aware cap
+        delayMs = Math.min(delayMs * 1.5, maxDelayMs)
       }
     }
 
     return false
   }
 
+  /**
+   * Internal isVerified without timeout (used by polling which handles its own timeouts)
+   */
+  private async isVerifiedInternal(nearAccountId: string): Promise<boolean> {
+    const result = await this.provider!.callFunction<boolean>(this.contractId, "is_verified", {
+      account_id: nearAccountId,
+    })
+    return result ?? false
+  }
+
   async isVerified(nearAccountId: string): Promise<boolean> {
     await this.ensureInitialized()
 
     try {
-      const result = await this.provider!.callFunction<boolean>(this.contractId, "is_verified", {
-        account_id: nearAccountId,
-      })
-
-      return result ?? false
+      // Add timeout to prevent hanging on slow RPC
+      return await this.withTimeout(this.isVerifiedInternal(nearAccountId), 10000, "isVerified")
     } catch (error) {
       console.error("[NearContractDB] Error checking account:", error)
       throw error
@@ -154,6 +195,17 @@ export class NearContractDatabase implements IVerificationDatabase {
   async storeVerification(data: VerificationDataWithSignature): Promise<void> {
     await this.ensureInitialized()
 
+    // Overall timeout for the entire operation to prevent infinite hangs
+    // Mainnet needs longer due to slower block finality
+    const overallTimeoutMs = this.isMainnet() ? 90000 : 60000 // 90s mainnet, 60s testnet
+
+    return this.withTimeout(this.storeVerificationImpl(data), overallTimeoutMs, "storeVerification")
+  }
+
+  /**
+   * Internal implementation of storeVerification (wrapped with timeout by public method)
+   */
+  private async storeVerificationImpl(data: VerificationDataWithSignature): Promise<void> {
     try {
       // Extract NEAR signature data and Self proof from verification data
       const { signatureData, selfProofData, userContextData, ...verificationData } = data
@@ -181,33 +233,38 @@ export class NearContractDatabase implements IVerificationDatabase {
       // Fire-and-forget: Submit transaction without waiting for execution
       // This avoids dRPC timeout issues - we'll poll to confirm success
       // waitUntil: "NONE" returns immediately after broadcast with tx hash
-      const result = await this.account!.signAndSendTransaction({
-        receiverId: this.contractId,
-        actions: [
-          actionCreators.functionCall(
-            "store_verification",
-            {
-              nullifier: verificationData.nullifier,
-              near_account_id: verificationData.nearAccountId,
-              attestation_id: verificationData.attestationId,
-              signature_data: nearSigData,
-              self_proof: selfProof,
-              user_context_data: userContextData,
-            },
-            BigInt("30000000000000"), // 30 TGas
-            BigInt("1"), // 1 yoctoNEAR deposit (required by assert_one_yocto)
-          ),
-        ],
-        // Fire-and-forget: don't wait for execution, just broadcast
-        // TxExecutionStatus type from @near-js/accounts
-        waitUntil: "NONE" as "NONE" | "INCLUDED" | "EXECUTED_OPTIMISTIC" | "INCLUDED_FINAL" | "EXECUTED" | "FINAL",
-      })
+      // Add timeout to transaction broadcast to prevent hanging
+      const result = await this.withTimeout(
+        this.account!.signAndSendTransaction({
+          receiverId: this.contractId,
+          actions: [
+            actionCreators.functionCall(
+              "store_verification",
+              {
+                nullifier: verificationData.nullifier,
+                near_account_id: verificationData.nearAccountId,
+                attestation_id: verificationData.attestationId,
+                signature_data: nearSigData,
+                self_proof: selfProof,
+                user_context_data: userContextData,
+              },
+              BigInt("30000000000000"), // 30 TGas
+              BigInt("1"), // 1 yoctoNEAR deposit (required by assert_one_yocto)
+            ),
+          ],
+          // Fire-and-forget: don't wait for execution, just broadcast
+          // TxExecutionStatus type from @near-js/accounts
+          waitUntil: "NONE" as "NONE" | "INCLUDED" | "EXECUTED_OPTIMISTIC" | "INCLUDED_FINAL" | "EXECUTED" | "FINAL",
+        }),
+        30000, // 30 second timeout for broadcast
+        "transaction broadcast",
+      )
 
       const txHash = result.transaction.hash
       console.log("[NearContractDB] Transaction broadcast:", { txHash, nearAccountId: data.nearAccountId })
 
       // Poll to confirm the verification was stored successfully
-      // This handles the async nature of NEAR transactions
+      // Uses network-aware timing (mainnet has longer delays)
       const confirmed = await this.pollForVerification(data.nearAccountId)
 
       if (confirmed) {
@@ -228,8 +285,8 @@ export class NearContractDatabase implements IVerificationDatabase {
       if (this.isRpcTimeoutError(error)) {
         console.log("[NearContractDB] RPC timeout detected, checking if verification succeeded...")
 
-        // Poll with longer delays since we hit a timeout
-        const verified = await this.pollForVerification(data.nearAccountId, 5, 2000)
+        // Poll to check if verification actually succeeded despite the error
+        const verified = await this.pollForVerification(data.nearAccountId)
         if (verified) {
           console.log("[NearContractDB] Verification confirmed on-chain despite RPC timeout")
           return // Success - don't throw
