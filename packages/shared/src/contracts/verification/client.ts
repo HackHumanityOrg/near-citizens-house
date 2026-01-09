@@ -79,6 +79,63 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
+  /**
+   * Check if error is an RPC timeout (500 Internal Server Error)
+   * dRPC can timeout while the transaction still succeeds on-chain
+   */
+  private isRpcTimeoutError(error: unknown): boolean {
+    if (error instanceof Error) {
+      const msg = error.message.toLowerCase()
+      return (
+        msg.includes("internal server error") ||
+        msg.includes("timed out") ||
+        msg.includes("timeout") ||
+        msg.includes("500")
+      )
+    }
+    return false
+  }
+
+  /**
+   * Simple delay helper
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  /**
+   * Poll for verification confirmation with exponential backoff
+   * Used after fire-and-forget transaction submission to confirm success
+   */
+  private async pollForVerification(
+    nearAccountId: string,
+    maxAttempts: number = 10,
+    initialDelayMs: number = 500,
+  ): Promise<boolean> {
+    let delay = initialDelayMs
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const verified = await this.isVerified(nearAccountId)
+        if (verified) {
+          console.log(`[NearContractDB] Verification confirmed on attempt ${attempt}`)
+          return true
+        }
+      } catch (error) {
+        // Log but continue polling - RPC might be temporarily unavailable
+        console.warn(`[NearContractDB] Poll attempt ${attempt} failed:`, error)
+      }
+
+      if (attempt < maxAttempts) {
+        await this.delay(delay)
+        // Exponential backoff with cap at 5 seconds
+        delay = Math.min(delay * 1.5, 5000)
+      }
+    }
+
+    return false
+  }
+
   async isVerified(nearAccountId: string): Promise<boolean> {
     await this.ensureInitialized()
 
@@ -121,8 +178,9 @@ export class NearContractDatabase implements IVerificationDatabase {
 
       console.log("[NearContractDB] Calling store_verification on contract...")
 
-      // Call contract method (will verify signature on-chain)
-      // Use actionCreators.functionCall() to create proper Action objects
+      // Fire-and-forget: Submit transaction without waiting for execution
+      // This avoids dRPC timeout issues - we'll poll to confirm success
+      // waitUntil: "NONE" returns immediately after broadcast with tx hash
       const result = await this.account!.signAndSendTransaction({
         receiverId: this.contractId,
         actions: [
@@ -140,14 +198,45 @@ export class NearContractDatabase implements IVerificationDatabase {
             BigInt("1"), // 1 yoctoNEAR deposit (required by assert_one_yocto)
           ),
         ],
+        // Fire-and-forget: don't wait for execution, just broadcast
+        // TxExecutionStatus type from @near-js/accounts
+        waitUntil: "NONE" as "NONE" | "INCLUDED" | "EXECUTED_OPTIMISTIC" | "INCLUDED_FINAL" | "EXECUTED" | "FINAL",
       })
 
-      console.log("[NearContractDB] Verification stored on-chain:", {
-        transactionHash: result.transaction.hash,
-        nearAccountId: verificationData.nearAccountId,
-      })
+      const txHash = result.transaction.hash
+      console.log("[NearContractDB] Transaction broadcast:", { txHash, nearAccountId: data.nearAccountId })
+
+      // Poll to confirm the verification was stored successfully
+      // This handles the async nature of NEAR transactions
+      const confirmed = await this.pollForVerification(data.nearAccountId)
+
+      if (confirmed) {
+        console.log("[NearContractDB] Verification stored on-chain:", {
+          transactionHash: txHash,
+          nearAccountId: data.nearAccountId,
+        })
+        return
+      }
+
+      // If polling didn't confirm, throw an error
+      throw new Error(`Transaction ${txHash} broadcast but verification not confirmed after polling`)
     } catch (error) {
       console.error("[NearContractDB] Error storing verification:", error)
+
+      // Check if this is a timeout error where the transaction might have succeeded
+      // dRPC can return 500 errors while the transaction actually completes on-chain
+      if (this.isRpcTimeoutError(error)) {
+        console.log("[NearContractDB] RPC timeout detected, checking if verification succeeded...")
+
+        // Poll with longer delays since we hit a timeout
+        const verified = await this.pollForVerification(data.nearAccountId, 5, 2000)
+        if (verified) {
+          console.log("[NearContractDB] Verification confirmed on-chain despite RPC timeout")
+          return // Success - don't throw
+        }
+
+        console.log("[NearContractDB] Verification not found after timeout, throwing original error")
+      }
 
       // Parse contract panic message if available
       if (error instanceof Error && error.message.includes("Smart contract panicked")) {
