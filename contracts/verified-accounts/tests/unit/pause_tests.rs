@@ -171,3 +171,61 @@ fn test_store_verification_when_paused() {
         );
     });
 }
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Pause/Unpause")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "admin", "pause", "idempotent")]
+#[allure_description(
+    "Verifies that calling pause() when already paused fails with descriptive error."
+)]
+#[allure_test]
+#[test]
+fn test_double_pause_rejected() {
+    let (mut contract, backend) = step("Initialize and pause contract", || {
+        let backend = accounts(1);
+        let mut context = get_context(backend.clone());
+        context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(context.build());
+        let mut contract = VersionedContract::new(backend.clone());
+        contract.pause();
+        (contract, backend)
+    });
+
+    step("Attempt to pause already paused contract", || {
+        let mut context = get_context(backend);
+        context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(context.build());
+
+        assert_panic_with(|| contract.pause(), "Contract is already paused");
+    });
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Pause/Unpause")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "admin", "pause", "idempotent")]
+#[allure_description(
+    "Verifies that calling unpause() when not paused fails with descriptive error."
+)]
+#[allure_test]
+#[test]
+fn test_unpause_when_not_paused_rejected() {
+    let (mut contract, backend) = step("Initialize contract (not paused)", || {
+        let backend = accounts(1);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = VersionedContract::new(backend.clone());
+        (contract, backend)
+    });
+
+    step("Attempt to unpause contract that is not paused", || {
+        let mut context = get_context(backend);
+        context.attached_deposit(NearToken::from_yoctonear(1));
+        testing_env!(context.build());
+
+        assert_panic_with(|| contract.unpause(), "Contract is not paused");
+    });
+}

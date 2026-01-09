@@ -221,6 +221,51 @@ fn test_nullifier_too_long() {
 #[allure_suite_label("Verified Accounts Unit Tests")]
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
+#[allure_tags("unit", "validation", "nullifier")]
+#[allure_description("Verifies that store_verification rejects empty nullifier strings.")]
+#[allure_test]
+#[test]
+fn test_nullifier_empty() {
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = VersionedContract::new(backend);
+        (contract, user)
+    });
+
+    step("Attempt verification with empty nullifier", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
+
+                contract.store_verification(
+                    "".to_string(),
+                    user,
+                    "1".to_string(),
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Nullifier cannot be empty",
+        );
+    });
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
+#[allure_severity("critical")]
 #[allure_tags("unit", "validation", "attestation-id")]
 #[allure_description("Verifies that store_verification rejects attestation_id strings exceeding 1 character maximum length.")]
 #[allure_test]

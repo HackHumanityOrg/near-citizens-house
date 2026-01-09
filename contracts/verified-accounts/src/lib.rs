@@ -272,6 +272,7 @@ impl VersionedContract {
             caller, contract.backend_wallet,
             "Only backend wallet can pause contract"
         );
+        assert!(!contract.paused, "Contract is already paused");
         contract.paused = true;
 
         emit_event(
@@ -293,6 +294,7 @@ impl VersionedContract {
             caller, contract.backend_wallet,
             "Only backend wallet can unpause contract"
         );
+        assert!(contract.paused, "Contract is not paused");
         contract.paused = false;
 
         emit_event(
@@ -325,6 +327,7 @@ impl VersionedContract {
         );
 
         // Input length validation
+        assert!(!nullifier.is_empty(), "Nullifier cannot be empty");
         assert!(
             nullifier.len() <= MAX_NULLIFIER_LEN,
             "Nullifier exceeds maximum length of {}",
