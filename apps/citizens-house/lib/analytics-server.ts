@@ -42,10 +42,10 @@ export async function trackVerificationCompletedServer(props: {
     // Set person properties
     $set: {
       near_account: props.accountId,
-      wallet_type: "near",
       last_verification_at: new Date().toISOString(),
       ...(props.nationality ? { nationality: props.nationality } : {}),
     },
+
     $set_once: {
       first_verification_at: new Date().toISOString(),
       ...(props.nationality ? { first_nationality: props.nationality } : {}),

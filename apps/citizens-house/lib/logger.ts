@@ -109,7 +109,6 @@ export interface UserContext {
   account_id?: string
   session_id?: string
   distinct_id?: string
-  wallet_type?: string
 }
 
 /**

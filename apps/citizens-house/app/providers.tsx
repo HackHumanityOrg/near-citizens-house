@@ -105,9 +105,9 @@ export function PostHogIdentifier() {
           // Properties to $set (updated on every identify)
           {
             near_account: accountId,
-            wallet_type: "near",
             near_network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
           },
+
           // Properties to $set_once (only set if not already set)
           {
             first_connected_at: new Date().toISOString(),
