@@ -152,14 +152,14 @@ test.describe("Complete Verification E2E Flow", () => {
     console.log("Sending verification request to API...")
 
     // Call the verification API directly
-    // 60s timeout needed because:
-    // 1. NEAR RPC calls to testnet can be slow (access key lookup, nonce check)
-    // 2. Contract storage includes polling for on-chain confirmation
-    // 3. dRPC may timeout but transaction can still succeed (recovery via polling)
+    // 120s timeout needed because:
+    // 1. NEAR RPC calls can be slow (access key lookup, nonce check)
+    // 2. Contract storage includes polling for on-chain confirmation (up to 90s on mainnet)
+    // 3. FailoverRpcProvider may need to try multiple RPCs before succeeding
     const response = await page.request.post("/api/verification/verify", {
       data: verificationBody,
       headers: { "Content-Type": "application/json" },
-      timeout: 60000,
+      timeout: 120000,
     })
 
     // Check response

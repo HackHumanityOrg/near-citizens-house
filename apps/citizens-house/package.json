@@ -10,11 +10,8 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test",
+    "test:e2e:ui": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test --ui"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -51,7 +48,10 @@
     "@near-js/providers": "^2.5.1",
     "@near-js/signers": "^2.5.1",
     "@near-js/transactions": "^2.5.1",
+    "@near-js/utils": "^2.5.1",
     "@next/eslint-plugin-next": "^16.1.1",
+    "@noble/curves": "^1.8.1",
+    "@noble/hashes": "^1.8.0",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^25",

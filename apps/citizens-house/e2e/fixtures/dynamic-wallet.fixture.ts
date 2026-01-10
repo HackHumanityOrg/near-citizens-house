@@ -37,11 +37,15 @@ export const test = base.extend<DynamicWalletFixtures>({
   },
 
   // Create a fresh NEAR subaccount for each test
-  testAccount: async ({}, use) => {
-    const manager = new NearAccountManager()
-    const account = await manager.createTestAccount()
+  // Each worker has its own deterministically-derived access key on the parent account,
+  // eliminating nonce collisions. See: https://docs.near.org/protocol/access-keys
+  testAccount: async ({}, use, testInfo) => {
+    const workerIndex = testInfo.parallelIndex
+    // Each worker gets its own NearAccountManager with a dedicated access key
+    const manager = new NearAccountManager(workerIndex)
 
-    console.log(`✓ Created NEAR test account: ${account.accountId}`)
+    const account = await manager.createTestAccount()
+    console.log(`✓ Created NEAR test account: ${account.accountId} (worker ${workerIndex})`)
 
     await use(account)
 
