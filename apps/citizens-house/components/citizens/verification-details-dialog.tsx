@@ -184,12 +184,12 @@ function buildTerminalOutput(
   lines.push("")
 
   // Step 1
-  lines.push("[1/4] Loading account data from chain...")
+  lines.push("[1/3] Loading account data from chain...")
   lines.push(`    ✓ Found account: ${account.nearAccountId}`)
   lines.push("")
 
   // Step 2
-  lines.push("[2/4] Verifying ZK passport proof (Celo)...")
+  lines.push("[2/3] Verifying ZK passport proof (Celo)...")
   if (verification.zkValid) {
     lines.push(`    ✓ Groth16 ZK proof verified via Celo (${account.selfProof.publicSignals.length} signals)`)
   } else {
@@ -201,12 +201,7 @@ function buildTerminalOutput(
   lines.push("")
 
   // Step 3
-  lines.push("[3/4] Confirming age verification status...")
-  lines.push("    ✓ Age verified at registration (proof stored on-chain)")
-  lines.push("")
-
-  // Step 4
-  lines.push("[4/4] Verifying NEAR wallet signature...")
+  lines.push("[3/3] Verifying NEAR wallet signature...")
   if (verification.signatureValid) {
     lines.push(`    ✓ NEP-413 signature verified for ${account.nearAccountId}`)
   } else {
