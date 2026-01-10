@@ -25,11 +25,12 @@ test.describe("Complete Wallet Connection E2E Flow", () => {
     }
   })
 
-  test("complete flow: homepage -> verification -> wallet connect -> start page", async ({
+  test("complete flow: homepage -> verification -> wallet connect -> sign -> QR scan", async ({
     page,
     context,
     testAccount,
     connectWithMeteor,
+    signWithMeteor,
   }) => {
     // Step 1: Visit homepage and verify redirect to /verification
     console.log("Step 1: Visiting homepage and checking redirect")
@@ -55,30 +56,50 @@ test.describe("Complete Wallet Connection E2E Flow", () => {
     expect(page.url()).toContain("/verification/start")
 
     // Step 5: Verify connected state on start page
-    console.log("Step 5: Verifying connected state")
+    console.log("Step 5: Verifying connected state and stepper (Step 1 active)")
     await expect(page.getByTestId("step-indicator-1")).toBeVisible()
     await expect(page.getByTestId("step-indicator-2")).toBeVisible()
-    await expect(page.getByTestId("step1-card-title")).toBeVisible()
     await expect(page.getByTestId("step1-card-title")).toHaveText("Sign Verification Message")
 
-    // Verify wallet is connected
-    await expect(page.getByTestId("connected-wallet-display")).toBeVisible({
-      timeout: 15000,
-    })
-    await expect(page.getByTestId("connected-wallet-address")).toBeVisible()
+    // Verify stepper state: Step 1 active, Step 2 inactive
+    await expect(page.getByTestId("step-indicator-1")).toHaveAttribute("data-step-state", "active")
+    await expect(page.getByTestId("step-indicator-2")).toHaveAttribute("data-step-state", "inactive")
 
-    // Verify account ID matches dynamically created account
-    const displayedAddress = await page.getByTestId("connected-wallet-address").textContent()
-    expect(displayedAddress).toContain(testAccount.accountId.split(".")[0])
+    // Verify step labels
+    await expect(page.getByTestId("step-label-1")).toHaveText("Verify NEAR Wallet")
+    await expect(page.getByTestId("step-label-2")).toHaveText("Verify Identity")
+
+    // Verify wallet is connected
+    await expect(page.getByTestId("connected-wallet-display")).toBeVisible()
+    await expect(page.getByTestId("connected-wallet-address")).toContainText(testAccount.accountId.split(".")[0])
 
     // Verify Sign Message button is available
-    const signButton = page.getByTestId("sign-message-button")
-    await expect(signButton).toBeVisible()
-    await expect(signButton).toBeEnabled()
+    await expect(page.getByTestId("sign-message-button")).toBeVisible()
+    await expect(page.getByTestId("sign-message-button")).toBeEnabled()
 
     // Verify Disconnect button is available
     await expect(page.getByTestId("disconnect-wallet-button")).toBeVisible()
 
-    console.log("All steps completed successfully!")
+    // Step 6: Sign message via Meteor (fixture verifies toast appears)
+    console.log("Step 6: Signing verification message")
+    await signWithMeteor(page, context)
+
+    // Step 7: Verify Step 2 UI (QR scan screen) and stepper state
+    console.log("Step 7: Verifying Step 2 (QR scan) UI and stepper state")
+    await expect(page.getByTestId("step2-section")).toBeVisible()
+
+    // Verify stepper state: Step 1 completed (checkmark), Step 2 active
+    await expect(page.getByTestId("step2-indicator-completed")).toHaveAttribute("data-step-state", "completed")
+    await expect(page.getByTestId("step2-indicator-active")).toHaveAttribute("data-step-state", "active")
+
+    // Verify step labels changed after signing
+    await expect(page.getByTestId("step2-label-1")).toHaveText("NEAR Wallet Verified")
+    await expect(page.getByTestId("step2-label-2")).toHaveText("Verify Identity")
+
+    // Verify QR code and instructions visible
+    await expect(page.getByTestId("qr-code-container")).toBeVisible()
+    await expect(page.getByTestId("how-to-verify-heading")).toHaveText("How to verify?")
+
+    console.log("All steps completed - verification flow reached QR scan screen!")
   })
 })

@@ -59,6 +59,7 @@ export function Step1WalletSignature({
               <div className="col-start-1 row-start-1 flex items-center justify-center">
                 <div
                   data-testid="step-indicator-1"
+                  data-step-state="active"
                   className="border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]"
                 >
                   <span className="font-fk-grotesk font-medium md:font-bold text-[20px] leading-[28px] text-[#090909] dark:text-white">
@@ -76,6 +77,7 @@ export function Step1WalletSignature({
               <div className="col-start-3 row-start-1 flex items-center justify-center">
                 <div
                   data-testid="step-indicator-2"
+                  data-step-state="inactive"
                   className="border-2 border-[rgba(128,128,128,0.55)] dark:border-white/30 flex items-center justify-center rounded-full size-[40px]"
                 >
                   <span className="font-fk-grotesk font-medium text-[20px] leading-[28px] text-[rgba(128,128,128,0.55)] dark:text-white/30">

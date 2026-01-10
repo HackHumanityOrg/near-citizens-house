@@ -1,7 +1,7 @@
 /* eslint-disable no-empty-pattern, react-hooks/rules-of-hooks */
-import { test as base, Page, BrowserContext } from "@playwright/test"
+import { test as base, Page, BrowserContext, expect } from "@playwright/test"
 import { NearAccountManager } from "../helpers/near-account-manager"
-import { setupMeteorWalletWithAccount, approveConnection } from "../helpers/meteor-wallet-setup"
+import { setupMeteorWalletWithAccount, approveConnection, approveSignature } from "../helpers/meteor-wallet-setup"
 
 interface TestAccount {
   accountId: string
@@ -9,9 +9,15 @@ interface TestAccount {
   privateKey: string
 }
 
+interface WalletSession {
+  password: string
+}
+
 interface DynamicWalletFixtures {
   testAccount: TestAccount
+  walletSession: WalletSession
   connectWithMeteor: (page: Page, context: BrowserContext, account: TestAccount) => Promise<void>
+  signWithMeteor: (page: Page, context: BrowserContext) => Promise<void>
 }
 
 /**
@@ -24,6 +30,12 @@ interface DynamicWalletFixtures {
  * The testAccount is automatically cleaned up after each test.
  */
 export const test = base.extend<DynamicWalletFixtures>({
+  // Shared wallet session state (stores password from connection)
+  walletSession: async ({}, use) => {
+    const session: WalletSession = { password: "" }
+    await use(session)
+  },
+
   // Create a fresh NEAR subaccount for each test
   testAccount: async ({}, use) => {
     const manager = new NearAccountManager()
@@ -45,22 +57,16 @@ export const test = base.extend<DynamicWalletFixtures>({
   // Connect to app via Meteor wallet with dynamically created account
   // Assumes page is already on /verification landing page
   // Flow: click connect wallet -> complete Meteor flow -> redirect to /verification/start
-  connectWithMeteor: async ({}, use) => {
+  connectWithMeteor: async ({ walletSession }, use) => {
     const connect = async (page: Page, context: BrowserContext, account: TestAccount) => {
-      // Click connect button on landing page (desktop version)
-      // Assumes page is already on /verification from the test
-      const connectButton = page.getByTestId("connect-wallet-button-desktop")
-      await connectButton.waitFor({ state: "visible", timeout: 10000 })
-      await connectButton.click()
+      // Set up listener for new tab BEFORE clicking (captures popup when wallet selector opens Meteor)
+      const meteorPagePromise = context.waitForEvent("page", { timeout: 30000 })
 
-      // Wait for wallet selector modal to appear
+      // Click connect button - auto-waits for actionability
+      await page.getByTestId("connect-wallet-button-desktop").click()
 
-      // Set up listener for new tab BEFORE clicking Meteor
-      const meteorPagePromise = context.waitForEvent("page", { timeout: 15000 })
-
-      // Note: Text-based selectors are used here because the wallet selector modal
-      // is from external library @near-wallet-selector which doesn't expose test IDs
-      await page.getByText(/select.*wallet/i).waitFor({ state: "visible", timeout: 5000 })
+      // Wait for wallet selector modal - text-based since it's external library
+      await page.getByText(/select.*wallet/i).click({ trial: true }) // trial: true just waits without clicking
 
       // Select Meteor Wallet from the external wallet selector
       await page.getByText("Meteor Wallet").click()
@@ -72,31 +78,64 @@ export const test = base.extend<DynamicWalletFixtures>({
       console.log(`✓ Meteor wallet opened: ${meteorPage.url()}`)
 
       // Create fresh Meteor wallet and import the test account
-      // Password is dynamically generated - no env var needed!
-      await setupMeteorWalletWithAccount(meteorPage, {
+      const { password } = await setupMeteorWalletWithAccount(meteorPage, {
         privateKey: account.privateKey,
       })
 
+      // Store password for later use in signing
+      walletSession.password = password
       console.log(`✓ Meteor wallet created with dynamic password`)
 
       // Approve connection to the app
       await approveConnection(meteorPage)
 
-      // Wait for Meteor page to close or redirect
+      // Wait for Meteor page to close
       await meteorPage.waitForEvent("close", { timeout: 15000 }).catch(() => {
         console.log("Meteor page did not close, may have redirected")
       })
 
-      // Wait for redirect to /verification/start and connected state
-      await page.waitForURL("**/verification/start**", { timeout: 15000 })
-      // Wait for the page to fully load and show connected wallet
-      await page.getByTestId("connected-wallet-display").waitFor({ state: "visible", timeout: 10000 })
+      // Use web-first assertion for URL - auto-retries
+      await expect(page).toHaveURL(/\/verification\/start/, { timeout: 15000 })
+
+      // Use web-first assertion for connected state
+      await expect(page.getByTestId("connected-wallet-display")).toBeVisible({ timeout: 10000 })
 
       console.log(`✓ Connected to app with account: ${account.accountId}`)
       console.log(`✓ Redirected to: ${page.url()}`)
     }
 
     await use(connect)
+  },
+
+  // Sign message via Meteor wallet
+  // Assumes page is on /verification/start with wallet connected
+  signWithMeteor: async ({ walletSession }, use) => {
+    const sign = async (page: Page, context: BrowserContext) => {
+      // Set up listener for signature popup BEFORE clicking
+      const signaturePagePromise = context.waitForEvent("page", { timeout: 30000 })
+
+      // Click Sign Message button - auto-waits for actionability
+      await page.getByTestId("sign-message-button").click()
+
+      // Capture Meteor signature popup
+      const signaturePage = await signaturePagePromise
+      await signaturePage.waitForLoadState("domcontentloaded")
+      console.log(`✓ Meteor signature popup opened: ${signaturePage.url()}`)
+
+      // Approve signature (pass password for unlock screen)
+      await approveSignature(signaturePage, { password: walletSession.password })
+
+      // Wait for popup to close
+      await signaturePage.waitForEvent("close", { timeout: 15000 }).catch(() => {
+        console.log("Signature popup did not close, may have redirected")
+      })
+
+      // Use web-first assertion for Step 2 appearance - this confirms signing succeeded
+      await expect(page.getByTestId("step2-section")).toBeVisible({ timeout: 15000 })
+      console.log("✓ Message signed successfully, Step 2 visible")
+    }
+
+    await use(sign)
   },
 })
 

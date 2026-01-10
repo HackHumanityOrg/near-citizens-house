@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test"
+import { Page, expect } from "@playwright/test"
 import { randomBytes } from "crypto"
 
 interface SetupOptions {
@@ -157,28 +157,28 @@ export async function approveConnection(meteorPage: Page): Promise<void> {
   // Promotional modals have "Close" button, connection screen has "Cancel" + "Connect"
   for (let i = 0; i < 5; i++) {
     // Check if we're on the Connect Request screen (has both Cancel and Connect)
+    // Note: isVisible() returns immediately (timeout param is deprecated/ignored)
     const cancelBtn = meteorPage.getByRole("button", { name: "Cancel" })
     const connectBtnCheck = meteorPage.getByRole("button", { name: "Connect" })
 
-    const hasCancelAndConnect = await Promise.all([
-      cancelBtn.isVisible({ timeout: 300 }).catch(() => false),
-      connectBtnCheck.isVisible({ timeout: 300 }).catch(() => false),
-    ]).then(([a, b]) => a && b)
+    const [hasCancelBtn, hasConnectBtn] = await Promise.all([cancelBtn.isVisible(), connectBtnCheck.isVisible()])
 
-    if (hasCancelAndConnect) {
+    if (hasCancelBtn && hasConnectBtn) {
       console.log("Meteor: Connect Request screen detected - done closing modals")
       break
     }
 
     // Look for Close button (promotional modal)
     const closeBtn = meteorPage.getByRole("button", { name: "Close" }).first()
-    const isCloseVisible = await closeBtn.isVisible({ timeout: 500 }).catch(() => false)
-    if (isCloseVisible) {
+    if (await closeBtn.isVisible()) {
       console.log(`Meteor: Closing promotional modal ${i + 1}`)
       // Use JavaScript click since button may be outside viewport in some modal states
       await closeBtn.evaluate((el) => (el as HTMLButtonElement).click())
       // Wait for the modal to close before checking again
       await closeBtn.waitFor({ state: "hidden", timeout: 2000 }).catch(() => {})
+    } else {
+      // Neither target screen nor close button visible - wait for UI to update
+      await meteorPage.waitForTimeout(500)
     }
   }
 
@@ -188,11 +188,11 @@ export async function approveConnection(meteorPage: Page): Promise<void> {
     .click({ position: { x: 10, y: 10 }, force: true })
     .catch(() => {})
 
-  // Find and click the Connect button - be more specific to find the right one
+  // Find and click the Connect button
   console.log("Meteor: Looking for Connect approval button")
-  // The Connect button for approval is typically in the connection request screen
   const connectBtn = meteorPage.getByRole("button", { name: "Connect" }).last()
-  await connectBtn.waitFor({ state: "visible", timeout: 10000 })
+  // Use web-first assertion to wait for button visibility
+  await expect(connectBtn).toBeVisible({ timeout: 10000 })
   console.log("Meteor: Clicking Connect button to approve connection")
   // Use JavaScript click since other elements may intercept pointer events
   await connectBtn.evaluate((el) => (el as HTMLButtonElement).click())
@@ -204,5 +204,93 @@ export async function approveConnection(meteorPage: Page): Promise<void> {
     console.log("Meteor: Connection completed - page closed")
   } catch {
     console.log("Meteor: Page did not close automatically")
+  }
+}
+
+interface SignatureOptions {
+  password: string // The Meteor wallet password for unlocking
+}
+
+/**
+ * Approves a message signing request in Meteor wallet.
+ * Handles wallet unlock screen and promotional modals.
+ *
+ * @param meteorPage - The Playwright Page for the Meteor wallet tab
+ * @param options - Options including the wallet password for unlocking
+ */
+export async function approveSignature(meteorPage: Page, options: SignatureOptions): Promise<void> {
+  const { password } = options
+
+  // Wait for page to load
+  await meteorPage.waitForLoadState("domcontentloaded")
+
+  console.log("Meteor: Waiting for signature screen")
+
+  // Check if unlock screen is showing (wallet needs password)
+  // Use waitFor with a try/catch to detect unlock screen
+  const unlockBtn = meteorPage.getByRole("button", { name: /unlock/i })
+  try {
+    await unlockBtn.waitFor({ state: "visible", timeout: 5000 })
+    console.log("Meteor: Unlock screen detected, entering password")
+
+    // Enter password
+    const passwordInput = meteorPage.getByPlaceholder(/enter password/i)
+    await passwordInput.waitFor({ state: "visible", timeout: 5000 })
+    await passwordInput.fill(password)
+
+    // Click Unlock
+    await unlockBtn.click()
+
+    // Wait for unlock to complete
+    await unlockBtn.waitFor({ state: "hidden", timeout: 10000 })
+    console.log("Meteor: Wallet unlocked")
+  } catch {
+    // No unlock screen, proceed to signature approval
+    console.log("Meteor: No unlock screen, proceeding to signature approval")
+  }
+
+  // Close promotional modals (same pattern as approveConnection)
+  for (let i = 0; i < 5; i++) {
+    // Check if we're on the signature approval screen
+    // Note: isVisible() returns immediately (timeout param is deprecated/ignored)
+    const approveBtn = meteorPage.getByRole("button", { name: /approve|sign|confirm/i })
+    if (await approveBtn.isVisible()) {
+      console.log("Meteor: Signature approval screen detected")
+      break
+    }
+
+    // Look for Close button (promotional modal)
+    const closeBtn = meteorPage.getByRole("button", { name: "Close" }).first()
+    if (await closeBtn.isVisible()) {
+      console.log(`Meteor: Closing promotional modal ${i + 1}`)
+      await closeBtn.evaluate((el) => (el as HTMLButtonElement).click())
+      await closeBtn.waitFor({ state: "hidden", timeout: 2000 }).catch(() => {})
+    } else {
+      // Neither target screen nor close button visible - wait for UI to update
+      await meteorPage.waitForTimeout(500)
+    }
+  }
+
+  // Click elsewhere to dismiss any open menus/dropdowns
+  await meteorPage
+    .locator("body")
+    .click({ position: { x: 10, y: 10 }, force: true })
+    .catch(() => {})
+
+  // Find and click the Approve/Sign button
+  console.log("Meteor: Looking for signature approval button")
+  const approveBtn = meteorPage.getByRole("button", { name: /approve|sign|confirm/i }).last()
+  // Use web-first assertion to wait for button visibility
+  await expect(approveBtn).toBeVisible({ timeout: 10000 })
+  console.log("Meteor: Clicking signature approval button")
+  await approveBtn.evaluate((el) => (el as HTMLButtonElement).click())
+
+  // Wait for the Meteor page to close automatically
+  console.log("Meteor: Waiting for signature popup to close")
+  try {
+    await meteorPage.waitForEvent("close", { timeout: 15000 })
+    console.log("Meteor: Signature approved - page closed")
+  } catch {
+    console.log("Meteor: Page did not close automatically after signing")
   }
 }

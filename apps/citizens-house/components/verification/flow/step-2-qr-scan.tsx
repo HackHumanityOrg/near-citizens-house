@@ -184,6 +184,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               <div
                 className="col-start-1 row-start-1 flex items-center justify-center"
                 data-testid="step2-indicator-completed"
+                data-step-state="completed"
               >
                 <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
                   <Check className="w-5 h-5 text-white" strokeWidth={3} />
@@ -199,6 +200,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               <div
                 className="col-start-3 row-start-1 flex items-center justify-center"
                 data-testid="step2-indicator-active"
+                data-step-state="active"
               >
                 <div className="border-2 border-[#090909] dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]">
                   <span className="font-fk-grotesk font-bold text-[20px] leading-[28px] text-[#090909] dark:text-white">
@@ -208,10 +210,16 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               </div>
 
               {/* Labels row - overflow their 40px columns, centered under circles */}
-              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+              <span
+                data-testid="step2-label-1"
+                className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center"
+              >
                 NEAR Wallet Verified
               </span>
-              <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">
+              <span
+                data-testid="step2-label-2"
+                className="col-start-3 row-start-2 justify-self-center font-fk-grotesk font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center"
+              >
                 Verify Identity
               </span>
             </div>
