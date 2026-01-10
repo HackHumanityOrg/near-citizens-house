@@ -38,6 +38,10 @@ const envSchema = z.object({
 
   // Celo RPC URL for ZK proof verification (server-side only)
   CELO_RPC_URL: z.string().optional(),
+
+  // E2E Testing: Skip Self.xyz ZK proof verification (server-side only)
+  // WARNING: Must NEVER be "true" in production
+  SKIP_ZK_VERIFICATION: z.string().optional(),
 })
 
 // Validate environment at module load time

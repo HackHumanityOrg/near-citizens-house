@@ -86,13 +86,8 @@ export const test = base.extend<DynamicWalletFixtures>({
       walletSession.password = password
       console.log(`✓ Meteor wallet created with dynamic password`)
 
-      // Approve connection to the app
+      // Approve connection to the app (handles page close internally)
       await approveConnection(meteorPage)
-
-      // Wait for Meteor page to close
-      await meteorPage.waitForEvent("close", { timeout: 15000 }).catch(() => {
-        console.log("Meteor page did not close, may have redirected")
-      })
 
       // Use web-first assertion for URL - auto-retries
       await expect(page).toHaveURL(/\/verification\/start/, { timeout: 15000 })
