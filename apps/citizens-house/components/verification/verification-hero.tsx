@@ -181,9 +181,7 @@ export function VerificationHero() {
                   </h3>
                 </div>
                 <p className="text-[16px] leading-[28px] text-[#8e8e93] dark:text-[#8a8f98] font-fk-grotesk font-normal">
-                  Use the Self mobile app to scan the QR code on your
-                  <br aria-hidden="true" />
-                  Passport or other Biometric ID document and generate your ID proof
+                  Use the Self mobile app to generate proof of your Passport or other biometric ID document
                 </p>
               </div>
             </div>
