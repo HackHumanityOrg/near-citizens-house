@@ -16,7 +16,12 @@ interface WalletSession {
 interface DynamicWalletFixtures {
   testAccount: TestAccount
   walletSession: WalletSession
-  connectWithMeteor: (page: Page, context: BrowserContext, account: TestAccount) => Promise<void>
+  connectWithMeteor: (
+    page: Page,
+    context: BrowserContext,
+    account: TestAccount,
+    options?: { connectButtonTestId?: string },
+  ) => Promise<void>
   signWithMeteor: (page: Page, context: BrowserContext) => Promise<void>
 }
 
@@ -68,12 +73,18 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
   // Assumes page is already on /verification landing page
   // Flow: click connect wallet -> complete Meteor flow -> redirect to /verification/start
   connectWithMeteor: async ({ walletSession }, use) => {
-    const connect = async (page: Page, context: BrowserContext, account: TestAccount) => {
+    const connect = async (
+      page: Page,
+      context: BrowserContext,
+      account: TestAccount,
+      options?: { connectButtonTestId?: string },
+    ) => {
       // Set up listener for new tab BEFORE clicking (captures popup when wallet selector opens Meteor)
       const meteorPagePromise = context.waitForEvent("page", { timeout: 30000 })
 
       // Click connect button - auto-waits for actionability
-      await page.getByTestId("connect-wallet-button-desktop").click()
+      const connectButtonTestId = options?.connectButtonTestId ?? "connect-wallet-button-desktop"
+      await page.getByTestId(connectButtonTestId).click()
 
       // Wait for wallet selector modal - text-based since it's external library
       await page.getByText(/select.*wallet/i).click({ trial: true }) // trial: true just waits without clicking
