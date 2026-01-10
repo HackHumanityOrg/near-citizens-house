@@ -7,19 +7,31 @@ import { ChevronIcon } from "./icons/chevron-icon"
 const faqs = [
   {
     value: "faq-1",
-    question: "Why become a NEAR Verified Account?",
+    question: "Why create a NEAR Verified Account?",
     answer:
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
   },
   {
     value: "faq-2",
-    question: "How is my data used?",
+    question: "What do I need to be eligible?",
     answer:
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
   },
   {
     value: "faq-3",
-    question: "What are the eligibility criteria?",
+    question: "What sort of ID document can I use?",
+    answer:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+  },
+  {
+    value: "faq-4",
+    question: "Is my personal information kept private?",
+    answer:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+  },
+  {
+    value: "faq-5",
+    question: "What happens if I don't complete verification?",
     answer:
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
   },
