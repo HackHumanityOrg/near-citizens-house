@@ -12,6 +12,7 @@ type VerificationCtaButtonProps = {
   size?: "hero" | "steps"
   labelDisconnected?: string
   labelConnected?: string
+  testId?: string
 }
 
 export function VerificationCtaButton({
@@ -19,6 +20,7 @@ export function VerificationCtaButton({
   size = "hero",
   labelDisconnected = "Connect NEAR Wallet",
   labelConnected = "Get Verified",
+  testId = "connect-wallet-button",
 }: VerificationCtaButtonProps) {
   const router = useRouter()
   const { isConnected, connect, isLoading } = useNearWallet()
@@ -80,6 +82,7 @@ export function VerificationCtaButton({
         asChild
         variant="citizens-primary"
         size={null}
+        data-testid={`${testId}-connected`}
         className={cn(
           "h-auto gap-[12px] overflow-hidden rounded-[4px] pl-[8px] pr-[24px] py-[8px] text-[16px] font-medium leading-[24px]",
           "font-fk-grotesk",
@@ -100,6 +103,7 @@ export function VerificationCtaButton({
       aria-busy={isLoading}
       variant="citizens-primary"
       size={null}
+      data-testid={testId}
       className={cn(
         "h-auto gap-[12px] overflow-hidden rounded-[4px] pl-[8px] pr-[24px] py-[8px] text-[16px] font-medium leading-[24px]",
         "font-fk-grotesk",

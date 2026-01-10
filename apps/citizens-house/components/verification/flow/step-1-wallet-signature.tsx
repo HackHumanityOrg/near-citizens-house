@@ -57,7 +57,10 @@ export function Step1WalletSignature({
             <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
               {/* Step 1 circle */}
               <div className="col-start-1 row-start-1 flex items-center justify-center">
-                <div className="border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]">
+                <div
+                  data-testid="step-indicator-1"
+                  className="border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]"
+                >
                   <span className="font-fk-grotesk font-medium md:font-bold text-[20px] leading-[28px] text-[#090909] dark:text-white">
                     1
                   </span>
@@ -71,7 +74,10 @@ export function Step1WalletSignature({
 
               {/* Step 2 circle */}
               <div className="col-start-3 row-start-1 flex items-center justify-center">
-                <div className="border-2 border-[rgba(128,128,128,0.55)] dark:border-white/30 flex items-center justify-center rounded-full size-[40px]">
+                <div
+                  data-testid="step-indicator-2"
+                  className="border-2 border-[rgba(128,128,128,0.55)] dark:border-white/30 flex items-center justify-center rounded-full size-[40px]"
+                >
                   <span className="font-fk-grotesk font-medium text-[20px] leading-[28px] text-[rgba(128,128,128,0.55)] dark:text-white/30">
                     2
                   </span>
@@ -79,10 +85,16 @@ export function Step1WalletSignature({
               </div>
 
               {/* Labels row - overflow their 40px columns, centered under circles */}
-              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk md:font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">
+              <span
+                data-testid="step-label-1"
+                className="col-start-1 row-start-2 justify-self-center font-fk-grotesk md:font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center"
+              >
                 Verify NEAR Wallet
               </span>
-              <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[rgba(128,128,128,0.55)] dark:text-white/30 whitespace-nowrap text-center">
+              <span
+                data-testid="step-label-2"
+                className="col-start-3 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[rgba(128,128,128,0.55)] dark:text-white/30 whitespace-nowrap text-center"
+              >
                 Verify Identity
               </span>
             </div>
@@ -119,13 +131,20 @@ export function Step1WalletSignature({
                           <label className="font-fk-grotesk text-[14px] leading-[14px] text-[#36394a] dark:text-neutral-200">
                             Connected Wallet
                           </label>
-                          <div className="bg-white dark:bg-black border border-[#bababa] dark:border-white/20 rounded-[4px] flex items-center justify-between h-[48px] px-[16px] w-full">
-                            <span className="font-fk-grotesk text-[16px] leading-[28px] text-[#040404] dark:text-neutral-100">
+                          <div
+                            data-testid="connected-wallet-display"
+                            className="bg-white dark:bg-black border border-[#bababa] dark:border-white/20 rounded-[4px] flex items-center justify-between h-[48px] px-[16px] w-full"
+                          >
+                            <span
+                              data-testid="connected-wallet-address"
+                              className="font-fk-grotesk text-[16px] leading-[28px] text-[#040404] dark:text-neutral-100"
+                            >
                               {accountId}
                             </span>
                             <button
                               type="button"
                               onClick={onDisconnect}
+                              data-testid="disconnect-wallet-button"
                               className="font-fk-grotesk text-[16px] leading-[1.4] text-[#171717] dark:text-neutral-300 underline cursor-pointer hover:opacity-70 transition-opacity"
                             >
                               Disconnect
@@ -145,6 +164,7 @@ export function Step1WalletSignature({
                           onClick={onSign}
                           disabled={isSigning}
                           variant="citizens-primary"
+                          data-testid="sign-message-button"
                           className="flex-1 h-[56px] text-[16px]"
                         >
                           {isSigning ? "Signing..." : "Sign Message"}
@@ -158,6 +178,7 @@ export function Step1WalletSignature({
                         onClick={onConnect}
                         disabled={isLoading}
                         variant="citizens-primary"
+                        data-testid="connect-near-wallet-button"
                         className="flex-1 h-[56px] text-[16px]"
                       >
                         {isLoading ? "Connecting..." : "Connect Wallet"}

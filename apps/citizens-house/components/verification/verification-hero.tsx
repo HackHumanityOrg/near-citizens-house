@@ -40,7 +40,10 @@ export function VerificationHero() {
         <div className="relative flex flex-col gap-[16px] md:gap-[14px] items-center shrink-0 w-full max-w-[932px] z-10">
           {/* Identity Verification tag */}
           <div className="flex gap-[8px] items-center justify-center min-w-[97px] px-0 py-[7px] w-full shrink-0">
-            <div className="bg-[rgba(255,218,30,0.9)] flex gap-[8px] items-center px-[16px] py-[8px] rounded-[40px] shrink-0">
+            <div
+              data-testid="identity-verification-tag"
+              className="bg-[rgba(255,218,30,0.9)] flex gap-[8px] items-center px-[16px] py-[8px] rounded-[40px] shrink-0"
+            >
               <ShieldCheckIcon className="h-[24px] w-[24px] shrink-0" />
               <p className="text-[14px] font-medium leading-[14px] text-[#5e4f02] font-fk-grotesk whitespace-nowrap">
                 Identity Verification
@@ -50,7 +53,10 @@ export function VerificationHero() {
 
           {/* Main heading - Figma: 62px/72px desktop, 30px/36px mobile */}
           <div className="flex flex-col justify-center font-fk-grotesk font-medium text-[#111] dark:text-[#f5f7fa] text-center w-full shrink-0">
-            <h1 className="text-[30px] leading-[36px] md:text-[62px] md:leading-[72px]">
+            <h1
+              data-testid="verification-hero-heading"
+              className="text-[30px] leading-[36px] md:text-[62px] md:leading-[72px]"
+            >
               Create your
               <br aria-hidden="true" />
               NEAR Verified Account
@@ -65,7 +71,10 @@ export function VerificationHero() {
           </div>
 
           {/* Time indicator - Figma: 20px/28px, "Takes less than 7 minutes" */}
-          <div className="flex gap-[8px] h-[36px] items-center justify-center w-full shrink-0">
+          <div
+            data-testid="verification-time-estimate"
+            className="flex gap-[8px] h-[36px] items-center justify-center w-full shrink-0"
+          >
             <ClockIcon className="h-[24px] w-[24px] text-[#111] dark:text-white shrink-0" />
             <div className="flex flex-col justify-center font-fk-grotesk font-normal text-[20px] text-[#090909] dark:text-white whitespace-nowrap shrink-0">
               <p className="leading-[28px]">Takes less than 7 minutes</p>
@@ -118,14 +127,20 @@ export function VerificationHero() {
                   {/* Content with bottom padding for gap */}
                   <div className="flex flex-col gap-[8px] flex-1 pb-[56px]">
                     <WalletIcon className="w-[24px] h-[24px] text-black dark:text-white shrink-0" />
-                    <h3 className="text-[20px] leading-[28px] text-black dark:text-white font-fk-grotesk font-medium">
+                    <h3
+                      data-testid="step1-heading-mobile"
+                      className="text-[20px] leading-[28px] text-black dark:text-white font-fk-grotesk font-medium"
+                    >
                       Verify NEAR Wallet
                     </h3>
                     <p className="text-[16px] leading-[28px] text-[#8e8e93] font-fk-grotesk font-normal">
                       First, connect your NEAR wallet to begin the identity verification process
                     </p>
                     <div className="mt-[8px]">
-                      <VerificationCtaButton labelDisconnected="Connect Wallet " />
+                      <VerificationCtaButton
+                        labelDisconnected="Connect Wallet "
+                        testId="connect-wallet-button-mobile"
+                      />
                     </div>
                   </div>
                 </div>
@@ -139,7 +154,10 @@ export function VerificationHero() {
                   {/* Content */}
                   <div className="flex flex-col gap-[8px] flex-1">
                     <IdCardIcon className="w-[24px] h-[24px] text-black dark:text-white shrink-0" />
-                    <h3 className="text-[20px] leading-[28px] text-black dark:text-white font-fk-grotesk font-medium">
+                    <h3
+                      data-testid="step2-heading-mobile"
+                      className="text-[20px] leading-[28px] text-black dark:text-white font-fk-grotesk font-medium"
+                    >
                       Verify Identity
                     </h3>
                     <p className="text-[16px] leading-[28px] text-[#8e8e93] font-fk-grotesk font-normal">
@@ -156,7 +174,10 @@ export function VerificationHero() {
                   <div className="w-[40px] h-[24px] flex items-center justify-center shrink-0">
                     <WalletIcon className="w-[24px] h-[24px]" />
                   </div>
-                  <h3 className="text-[30px] leading-[36px] font-fk-grotesk font-medium whitespace-nowrap">
+                  <h3
+                    data-testid="step1-heading-desktop"
+                    className="text-[30px] leading-[36px] font-fk-grotesk font-medium whitespace-nowrap"
+                  >
                     Verify NEAR Wallet
                   </h3>
                 </div>
@@ -166,7 +187,7 @@ export function VerificationHero() {
                   verification process
                 </p>
                 <div className="mt-[8px]">
-                  <VerificationCtaButton labelDisconnected="Connect Wallet " />
+                  <VerificationCtaButton labelDisconnected="Connect Wallet " testId="connect-wallet-button-desktop" />
                 </div>
               </div>
 
@@ -176,7 +197,10 @@ export function VerificationHero() {
                   <div className="w-[40px] h-[24px] flex items-center justify-center shrink-0">
                     <IdCardIcon className="w-[24px] h-[24px]" />
                   </div>
-                  <h3 className="text-[30px] leading-[36px] font-fk-grotesk font-medium whitespace-nowrap">
+                  <h3
+                    data-testid="step2-heading-desktop"
+                    className="text-[30px] leading-[36px] font-fk-grotesk font-medium whitespace-nowrap"
+                  >
                     Verify Identity
                   </h3>
                 </div>
