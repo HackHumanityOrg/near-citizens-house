@@ -14,10 +14,12 @@ function getWorkerCount(): number | undefined {
   return undefined
 }
 
+const isStressMode = process.env.E2E_STRESS === "true" || process.env.E2E_STRESS === "1"
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
-  // Global setup registers all worker keys in a single batch transaction
+  // Global setup registers worker keys in batches
   // This avoids nonce collisions when workers start simultaneously
   globalSetup: require.resolve("./e2e/global-setup"),
   forbidOnly: !!process.env.CI,
@@ -29,9 +31,9 @@ export default defineConfig({
   timeout: 180000,
   use: {
     baseURL: "http://localhost:3000",
-    trace: "on-first-retry",
-    screenshot: "only-on-failure",
-    video: "on-first-retry",
+    trace: isStressMode ? "off" : "on-first-retry",
+    screenshot: isStressMode ? "off" : "only-on-failure",
+    video: isStressMode ? "off" : "on-first-retry",
     // Increase action timeout for slower external wallet UI
     actionTimeout: 15000,
   },

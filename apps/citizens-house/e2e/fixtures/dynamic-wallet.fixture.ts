@@ -29,7 +29,15 @@ interface DynamicWalletFixtures {
  *
  * The testAccount is automatically cleaned up after each test.
  */
-export const test = base.extend<DynamicWalletFixtures>({
+export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAccountManager }>({
+  accountManager: [
+    async ({}, use, workerInfo) => {
+      const manager = new NearAccountManager(workerInfo.parallelIndex)
+      await use(manager)
+    },
+    { scope: "worker" },
+  ],
+
   // Shared wallet session state (stores password from connection)
   walletSession: async ({}, use) => {
     const session: WalletSession = { password: "" }
@@ -39,12 +47,10 @@ export const test = base.extend<DynamicWalletFixtures>({
   // Create a fresh NEAR subaccount for each test
   // Each worker has its own deterministically-derived access key on the parent account,
   // eliminating nonce collisions. See: https://docs.near.org/protocol/access-keys
-  testAccount: async ({}, use, testInfo) => {
+  testAccount: async ({ accountManager }, use, testInfo) => {
     const workerIndex = testInfo.parallelIndex
-    // Each worker gets its own NearAccountManager with a dedicated access key
-    const manager = new NearAccountManager(workerIndex)
 
-    const account = await manager.createTestAccount()
+    const account = await accountManager.createTestAccount()
     console.log(`✓ Created NEAR test account: ${account.accountId} (worker ${workerIndex})`)
 
     await use(account)
@@ -52,7 +58,7 @@ export const test = base.extend<DynamicWalletFixtures>({
     // Cleanup: delete the subaccount after test
     try {
       console.log(`✓ Deleting NEAR test account: ${account.accountId}`)
-      await manager.deleteTestAccount(account.accountId)
+      await accountManager.deleteTestAccount(account.accountId)
     } catch (error) {
       console.warn(`⚠ Failed to delete test account: ${error}`)
     }

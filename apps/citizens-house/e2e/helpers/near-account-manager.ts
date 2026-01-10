@@ -2,18 +2,34 @@ import { Account } from "@near-js/accounts"
 import { KeyPair, KeyPairEd25519 } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
-import { JsonRpcProvider } from "@near-js/providers"
+import { FailoverRpcProvider, JsonRpcProvider } from "@near-js/providers"
+import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
-import { deriveWorkerKey } from "./deterministic-keys"
+import { deriveWorkerKey, getRunIdTag } from "./deterministic-keys"
 
 // RPC URL configuration for E2E tests
-// Uses FastNEAR for reliable transaction broadcasting (dRPC doesn't support transactions properly)
-// Falls back to official RPC if FastNEAR is unavailable
-function getRpcUrl(): string {
-  // E2E tests need transaction support - use FastNEAR which reliably handles transactions
-  // dRPC returns "Server error: undefined" for transaction broadcasts
+// Uses paid RPC first (NEXT_PUBLIC_NEAR_RPC_URL) and FastNEAR as fallback
+function getFastNearUrl(): string {
   const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
   return networkId === "mainnet" ? "https://free.rpc.fastnear.com" : "https://test.rpc.fastnear.com"
+}
+
+function getRpcUrls(): string[] {
+  const primaryUrl = process.env.NEXT_PUBLIC_NEAR_RPC_URL || getFastNearUrl()
+  const fallbackUrl = getFastNearUrl()
+
+  return primaryUrl === fallbackUrl ? [primaryUrl] : [primaryUrl, fallbackUrl]
+}
+
+function createRpcProvider(rpcUrls: string[]): Provider {
+  const primaryProvider = new JsonRpcProvider({ url: rpcUrls[0] })
+
+  if (rpcUrls.length === 1) {
+    return primaryProvider
+  }
+
+  const fallbackProvider = new JsonRpcProvider({ url: rpcUrls[1] })
+  return new FailoverRpcProvider([primaryProvider, fallbackProvider])
 }
 
 interface TestAccount {
@@ -28,13 +44,15 @@ interface TestAccount {
  * Each Playwright worker gets its own deterministically-derived access key
  * on the parent account, eliminating nonce collisions during parallel test runs.
  *
- * Keys are derived from NEAR_PRIVATE_KEY + workerIndex, so they're:
+ * Keys are derived from NEAR_PRIVATE_KEY + workerIndex (+ optional E2E_RUN_ID), so they're:
  * - Deterministic: same seed + index = same key every run
+ * - Namespaced: E2E_RUN_ID isolates concurrent runs
  * - Reusable: once registered on the account, they persist forever
  * - Lazily registered: added to parent account on first use
  */
 export class NearAccountManager {
-  private provider: JsonRpcProvider
+  private provider: Provider
+  private rpcUrls: string[]
   private parentAccountId: string
   private parentSigner: KeyPairSigner // Original parent key for addKey operations
   private workerSigner: KeyPairSigner // Worker-specific key for account creation
@@ -46,8 +64,9 @@ export class NearAccountManager {
   constructor(workerIndex: number) {
     this.workerIndex = workerIndex
 
-    // Use RPC URL from env (respects NEXT_PUBLIC_NEAR_RPC_URL from Doppler)
-    this.provider = new JsonRpcProvider({ url: getRpcUrl() })
+    this.rpcUrls = getRpcUrls()
+    // Use paid RPC with FastNEAR fallback for E2E transaction support
+    this.provider = createRpcProvider(this.rpcUrls)
 
     // Initialize parent account from Doppler env vars
     const parentAccountId = process.env.NEAR_ACCOUNT_ID
@@ -73,29 +92,35 @@ export class NearAccountManager {
    * Checks if a key exists on the parent account (view call, no nonce needed)
    */
   private async keyExistsOnChain(publicKeyStr: string): Promise<boolean> {
-    try {
-      // Use RPC view call to check if key exists
-      const response = await fetch(getRpcUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "check-key",
-          method: "query",
-          params: {
-            request_type: "view_access_key",
-            finality: "final",
-            account_id: this.parentAccountId,
-            public_key: publicKeyStr,
-          },
-        }),
-      })
-      const data = await response.json()
-      // If key exists, result will have permission info; if not, error
-      return !data.error && data.result?.permission
-    } catch {
-      return false
+    for (const rpcUrl of this.rpcUrls) {
+      try {
+        // Use RPC view call to check if key exists
+        const response = await fetch(rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: "check-key",
+            method: "query",
+            params: {
+              request_type: "view_access_key",
+              finality: "final",
+              account_id: this.parentAccountId,
+              public_key: publicKeyStr,
+            },
+          }),
+        })
+        const data = await response.json()
+        // If key exists, result will have permission info; if not, error
+        if (!data.error && data.result?.permission) {
+          return true
+        }
+      } catch {
+        // Try fallback RPC if primary fails
+      }
     }
+
+    return false
   }
 
   /**
@@ -187,8 +212,10 @@ export class NearAccountManager {
 
     const timestamp = Date.now()
     const random = Math.random().toString(36).substring(2, 8)
+    const runIdTag = getRunIdTag()
+    const runSuffix = runIdTag ? `-${runIdTag}` : ""
     // Include worker index in name for easier debugging
-    const subaccountId = `${prefix}-w${this.workerIndex}-${timestamp}-${random}.${this.parentAccountId}`
+    const subaccountId = `${prefix}${runSuffix}-w${this.workerIndex}-${timestamp}-${random}.${this.parentAccountId}`
 
     const keyPair = KeyPair.fromRandom("ed25519")
     const publicKey = keyPair.getPublicKey().toString()

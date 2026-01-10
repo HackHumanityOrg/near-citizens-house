@@ -26,30 +26,38 @@ export function VerificationCtaButton({
   const { isConnected, connect, isLoading } = useNearWallet()
   const label = isConnected ? labelConnected : labelDisconnected
 
-  // Track the initial connection state AFTER loading completes
-  // This distinguishes "already connected on page load" from "just connected"
-  const initialConnectionStateRef = useRef<boolean | null>(null)
+  // Track connection attempts initiated from this CTA
+  const didRequestConnect = useRef(false)
   const hasNavigated = useRef(false)
-
-  // Capture initial connection state only AFTER wallet SDK finishes loading
-  useEffect(() => {
-    if (!isLoading && initialConnectionStateRef.current === null) {
-      initialConnectionStateRef.current = isConnected
-    }
-  }, [isLoading, isConnected])
 
   // Auto-navigate to verification start after wallet connection
   useEffect(() => {
     // Only navigate if:
     // 1. Wallet SDK has finished loading
     // 2. User is now connected
-    // 3. User was NOT connected when loading completed (they just connected)
+    // 3. Connection was initiated via this CTA
     // 4. We haven't already navigated
-    if (!isLoading && isConnected && initialConnectionStateRef.current === false && !hasNavigated.current) {
+    if (!isLoading && isConnected && didRequestConnect.current && !hasNavigated.current) {
       hasNavigated.current = true
       router.push("/verification/start")
     }
   }, [isLoading, isConnected, router])
+
+  useEffect(() => {
+    if (!isLoading && !isConnected && didRequestConnect.current) {
+      didRequestConnect.current = false
+    }
+  }, [isLoading, isConnected])
+
+  const handleConnect = async () => {
+    didRequestConnect.current = true
+    try {
+      await connect()
+    } catch (error) {
+      didRequestConnect.current = false
+      throw error
+    }
+  }
 
   // Exact Figma specs: pl-8px pr-24px py-8px, gap-12px, icon: 32x32 with 8px padding
   const sizeClassName = size === "steps" ? "h-[56px]" : ""
@@ -98,7 +106,7 @@ export function VerificationCtaButton({
   return (
     <Button
       type="button"
-      onClick={connect}
+      onClick={handleConnect}
       disabled={isLoading}
       aria-busy={isLoading}
       variant="citizens-primary"

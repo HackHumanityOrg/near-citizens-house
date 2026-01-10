@@ -10,8 +10,8 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test",
-    "test:e2e:ui": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test --ui"
+    "test:e2e": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test # needs NEAR_ACCOUNT_ID/NEAR_PRIVATE_KEY; optional E2E_RUN_ID/E2E_WORKERS/E2E_STRESS/E2E_KEY_BATCH_SIZE/NEXT_PUBLIC_NEAR_RPC_URL",
+    "test:e2e:ui": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test --ui # needs NEAR_ACCOUNT_ID/NEAR_PRIVATE_KEY; optional E2E_RUN_ID/E2E_WORKERS/E2E_STRESS/E2E_KEY_BATCH_SIZE/NEXT_PUBLIC_NEAR_RPC_URL"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
