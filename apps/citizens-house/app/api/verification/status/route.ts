@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       status: session.status,
       accountId: session.accountId,
+      attestationId: session.attestationId,
       error: session.error,
       errorCode: session.errorCode,
     })

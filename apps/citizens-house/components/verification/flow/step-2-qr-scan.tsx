@@ -41,7 +41,7 @@ const SelfQRcodeWrapper = dynamic<SelfQRcodeProps>(
 interface Step2QrScanProps {
   nearSignature: NearSignatureData
   sessionId: string
-  onSuccess: () => void
+  onSuccess: (attestationId?: string | number) => void
   onError: (error: string, code?: string) => void
 }
 
@@ -166,7 +166,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
             analytics.trackVerificationCompleted(nearSignature.accountId, method)
             confirmationInProgressRef.current = false
             setVerificationStatus("success")
-            onSuccess()
+            onSuccess(data.attestationId)
             return
           }
 

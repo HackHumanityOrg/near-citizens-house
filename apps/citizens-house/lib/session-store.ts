@@ -8,6 +8,7 @@ type SessionStatus = "pending" | "success" | "error"
 interface Session {
   status: SessionStatus
   accountId?: string
+  attestationId?: string
   error?: string
   errorCode?: string
   timestamp: number
@@ -42,7 +43,7 @@ export async function getSession(sessionId: string): Promise<Session | null> {
 
 export async function updateSession(
   sessionId: string,
-  update: { status: SessionStatus; accountId?: string; error?: string; errorCode?: string },
+  update: { status: SessionStatus; accountId?: string; attestationId?: string; error?: string; errorCode?: string },
 ): Promise<void> {
   const client = await getRedisClient()
   const key = getSessionKey(sessionId)
@@ -53,6 +54,7 @@ export async function updateSession(
     : {
         status: update.status,
         accountId: update.accountId,
+        attestationId: update.attestationId,
         error: update.error,
         errorCode: update.errorCode,
         timestamp: Date.now(),

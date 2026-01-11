@@ -88,21 +88,19 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
 
           {/* Table Header - Desktop only */}
           <div className="hidden md:block bg-[#e2e8f0] dark:bg-white/10 border-b border-[#cbd5e1] dark:border-white/10 px-[40px] py-[16px] w-full">
-            <div className="flex items-center justify-between w-full">
-              <div className="flex-1 flex items-center justify-between">
-                <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white">
-                  NEAR Account
-                </span>
-                <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center">
-                  Attestation Type
-                </span>
-                <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center">
-                  Verified At
-                </span>
-                <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center w-[77px]">
-                  Verify
-                </span>
-              </div>
+            <div className="grid items-center w-full grid-cols-[minmax(0,1fr)_180px_240px_77px] gap-[16px]">
+              <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-left">
+                NEAR Account
+              </span>
+              <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center">
+                Attestation Type
+              </span>
+              <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center whitespace-nowrap">
+                Verified At
+              </span>
+              <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center">
+                Verify
+              </span>
             </div>
           </div>
 
@@ -137,8 +135,8 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                     <div className="flex items-center justify-between">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
-                            <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
+                          <div className="bg-verified-badge-bg flex h-[32px] max-w-[180px] items-center justify-center rounded-full px-[12px] py-[6px] cursor-pointer overflow-hidden">
+                            <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
                               {getAttestationTypeName(account.attestationId)}
                             </span>
                           </div>
@@ -169,62 +167,59 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                   </div>
 
                   {/* Desktop Row Layout */}
-                  <div className="hidden md:flex items-center justify-between w-full">
-                    <div className="flex-1 flex items-center justify-between">
-                      {/* NEAR Account - fixed width to match header */}
-                      <div className="flex gap-[8px] items-center w-[373.5px]">
-                        <a
-                          href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-fk-grotesk font-medium text-[16px] leading-[28px] text-[#040404] dark:text-white hover:underline inline-flex items-center gap-[8px]"
+                  <div className="hidden md:grid items-center w-full grid-cols-[minmax(0,1fr)_180px_240px_77px] gap-[16px]">
+                    {/* NEAR Account */}
+                    <div className="flex gap-[8px] items-center min-w-0">
+                      <a
+                        href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-fk-grotesk font-medium text-[16px] leading-[28px] text-[#040404] dark:text-white hover:underline inline-flex items-center gap-[8px] min-w-0 truncate"
+                      >
+                        <span className="truncate">{account.nearAccountId}</span>
+                        <ExternalLink className="h-4 w-4 shrink-0 text-[#0f172a] dark:text-white/70" />
+                      </a>
+                    </div>
+
+                    {/* Attestation Type */}
+                    <div className="flex items-center justify-center">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="bg-verified-badge-bg flex h-[32px] max-w-[180px] items-center justify-center rounded-full px-[12px] py-[6px] cursor-pointer overflow-hidden">
+                            <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
+                              {getAttestationTypeName(account.attestationId)}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="left"
+                          className="bg-[#1c1c1c] text-[#fcfaf7] dark:bg-[#2a2a2a] dark:text-white rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4] font-fk-grotesk"
                         >
-                          {account.nearAccountId}
-                          <ExternalLink className="h-4 w-4 text-[#0f172a] dark:text-white/70" />
-                        </a>
-                      </div>
+                          Nullifier: {truncate(account.nullifier, 16)}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
 
-                      {/* Right columns container */}
-                      <div className="flex items-center justify-between w-[792px]">
-                        {/* Attestation Type */}
-                        <div className="flex gap-[8px] items-center justify-center min-w-[97px] px-[8px] py-[7px]">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
-                                <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
-                                  {getAttestationTypeName(account.attestationId)}
-                                </span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="left"
-                              className="bg-[#1c1c1c] text-[#fcfaf7] dark:bg-[#2a2a2a] dark:text-white rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4] font-fk-grotesk"
-                            >
-                              Nullifier: {truncate(account.nullifier, 16)}
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
+                    {/* Verified At */}
+                    <div className="flex items-center justify-center">
+                      <p className="font-poppins text-[14px] leading-[1.4] text-black dark:text-neutral-300 tracking-[0.28px] text-center whitespace-nowrap">
+                        {formatDate(account.verifiedAt)}
+                      </p>
+                    </div>
 
-                        {/* Verified At */}
-                        <div className="flex gap-[8px] items-center justify-center min-w-[97px] pl-[8px] pr-0 py-[7px]">
-                          <p className="font-poppins text-[14px] leading-[1.4] text-black dark:text-neutral-300 tracking-[0.28px] text-right">
-                            {formatDate(account.verifiedAt)}
-                          </p>
-                        </div>
-
-                        {/* Details Button */}
-                        <button
-                          onClick={() => {
-                            const found = accounts.find((a) => a.account.nearAccountId === account.nearAccountId)
-                            if (found) handleViewDetails(found)
-                          }}
-                          className="bg-[#040404] dark:bg-white flex gap-[8px] h-[32px] items-center justify-center px-[14px] py-[6px] rounded-[4px] hover:bg-[#1a1a1a] dark:hover:bg-neutral-200 transition-colors"
-                        >
-                          <span className="font-fk-grotesk font-bold text-[14px] leading-[20px] text-[#d8d8d8] dark:text-black">
-                            Details
-                          </span>
-                        </button>
-                      </div>
+                    {/* Details Button */}
+                    <div className="flex items-center justify-center">
+                      <button
+                        onClick={() => {
+                          const found = accounts.find((a) => a.account.nearAccountId === account.nearAccountId)
+                          if (found) handleViewDetails(found)
+                        }}
+                        className="bg-[#040404] dark:bg-white flex gap-[8px] h-[32px] items-center justify-center px-[14px] py-[6px] rounded-[4px] hover:bg-[#1a1a1a] dark:hover:bg-neutral-200 transition-colors"
+                      >
+                        <span className="font-fk-grotesk font-bold text-[14px] leading-[20px] text-[#d8d8d8] dark:text-black">
+                          Details
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>

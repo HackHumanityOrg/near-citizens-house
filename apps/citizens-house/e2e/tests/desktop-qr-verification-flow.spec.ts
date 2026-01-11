@@ -1,5 +1,6 @@
 /* eslint-disable no-empty-pattern */
 import { test, expect } from "../fixtures/dynamic-wallet.fixture"
+import { getAttestationTypeName } from "@near-citizens/shared"
 import { createVerificationRequest } from "../helpers/near-signing"
 import { setupSelfWebSocketMock } from "../helpers/self-websocket-mock"
 
@@ -33,6 +34,40 @@ import { setupSelfWebSocketMock } from "../helpers/self-websocket-mock"
  * - Network configured via NEXT_PUBLIC_NEAR_NETWORK (defaults to testnet)
  * - For full flow: SKIP_ZK_VERIFICATION=true (to mock Self.xyz ZK verification)
  */
+async function assertVerificationInCitizensList(
+  page: import("@playwright/test").Page,
+  accountId: string,
+  attestationLabel: string,
+) {
+  await page.goto("/citizens")
+
+  for (let pageIndex = 0; pageIndex < 5; pageIndex++) {
+    const accountLink = page.getByRole("link", { name: accountId })
+    if (
+      await accountLink
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      const row = accountLink.first().locator('xpath=ancestor::div[contains(@class,"px-[16px]")][1]')
+      await expect(row).toContainText(accountId)
+      await expect(row).toContainText(attestationLabel)
+      return
+    }
+
+    const nextLink = page.getByRole("link", { name: /^Next$/ })
+    if (await nextLink.isVisible().catch(() => false)) {
+      await nextLink.click()
+      await page.waitForURL(/\/citizens\?page=/)
+      continue
+    }
+
+    break
+  }
+
+  throw new Error(`Account ${accountId} not found in citizens list`)
+}
+
 test.describe("Complete Verification E2E Flow", () => {
   test.beforeEach(async ({}, testInfo) => {
     if (!process.env.NEAR_ACCOUNT_ID || !process.env.NEAR_PRIVATE_KEY) {
@@ -156,6 +191,8 @@ test.describe("Complete Verification E2E Flow", () => {
 
     // Create verification request with real NEAR signature
     const verificationBody = createVerificationRequest(testAccount, signingMessage, sessionId)
+    const expectedAttestationLabel = getAttestationTypeName(verificationBody.attestationId)
+    const expectedAttestationId = String(verificationBody.attestationId)
 
     console.log("Sending verification request to API...")
 
@@ -181,6 +218,7 @@ test.describe("Complete Verification E2E Flow", () => {
 
     expect(response.ok()).toBe(true)
     expect(responseBody.status).toBe("success")
+    expect(responseBody.attestationId).toBe(verificationBody.attestationId)
     console.log("✓ Phase 2 complete: Verification API returned success")
 
     // =========================================================================
@@ -219,12 +257,18 @@ test.describe("Complete Verification E2E Flow", () => {
       const walletText = await verifiedWallet.textContent()
       console.log(`✓ Wallet verified row visible: ${walletText}`)
     }
+    await expect(verifiedWallet).toContainText(testAccount.accountId)
 
-    // Check for identity verified row
+    // Check for identity verified row and attestation badge
     const identityVerified = page.getByTestId("identity-verified-row")
     if (await identityVerified.isVisible()) {
       console.log("✓ Identity verified row visible")
     }
+
+    const attestationBadge = page.getByTestId("attestation-badge-desktop")
+    await expect(attestationBadge).toBeVisible()
+    await expect(attestationBadge).toHaveText(expectedAttestationLabel)
+    await expect(attestationBadge).toContainText(expectedAttestationLabel)
 
     // Verify session storage via status endpoint (with retry for eventual consistency)
     console.log("\nVerifying contract storage via status API...")
@@ -238,9 +282,14 @@ test.describe("Complete Verification E2E Flow", () => {
       const statusBody = await statusResponse.json()
       console.log("Status Response:", JSON.stringify(statusBody, null, 2))
       expect(statusBody.status).toBe("success")
+      expect(statusBody.attestationId).toBe(expectedAttestationId)
     }).toPass({ timeout: 10000, intervals: [500, 1000, 2000] })
 
     console.log("✓ Verification confirmed in session store")
+
+    await expect(async () => {
+      await assertVerificationInCitizensList(page, testAccount.accountId, expectedAttestationLabel)
+    }).toPass({ timeout: 30000, intervals: [1000, 2000, 3000] })
 
     // Log final state
     console.log(`\n${"=".repeat(60)}`)

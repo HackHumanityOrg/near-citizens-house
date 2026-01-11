@@ -12,13 +12,14 @@ import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "./config"
 
 const SKIP_ZK_VERIFICATION = process.env.SKIP_ZK_VERIFICATION === "true"
 const E2E_TESTING = process.env.E2E_TESTING === "true"
+const USE_MOCK_VERIFIER = SKIP_ZK_VERIFICATION || E2E_TESTING
 
 // Safety check: Never allow mock mode in production (unless explicitly running E2E tests)
-if (SKIP_ZK_VERIFICATION && process.env.NODE_ENV === "production" && !E2E_TESTING) {
+if (USE_MOCK_VERIFIER && process.env.NODE_ENV === "production" && !E2E_TESTING) {
   throw new Error("CRITICAL: SKIP_ZK_VERIFICATION cannot be enabled in production")
 }
 
-if (SKIP_ZK_VERIFICATION) {
+if (USE_MOCK_VERIFIER) {
   console.warn("[Self Verifier] ⚠️  SKIP_ZK_VERIFICATION is enabled - ZK proofs will NOT be verified")
 }
 
@@ -73,7 +74,7 @@ let selfBackendVerifier: SelfBackendVerifier | MockSelfBackendVerifier | null = 
 
 export function getVerifier(): SelfBackendVerifier | MockSelfBackendVerifier {
   if (!selfBackendVerifier) {
-    if (SKIP_ZK_VERIFICATION) {
+    if (USE_MOCK_VERIFIER) {
       // Use mock verifier for E2E testing
       selfBackendVerifier = new MockSelfBackendVerifier()
     } else {

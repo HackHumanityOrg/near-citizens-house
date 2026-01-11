@@ -1,5 +1,6 @@
 /* eslint-disable no-empty-pattern */
 import { devices } from "@playwright/test"
+import { getAttestationTypeName } from "@near-citizens/shared"
 import { test, expect } from "../fixtures/dynamic-wallet.fixture"
 import { createVerificationRequest } from "../helpers/near-signing"
 
@@ -8,6 +9,40 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse.org"
 const signingMessage = `Identify myself for ${verificationContract} at ${appUrl}`
 
 test.use({ ...devices["iPhone 14"] })
+
+async function assertVerificationInCitizensList(
+  page: import("@playwright/test").Page,
+  accountId: string,
+  attestationLabel: string,
+) {
+  await page.goto("/citizens")
+
+  for (let pageIndex = 0; pageIndex < 5; pageIndex++) {
+    const accountLink = page.getByRole("link", { name: accountId })
+    if (
+      await accountLink
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      const row = accountLink.first().locator('xpath=ancestor::div[contains(@class,"px-[16px]")][1]')
+      await expect(row).toContainText(accountId)
+      await expect(row).toContainText(attestationLabel)
+      return
+    }
+
+    const nextLink = page.getByRole("link", { name: /^Next$/ })
+    if (await nextLink.isVisible().catch(() => false)) {
+      await nextLink.click()
+      await page.waitForURL(/\/citizens\?page=/)
+      continue
+    }
+
+    break
+  }
+
+  throw new Error(`Account ${accountId} not found in citizens list`)
+}
 
 test.describe("Mobile Deeplink Verification Flow", () => {
   test.beforeEach(async ({}, testInfo) => {
@@ -148,6 +183,7 @@ test.describe("Mobile Deeplink Verification Flow", () => {
 
     console.log("Step 9: Sending verification request to API")
     const verificationBody = createVerificationRequest(testAccount, signingMessage, sessionId)
+    const expectedAttestationLabel = getAttestationTypeName(verificationBody.attestationId)
 
     const response = await page.request.post("/api/verification/verify", {
       data: verificationBody,
@@ -165,6 +201,7 @@ test.describe("Mobile Deeplink Verification Flow", () => {
 
     expect(response.ok()).toBe(true)
     expect(responseBody.status).toBe("success")
+    expect(responseBody.attestationId).toBe(verificationBody.attestationId)
 
     console.log("Step 10: Navigating to callback URL")
     await page.goto(`/verification/callback?sessionId=${sessionId}`)
@@ -173,8 +210,18 @@ test.describe("Mobile Deeplink Verification Flow", () => {
     console.log("Step 11: Verifying success screen")
     await expect(page.getByTestId("success-section")).toBeVisible({ timeout: 15000 })
     await expect(page.getByTestId("success-heading")).toBeVisible()
-    await expect(page.getByTestId("wallet-verified-row")).toBeVisible()
+    const walletRow = page.getByTestId("wallet-verified-row")
+    await expect(walletRow).toBeVisible()
+    await expect(walletRow).toContainText(testAccount.accountId)
     await expect(page.getByTestId("identity-verified-row")).toBeVisible()
+
+    const attestationBadge = page.getByTestId("attestation-badge-mobile")
+    await expect(attestationBadge).toBeVisible()
+    await expect(attestationBadge).toHaveText(expectedAttestationLabel)
+
+    await expect(async () => {
+      await assertVerificationInCitizensList(page, testAccount.accountId, expectedAttestationLabel)
+    }).toPass({ timeout: 30000, intervals: [1000, 2000, 3000] })
 
     console.log("✓ Mobile deeplink verification flow complete")
   })

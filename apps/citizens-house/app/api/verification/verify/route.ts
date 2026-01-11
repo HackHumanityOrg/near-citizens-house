@@ -209,6 +209,7 @@ export async function POST(request: NextRequest) {
         await updateSession(sessionId, {
           status: "error",
           accountId,
+          attestationId: attestationId?.toString(),
           error: errorResponse.reason,
           errorCode: code,
         })
@@ -540,6 +541,7 @@ export async function POST(request: NextRequest) {
         await updateSession(sessionId, {
           status: "success",
           accountId: nearSignature.accountId,
+          attestationId: attestationIdString,
         })
         event.set("session_updated", true)
       }

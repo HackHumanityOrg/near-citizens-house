@@ -1,5 +1,5 @@
 ---
-name: redeploy-contract
+name: redeploy-clean-state
 description: Redeploy the verification contract with clean state. Use when you need to reset the contract state, redeploy from scratch, or wipe all verifications on testnet or mainnet.
 allowed-tools: Read, Bash, Edit, Write, Grep, Glob, TodoWrite
 ---

@@ -103,6 +103,7 @@ function VerificationStartContent() {
   // State management
   const [currentStep, setCurrentStep] = useState<VerificationProgressStep>(VerificationProgressStep.NotConnected)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
+  const [attestationId, setAttestationId] = useState<string | number | null>(null)
   const [sessionId] = useState<string>(() => crypto.randomUUID())
   const [isSigning, setIsSigning] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
@@ -170,6 +171,17 @@ function VerificationStartContent() {
     if (status === "success" && sessionIdParam) {
       // Verification successful from mobile flow
       setCurrentStep(VerificationProgressStep.VerificationComplete)
+      void (async () => {
+        try {
+          const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionIdParam)}`)
+          if (response.ok) {
+            const data = await response.json()
+            setAttestationId(data.attestationId ?? null)
+          }
+        } catch (error) {
+          console.warn("Failed to fetch attestation status", error)
+        }
+      })()
       handled = true
     } else if (status === "error") {
       // Verification failed from mobile flow
@@ -240,8 +252,9 @@ function VerificationStartContent() {
   }
 
   // Handle verification success
-  const handleVerificationSuccess = () => {
+  const handleVerificationSuccess = (verifiedAttestationId?: string | number) => {
     setErrorMessage(null)
+    setAttestationId(verifiedAttestationId ?? null)
     setCurrentStep(VerificationProgressStep.VerificationComplete)
     toast.success("Successfully Verified Identity.")
   }
@@ -262,6 +275,7 @@ function VerificationStartContent() {
     setErrorMessage(null)
     setErrorCode(null)
     setNearSignature(null)
+    setAttestationId(null)
     setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
 
     // Auto-retry signing only for signing errors
@@ -278,6 +292,7 @@ function VerificationStartContent() {
     trackedWalletRef.current = null
     disconnect()
     setNearSignature(null)
+    setAttestationId(null)
     setErrorMessage(null)
     setCurrentStep(VerificationProgressStep.NotConnected)
   }
@@ -312,7 +327,7 @@ function VerificationStartContent() {
 
         {/* Step 3: Success */}
         {currentStep === VerificationProgressStep.VerificationComplete && accountId && (
-          <Step3Success accountId={accountId} onDisconnect={handleDisconnect} />
+          <Step3Success accountId={accountId} attestationId={attestationId} onDisconnect={handleDisconnect} />
         )}
       </div>
 

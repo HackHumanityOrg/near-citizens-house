@@ -3,18 +3,21 @@
 import { useState, useEffect } from "react"
 import { Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
+import { getAttestationTypeName } from "@near-citizens/shared"
 import { StarPattern } from "../icons/star-pattern"
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform } from "framer-motion"
 
 interface Step3SuccessProps {
   accountId: string
+  attestationId?: string | number | null
   onDisconnect?: () => void
 }
 
 type AnimationPhase = "initial" | "labelsOut" | "merging" | "checkmark" | "complete"
 
-export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
+export function Step3Success({ accountId, attestationId, onDisconnect }: Step3SuccessProps) {
   const shouldReduceMotion = useReducedMotion()
+  const attestationLabel = attestationId ? getAttestationTypeName(attestationId) : "Identity Document"
   const [phase, setPhase] = useState<AnimationPhase>(shouldReduceMotion ? "complete" : "initial")
 
   // Motion value for checkmark path - prevents flash by linking opacity to pathLength
@@ -308,10 +311,13 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                     <span className="font-fk-grotesk font-semibold text-[14px] leading-[14px] text-black dark:text-white">
                       Identity
                     </span>
-                    {/* Passport badge */}
-                    <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-[40px] w-fit">
-                      <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
-                        Passport
+                    {/* Attestation badge */}
+                    <div
+                      className="bg-verified-badge-bg flex h-[32px] max-w-[180px] items-center justify-center rounded-full px-[12px] py-[6px] overflow-hidden"
+                      data-testid="attestation-badge-mobile"
+                    >
+                      <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
+                        {attestationLabel}
                       </span>
                     </div>
                   </div>
@@ -326,9 +332,12 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       Identity
                     </span>
                     <div className="flex justify-center">
-                      <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-[40px]">
-                        <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
-                          Passport
+                      <div
+                        className="bg-verified-badge-bg flex h-[32px] max-w-[180px] items-center justify-center rounded-full px-[12px] py-[6px] overflow-hidden"
+                        data-testid="attestation-badge-desktop"
+                      >
+                        <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
+                          {attestationLabel}
                         </span>
                       </div>
                     </div>
