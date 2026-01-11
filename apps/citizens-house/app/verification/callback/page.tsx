@@ -218,7 +218,7 @@ function VerifyCallbackContent() {
               <div className="col-start-1 row-start-1 flex items-center justify-center">
                 <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full size-[40px]">
                   <svg
-                    className="w-5 h-5 text-white"
+                    className="w-5 h-5 text-white dark:text-black"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -363,7 +363,7 @@ function LoadingFallback() {
               <div className="col-start-1 row-start-1 flex items-center justify-center">
                 <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full size-[40px]">
                   <svg
-                    className="w-5 h-5 text-white"
+                    className="w-5 h-5 text-white dark:text-black"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

@@ -89,7 +89,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       animate={{ opacity: phase === "labelsOut" || showMerging ? 0 : 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                      <Check className="w-5 h-5 text-white dark:text-black" strokeWidth={3} />
                     </motion.div>
                   </div>
                 </motion.div>
@@ -128,7 +128,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       animate={{ opacity: phase === "labelsOut" || showMerging ? 0 : 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                      <Check className="w-5 h-5 text-white dark:text-black" strokeWidth={3} />
                     </motion.div>
                   </div>
                 </motion.div>
@@ -173,12 +173,12 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                         <svg
                           viewBox="0 0 24 24"
                           fill="none"
-                          className="w-8 h-8 md:w-10 md:h-10"
+                          className="w-8 h-8 md:w-10 md:h-10 text-white dark:text-black"
                           style={{ overflow: "visible" }}
                         >
                           <motion.path
                             d="M4.5 12.75l6 6 9-13.5"
-                            stroke="white"
+                            stroke="currentColor"
                             strokeWidth={3}
                             strokeLinecap="round"
                             strokeLinejoin="round"
