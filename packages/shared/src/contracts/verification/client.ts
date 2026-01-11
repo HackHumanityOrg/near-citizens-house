@@ -11,7 +11,6 @@ import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
 import { KeyPair } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
-import { actionCreators } from "@near-js/transactions"
 import {
   contractVerificationSchema,
   contractVerificationSummarySchema,
@@ -55,7 +54,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
       const signer = new KeyPairSigner(keyPair)
 
-      // Create FailoverRpcProvider (primary RPC -> FastNEAR fallback)
+      // Create RPC provider (FastNEAR)
       this.provider = createRpcProvider()
 
       // Account constructor types don't match the actual implementation
@@ -80,8 +79,9 @@ export class NearContractDatabase implements IVerificationDatabase {
 
   /**
    * Check if error is an RPC timeout (500 Internal Server Error)
-   * dRPC can timeout while the transaction still succeeds on-chain
+   * RPC calls can timeout while the transaction still succeeds on-chain
    */
+
   private isRpcTimeoutError(error: unknown): boolean {
     if (error instanceof Error) {
       const msg = error.message.toLowerCase()
@@ -236,61 +236,37 @@ export class NearContractDatabase implements IVerificationDatabase {
       const { account: pooledAccount, keyIndex } = await backendKeyPool.createAccountWithNextKey()
       console.log(`[NearContractDB] Calling store_verification using key ${keyIndex}...`)
 
-      // Use sendTransactionAsync which broadcasts and returns immediately
-      // This uses waitUntil: "NONE" internally, avoiding long waits for execution
-      // We then poll to confirm the verification was stored
-
-      // Step 1: Create and sign the transaction with pooled key
-      const signedTx = await this.withTimeout(
-        pooledAccount.createSignedTransaction(this.contractId, [
-          actionCreators.functionCall(
-            "store_verification",
-            {
-              nullifier: verificationData.nullifier,
-              near_account_id: verificationData.nearAccountId,
-              attestation_id: verificationData.attestationId,
-              signature_data: nearSigData,
-              self_proof: selfProof,
-              user_context_data: userContextData,
-            },
-            BigInt("30000000000000"), // 30 TGas
-            BigInt("1"), // 1 yoctoNEAR deposit (required by assert_one_yocto)
-          ),
-        ]),
-        15000, // 15 second timeout for signing (includes nonce lookup)
-        "transaction signing",
-      )
-
-      // Step 2: Broadcast transaction asynchronously (returns immediately after broadcast)
+      // Send transaction and wait for execution to surface contract failures.
+      const executionTimeoutMs = this.isMainnet() ? 45000 : 30000
       const result = await this.withTimeout(
-        this.provider!.sendTransactionAsync(signedTx),
-        30000, // 30 second timeout for broadcast
-        "transaction broadcast",
+        pooledAccount.callFunctionRaw({
+          contractId: this.contractId,
+          methodName: "store_verification",
+          args: {
+            nullifier: verificationData.nullifier,
+            near_account_id: verificationData.nearAccountId,
+            attestation_id: verificationData.attestationId,
+            signature_data: nearSigData,
+            self_proof: selfProof,
+            user_context_data: userContextData,
+          },
+          gas: "30000000000000", // 30 TGas
+          deposit: "1", // 1 yoctoNEAR deposit (required by assert_one_yocto)
+          waitUntil: "EXECUTED_OPTIMISTIC",
+        }),
+        executionTimeoutMs,
+        "transaction execution",
       )
 
-      // Extract transaction hash - may be undefined if RPC returns malformed response
-      const txHash = result?.transaction?.hash ?? "unknown"
-      console.log("[NearContractDB] Transaction broadcast:", { txHash, nearAccountId: data.nearAccountId })
+      const txHash = result?.transaction?.hash ?? result?.transaction_outcome?.id ?? "unknown"
+      console.log("[NearContractDB] Transaction executed:", { txHash, nearAccountId: data.nearAccountId })
 
-      // Poll to confirm the verification was stored successfully
-      // Uses network-aware timing (mainnet has longer delays)
-      const confirmed = await this.pollForVerification(data.nearAccountId)
-
-      if (confirmed) {
-        console.log("[NearContractDB] Verification stored on-chain:", {
-          transactionHash: txHash,
-          nearAccountId: data.nearAccountId,
-        })
-        return
-      }
-
-      // If polling didn't confirm, throw an error
-      throw new Error(`Transaction broadcast (hash: ${txHash}) but verification not confirmed after polling`)
+      return
     } catch (error) {
       console.error("[NearContractDB] Error storing verification:", error)
 
       // Check if this is a timeout error where the transaction might have succeeded
-      // dRPC can return 500 errors while the transaction actually completes on-chain
+      // RPC can return 500 errors while the transaction actually completes on-chain
       if (this.isRpcTimeoutError(error)) {
         console.log("[NearContractDB] RPC timeout detected, checking if verification succeeded...")
 
@@ -384,6 +360,48 @@ export class NearContractDatabase implements IVerificationDatabase {
       const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
 
       return { accounts: verifications, total: total ?? 0 }
+    } catch (error) {
+      console.error("[NearContractDB] Error getting paginated verifications:", error)
+      return { accounts: [], total: 0 }
+    }
+  }
+
+  // Get paginated verifications ordered by newest first
+  async listVerificationsNewestFirst(
+    page: number = 0,
+    pageSize: number = 50,
+  ): Promise<{ accounts: Verification[]; total: number }> {
+    await this.ensureInitialized()
+
+    try {
+      const total = (await this.provider!.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
+
+      if (total === 0) {
+        return { accounts: [], total }
+      }
+
+      const safePage = Math.max(0, page)
+      const remaining = Math.max(total - safePage * pageSize, 0)
+
+      if (remaining === 0) {
+        return { accounts: [], total }
+      }
+
+      const limit = Math.min(pageSize, remaining, 100)
+      const fromIndex = Math.max(total - (safePage + 1) * pageSize, 0)
+
+      const accounts = await this.provider!.callFunction<ContractVerification[]>(
+        this.contractId,
+        "list_verifications",
+        {
+          from_index: fromIndex,
+          limit,
+        },
+      )
+
+      const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
+
+      return { accounts: verifications.reverse(), total }
     } catch (error) {
       console.error("[NearContractDB] Error getting paginated verifications:", error)
       return { accounts: [], total: 0 }

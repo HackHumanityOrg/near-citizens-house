@@ -101,13 +101,14 @@ export type VerifyRequest = z.infer<typeof verifyRequestSchema>
 export const verificationErrorCodeSchema = z.enum([
   "MISSING_FIELDS",
   "VERIFICATION_FAILED",
-  "OFAC_CHECK_FAILED",
   "NULLIFIER_MISSING",
   "NEAR_SIGNATURE_INVALID",
   "NEAR_SIGNATURE_MISSING",
   "SIGNATURE_EXPIRED",
   "SIGNATURE_TIMESTAMP_INVALID",
   "DUPLICATE_PASSPORT",
+  "ACCOUNT_ALREADY_VERIFIED",
+  "CONTRACT_PAUSED",
   "STORAGE_FAILED",
   "INTERNAL_ERROR",
 ])
@@ -118,14 +119,15 @@ export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
 export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
   MISSING_FIELDS: "Missing required fields",
   VERIFICATION_FAILED: "Verification failed",
-  OFAC_CHECK_FAILED: "OFAC verification failed",
   NULLIFIER_MISSING: "Nullifier missing from proof",
   NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
   NEAR_SIGNATURE_MISSING: "Invalid or missing NEAR signature data",
   SIGNATURE_EXPIRED: "Signature expired",
   SIGNATURE_TIMESTAMP_INVALID: "Invalid signature timestamp",
   DUPLICATE_PASSPORT: "This passport has already been registered",
-  STORAGE_FAILED: "Failed to store verification",
+  ACCOUNT_ALREADY_VERIFIED: "This NEAR account is already verified",
+  CONTRACT_PAUSED: "Verification is temporarily unavailable",
+  STORAGE_FAILED: "Unable to finalize verification at this time",
   INTERNAL_ERROR: "Internal server error",
 } as const
 
@@ -368,4 +370,5 @@ export interface IVerificationDatabase {
   getVerification(nearAccountId: string): Promise<VerificationSummary | null>
   getFullVerification(nearAccountId: string): Promise<Verification | null>
   listVerifications(fromIndex?: number, limit?: number): Promise<{ accounts: Verification[]; total: number }>
+  listVerificationsNewestFirst(page?: number, pageSize?: number): Promise<{ accounts: Verification[]; total: number }>
 }

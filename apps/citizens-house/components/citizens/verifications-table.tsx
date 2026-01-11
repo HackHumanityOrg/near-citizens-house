@@ -143,6 +143,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                             </span>
                           </div>
                         </TooltipTrigger>
+
                         <TooltipContent
                           side="top"
                           className="bg-[#1c1c1c] text-[#fcfaf7] dark:bg-[#2a2a2a] dark:text-white rounded-[8px] px-[12px] py-[6px] text-[12px] leading-[1.4] font-fk-grotesk"

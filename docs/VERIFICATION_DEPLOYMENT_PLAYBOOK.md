@@ -10,7 +10,7 @@ Step-by-step guide to deploy the NEAR Verified Accounts system.
 - Contract account needs 2-5 NEAR for storage; backend wallet needs 1+ NEAR for gas
 - Private keys must NEVER be exposed to frontend
 - **Never reinitialize on upgrades** - use `without-init-call` flag
-- Self.xyz mainnet = real passports (with OFAC checks); testnet = mock/staging passports
+- Self.xyz mainnet = real passports; testnet = mock/staging passports
 
 ---
 
@@ -272,14 +272,13 @@ Vercel auto-detects pnpm workspace from the lockfile and installs all workspace 
 
 **Optional:**
 
-| Variable                               | Purpose                                                      |
-| -------------------------------------- | ------------------------------------------------------------ |
-| `NEAR_RPC_URL`                         | Custom NEAR RPC (default: FastNEAR rpc.mainnet/testnet.fastnear.com) |
-| `FASTNEAR_API_KEY`                     | FastNEAR API key for higher rate limits (X-API-Key header)   |
-| `CELO_RPC_URL`                         | Custom Celo RPC (default: forno.celo.org)                    |
-| `NEXT_PUBLIC_POSTHOG_KEY`              | PostHog analytics                                       |
-| `NEXT_PUBLIC_USERJOT_PROJECT_ID`       | UserJot feedback widget                                 |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect support (MyNearWallet, Unity Wallet)      |
+| Variable                               | Purpose                                                    |
+| -------------------------------------- | ---------------------------------------------------------- |
+| `FASTNEAR_API_KEY`                     | FastNEAR API key for higher rate limits (X-API-Key header) |
+| `CELO_RPC_URL`                         | Custom Celo RPC (default: forno.celo.org)                  |
+| `NEXT_PUBLIC_POSTHOG_KEY`              | PostHog analytics                                          |
+| `NEXT_PUBLIC_USERJOT_PROJECT_ID`       | UserJot feedback widget                                    |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect support (MyNearWallet, Unity Wallet)         |
 
 **Security notes:**
 
@@ -349,4 +348,4 @@ BACKEND_WALLET=backend-wallet
 - Use `network-config mainnet` instead of `testnet`
 - Set `NEXT_PUBLIC_NEAR_NETWORK=mainnet`
 - Fund accounts with real NEAR (no faucet on mainnet)
-- RPC auto-detects: `rpc.mainnet.near.org`
+- RPC uses FastNEAR: `https://rpc.mainnet.fastnear.com`

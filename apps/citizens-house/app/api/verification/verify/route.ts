@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import {
   SELF_CONFIG,
-  SELF_VERIFICATION_CONFIG,
   getSigningMessage,
   verificationDb,
   getVerifier,
@@ -89,6 +88,42 @@ function isFullAccessPermission(permission: unknown): boolean {
   return false
 }
 
+function mapStorageErrorToCode(errorMessage: string): Parameters<typeof createVerificationError>[0] {
+  const message = errorMessage.toLowerCase()
+
+  if (message.includes("nullifier already used") || message.includes("already registered")) {
+    return "DUPLICATE_PASSPORT"
+  }
+
+  if (message.includes("near account already verified")) {
+    return "ACCOUNT_ALREADY_VERIFIED"
+  }
+
+  if (message.includes("contract is paused")) {
+    return "CONTRACT_PAUSED"
+  }
+
+  if (
+    message.includes("invalid near signature") ||
+    message.includes("signature account id") ||
+    message.includes("signature recipient")
+  ) {
+    return "NEAR_SIGNATURE_INVALID"
+  }
+
+  if (
+    message.includes("attestation id") ||
+    message.includes("nullifier") ||
+    message.includes("public signals") ||
+    message.includes("proof component") ||
+    message.includes("user context data")
+  ) {
+    return "VERIFICATION_FAILED"
+  }
+
+  return "STORAGE_FAILED"
+}
+
 async function hasFullAccessKey(accountId: string, publicKey: string): Promise<boolean> {
   const provider = getRpcProvider()
 
@@ -115,18 +150,15 @@ export async function POST(request: NextRequest) {
   // Create wide event for this request
   const event = createApiEvent("verification.verify", request)
 
-  const ofacEnabled = SELF_VERIFICATION_CONFIG.ofac === true
   const selfNetwork = SELF_CONFIG.networkId
   let sessionId: string | undefined
   let accountId: string | undefined
   let nationality: string | undefined
   let isValid: boolean | undefined
-  let isOfacValid: boolean | undefined
 
   // Set initial verification context
   event.setVerification({
     self_network: selfNetwork,
-    ofac_enabled: ofacEnabled,
   })
 
   const respondWithError = async ({
@@ -162,9 +194,7 @@ export async function POST(request: NextRequest) {
         errorReason: errorResponse.reason,
         stage,
         selfNetwork,
-        ofacEnabled,
         isValid,
-        isOfacValid,
         timestamp: Date.now(),
       })
     } catch (error) {
@@ -172,6 +202,23 @@ export async function POST(request: NextRequest) {
         operation: Op.VERIFICATION.ANALYTICS,
         error_message: error instanceof Error ? error.message : "Unknown error",
       })
+    }
+
+    if (sessionId) {
+      try {
+        await updateSession(sessionId, {
+          status: "error",
+          accountId,
+          error: errorResponse.reason,
+          errorCode: code,
+        })
+      } catch (error) {
+        logger.warn("Failed to update verification session", {
+          operation: Op.VERIFICATION.SESSION_UPDATE,
+          session_id: sessionId,
+          error_message: error instanceof Error ? error.message : "Unknown error",
+        })
+      }
     }
 
     return NextResponse.json(errorResponse satisfies SelfVerificationResult, { status })
@@ -218,24 +265,19 @@ export async function POST(request: NextRequest) {
         ? selfVerificationResult.discloseOutput.nationality
         : undefined
 
-    // Self.xyz's isOfacValid: true = user IS ON OFAC sanctions list (blocked), false = NOT on list (allowed)
-    // See SDK source: "isOfacValid is true when a person is in OFAC list"
     const validity = selfVerificationResult.isValidDetails || {}
     isValid = validity.isValid
-    isOfacValid = validity.isOfacValid
 
     // Update wide event with verification results
     event.setVerification({
       is_valid: isValid,
-      is_ofac_valid: isOfacValid,
       nationality,
       stage: "self_verified",
     })
     event.setUser({ session_id: sessionId })
 
     // Type guards: ensure SDK returned expected boolean fields
-    // When OFAC is enabled, isOfacValid must also be a boolean
-    if (typeof isValid !== "boolean" || (ofacEnabled && typeof isOfacValid !== "boolean")) {
+    if (typeof isValid !== "boolean") {
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 502,
@@ -244,13 +286,10 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
-    const ofacCheckFailed = ofacEnabled && isOfacValid === true
 
-    if (!isValid || ofacCheckFailed) {
-      const errorCode = ofacCheckFailed ? "OFAC_CHECK_FAILED" : "VERIFICATION_FAILED"
-
+    if (!isValid) {
       return respondWithError({
-        code: errorCode,
+        code: "VERIFICATION_FAILED",
         status: 400,
         stage: "self_verification",
         attestationId,
@@ -483,9 +522,7 @@ export async function POST(request: NextRequest) {
           nationality,
           attestationId: attestationIdString,
           selfNetwork,
-          ofacEnabled,
           isValid,
-          isOfacValid,
           sessionId,
           timestamp: Date.now(),
         })
@@ -508,21 +545,12 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : ""
-      const errCode = errorMsg.includes("already registered") ? "DUPLICATE_PASSPORT" : "STORAGE_FAILED"
-
-      // Update session status for deep link callback
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          error: errorMsg || "Failed to store verification",
-          errorCode: errCode,
-        })
-      }
+      const errCode = mapStorageErrorToCode(errorMsg)
 
       return respondWithError({
         code: errCode,
         status: 500,
-        details: error instanceof Error ? error.message : undefined,
+        details: errorMsg || "Failed to store verification",
         stage: "storage",
         attestationId,
       })

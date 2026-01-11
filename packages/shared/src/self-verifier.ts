@@ -1,4 +1,5 @@
-import { SelfBackendVerifier, type VerificationConfig } from "@selfxyz/core"
+import { DefaultConfigStore, SelfBackendVerifier } from "@selfxyz/core"
+import { Buffer } from "buffer"
 import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "./config"
 
 // ==============================================================================
@@ -27,7 +28,7 @@ if (SKIP_ZK_VERIFICATION) {
  * NEAR signature verification still happens in the route handler.
  */
 class MockSelfBackendVerifier {
-  async verify(_attestationId: number, _proof: unknown, _publicSignals: string[], userContextData: string) {
+  async verify(attestationId: number, _proof: unknown, _publicSignals: string[], userContextData: string) {
     // Try to extract sessionId from userContextData for proper tracking
     let sessionId = `e2e-session-${Date.now()}`
     try {
@@ -45,7 +46,7 @@ class MockSelfBackendVerifier {
     const nullifier = `e2e-nullifier-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
     return {
-      isValid: true,
+      attestationId,
       userData: {
         userIdentifier: sessionId,
         userDefinedData: userContextData,
@@ -56,37 +57,15 @@ class MockSelfBackendVerifier {
       },
       isValidDetails: {
         isValid: true,
-        isOfacValid: false, // false = NOT on OFAC list (good)
       },
     }
   }
 }
 
-export class InMemoryConfigStore {
-  private config: VerificationConfig
-
-  constructor(config: VerificationConfig) {
-    this.config = config
-  }
-
-  async getConfig(_configId: string) {
-    return this.config
-  }
-
-  async setConfig(_configId: string, config: VerificationConfig) {
-    this.config = config
-    return true
-  }
-
-  async getActionId(_userIdentifier: string, _userDefinedData?: string) {
-    return "default"
-  }
-}
-
-// Attestation types: 1=Passport, 2=Biometric ID Card, 3=Aadhaar
+// Attestation types: 1=Passport, 2=Biometric ID Card (National ID), 3=Aadhaar
 const AllowedAttestationIds = new Map<1 | 2 | 3, boolean>([
   [1, true], // Passport
-  [2, true], // Biometric ID Card
+  [2, true], // Biometric ID Card (National ID)
   [3, true], // Aadhaar
 ])
 
@@ -104,7 +83,7 @@ export function getVerifier(): SelfBackendVerifier | MockSelfBackendVerifier {
         SELF_CONFIG.endpoint,
         SELF_CONFIG.useMockPassport,
         AllowedAttestationIds,
-        new InMemoryConfigStore(SELF_VERIFICATION_CONFIG),
+        new DefaultConfigStore(SELF_VERIFICATION_CONFIG),
         "uuid",
       )
     }

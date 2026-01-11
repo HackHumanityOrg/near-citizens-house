@@ -13,6 +13,8 @@
     "test:e2e": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test",
     "test:e2e:ui": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true playwright test --ui",
     "test:e2e:desktop": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true E2E_WORKERS=1 playwright test desktop-qr",
+    "test:e2e:desktop:parallel": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true E2E_WORKERS=10 playwright test desktop-qr --repeat-each=10 --fully-parallel",
+    "test:e2e:desktop:parallel:headed": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true E2E_WORKERS=10 playwright test desktop-qr --repeat-each=10 --fully-parallel --headed",
     "test:e2e:mobile": "E2E_TESTING=true SKIP_ZK_VERIFICATION=true E2E_WORKERS=1 playwright test mobile-deeplink"
   },
   "dependencies": {

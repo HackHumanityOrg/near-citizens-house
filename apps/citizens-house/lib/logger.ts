@@ -119,9 +119,7 @@ export interface VerificationContext {
   nullifier?: string
   nationality?: string
   self_network?: string
-  ofac_enabled?: boolean
   is_valid?: boolean
-  is_ofac_valid?: boolean
   stage?: string
 }
 

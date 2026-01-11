@@ -28,8 +28,7 @@ import { Account } from "@near-js/accounts"
 import { KeyPair } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
-import { FailoverRpcProvider, JsonRpcProvider } from "@near-js/providers"
-import { actionCreators } from "@near-js/transactions"
+import { JsonRpcProvider } from "@near-js/providers"
 import * as fs from "fs"
 
 // RPC Configuration (same as near-account-manager.ts)
@@ -38,24 +37,26 @@ function getFastNearUrl(): string {
   return networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
 }
 
+function getFastNearHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const apiKey = process.env.FASTNEAR_API_KEY
+  if (apiKey) {
+    headers["X-API-Key"] = apiKey
+  }
+  return headers
+}
+
 function createRpcProvider() {
   const fastNearUrl = getFastNearUrl()
-  const primaryUrl = process.env.NEAR_RPC_URL || fastNearUrl
-  const primaryProvider = new JsonRpcProvider({ url: primaryUrl })
-  const fallbackProvider = new JsonRpcProvider({ url: fastNearUrl })
-  return new FailoverRpcProvider([primaryProvider, fallbackProvider])
+  return new JsonRpcProvider({ url: fastNearUrl, headers: getFastNearHeaders() })
 }
 
-function getPrimaryRpcUrl(): string {
-  return process.env.NEAR_RPC_URL || getFastNearUrl()
-}
-
-async function checkAccountExists(provider: FailoverRpcProvider, accountId: string): Promise<boolean> {
+async function checkAccountExists(accountId: string): Promise<boolean> {
   try {
-    const rpcUrl = getPrimaryRpcUrl()
+    const rpcUrl = getFastNearUrl()
     const response = await fetch(rpcUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getFastNearHeaders() },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: "check-account",
@@ -76,10 +77,10 @@ async function checkAccountExists(provider: FailoverRpcProvider, accountId: stri
 
 async function getAccountBalance(accountId: string): Promise<string> {
   try {
-    const rpcUrl = getPrimaryRpcUrl()
+    const rpcUrl = getFastNearUrl()
     const response = await fetch(rpcUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getFastNearHeaders() },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: "view-account",
@@ -151,7 +152,7 @@ async function main() {
 
   for (const accountId of e2eAccounts) {
     // Check if account still exists
-    const exists = await checkAccountExists(provider, accountId)
+    const exists = await checkAccountExists(accountId)
     if (!exists) {
       console.log(`⏭️  ${accountId} - already deleted`)
       notFound++
@@ -164,10 +165,7 @@ async function main() {
       // Try to delete using parent key
       const subaccount = new Account(accountId, provider, signer)
 
-      await subaccount.signAndSendTransaction({
-        receiverId: accountId,
-        actions: [actionCreators.deleteAccount(parentAccountId)],
-      })
+      await subaccount.deleteAccount(parentAccountId)
 
       console.log(`✅ ${accountId} - deleted (${balance} returned)`)
       deleted++

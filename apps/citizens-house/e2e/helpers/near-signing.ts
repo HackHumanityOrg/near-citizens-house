@@ -7,18 +7,18 @@
 
 import { KeyPair } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
-import { serialize } from "borsh"
-import { createHash, randomBytes } from "crypto"
-
-// NEP-413 tag: 2^31 + 413 = 2147484061
-// This tag identifies messages as NEP-413 compliant for wallet signature verification
-const NEP413_TAG = 2147484061
+import { computeNep413Hash } from "@near-citizens/shared"
+import { randomBytes } from "crypto"
 
 interface TestAccount {
   accountId: string
   publicKey: string
   privateKey: string // ed25519:... format
 }
+
+type AttestationId = 1 | 2 | 3
+
+const ATTESTATION_IDS: AttestationId[] = [1, 2, 3]
 
 interface SignatureData {
   accountId: string
@@ -28,28 +28,17 @@ interface SignatureData {
   timestamp: number
 }
 
-/**
- * NEP-413 Borsh schema for message serialization.
- * Must match the schema used in verification.ts
- */
-const Nep413BorshSchema = {
-  struct: {
-    message: "string",
-    nonce: { array: { type: "u8", len: 32 } },
-    recipient: "string",
-    callbackUrl: { option: "string" },
-  },
+function getRandomAttestationId(): AttestationId {
+  const index = Math.floor(Math.random() * ATTESTATION_IDS.length)
+  return ATTESTATION_IDS[index]
 }
 
 /**
  * Signs a message using NEP-413 standard.
  *
  * NEP-413 signature format:
- * 1. Create payload: { message, nonce, recipient, callbackUrl: null }
- * 2. Borsh serialize the payload
- * 3. Prepend NEP-413 tag (2^31 + 413) as 4-byte little-endian
- * 4. SHA-256 hash the result
- * 5. Sign the hash with ed25519
+ * 1. Compute the NEP-413 hash for the payload
+ * 2. Sign the hash with ed25519
  *
  * @param account - Test account with privateKey
  * @param message - The challenge message to sign
@@ -63,26 +52,9 @@ export function signNep413Message(account: TestAccount, message: string, recipie
   const nonce = randomBytes(32)
   const nonceArray = Array.from(nonce)
 
-  // Write NEP-413 tag as 4-byte little-endian
-  const tagBuffer = Buffer.alloc(4)
-  tagBuffer.writeUInt32LE(NEP413_TAG)
-
-  // Create NEP-413 payload
-  const payload = {
-    message,
-    nonce: new Uint8Array(nonceArray),
-    recipient: recipient || account.accountId,
-    callbackUrl: null,
-  }
-
-  // Borsh serialize the payload
-  const payloadBytes = serialize(Nep413BorshSchema, payload)
-
-  // Concatenate tag + payload
-  const fullMessage = Buffer.concat([tagBuffer, Buffer.from(payloadBytes)])
-
-  // SHA-256 hash the message
-  const messageHash = createHash("sha256").update(fullMessage).digest()
+  const recipientId = recipient || account.accountId
+  const messageHashHex = computeNep413Hash(message, nonceArray, recipientId)
+  const messageHash = Buffer.from(messageHashHex, "hex")
 
   // Sign the hash
   const signature = keyPair.sign(messageHash)
@@ -123,12 +95,14 @@ export function createUserContextData(signatureData: SignatureData, sessionId: s
  * @param account - Test account
  * @param message - Challenge message (from getSigningMessage())
  * @param sessionId - UUID session ID
+ * @param attestationId - Optional attestation ID (defaults to random allowed type)
  * @returns Request body for /api/verification/verify
  */
 export function createVerificationRequest(
   account: TestAccount,
   message: string,
   sessionId: string,
+  attestationId: AttestationId = getRandomAttestationId(),
 ): {
   attestationId: number
   proof: { a: string[]; b: string[][]; c: string[] }
@@ -144,7 +118,7 @@ export function createVerificationRequest(
   // Return complete request body with mock ZK proof
   // (ZK proof is mocked when SKIP_ZK_VERIFICATION=true)
   return {
-    attestationId: 1, // Passport
+    attestationId,
     proof: {
       a: ["1", "2"],
       b: [

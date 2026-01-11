@@ -20,11 +20,9 @@ const envSchema = z.object({
   NEXT_PUBLIC_NEAR_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
 
   // Server-side RPC configuration
-  NEAR_RPC_URL: z.string().optional(), // Override primary RPC URL
-  FASTNEAR_API_KEY: z.string().optional(), // FastNEAR API key for fallback RPC header
+  FASTNEAR_API_KEY: z.string().optional(), // FastNEAR API key for RPC header
 
   // Self.xyz network (independent from NEAR network)
-  // "mainnet" = Real passports with OFAC checks, "testnet" = Mock passports
   NEXT_PUBLIC_SELF_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
 
   // Contract addresses (required for functionality, but may be empty during setup)
@@ -80,18 +78,18 @@ if (typeof window === "undefined") {
 const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet"
 
 // Self.xyz Network Configuration (independent from NEAR network)
-// This allows using NEAR testnet with Self.xyz mainnet for real passport verification with OFAC checks
+// This allows using NEAR testnet with Self.xyz mainnet for real passport verification
 const selfNetworkId = (process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet") as "testnet" | "mainnet"
 
-// Default RPC URL (FastNEAR)
-const getDefaultRpcUrl = () =>
+// FastNEAR RPC URL
+const getFastNearUrl = () =>
   networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
 
 export const NEAR_CONFIG = {
   networkId,
-  // Primary RPC URL (can be overridden via env var, defaults to FastNEAR)
-  rpcUrl: process.env.NEAR_RPC_URL || getDefaultRpcUrl(),
-  // FastNEAR API key for fallback RPC (X-API-Key header)
+  // FastNEAR RPC URL
+  rpcUrl: getFastNearUrl(),
+  // FastNEAR API key (X-API-Key header)
   rpcApiKey: process.env.FASTNEAR_API_KEY || "",
   // Contract addresses
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
@@ -115,7 +113,6 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse
 // Disclosure requests (like nationality) are frontend-only and returned in discloseOutput.
 const VERIFICATION_CONFIG: VerificationConfig = {
   excludedCountries: [],
-  ofac: false,
 }
 
 const DISCLOSURE_CONFIG: VerificationConfig & { nationality: boolean } = {
@@ -131,8 +128,6 @@ export const SELF_CONFIG = {
   appName: "NEAR Citizens House",
   scope: "near-citizens-house",
   // Self.xyz network (independent from NEAR network)
-  // "mainnet" = Real passports with OFAC checks
-  // "testnet" = Mock passports for testing (no OFAC)
   networkId: selfNetworkId,
   get endpoint() {
     return `${APP_URL}/api/verification/verify`

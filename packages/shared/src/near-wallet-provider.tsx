@@ -8,6 +8,16 @@ import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS } from "./config"
 import type { NearSignatureData } from "./contracts/verification"
 
+type SignAndSendTransactionsParams = {
+  transactions: Array<SignAndSendTransactionParams & { signerId?: string }>
+}
+
+type NearWalletWithTransactions = NearWalletBase & {
+  signAndSendTransactions?: (
+    params: SignAndSendTransactionsParams,
+  ) => Promise<FinalExecutionOutcome[] | FinalExecutionOutcome>
+}
+
 interface NearWalletContextType {
   accountId: string | null
   isConnected: boolean
@@ -158,11 +168,30 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
       const wallet = await nearConnector.wallet()
 
-      if (!wallet || !("signAndSendTransaction" in wallet)) {
-        throw new Error("Wallet does not support transaction signing")
+      if (!wallet) {
+        throw new Error("Wallet not available")
       }
 
       try {
+        const walletWithTransactions = wallet as NearWalletWithTransactions
+
+        if (walletWithTransactions.signAndSendTransactions) {
+          const result = await walletWithTransactions.signAndSendTransactions({
+            transactions: [
+              {
+                signerId: accountId,
+                ...params,
+              },
+            ],
+          })
+
+          return Array.isArray(result) ? result[0] : result
+        }
+
+        if (!("signAndSendTransaction" in wallet)) {
+          throw new Error("Wallet does not support transaction signing")
+        }
+
         const result = await (wallet as NearWalletBase).signAndSendTransaction({
           signerId: accountId,
           ...params,

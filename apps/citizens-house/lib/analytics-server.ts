@@ -20,9 +20,7 @@ export async function trackVerificationCompletedServer(props: {
   nationality?: string
   attestationId: string
   selfNetwork?: string
-  ofacEnabled?: boolean
   isValid?: boolean
-  isOfacValid?: boolean
   sessionId?: string
   timestamp?: number
 }): Promise<void> {
@@ -35,9 +33,7 @@ export async function trackVerificationCompletedServer(props: {
     tracking_source: "server",
     ...(props.nationality ? { nationality: props.nationality } : {}),
     ...(props.selfNetwork ? { self_network: props.selfNetwork } : {}),
-    ...(typeof props.ofacEnabled === "boolean" ? { ofac_enabled: props.ofacEnabled } : {}),
     ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
-    ...(typeof props.isOfacValid === "boolean" ? { is_ofac_valid: props.isOfacValid } : {}),
     ...(props.sessionId ? { session_id: props.sessionId } : {}),
     // Set person properties
     $set: {
@@ -71,9 +67,7 @@ export async function trackVerificationFailedServer(props: {
   errorReason?: string
   stage: string
   selfNetwork?: string
-  ofacEnabled?: boolean
   isValid?: boolean
-  isOfacValid?: boolean
   sessionId?: string
   timestamp?: number
 }): Promise<void> {
@@ -105,9 +99,7 @@ export async function trackVerificationFailedServer(props: {
     ...(props.nationality ? { nationality: props.nationality } : {}),
     ...(props.errorReason ? { error_reason: props.errorReason } : {}),
     ...(props.selfNetwork ? { self_network: props.selfNetwork } : {}),
-    ...(typeof props.ofacEnabled === "boolean" ? { ofac_enabled: props.ofacEnabled } : {}),
     ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
-    ...(typeof props.isOfacValid === "boolean" ? { is_ofac_valid: props.isOfacValid } : {}),
     ...(props.sessionId ? { session_id: props.sessionId } : {}),
     ...personProps,
   }

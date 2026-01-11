@@ -10,13 +10,13 @@ import { Account } from "@near-js/accounts"
 import { KeyPair } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
-import { FailoverRpcProvider, JsonRpcProvider } from "@near-js/providers"
+import { JsonRpcProvider } from "@near-js/providers"
 import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import type { FullConfig } from "@playwright/test"
 import { deriveWorkerKey } from "./helpers/deterministic-keys"
 
-// Paid RPC primary with FastNEAR fallback
+// FastNEAR RPC configuration
 function getFastNearUrl(): string {
   const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
   return networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
@@ -31,58 +31,37 @@ function getFastNearHeaders(): Record<string, string> {
   return headers
 }
 
-function isFastNearUrl(url: string): boolean {
-  return url.includes("fastnear.com")
+function createRpcProvider(rpcUrl: string): Provider {
+  return new JsonRpcProvider({ url: rpcUrl, headers: getFastNearHeaders() })
 }
 
-function getRpcUrls(): string[] {
-  const primaryUrl = process.env.NEAR_RPC_URL || getFastNearUrl()
-  const fallbackUrl = getFastNearUrl()
-
-  return primaryUrl === fallbackUrl ? [primaryUrl] : [primaryUrl, fallbackUrl]
-}
-
-function createRpcProvider(rpcUrls: string[]): Provider {
-  const primaryHeaders = isFastNearUrl(rpcUrls[0]) ? getFastNearHeaders() : undefined
-  const primaryProvider = new JsonRpcProvider({ url: rpcUrls[0], headers: primaryHeaders })
-
-  if (rpcUrls.length === 1) {
-    return primaryProvider
-  }
-
-  const fallbackProvider = new JsonRpcProvider({ url: rpcUrls[1], headers: getFastNearHeaders() })
-  return new FailoverRpcProvider([primaryProvider, fallbackProvider])
-}
-
-async function keyExistsOnChain(rpcUrls: string[], accountId: string, publicKeyStr: string): Promise<boolean> {
-  for (const rpcUrl of rpcUrls) {
-    try {
-      const headers = {
-        "Content-Type": "application/json",
-        ...(isFastNearUrl(rpcUrl) ? getFastNearHeaders() : {}),
-      }
-      const response = await fetch(rpcUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "check-key",
-          method: "query",
-          params: {
-            request_type: "view_access_key",
-            finality: "final",
-            account_id: accountId,
-            public_key: publicKeyStr,
-          },
-        }),
-      })
-      const data = await response.json()
-      if (!data.error && data.result?.permission) {
-        return true
-      }
-    } catch {
-      // try fallback RPC if primary fails
+async function keyExistsOnChain(rpcUrl: string, accountId: string, publicKeyStr: string): Promise<boolean> {
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+      ...getFastNearHeaders(),
     }
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "check-key",
+        method: "query",
+        params: {
+          request_type: "view_access_key",
+          finality: "final",
+          account_id: accountId,
+          public_key: publicKeyStr,
+        },
+      }),
+    })
+    const data = await response.json()
+    if (!data.error && data.result?.permission) {
+      return true
+    }
+  } catch {
+    // Ignore transient RPC errors
   }
 
   return false
@@ -106,9 +85,9 @@ async function globalSetup(config: FullConfig) {
 
   const accountId = parentAccountId
   const privateKey = parentPrivateKey
-  const rpcUrls = getRpcUrls()
-  const primaryHost = rpcUrls[0].replace(/https?:\/\//, "").split("/")[0]
-  console.log(`[Global Setup] Checking worker keys for ${workerCount} workers on ${accountId} via ${primaryHost}`)
+  const rpcUrl = getFastNearUrl()
+  const host = rpcUrl.replace(/https?:\/\//, "").split("/")[0]
+  console.log(`[Global Setup] Checking worker keys for ${workerCount} workers on ${accountId} via ${host}`)
 
   // Derive all worker keys and check which ones need to be registered
   // PublicKey type: the return type of calling getPublicKey() on a derived worker key
@@ -120,7 +99,7 @@ async function globalSetup(config: FullConfig) {
     const publicKey = workerKey.getPublicKey()
     const publicKeyStr = publicKey.toString()
 
-    const exists = await keyExistsOnChain(rpcUrls, accountId, publicKeyStr)
+    const exists = await keyExistsOnChain(rpcUrl, accountId, publicKeyStr)
 
     if (!exists) {
       keysToRegister.push({ workerIndex: i, publicKey })
@@ -135,7 +114,7 @@ async function globalSetup(config: FullConfig) {
     return
   }
 
-  const provider = createRpcProvider(rpcUrls)
+  const provider = createRpcProvider(rpcUrl)
   const parentKeyPair = KeyPair.fromString(privateKey as KeyPairString)
   const parentSigner = new KeyPairSigner(parentKeyPair)
 
@@ -176,7 +155,7 @@ async function globalSetup(config: FullConfig) {
           const missing: { workerIndex: number; publicKey: PublicKey }[] = []
           for (const key of pending) {
             const publicKeyStr = key.publicKey.toString()
-            const exists = await keyExistsOnChain(rpcUrls, accountId, publicKeyStr)
+            const exists = await keyExistsOnChain(rpcUrl, accountId, publicKeyStr)
 
             if (!exists) {
               missing.push(key)
