@@ -725,8 +725,10 @@ describe("Near Citizens House", () => {
       // ============================================================================
 
       describe("buildProofData", () => {
+        type BuildProofAccount = Parameters<typeof buildProofData>[0]
+
         // Sample account data
-        const sampleAccount = {
+        const sampleAccount: BuildProofAccount = {
           nullifier: "12345678901234567890",
           attestationId: "1",
           verifiedAt: Date.now(),

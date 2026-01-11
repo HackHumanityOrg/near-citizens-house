@@ -210,7 +210,7 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "max_nonce_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "4",
+            "attestation_id": "3",
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,

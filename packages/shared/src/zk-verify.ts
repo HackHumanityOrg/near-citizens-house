@@ -55,8 +55,8 @@ const HUB_ABI = [
   },
 ]
 
-// Cache the verifier address to avoid repeated lookups
-let cachedVerifierAddress: string | null = null
+// Cache verifier addresses per attestation ID to avoid repeated lookups
+const cachedVerifierAddresses = new Map<number, string>()
 
 /**
  * Get the singleton Celo RPC provider
@@ -72,8 +72,9 @@ function getCeloProvider(): ethers.JsonRpcProvider {
  * Get the verifier contract address from the hub
  */
 async function getVerifierAddress(attestationId: number): Promise<string> {
-  if (cachedVerifierAddress) {
-    return cachedVerifierAddress
+  const cached = cachedVerifierAddresses.get(attestationId)
+  if (cached) {
+    return cached
   }
 
   const provider = getCeloProvider()
@@ -87,7 +88,7 @@ async function getVerifierAddress(attestationId: number): Promise<string> {
     throw new Error("Verifier contract not found for attestation ID: " + attestationId)
   }
 
-  cachedVerifierAddress = verifierAddress
+  cachedVerifierAddresses.set(attestationId, verifierAddress)
   return verifierAddress
 }
 
@@ -98,7 +99,7 @@ async function getVerifierAddress(attestationId: number): Promise<string> {
  * by calling the on-chain verifier contract directly on Celo.
  *
  * @param storedProof - The proof data containing proof points and public signals
- * @param attestationId - The attestation type (1=Passport, 2=BiometricID, 3=Aadhaar)
+ * @param attestationId - The attestation type (1=Passport, 2=Biometric ID Card, 3=Aadhaar)
  * @returns true if the proof is mathematically valid, false otherwise
  */
 export async function verifyStoredProof(storedProof: SelfProofData, attestationId: number = 1): Promise<boolean> {

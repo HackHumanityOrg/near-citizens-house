@@ -19,6 +19,10 @@ export const SIZE_LIMITS = {
   MAX_BATCH_SIZE: 100, // MAX_BATCH_SIZE - Maximum accounts per batch query
 } as const
 
+export const attestationIdStringSchema = z.enum(["1", "2", "3"])
+
+export type AttestationIdString = z.infer<typeof attestationIdStringSchema>
+
 // ============================================================================
 // ZK Proof Schemas
 // ============================================================================
@@ -183,7 +187,7 @@ export type SelfVerificationResult = z.infer<typeof selfVerificationResultSchema
 export const verificationDataSchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
   nearAccountId: z.string(),
-  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+  attestationId: attestationIdStringSchema,
 })
 
 export type VerificationData = z.infer<typeof verificationDataSchema>
@@ -202,7 +206,7 @@ export type VerificationDataWithSignature = z.infer<typeof verificationDataWithS
 export const verificationSchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER), // Unique passport identifier (prevents duplicate registrations)
   nearAccountId: z.string(), // Associated NEAR wallet
-  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+  attestationId: attestationIdStringSchema,
   verifiedAt: z.number(),
   selfProof: selfProofDataSchema, // Self.xyz ZK proof for async verification
   userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA), // Original hex-encoded userContextData for Self.xyz re-verification
@@ -215,7 +219,7 @@ export type Verification = z.infer<typeof verificationSchema>
 export const verificationSummarySchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
   nearAccountId: z.string(),
-  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+  attestationId: attestationIdStringSchema,
   verifiedAt: z.number(),
 })
 
@@ -245,7 +249,7 @@ export type ParsedSignatureData = z.infer<typeof parsedSignatureDataSchema>
 // Proof data for verification (combines nullifier, user info, and ZK proof)
 export const proofDataSchema = z.object({
   nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
-  attestationId: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+  attestationId: attestationIdStringSchema,
   verifiedAt: z.number(),
   zkProof: zkProofSchema,
   publicSignals: z.array(z.string().max(SIZE_LIMITS.PROOF_COMPONENT)).max(SIZE_LIMITS.PUBLIC_SIGNALS_COUNT),
@@ -313,7 +317,7 @@ export const contractVerificationSchema = z
   .object({
     nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
     near_account_id: z.string(),
-    attestation_id: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+    attestation_id: attestationIdStringSchema,
     verified_at: z.number(), // nanoseconds
     self_proof: z.object({
       proof: zkProofSchema,
@@ -341,7 +345,7 @@ export const contractVerificationSummarySchema = z
   .object({
     nullifier: z.string().max(SIZE_LIMITS.NULLIFIER),
     near_account_id: z.string(),
-    attestation_id: z.string().max(SIZE_LIMITS.ATTESTATION_ID),
+    attestation_id: attestationIdStringSchema,
     verified_at: z.number(), // nanoseconds
   })
   .transform((data) => ({

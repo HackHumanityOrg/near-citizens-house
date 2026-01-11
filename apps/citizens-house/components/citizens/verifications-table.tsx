@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useAnalytics } from "@/lib/analytics"
 import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@near-citizens/ui"
-import { NEAR_CONFIG } from "@near-citizens/shared"
+import { NEAR_CONFIG, getAttestationTypeName } from "@near-citizens/shared"
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
 import type { VerificationWithStatus } from "@/app/citizens/actions"
@@ -35,15 +35,6 @@ function formatDate(timestamp: number): string {
   const ampm = hours >= 12 ? "PM" : "AM"
   const hour12 = hours % 12 || 12
   return `${month} ${day}, ${year}, ${hour12}:${minutes} ${ampm} UTC`
-}
-
-function getAttestationType(id: string): string {
-  const types: Record<string, string> = {
-    "1": "Passport",
-    "2": "Biometric ID",
-    "3": "Aadhaar",
-  }
-  return types[id] || `Type ${id}`
 }
 
 export function VerificationsTable({ accounts, total, page, pageSize: _pageSize, totalPages }: Props) {
@@ -148,7 +139,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                         <TooltipTrigger asChild>
                           <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
                             <span className="font-poppins text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]">
-                              {getAttestationType(account.attestationId)}
+                              {getAttestationTypeName(account.attestationId)}
                             </span>
                           </div>
                         </TooltipTrigger>
@@ -200,7 +191,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                             <TooltipTrigger asChild>
                               <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
                                 <span className="font-poppins text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]">
-                                  {getAttestationType(account.attestationId)}
+                                  {getAttestationTypeName(account.attestationId)}
                                 </span>
                               </div>
                             </TooltipTrigger>

@@ -131,10 +131,10 @@ describe("Near Citizens House", () => {
             expect(typeof result).toBe("boolean")
           })
 
-          it("should support BiometricID attestation (ID=2)", async () => {
+          it("should support Biometric ID Card attestation (ID=2)", async () => {
             await allure.severity("normal")
 
-            // BiometricID uses same verifier contract
+            // Biometric ID Card uses same verifier contract
             const result = await verifyStoredProof(mockInvalidProof, BIOMETRIC_ATTESTATION_ID)
 
             expect(typeof result).toBe("boolean")

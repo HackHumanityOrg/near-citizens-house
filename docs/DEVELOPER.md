@@ -640,7 +640,7 @@ Simply change the implementation in `packages/shared/src/database.ts` to return 
   nullifier: string // Unique passport identifier
   nearAccountId: string // NEAR wallet address
   userId: string // Self.xyz user identifier
-  attestationId: string // Document type (1=Passport, 2=BiometricID, 3=Aadhaar)
+  attestationId: string // Document type (1=Passport, 2=Biometric ID Card, 3=Aadhaar)
   verifiedAt: number // Timestamp (milliseconds)
 }
 ```
