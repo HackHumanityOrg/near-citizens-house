@@ -112,7 +112,10 @@ export function Step1WalletSignature({
               <div className="flex flex-col gap-[16px] items-start pb-[8px] pt-0 px-0 w-full max-w-[520px]">
                 {/* Card Title */}
                 <div className="flex items-center justify-center w-full">
-                  <p className="font-fk-grotesk font-medium text-[24px] leading-[32px] text-[#090909] dark:text-white w-full">
+                  <p
+                    data-testid="step1-card-title"
+                    className="font-fk-grotesk font-medium text-[24px] leading-[32px] text-[#090909] dark:text-white w-full"
+                  >
                     {title}
                   </p>
                 </div>

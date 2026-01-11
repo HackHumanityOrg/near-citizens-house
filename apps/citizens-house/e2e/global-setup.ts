@@ -19,7 +19,7 @@ import { deriveWorkerKey } from "./helpers/deterministic-keys"
 // Paid RPC primary with FastNEAR fallback
 function getFastNearUrl(): string {
   const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
-  return networkId === "mainnet" ? "https://free.rpc.fastnear.com" : "https://test.rpc.fastnear.com"
+  return networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
 }
 
 function getFastNearHeaders(): Record<string, string> {
