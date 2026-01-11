@@ -85,6 +85,19 @@ const PASSPORT_ATTESTATION_ID = 1
 const BIOMETRIC_ATTESTATION_ID = 2
 const AADHAAR_ATTESTATION_ID = 3
 
+// Mock proof for Aadhaar (19 signals instead of 21 for Passport/National ID)
+const mockAadhaarProof: SelfProofData = {
+  proof: {
+    a: ["1", "2"],
+    b: [
+      ["3", "4"],
+      ["5", "6"],
+    ],
+    c: ["7", "8"],
+  },
+  publicSignals: Array(19).fill("0"),
+}
+
 // Use nested describes to create Allure suite hierarchy:
 // parentSuite > suite > subSuite (matching Rust pattern)
 describe("Near Citizens House", () => {
@@ -143,7 +156,8 @@ describe("Near Citizens House", () => {
           it("should support Aadhaar attestation (ID=3)", async () => {
             await allure.severity("normal")
 
-            const result = await verifyStoredProof(mockInvalidProof, AADHAAR_ATTESTATION_ID)
+            // Aadhaar uses 19 public signals instead of 21
+            const result = await verifyStoredProof(mockAadhaarProof, AADHAAR_ATTESTATION_ID)
 
             expect(typeof result).toBe("boolean")
           })

@@ -28,21 +28,31 @@ const IDENTITY_VERIFICATION_HUB_ADDRESS =
 // Singleton Celo RPC provider instance
 let celoProviderInstance: ethers.JsonRpcProvider | null = null
 
-// Verifier contract ABI - just the verifyProof function we need
-const VERIFIER_ABI = [
-  {
-    inputs: [
-      { internalType: "uint256[2]", name: "a", type: "uint256[2]" },
-      { internalType: "uint256[2][2]", name: "b", type: "uint256[2][2]" },
-      { internalType: "uint256[2]", name: "c", type: "uint256[2]" },
-      { internalType: "uint256[21]", name: "pubSignals", type: "uint256[21]" },
-    ],
-    name: "verifyProof",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-]
+// Public signal counts per attestation type (from verification keys)
+// Passport (ID=1): 21 signals, National ID (ID=2): 21 signals, Aadhaar (ID=3): 19 signals
+const PUBLIC_SIGNAL_COUNTS: Record<number, number> = {
+  1: 21, // Passport
+  2: 21, // Biometric ID Card / National ID
+  3: 19, // Aadhaar
+}
+
+// Generate verifier ABI for specific public signal count
+function getVerifierABI(signalCount: number) {
+  return [
+    {
+      inputs: [
+        { internalType: "uint256[2]", name: "a", type: "uint256[2]" },
+        { internalType: "uint256[2][2]", name: "b", type: "uint256[2][2]" },
+        { internalType: "uint256[2]", name: "c", type: "uint256[2]" },
+        { internalType: `uint256[${signalCount}]`, name: "pubSignals", type: `uint256[${signalCount}]` },
+      ],
+      name: "verifyProof",
+      outputs: [{ internalType: "bool", name: "", type: "bool" }],
+      stateMutability: "view",
+      type: "function",
+    },
+  ]
+}
 
 // IdentityVerificationHub ABI - to get verifier address
 const HUB_ABI = [
@@ -105,6 +115,12 @@ async function getVerifierAddress(attestationId: number): Promise<string> {
 export async function verifyStoredProof(storedProof: SelfProofData, attestationId: number = 1): Promise<boolean> {
   const verifierAddress = await getVerifierAddress(attestationId)
 
+  // Get the correct signal count for this attestation type
+  const signalCount = PUBLIC_SIGNAL_COUNTS[attestationId]
+  if (!signalCount) {
+    throw new Error(`Unsupported attestation ID: ${attestationId}`)
+  }
+
   // Convert proof to the format expected by the contract
   // Note: b coordinates need to be swapped
   const proof = {
@@ -119,7 +135,8 @@ export async function verifyStoredProof(storedProof: SelfProofData, attestationI
   const publicSignals = storedProof.publicSignals.map(BigInt)
 
   const provider = getCeloProvider()
-  const verifierContract = new ethers.Contract(verifierAddress, VERIFIER_ABI, provider)
+  const verifierABI = getVerifierABI(signalCount)
+  const verifierContract = new ethers.Contract(verifierAddress, verifierABI, provider)
   const isValid = await verifierContract.verifyProof(proof.a, proof.b, proof.c, publicSignals)
 
   return isValid
@@ -141,6 +158,16 @@ export async function verifyStoredProofWithDetails(
   error?: string
 }> {
   try {
+    // Get the correct signal count for this attestation type
+    const signalCount = PUBLIC_SIGNAL_COUNTS[attestationId]
+    if (!signalCount) {
+      return {
+        isValid: false,
+        publicSignalsCount: storedProof.publicSignals.length,
+        error: `Unsupported attestation ID: ${attestationId}`,
+      }
+    }
+
     const verifierAddress = await getVerifierAddress(attestationId)
 
     // Convert proof to the format expected by the contract
@@ -157,7 +184,8 @@ export async function verifyStoredProofWithDetails(
     const publicSignals = storedProof.publicSignals.map(BigInt)
 
     const provider = getCeloProvider()
-    const verifierContract = new ethers.Contract(verifierAddress, VERIFIER_ABI, provider)
+    const verifierABI = getVerifierABI(signalCount)
+    const verifierContract = new ethers.Contract(verifierAddress, verifierABI, provider)
     const isValid = await verifierContract.verifyProof(proof.a, proof.b, proof.c, publicSignals)
 
     return {
