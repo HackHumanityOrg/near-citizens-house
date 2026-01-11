@@ -8,17 +8,17 @@ import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
 import { getSigningMessage } from "./config"
-import type { ParsedSignatureData, ProofData, Nep413Payload } from "./contracts/verification"
+import type { ParsedSignatureData, ProofData, Nep413Payload, AttestationIdString } from "./contracts/verification"
 
 export type { ParsedSignatureData, ProofData, Nep413Payload }
 
 /**
  * Attestation type names for display purposes.
- * Self.xyz supports 3 document types: Passport (1), National ID (2), Aadhaar (3)
+ * Self.xyz supports 3 document types: Passport (1), Biometric ID Card (2), Aadhaar (3)
  */
 export const ATTESTATION_TYPE_NAMES: Record<string, string> = {
   "1": "Passport",
-  "2": "National ID",
+  "2": "Biometric ID Card",
   "3": "Aadhaar",
 }
 
@@ -209,7 +209,7 @@ export function verifyNearSignature(
 export function buildProofData(
   account: {
     nullifier: string
-    attestationId: string
+    attestationId: AttestationIdString
     verifiedAt: number
     selfProof: {
       proof: {

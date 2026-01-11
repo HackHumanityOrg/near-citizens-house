@@ -99,7 +99,7 @@ async function getVerifierAddress(attestationId: number): Promise<string> {
  * by calling the on-chain verifier contract directly on Celo.
  *
  * @param storedProof - The proof data containing proof points and public signals
- * @param attestationId - The attestation type (1=Passport, 2=BiometricID, 3=Aadhaar)
+ * @param attestationId - The attestation type (1=Passport, 2=Biometric ID Card, 3=Aadhaar)
  * @returns true if the proof is mathematically valid, false otherwise
  */
 export async function verifyStoredProof(storedProof: SelfProofData, attestationId: number = 1): Promise<boolean> {

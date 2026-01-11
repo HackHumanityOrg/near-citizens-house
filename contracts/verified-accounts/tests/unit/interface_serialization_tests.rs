@@ -14,7 +14,7 @@ fn test_verification_summary_serialization() {
     let summary = VerificationSummary {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
-        attestation_id: "attestation123".to_string(),
+        attestation_id: "1".to_string(),
         verified_at: 1234567890,
     };
 
@@ -41,7 +41,7 @@ fn test_verification_serialization() {
     let verification = Verification {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
-        attestation_id: "attestation123".to_string(),
+        attestation_id: "1".to_string(),
         verified_at: 1234567890,
         self_proof: SelfProofData {
             proof: ZkProof {

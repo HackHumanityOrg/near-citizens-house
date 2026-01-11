@@ -9,6 +9,7 @@ import {
   getRpcProvider,
   verifyNearSignature,
   verifyRequestSchema,
+  attestationIdStringSchema,
   createVerificationError,
   type SelfVerificationResult,
   type NearSignatureData,
@@ -179,9 +180,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
+    const attestationIdString = attestationIdStringSchema.parse(attestationId.toString())
 
     // Update wide event with attestation ID
-    event.setVerification({ attestation_id: attestationId.toString(), stage: "started" })
+    event.setVerification({ attestation_id: attestationIdString, stage: "started" })
 
     let selfVerificationResult
 
@@ -445,7 +447,7 @@ export async function POST(request: NextRequest) {
       await verificationDb.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
-        attestationId: attestationId.toString(),
+        attestationId: attestationIdString,
         signatureData: nearSignature,
         selfProofData,
         userContextData: fullUserContextData,
@@ -464,7 +466,7 @@ export async function POST(request: NextRequest) {
         await trackVerificationCompletedServer({
           accountId: nearSignature.accountId,
           nationality,
-          attestationId: attestationId.toString(),
+          attestationId: attestationIdString,
           selfNetwork,
           ofacEnabled,
           isValid,

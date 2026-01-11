@@ -313,6 +313,53 @@ fn test_attestation_id_too_long() {
 #[allure_suite_label("Verified Accounts Unit Tests")]
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
+#[allure_tags("unit", "validation", "attestation-id")]
+#[allure_description("Verifies that store_verification rejects unsupported attestation_id values.")]
+#[allure_test]
+#[test]
+fn test_attestation_id_invalid_value() {
+    let (mut contract, user) = step("Initialize contract", || {
+        let backend = accounts(1);
+        let user = accounts(2);
+        let context = get_context(backend.clone());
+        testing_env!(context.build());
+        let contract = VersionedContract::new(backend);
+        (contract, user)
+    });
+
+    step("Attempt verification with unsupported attestation_id", || {
+        assert_panic_with(
+            || {
+                let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
+                let sig_data = NearSignatureData {
+                    account_id: user.clone(),
+                    signature: vec![0; 64],
+                    public_key: public_key_str.parse().unwrap(),
+                    challenge: "Identify myself".to_string(),
+                    nonce: vec![0; 32],
+                    recipient: user.clone(),
+                };
+
+                let invalid_attestation_id = "9".to_string();
+
+                contract.store_verification(
+                    "test_nullifier".to_string(),
+                    user,
+                    invalid_attestation_id,
+                    sig_data,
+                    test_self_proof(),
+                    "test_user_context_data".to_string(),
+                );
+            },
+            "Attestation ID must be one of: 1, 2, 3",
+        );
+    });
+}
+
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Verified Accounts Unit Tests")]
+#[allure_sub_suite("Input Validation")]
+#[allure_severity("critical")]
 #[allure_tags("unit", "validation", "user-context-data")]
 #[allure_description("Verifies that store_verification rejects user_context_data strings exceeding 4096 character maximum length.")]
 #[allure_test]
@@ -383,7 +430,7 @@ fn test_nullifier_max_length_allowed() {
         contract.store_verification(
             "n".repeat(80),
             user.clone(),
-            "9".to_string(),
+            "1".to_string(),
             sig_data,
             test_self_proof(),
             "ctx".to_string(),
@@ -400,7 +447,7 @@ fn test_nullifier_max_length_allowed() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "validation", "attestation-id", "boundary")]
-#[allure_description("Verifies that a single-character attestation_id is accepted.")]
+#[allure_description("Verifies that a supported attestation_id (1-3) is accepted.")]
 #[allure_test]
 #[test]
 fn test_attestation_id_single_char_allowed() {
@@ -419,7 +466,7 @@ fn test_attestation_id_single_char_allowed() {
         contract.store_verification(
             "nullifier_attestation".to_string(),
             user.clone(),
-            "Z".to_string(),
+            "2".to_string(),
             sig_data,
             test_self_proof(),
             "ctx".to_string(),

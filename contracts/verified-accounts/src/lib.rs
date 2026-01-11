@@ -339,6 +339,10 @@ impl VersionedContract {
             MAX_ATTESTATION_ID_LEN
         );
         assert!(
+            attestation_id == "1" || attestation_id == "2" || attestation_id == "3",
+            "Attestation ID must be one of: 1, 2, 3"
+        );
+        assert!(
             user_context_data.len() <= MAX_USER_CONTEXT_DATA_LEN,
             "User context data exceeds maximum length of {}",
             MAX_USER_CONTEXT_DATA_LEN

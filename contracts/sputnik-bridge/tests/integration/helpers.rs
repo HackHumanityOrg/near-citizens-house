@@ -430,7 +430,7 @@ pub async fn verify_user(
         .args_json(json!({
             "nullifier": format!("test_nullifier_{}", index),
             "near_account_id": user.id(),
-            "attestation_id": format!("{}", index % 10),
+            "attestation_id": format!("{}", (index % 3) + 1),
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
