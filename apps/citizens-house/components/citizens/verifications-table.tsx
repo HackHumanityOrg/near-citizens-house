@@ -137,8 +137,8 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                     <div className="flex items-center justify-between">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
-                            <span className="font-poppins text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]">
+                          <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
+                            <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
                               {getAttestationTypeName(account.attestationId)}
                             </span>
                           </div>
@@ -189,8 +189,8 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                         <div className="flex gap-[8px] items-center justify-center min-w-[97px] px-[8px] py-[7px]">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
-                                <span className="font-poppins text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]">
+                              <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-full cursor-pointer">
+                                <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
                                   {getAttestationTypeName(account.attestationId)}
                                 </span>
                               </div>

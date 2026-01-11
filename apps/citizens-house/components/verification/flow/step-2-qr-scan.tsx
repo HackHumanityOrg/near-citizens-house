@@ -186,8 +186,8 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                 data-testid="step2-indicator-completed"
                 data-step-state="completed"
               >
-                <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
-                  <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full size-[40px]">
+                  <Check className="w-5 h-5 text-white dark:text-black" strokeWidth={3} />
                 </div>
               </div>
 
@@ -212,7 +212,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               {/* Labels row - overflow their 40px columns, centered under circles */}
               <span
                 data-testid="step2-label-1"
-                className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center"
+                className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-verified whitespace-nowrap text-center"
               >
                 NEAR Wallet Verified
               </span>

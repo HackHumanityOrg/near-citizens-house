@@ -122,7 +122,7 @@ export function AddMemberForm() {
 
           {/* Success */}
           {success && (
-            <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+            <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900 dark:text-green-100">
               <CheckCircle className="h-4 w-4" />
               <p>{success}</p>
             </Alert>

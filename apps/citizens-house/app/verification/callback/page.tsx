@@ -216,7 +216,7 @@ function VerifyCallbackContent() {
             <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
               {/* Step 1 circle - completed */}
               <div className="col-start-1 row-start-1 flex items-center justify-center">
-                <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
+                <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full size-[40px]">
                   <svg
                     className="w-5 h-5 text-white"
                     fill="none"
@@ -244,7 +244,7 @@ function VerifyCallbackContent() {
               </div>
 
               {/* Labels */}
-              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-verified whitespace-nowrap text-center">
                 NEAR Wallet Verified
               </span>
               <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk md:font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">
@@ -361,7 +361,7 @@ function LoadingFallback() {
             <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
               {/* Step 1 circle - completed */}
               <div className="col-start-1 row-start-1 flex items-center justify-center">
-                <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
+                <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full size-[40px]">
                   <svg
                     className="w-5 h-5 text-white"
                     fill="none"
@@ -389,7 +389,7 @@ function LoadingFallback() {
               </div>
 
               {/* Labels */}
-              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-verified whitespace-nowrap text-center">
                 NEAR Wallet Verified
               </span>
               <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk md:font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">

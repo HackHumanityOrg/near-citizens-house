@@ -189,8 +189,8 @@ export function BridgeInfoCard() {
           </Card>
           <Card className="py-4">
             <CardContent className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-                <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-800">
+                <Clock className="h-5 w-5 text-green-600 dark:text-green-300" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{Math.round(policy.proposalPeriodMs / (24 * 60 * 60 * 1000))} days</p>
