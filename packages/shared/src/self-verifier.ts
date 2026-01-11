@@ -83,10 +83,10 @@ export class InMemoryConfigStore {
   }
 }
 
-// Attestation types: 1=Passport, 2=Biometric ID Card (National ID), 3=Aadhaar
+// Attestation types: 1=Passport, 2=Biometric ID Card, 3=Aadhaar
 const AllowedAttestationIds = new Map<1 | 2 | 3, boolean>([
   [1, true], // Passport
-  [2, true], // Biometric ID Card (National ID)
+  [2, true], // Biometric ID Card
   [3, true], // Aadhaar
 ])
 
