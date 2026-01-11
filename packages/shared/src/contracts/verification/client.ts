@@ -10,7 +10,6 @@ import { Account } from "@near-js/accounts"
 import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
 import { KeyPair } from "@near-js/crypto"
-import type { JsonRpcProvider } from "@near-js/providers"
 import { KeyPairSigner } from "@near-js/signers"
 import { actionCreators } from "@near-js/transactions"
 import {
@@ -27,12 +26,16 @@ import {
 } from "./types"
 import { NEAR_CONFIG } from "../../config"
 import { createRpcProvider } from "../../rpc"
+import { backendKeyPool, setBackendKeyPoolRedis } from "./backend-key-pool"
+
+// Re-export for app initialization
+export { setBackendKeyPoolRedis }
 
 export type { IVerificationDatabase, VerificationDataWithSignature, Verification, VerificationSummary }
 
 export class NearContractDatabase implements IVerificationDatabase {
   private account: Account | null = null
-  private provider: JsonRpcProvider | null = null
+  private provider: Provider | null = null
   private contractId: string
   private initialized: Promise<void>
 
@@ -52,16 +55,12 @@ export class NearContractDatabase implements IVerificationDatabase {
       const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
       const signer = new KeyPairSigner(keyPair)
 
-      // Create JsonRpcProvider with configured endpoint
+      // Create FailoverRpcProvider (primary RPC -> FastNEAR fallback)
       this.provider = createRpcProvider()
 
       // Account constructor types don't match the actual implementation
       // The provider and signer interfaces are compatible at runtime
-      this.account = new Account(
-        this.backendAccountId,
-        this.provider as unknown as Provider,
-        signer as unknown as Signer,
-      )
+      this.account = new Account(this.backendAccountId, this.provider, signer as unknown as Signer)
 
       console.log(`[NearContractDB] Initialized with account: ${this.backendAccountId}`)
       console.log(`[NearContractDB] Contract ID: ${this.contractId}`)
@@ -204,6 +203,10 @@ export class NearContractDatabase implements IVerificationDatabase {
 
   /**
    * Internal implementation of storeVerification (wrapped with timeout by public method)
+   *
+   * Uses the backend key pool for parallel transaction support.
+   * Each request gets the next available key via atomic Redis INCR,
+   * enabling concurrent transactions without nonce collisions.
    */
   private async storeVerificationImpl(data: VerificationDataWithSignature): Promise<void> {
     try {
@@ -228,39 +231,45 @@ export class NearContractDatabase implements IVerificationDatabase {
         public_signals: selfProofData.publicSignals,
       }
 
-      console.log("[NearContractDB] Calling store_verification on contract...")
+      // Get account with next pooled key (atomic via Redis)
+      // Each key has its own nonce sequence, enabling parallel transactions
+      const { account: pooledAccount, keyIndex } = await backendKeyPool.createAccountWithNextKey()
+      console.log(`[NearContractDB] Calling store_verification using key ${keyIndex}...`)
 
-      // Fire-and-forget: Submit transaction without waiting for execution
-      // This avoids dRPC timeout issues - we'll poll to confirm success
-      // waitUntil: "NONE" returns immediately after broadcast with tx hash
-      // Add timeout to transaction broadcast to prevent hanging
+      // Use sendTransactionAsync which broadcasts and returns immediately
+      // This uses waitUntil: "NONE" internally, avoiding long waits for execution
+      // We then poll to confirm the verification was stored
+
+      // Step 1: Create and sign the transaction with pooled key
+      const signedTx = await this.withTimeout(
+        pooledAccount.createSignedTransaction(this.contractId, [
+          actionCreators.functionCall(
+            "store_verification",
+            {
+              nullifier: verificationData.nullifier,
+              near_account_id: verificationData.nearAccountId,
+              attestation_id: verificationData.attestationId,
+              signature_data: nearSigData,
+              self_proof: selfProof,
+              user_context_data: userContextData,
+            },
+            BigInt("30000000000000"), // 30 TGas
+            BigInt("1"), // 1 yoctoNEAR deposit (required by assert_one_yocto)
+          ),
+        ]),
+        15000, // 15 second timeout for signing (includes nonce lookup)
+        "transaction signing",
+      )
+
+      // Step 2: Broadcast transaction asynchronously (returns immediately after broadcast)
       const result = await this.withTimeout(
-        this.account!.signAndSendTransaction({
-          receiverId: this.contractId,
-          actions: [
-            actionCreators.functionCall(
-              "store_verification",
-              {
-                nullifier: verificationData.nullifier,
-                near_account_id: verificationData.nearAccountId,
-                attestation_id: verificationData.attestationId,
-                signature_data: nearSigData,
-                self_proof: selfProof,
-                user_context_data: userContextData,
-              },
-              BigInt("30000000000000"), // 30 TGas
-              BigInt("1"), // 1 yoctoNEAR deposit (required by assert_one_yocto)
-            ),
-          ],
-          // Fire-and-forget: don't wait for execution, just broadcast
-          // TxExecutionStatus type from @near-js/accounts
-          waitUntil: "NONE" as "NONE" | "INCLUDED" | "EXECUTED_OPTIMISTIC" | "INCLUDED_FINAL" | "EXECUTED" | "FINAL",
-        }),
+        this.provider!.sendTransactionAsync(signedTx),
         30000, // 30 second timeout for broadcast
         "transaction broadcast",
       )
 
-      const txHash = result.transaction.hash
+      // Extract transaction hash - may be undefined if RPC returns malformed response
+      const txHash = result?.transaction?.hash ?? "unknown"
       console.log("[NearContractDB] Transaction broadcast:", { txHash, nearAccountId: data.nearAccountId })
 
       // Poll to confirm the verification was stored successfully
@@ -276,7 +285,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       }
 
       // If polling didn't confirm, throw an error
-      throw new Error(`Transaction ${txHash} broadcast but verification not confirmed after polling`)
+      throw new Error(`Transaction broadcast (hash: ${txHash}) but verification not confirmed after polling`)
     } catch (error) {
       console.error("[NearContractDB] Error storing verification:", error)
 

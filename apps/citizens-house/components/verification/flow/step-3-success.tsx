@@ -42,7 +42,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
   const showFinalCircle = phase === "checkmark" || phase === "complete"
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-testid="success-section">
       {/* Hero Section with gradient background - extends behind header */}
       <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
         {/* Yellow gradient background */}
@@ -232,6 +232,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       stiffness: 300,
                       damping: 24,
                     }}
+                    data-testid="success-heading"
                   >
                     NEAR Verified Account successfully created
                   </motion.h1>
@@ -258,9 +259,15 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
               </p>
 
               {/* Verification status box */}
-              <div className="flex flex-col items-start w-full rounded-[8px] overflow-hidden">
+              <div
+                className="flex flex-col items-start w-full rounded-[8px] overflow-hidden"
+                data-testid="verification-status-box"
+              >
                 {/* NEAR Wallet row */}
-                <div className="bg-[#f8fafc] dark:bg-white/5 border-b border-[#cbd5e1] dark:border-white/10 flex items-center justify-between px-[8px] md:px-[16px] py-[16px] w-full">
+                <div
+                  className="bg-[#f8fafc] dark:bg-white/5 border-b border-[#cbd5e1] dark:border-white/10 flex items-center justify-between px-[8px] md:px-[16px] py-[16px] w-full"
+                  data-testid="wallet-verified-row"
+                >
                   {/* Mobile: stacked layout */}
                   <div className="flex md:hidden flex-col gap-[16px] flex-1 min-w-0">
                     <span className="font-fk-grotesk font-semibold text-[14px] leading-[14px] text-black dark:text-white">
@@ -293,7 +300,10 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                 </div>
 
                 {/* Identity row */}
-                <div className="bg-[#f8fafc] dark:bg-white/5 flex items-center justify-between px-[8px] md:px-[16px] py-[16px] w-full">
+                <div
+                  className="bg-[#f8fafc] dark:bg-white/5 flex items-center justify-between px-[8px] md:px-[16px] py-[16px] w-full"
+                  data-testid="identity-verified-row"
+                >
                   {/* Mobile: stacked layout */}
                   <div className="flex md:hidden flex-col gap-[16px]">
                     <span className="font-fk-grotesk font-semibold text-[14px] leading-[14px] text-black dark:text-white">
@@ -339,6 +349,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                   onClick={onDisconnect}
                   variant="outline"
                   className="h-[48px] px-[24px] py-[14px] border-black dark:border-white text-[#040404] dark:text-white font-medium rounded-[4px]"
+                  data-testid="disconnect-wallet-button-success"
                 >
                   Disconnect Wallet
                 </Button>

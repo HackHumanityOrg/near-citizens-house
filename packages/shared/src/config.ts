@@ -18,7 +18,10 @@ import type { VerificationConfig } from "@selfxyz/core"
 const envSchema = z.object({
   // Required for all environments (client & server)
   NEXT_PUBLIC_NEAR_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
-  NEXT_PUBLIC_NEAR_RPC_URL: z.string().optional(),
+
+  // Server-side RPC configuration
+  NEAR_RPC_URL: z.string().optional(), // Override primary RPC URL
+  FASTNEAR_API_KEY: z.string().optional(), // FastNEAR API key for fallback RPC header
 
   // Self.xyz network (independent from NEAR network)
   // "mainnet" = Real passports with OFAC checks, "testnet" = Mock passports
@@ -38,6 +41,10 @@ const envSchema = z.object({
 
   // Celo RPC URL for ZK proof verification (server-side only)
   CELO_RPC_URL: z.string().optional(),
+
+  // E2E Testing: Skip Self.xyz ZK proof verification (server-side only)
+  // WARNING: Must NEVER be "true" in production
+  SKIP_ZK_VERIFICATION: z.string().optional(),
 })
 
 // Validate environment at module load time
@@ -80,13 +87,16 @@ const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testne
 // This allows using NEAR testnet with Self.xyz mainnet for real passport verification with OFAC checks
 const selfNetworkId = (process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet") as "testnet" | "mainnet"
 
-// Default RPC URLs (Near Foundation public endpoints)
-const defaultRpcUrl = networkId === "mainnet" ? "https://rpc.mainnet.near.org" : "https://rpc.testnet.near.org"
+// Default RPC URL (FastNEAR)
+const getDefaultRpcUrl = () =>
+  networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
 
 export const NEAR_CONFIG = {
   networkId,
-  // Primary RPC URL (can be overridden via env var)
-  rpcUrl: process.env.NEXT_PUBLIC_NEAR_RPC_URL || defaultRpcUrl,
+  // Primary RPC URL (can be overridden via env var, defaults to FastNEAR)
+  rpcUrl: process.env.NEAR_RPC_URL || getDefaultRpcUrl(),
+  // FastNEAR API key for fallback RPC (X-API-Key header)
+  rpcApiKey: process.env.FASTNEAR_API_KEY || "",
   // Contract addresses
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
   governanceContractId: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT || "",

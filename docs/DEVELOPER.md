@@ -265,11 +265,16 @@ pnpm build:contract:bridge        # Build sputnik-bridge contract
 
 ### Required (Frontend - Public)
 
-| Variable                    | Description                      | Example                                  |
-| --------------------------- | -------------------------------- | ---------------------------------------- |
-| `NEXT_PUBLIC_NEAR_NETWORK`  | NEAR network (testnet/mainnet)   | `testnet`                                |
-| `NEXT_PUBLIC_NEAR_RPC_URL`  | NEAR RPC endpoint                | `https://rpc.testnet.near.org`           |
-| `NEXT_PUBLIC_SELF_ENDPOINT` | Your app's verification endpoint | `https://your-app.vercel.app/api/verify` |
+| Variable                   | Description                    | Example    |
+| -------------------------- | ------------------------------ | ---------- |
+| `NEXT_PUBLIC_NEAR_NETWORK` | NEAR network (testnet/mainnet) | `testnet`  |
+
+### Optional (Server-Side)
+
+| Variable           | Description                                        | Example                                       |
+| ------------------ | -------------------------------------------------- | --------------------------------------------- |
+| `NEAR_RPC_URL`     | Custom NEAR RPC (default: FastNEAR)                | `https://lb.drpc.live/near-testnet/your-key`  |
+| `FASTNEAR_API_KEY` | FastNEAR API key for higher rate limits            | `your-api-key`                                |
 
 ### Security Notes
 
@@ -740,10 +745,9 @@ In Vercel dashboard, add all environment variables:
 - `NEAR_ACCOUNT_ID`
 - `NEAR_PRIVATE_KEY` (⚠️ Use Vercel secrets - server-side only)
 - `NEXT_PUBLIC_NEAR_NETWORK`
-- `NEXT_PUBLIC_NEAR_RPC_URL`
-- `NEXT_PUBLIC_SELF_ENDPOINT` (your Vercel URL)
+- `NEAR_RPC_URL` (optional - defaults to FastNEAR)
+- `FASTNEAR_API_KEY` (optional - for higher rate limits)
 - `CELO_RPC_URL`
-- `SELF_USE_MOCK_PASSPORT`
 
 **4. Deploy:**
 

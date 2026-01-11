@@ -35,9 +35,14 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
   const defaultFallback = "There was an error during the verification process. Please re-sign message and try again."
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" data-testid="error-modal">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-[rgba(0,0,0,0.4)] backdrop-blur-[6px]" onClick={onClose} aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-[rgba(0,0,0,0.4)] backdrop-blur-[6px]"
+        onClick={onClose}
+        aria-hidden="true"
+        data-testid="error-modal-backdrop"
+      />
 
       {/* Modal */}
       <div
@@ -55,14 +60,18 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
             {/* Title */}
             <div className="flex items-center">
               <div className="flex flex-col font-inter font-semibold justify-center leading-[0] text-[20px] md:text-[24px] text-[#090909] dark:text-white tracking-[0.48px]">
-                <p className="leading-[1.2]">{getErrorTitle(errorCode)}</p>
+                <p className="leading-[1.2]" data-testid="error-title">
+                  {getErrorTitle(errorCode)}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Error message */}
           <div className="flex flex-col font-inter font-normal justify-center text-[14px] text-[#090909] dark:text-neutral-200 w-full">
-            <p className="leading-[1.5]">{getErrorMessage(errorCode, errorMessage || defaultFallback)}</p>
+            <p className="leading-[1.5]" data-testid="error-message">
+              {getErrorMessage(errorCode, errorMessage || defaultFallback)}
+            </p>
           </div>
         </div>
 
@@ -72,6 +81,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
             <button
               onClick={onClose}
               className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] cursor-pointer hover:opacity-90 transition-opacity"
+              data-testid="error-close-button"
             >
               <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
                 Close
@@ -81,6 +91,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
             <button
               onClick={onRetry}
               className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] cursor-pointer hover:opacity-90 transition-opacity"
+              data-testid="error-retry-button"
             >
               <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
                 Sign Message

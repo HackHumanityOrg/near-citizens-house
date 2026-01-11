@@ -156,7 +156,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-testid="step2-section">
       {/* Hero Section with gradient background - extends behind header */}
       <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
         {/* Yellow gradient background */}
@@ -181,7 +181,11 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
             {/* Fixed-width columns for circles (40px each), flexible middle for line */}
             <div className="grid w-full grid-cols-[40px_1fr_40px] grid-rows-[40px_auto] items-start gap-y-[16px]">
               {/* Step 1 circle - completed (green with checkmark) */}
-              <div className="col-start-1 row-start-1 flex items-center justify-center">
+              <div
+                className="col-start-1 row-start-1 flex items-center justify-center"
+                data-testid="step2-indicator-completed"
+                data-step-state="completed"
+              >
                 <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full size-[40px]">
                   <Check className="w-5 h-5 text-white" strokeWidth={3} />
                 </div>
@@ -193,7 +197,11 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               </div>
 
               {/* Step 2 circle - active (black border, bold number) */}
-              <div className="col-start-3 row-start-1 flex items-center justify-center">
+              <div
+                className="col-start-3 row-start-1 flex items-center justify-center"
+                data-testid="step2-indicator-active"
+                data-step-state="active"
+              >
                 <div className="border-2 border-[#090909] dark:border-white bg-white dark:bg-black flex items-center justify-center rounded-full size-[40px]">
                   <span className="font-fk-grotesk font-bold text-[20px] leading-[28px] text-[#090909] dark:text-white">
                     2
@@ -202,10 +210,16 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
               </div>
 
               {/* Labels row - overflow their 40px columns, centered under circles */}
-              <span className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+              <span
+                data-testid="step2-label-1"
+                className="col-start-1 row-start-2 justify-self-center font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center"
+              >
                 NEAR Wallet Verified
               </span>
-              <span className="col-start-3 row-start-2 justify-self-center font-fk-grotesk font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center">
+              <span
+                data-testid="step2-label-2"
+                className="col-start-3 row-start-2 justify-self-center font-fk-grotesk font-bold text-[16px] md:text-[20px] leading-[28px] text-[#090909] dark:text-white whitespace-nowrap text-center"
+              >
                 Verify Identity
               </span>
             </div>
@@ -233,13 +247,14 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                       onClick={handleOpenSelfApp}
                       variant="citizens-primary"
                       className="w-full h-[56px] text-[16px]"
+                      data-testid="open-self-app-button"
                     >
                       Open Self app
                     </Button>
                   </div>
 
                   {/* Desktop: QR Code */}
-                  <div className="hidden md:flex flex-col items-center w-full">
+                  <div className="hidden md:flex flex-col items-center w-full" data-testid="qr-code-container">
                     <div className="flex flex-col gap-[24px] items-start w-[260px]">
                       <p className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-white">
                         Scan this QR code to install and use the Self app to generate your proof of identity.
@@ -258,7 +273,10 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                 <div className="bg-[#f8fafc] dark:bg-white/5 w-full md:w-[503px] p-[20px] px-[40px] md:p-[40px] md:rounded-[16px] flex flex-col gap-[24px] items-center">
                   {/* How to verify */}
                   <div className="flex flex-col gap-[16px] items-start w-full">
-                    <p className="font-fk-grotesk font-medium text-[24px] leading-[32px] text-black dark:text-white">
+                    <p
+                      className="font-fk-grotesk font-medium text-[24px] leading-[32px] text-black dark:text-white"
+                      data-testid="how-to-verify-heading"
+                    >
                       How to verify?
                     </p>
                     {/* Mobile subtitle */}

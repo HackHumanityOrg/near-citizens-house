@@ -14,7 +14,7 @@ import posthog from "posthog-js"
 
 // Service metadata
 const SERVICE_NAME = "citizens-house"
-const DEPLOYMENT_ENV = process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NODE_ENV || "development"
+const DEPLOYMENT_ENV = process.env.NODE_ENV || "development"
 
 export type ClientLogLevel = "debug" | "info" | "warn" | "error"
 

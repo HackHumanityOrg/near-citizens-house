@@ -272,10 +272,11 @@ Vercel auto-detects pnpm workspace from the lockfile and installs all workspace 
 
 **Optional:**
 
-| Variable                               | Purpose                                                 |
-| -------------------------------------- | ------------------------------------------------------- |
-| `NEXT_PUBLIC_NEAR_RPC_URL`             | Custom NEAR RPC (default: rpc.mainnet/testnet.near.org) |
-| `CELO_RPC_URL`                         | Custom Celo RPC (default: forno.celo.org)               |
+| Variable                               | Purpose                                                      |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `NEAR_RPC_URL`                         | Custom NEAR RPC (default: FastNEAR rpc.mainnet/testnet.fastnear.com) |
+| `FASTNEAR_API_KEY`                     | FastNEAR API key for higher rate limits (X-API-Key header)   |
+| `CELO_RPC_URL`                         | Custom Celo RPC (default: forno.celo.org)                    |
 | `NEXT_PUBLIC_POSTHOG_KEY`              | PostHog analytics                                       |
 | `NEXT_PUBLIC_USERJOT_PROJECT_ID`       | UserJot feedback widget                                 |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect support (MyNearWallet, Unity Wallet)      |
