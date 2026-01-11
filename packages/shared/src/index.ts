@@ -9,8 +9,6 @@ export * from "./rpc"
 
 // Contracts
 export * from "./contracts/verification"
-export * from "./contracts/sputnik-dao"
-export * from "./contracts/bridge"
 
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"

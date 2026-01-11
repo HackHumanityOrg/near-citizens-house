@@ -58,7 +58,6 @@ jobs:
           workspaces: |
             contracts/verified-accounts -> target
             contracts/verified-accounts/tests/fixtures/v2 -> target
-            contracts/sputnik-bridge -> target
           shared-key: rust-build
           cache-on-failure: true
 
@@ -84,16 +83,6 @@ jobs:
           cargo near build non-reproducible-wasm
           cp target/near/verified_accounts_v2_fixture.wasm verified_accounts.wasm
 
-      - name: Build sputnik-bridge WASM
-        working-directory: contracts/sputnik-bridge
-        run: cargo near build non-reproducible-wasm
-
-      - name: Build sputnik-dao WASM
-        run: |
-          cd contracts/sputnik-dao-contract
-          chmod +x build.sh
-          ./build.sh
-
       - name: Upload WASM artifacts
         if: ${{ env.ACT != 'true' }}
         uses: actions/upload-artifact@v4
@@ -102,8 +91,6 @@ jobs:
           path: |
             contracts/verified-accounts/tests/fixtures/v1/verified_accounts.wasm
             contracts/verified-accounts/tests/fixtures/v2/verified_accounts.wasm
-            contracts/sputnik-bridge/target/near/*.wasm
-            contracts/sputnik-dao-contract/res/*.wasm
           retention-days: 1
 
   # Run all Rust unit tests in parallel
@@ -113,8 +100,6 @@ jobs:
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts.outputs.failed }}
-      sputnik_bridge_passed: ${{ steps.test_sputnik_bridge.outputs.passed }}
-      sputnik_bridge_failed: ${{ steps.test_sputnik_bridge.outputs.failed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -151,7 +136,6 @@ jobs:
           workspaces: |
             contracts/verified-accounts -> target
             contracts/verified-accounts/tests/fixtures/v2 -> target
-            contracts/sputnik-bridge -> target
           shared-key: rust-build
           cache-on-failure: true
 
@@ -171,25 +155,8 @@ jobs:
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
         continue-on-error: true
 
-      - name: Run sputnik-bridge unit tests
-        if: ${{ env.ACT != 'true' || env.ACT_UNIT_TEST_TARGET == 'all' || env.ACT_UNIT_TEST_TARGET == 'sputnik-bridge' }}
-        id: test_sputnik_bridge
-        working-directory: contracts/sputnik-bridge
-        run: |
-          cargo test --features testing 2>&1 | tee test_output.txt
-          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
-          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
-          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
-          echo "passed=$PASSED" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
       - name: Clippy verified-accounts
         working-directory: contracts/verified-accounts
-        run: RUSTFLAGS="--cfg clippy" cargo clippy --lib -- -D warnings
-
-      - name: Clippy sputnik-bridge
-        working-directory: contracts/sputnik-bridge
         run: RUSTFLAGS="--cfg clippy" cargo clippy --lib -- -D warnings
 
       - name: Collect allure results
@@ -271,8 +238,6 @@ jobs:
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts_integration.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts_integration.outputs.failed }}
-      sputnik_bridge_passed: ${{ steps.test_sputnik_bridge_integration.outputs.passed }}
-      sputnik_bridge_failed: ${{ steps.test_sputnik_bridge_integration.outputs.failed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -308,7 +273,6 @@ jobs:
           workspaces: |
             contracts/verified-accounts -> target
             contracts/verified-accounts/tests/fixtures/v2 -> target
-            contracts/sputnik-bridge -> target
           shared-key: rust-build
           cache-on-failure: true
 
@@ -329,8 +293,6 @@ jobs:
           ls -la contracts/verified-accounts/target/near/
           ls -la contracts/verified-accounts/tests/fixtures/v1/
           ls -la contracts/verified-accounts/tests/fixtures/v2/
-          ls -la contracts/sputnik-bridge/target/near/ || echo "Bridge WASM location check"
-          ls -la contracts/sputnik-dao-contract/res/ || echo "DAO WASM location check"
 
       - name: Setup Allure results
         run: mkdir -p allure-results
@@ -340,18 +302,6 @@ jobs:
         working-directory: contracts/verified-accounts
         run: |
           cargo test --features integration-tests 2>&1 | tee test_output.txt
-          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
-          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
-          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
-          echo "passed=$PASSED" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
-      - name: Run sputnik-bridge integration tests
-        id: test_sputnik_bridge_integration
-        working-directory: contracts/sputnik-bridge
-        run: |
-          cargo test --features integration-tests --test integration 2>&1 | tee test_output.txt
           SUMMARY=$(grep "test result:" test_output.txt | tail -1)
           PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
           FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
@@ -407,17 +357,13 @@ jobs:
         run: |
           TOTAL_PASSED=$((
             ${{ needs.unit-tests-rust.outputs.verified_accounts_passed || 0 }} +
-            ${{ needs.unit-tests-rust.outputs.sputnik_bridge_passed || 0 }} +
             ${{ needs.unit-tests-typescript.outputs.passed || 0 }} +
-            ${{ needs.integration-tests.outputs.verified_accounts_passed || 0 }} +
-            ${{ needs.integration-tests.outputs.sputnik_bridge_passed || 0 }}
+            ${{ needs.integration-tests.outputs.verified_accounts_passed || 0 }}
           ))
           TOTAL_FAILED=$((
             ${{ needs.unit-tests-rust.outputs.verified_accounts_failed || 0 }} +
-            ${{ needs.unit-tests-rust.outputs.sputnik_bridge_failed || 0 }} +
             ${{ needs.unit-tests-typescript.outputs.failed || 0 }} +
-            ${{ needs.integration-tests.outputs.verified_accounts_failed || 0 }} +
-            ${{ needs.integration-tests.outputs.sputnik_bridge_failed || 0 }}
+            ${{ needs.integration-tests.outputs.verified_accounts_failed || 0 }}
           ))
           echo "passed=$TOTAL_PASSED" >> $GITHUB_OUTPUT
           echo "failed=$TOTAL_FAILED" >> $GITHUB_OUTPUT

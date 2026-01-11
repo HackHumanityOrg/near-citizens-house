@@ -163,10 +163,7 @@ This is a **pnpm workspace monorepo** with the following structure:
 │       └── package.json
 ├── contracts/
 │   ├── verified-accounts/      # Identity verification contract (Rust)
-│   ├── verified-accounts-interface/  # Interface for cross-contract calls
-│   ├── sputnik-bridge/         # Bridge contract for SputnikDAO integration
-│   ├── sputnik-dao-interface/  # Interface for SputnikDAO v2 cross-contract calls
-│   └── sputnik-dao-contract/   # SputnikDAO v2 (git submodule, pre-built WASM)
+│   └── verified-accounts-interface/  # Interface for cross-contract calls
 ├── pnpm-workspace.yaml
 ├── package.json
 └── .env
@@ -240,13 +237,9 @@ pnpm dev:governance       # Start citizens-house dev server (port 3001)
 pnpm build:governance     # Build citizens-house for production
 
 # Smart Contracts
-pnpm build:contracts:all  # Build all Rust contracts
-pnpm lint:contracts:all   # Lint all contracts with Clippy
-pnpm test:contracts:all   # Run all contract tests
-
-# Individual contracts
 pnpm build:contract:verification  # Build verified-accounts contract
-pnpm build:contract:bridge        # Build sputnik-bridge contract
+pnpm lint:contract:verification   # Lint contracts with Clippy
+pnpm test:contracts:all           # Run all contract tests
 ```
 
 ---
@@ -446,37 +439,6 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 > - Do NOT call `new` again (this would fail or reset state)
 > - State is preserved as long as data structures are compatible
 > - If you change the contract's data schema, you may need state migration
-
-#### Bridge Contract Deployment
-
-The sputnik-bridge contract connects verified accounts to SputnikDAO. For detailed deployment instructions including DAO setup and policy configuration, see [SPUTNIK_BRIDGE_DEPLOYMENT.md](SPUTNIK_BRIDGE_DEPLOYMENT.md).
-
-**Quick Reference:**
-
-```bash
-# From the bridge contract directory
-cd contracts/sputnik-bridge
-
-# Build and deploy
-cargo near deploy build-non-reproducible-wasm sputnik-bridge-v1.YOUR_ACCOUNT.testnet \
-  without-init-call \
-  network-config testnet sign-with-keychain send
-```
-
-Initialize with required contract references:
-
-```bash
-near contract call-function as-transaction sputnik-bridge-v1.YOUR_ACCOUNT.testnet new \
-  json-args '{
-    "backend_wallet":"YOUR_BACKEND.testnet",
-    "sputnik_dao":"sputnik-dao-v1.YOUR_ACCOUNT.testnet",
-    "verified_accounts_contract":"verification-v1.YOUR_ACCOUNT.testnet",
-    "citizen_role":"citizen"
-  }' \
-  prepaid-gas '30 Tgas' attached-deposit '0 NEAR' \
-  sign-as sputnik-bridge-v1.YOUR_ACCOUNT.testnet \
-  network-config testnet sign-with-keychain send
-```
 
 #### Deleting a Contract
 
@@ -688,19 +650,10 @@ cargo test
 - Pagination limits
 - Input validation (size constraints)
 
-**sputnik-bridge contract:**
-
-- Member addition flow
-- Proposal creation
-- Dynamic quorum updates
-- Access control and backend wallet rotation
-- Event emission
-- Cross-contract call handling
-
 Run all contract tests:
 
 ```bash
-pnpm test:contracts:all  # 48 unit + 23 integration (verified-accounts), 58 (sputnik-bridge)
+pnpm test:contracts:all
 ```
 
 ### Frontend Testing
@@ -821,15 +774,6 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
   get_verified_count json-args {} network-config testnet now
 ```
 
-**Quick Reference - Bridge Contract Upgrade:**
-
-```bash
-cd contracts/sputnik-bridge
-cargo near deploy build-non-reproducible-wasm sputnik-bridge-v1.YOUR_ACCOUNT.testnet \
-  without-init-call \
-  network-config testnet sign-with-keychain send
-```
-
 ### Production Checklist
 
 **Security:**
@@ -906,9 +850,6 @@ near-citizens-house/
 │       │   ├── types.ts                 # Shared TypeScript types
 │       │   ├── verification.ts          # Verification logic
 │       │   ├── verification-contract.ts # Verified accounts contract client
-│       │   ├── bridge-contract.ts       # Sputnik bridge contract client
-│       │   ├── sputnik-dao-contract.ts  # SputnikDAO contract client
-│       │   ├── sputnik-dao-types.ts     # DAO type definitions
 │       │   ├── self-verifier.ts         # Self.xyz verifier
 │       │   └── zk-verify.ts             # ZK proof verification
 │       ├── package.json
@@ -920,19 +861,10 @@ near-citizens-house/
 │   │   ├── tests/integration.rs         # Integration tests
 │   │   ├── Cargo.toml
 │   │   └── target/near/                 # Compiled WASM output
-│   ├── verified-accounts-interface/     # Interface for cross-contract calls
-│   ├── sputnik-bridge/                  # Bridge to SputnikDAO
-│   │   ├── src/lib.rs                   # Bridge implementation
-│   │   ├── tests/                       # Test files
-│   │   ├── dao-policy.json              # Example DAO policy
-│   │   └── target/near/
-│   ├── sputnik-dao-interface/           # SputnikDAO v2 interface
-│   └── sputnik-dao-contract/            # Pre-built SputnikDAO (submodule)
-│       └── sputnikdao2/res/sputnikdao2.wasm
+│   └── verified-accounts-interface/     # Interface for cross-contract calls
 │
 ├── docs/                                # Documentation
 │   ├── DEVELOPER.md                     # Developer guide (this file)
-│   ├── SPUTNIK_BRIDGE_DEPLOYMENT.md     # Bridge deployment playbook
 │   └── ...                              # Other docs
 │
 ├── pnpm-workspace.yaml                  # pnpm workspace config

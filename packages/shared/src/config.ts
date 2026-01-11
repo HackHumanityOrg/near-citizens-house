@@ -29,8 +29,6 @@ const envSchema = z.object({
 
   // Contract addresses (required for functionality, but may be empty during setup)
   NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: z.string().optional(),
-  NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT: z.string().optional(),
-  NEXT_PUBLIC_SPUTNIK_DAO_CONTRACT: z.string().optional(),
 
   // Server-side only (not available on client)
   NEAR_ACCOUNT_ID: z.string().optional(),
@@ -57,9 +55,7 @@ if (!envResult.success) {
 // Log configuration status on server-side for debugging
 if (typeof window === "undefined") {
   const hasBackendWallet = !!(process.env.NEAR_ACCOUNT_ID && process.env.NEAR_PRIVATE_KEY)
-  const hasContracts = !!(
-    process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || process.env.NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT
-  )
+  const hasContracts = !!process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT
   if (!hasBackendWallet) {
     console.warn("[Config] Backend wallet credentials not configured - write operations will fail")
   }
@@ -99,9 +95,6 @@ export const NEAR_CONFIG = {
   rpcApiKey: process.env.FASTNEAR_API_KEY || "",
   // Contract addresses
   verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
-  governanceContractId: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT || "",
-  bridgeContractId: process.env.NEXT_PUBLIC_NEAR_BRIDGE_CONTRACT || "",
-  sputnikDaoContractId: process.env.NEXT_PUBLIC_SPUTNIK_DAO_CONTRACT || "",
   // Backend wallet credentials (server-side only)
   backendAccountId: process.env.NEAR_ACCOUNT_ID || "",
   backendPrivateKey: process.env.NEAR_PRIVATE_KEY || "",

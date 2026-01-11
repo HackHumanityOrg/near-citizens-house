@@ -9,7 +9,6 @@ import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform
 interface Step3SuccessProps {
   accountId: string
   onDisconnect?: () => void
-  onVoteForProposals?: () => void
 }
 
 type AnimationPhase = "initial" | "labelsOut" | "merging" | "checkmark" | "complete"
