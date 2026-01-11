@@ -22,6 +22,14 @@ export function Step1WalletSignature({
   onDisconnect,
   onSign,
 }: Step1WalletSignatureProps) {
+  const hasWallet = isConnected && accountId
+
+  const title = hasWallet ? "Sign Verification Message" : "Connect NEAR Wallet"
+
+  const description = hasWallet
+    ? "Sign a message to prove you own this NEAR wallet. This signature will be cryptographically linked to your identity proof."
+    : "First, connect your NEAR wallet to begin the identity verification process."
+
   return (
     <div className="w-full">
       {/* Hero Section with gradient background - extends behind header */}
@@ -91,19 +99,18 @@ export function Step1WalletSignature({
                 {/* Card Title */}
                 <div className="flex items-center justify-center w-full">
                   <p className="font-fk-grotesk font-medium text-[24px] leading-[32px] text-[#090909] dark:text-white w-full">
-                    Sign Verification Message
+                    {title}
                   </p>
                 </div>
 
                 {/* Description */}
                 <p className="font-fk-grotesk text-[16px] leading-[28px] text-[#090909] dark:text-neutral-200 w-full">
-                  Sign a message to prove your own this NEAR wallet. This signature will be cryptographically linked to
-                  your identity proof.
+                  {description}
                 </p>
 
                 {/* Content */}
                 <div className="flex flex-col gap-[16px] items-start py-[8px] px-0 w-full">
-                  {isConnected && accountId ? (
+                  {hasWallet ? (
                     <>
                       {/* Text field group */}
                       <div className="flex flex-col gap-[12px] items-start w-full">
@@ -153,7 +160,7 @@ export function Step1WalletSignature({
                         variant="citizens-primary"
                         className="flex-1 h-[56px] text-[16px]"
                       >
-                        {isLoading ? "Connecting..." : "Connect NEAR Wallet"}
+                        {isLoading ? "Connecting..." : "Connect Wallet"}
                       </Button>
                     </div>
                   )}
