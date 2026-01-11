@@ -2,23 +2,21 @@ import { defineConfig, devices } from "@playwright/test"
 
 // Worker count configuration:
 // - E2E_WORKERS env var: Explicit worker count (e.g., E2E_WORKERS=100)
-// - CI: Defaults to 1 worker (can be overridden with E2E_WORKERS)
-// - Local: Defaults to undefined (Playwright auto-detects based on CPU)
-function getWorkerCount(): number | undefined {
+// - Default: 1 worker (avoids RPC race conditions when creating NEAR accounts)
+function getWorkerCount(): number {
   if (process.env.E2E_WORKERS) {
     return parseInt(process.env.E2E_WORKERS, 10)
   }
-  if (process.env.CI) {
-    return 1
-  }
-  return undefined
+  return 1
 }
 
 const isStressMode = process.env.E2E_STRESS === "true" || process.env.E2E_STRESS === "1"
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  // Run tests serially - each test creates NEAR accounts and competes for RPC resources.
+  // Parallel execution causes RPC race conditions and "Transaction expired" errors.
+  fullyParallel: false,
   // Global setup registers worker keys in batches
   // This avoids nonce collisions when workers start simultaneously
   globalSetup: require.resolve("./e2e/global-setup"),
@@ -56,6 +54,6 @@ export default defineConfig({
     command: "next build && next start -p 3000",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 180000, // Build takes longer than dev server startup
+    timeout: 180000,
   },
 })
