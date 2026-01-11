@@ -84,12 +84,12 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                     damping: 18,
                   }}
                 >
-                  <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full w-[40px] h-[40px]">
+                  <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full w-[40px] h-[40px]">
                     <motion.div
                       animate={{ opacity: phase === "labelsOut" || showMerging ? 0 : 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                      <Check className="w-5 h-5 text-white dark:text-black" strokeWidth={3} />
                     </motion.div>
                   </div>
                 </motion.div>
@@ -123,12 +123,12 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                     damping: 18,
                   }}
                 >
-                  <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full w-[40px] h-[40px]">
+                  <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full w-[40px] h-[40px]">
                     <motion.div
                       animate={{ opacity: phase === "labelsOut" || showMerging ? 0 : 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                      <Check className="w-5 h-5 text-white dark:text-black" strokeWidth={3} />
                     </motion.div>
                   </div>
                 </motion.div>
@@ -155,7 +155,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       {/* Pulse/glow effect - uses same size as circle */}
                       {phase === "complete" && (
                         <motion.div
-                          className="absolute rounded-full bg-[#007a4d] w-[60px] h-[60px] md:w-[80px] md:h-[80px]"
+                          className="absolute rounded-full bg-verified w-[60px] h-[60px] md:w-[80px] md:h-[80px]"
                           initial={{ scale: 1, opacity: 0.4 }}
                           animate={{
                             scale: [1, 1.4, 1.4],
@@ -168,17 +168,17 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                         />
                       )}
 
-                      <div className="border-2 border-[#007a4d] bg-[#007a4d] flex items-center justify-center rounded-full w-[60px] h-[60px] md:w-[80px] md:h-[80px]">
+                      <div className="border-2 border-verified bg-verified flex items-center justify-center rounded-full w-[60px] h-[60px] md:w-[80px] md:h-[80px]">
                         {/* Animated SVG checkmark that draws itself */}
                         <svg
                           viewBox="0 0 24 24"
                           fill="none"
-                          className="w-8 h-8 md:w-10 md:h-10"
+                          className="w-8 h-8 md:w-10 md:h-10 text-white dark:text-black"
                           style={{ overflow: "visible" }}
                         >
                           <motion.path
                             d="M4.5 12.75l6 6 9-13.5"
-                            stroke="white"
+                            stroke="currentColor"
                             strokeWidth={3}
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -212,10 +212,10 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                 }}
                 transition={{ duration: 0.3 }}
               >
-                <span className="font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+                <span className="font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-verified whitespace-nowrap text-center">
                   NEAR Wallet Verified
                 </span>
-                <span className="font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-[#007a4d] whitespace-nowrap text-center">
+                <span className="font-fk-grotesk text-[16px] md:text-[20px] leading-[28px] text-verified whitespace-nowrap text-center">
                   Identity Verified
                 </span>
               </motion.div>
@@ -224,7 +224,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
               <AnimatePresence>
                 {phase === "complete" && (
                   <motion.h1
-                    className="absolute top-[80px] md:top-[100px] left-0 right-0 font-fk-grotesk font-medium text-[20px] md:text-[24px] leading-[28px] md:leading-[32px] text-[#007a4d] text-center"
+                    className="absolute top-[80px] md:top-[100px] left-0 right-0 font-fk-grotesk font-medium text-[20px] md:text-[24px] leading-[28px] md:leading-[32px] text-verified text-center"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
@@ -278,7 +278,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                     </span>
                   </div>
                   {/* Mobile: Verified badge */}
-                  <div className="md:hidden bg-[#f8fafc] dark:bg-transparent border border-[#007a4d] flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-[#007a4d] shrink-0">
+                  <div className="md:hidden bg-[#f8fafc] dark:bg-transparent border border-verified flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-verified shrink-0">
                     <Check className="w-5 h-5" strokeWidth={2} />
                     <span className="font-poppins text-[12px] leading-[1.4] tracking-[0.24px]">Verified</span>
                   </div>
@@ -291,7 +291,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       {accountId}
                     </span>
                     <div className="flex justify-end">
-                      <div className="bg-[#f8fafc] dark:bg-transparent border border-[#007a4d] flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-[#007a4d]">
+                      <div className="bg-[#f8fafc] dark:bg-transparent border border-verified flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-verified">
                         <Check className="w-5 h-5" strokeWidth={2} />
                         <span className="font-poppins text-[12px] leading-[1.4] tracking-[0.24px]">Verified</span>
                       </div>
@@ -310,14 +310,14 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       Identity
                     </span>
                     {/* Passport badge */}
-                    <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-[40px] w-fit">
-                      <span className="font-poppins text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]">
+                    <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-[40px] w-fit">
+                      <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
                         Passport
                       </span>
                     </div>
                   </div>
                   {/* Mobile: Verified badge */}
-                  <div className="md:hidden bg-[#f8fafc] dark:bg-transparent border border-[#007a4d] flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-[#007a4d] shrink-0">
+                  <div className="md:hidden bg-[#f8fafc] dark:bg-transparent border border-verified flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-verified shrink-0">
                     <Check className="w-5 h-5" strokeWidth={2} />
                     <span className="font-poppins text-[12px] leading-[1.4] tracking-[0.24px]">Verified</span>
                   </div>
@@ -327,14 +327,14 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
                       Identity
                     </span>
                     <div className="flex justify-center">
-                      <div className="bg-[#79d1ac] flex h-[32px] items-center px-[8px] rounded-[40px]">
-                        <span className="font-poppins text-[12px] leading-[1.4] text-[#002716] tracking-[0.24px]">
+                      <div className="bg-verified-badge-bg flex h-[32px] items-center px-[8px] rounded-[40px]">
+                        <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px]">
                           Passport
                         </span>
                       </div>
                     </div>
                     <div className="flex justify-end">
-                      <div className="bg-[#f8fafc] dark:bg-transparent border border-[#007a4d] flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-[#007a4d]">
+                      <div className="bg-[#f8fafc] dark:bg-transparent border border-verified flex gap-[4px] h-[32px] items-center px-[8px] rounded-[40px] text-verified">
                         <Check className="w-5 h-5" strokeWidth={2} />
                         <span className="font-poppins text-[12px] leading-[1.4] tracking-[0.24px]">Verified</span>
                       </div>
