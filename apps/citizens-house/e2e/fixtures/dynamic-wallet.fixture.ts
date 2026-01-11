@@ -38,7 +38,15 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
   accountManager: [
     async ({}, use, workerInfo) => {
       const manager = new NearAccountManager(workerInfo.parallelIndex)
+      console.log(`[Worker ${workerInfo.parallelIndex}] Account manager initialized`)
+
       await use(manager)
+
+      // Worker-level cleanup: runs after ALL tests in this worker complete
+      // This is the safety net - catches any accounts not deleted by individual tests
+      console.log(`[Worker ${workerInfo.parallelIndex}] Worker cleanup: deleting remaining accounts...`)
+      await manager.cleanupAll()
+      console.log(`[Worker ${workerInfo.parallelIndex}] Worker cleanup complete`)
     },
     { scope: "worker" },
   ],
@@ -56,16 +64,19 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
     const workerIndex = testInfo.parallelIndex
 
     const account = await accountManager.createTestAccount()
-    console.log(`✓ Created NEAR test account: ${account.accountId} (worker ${workerIndex})`)
+    console.log(`[Worker ${workerIndex}] Created test account: ${account.accountId}`)
 
     await use(account)
 
-    // Cleanup: delete the subaccount after test
+    // Per-test cleanup: delete the subaccount after test
+    // If this fails, the worker-level cleanup will catch it
     try {
-      console.log(`✓ Deleting NEAR test account: ${account.accountId}`)
+      console.log(`[Worker ${workerIndex}] Deleting test account: ${account.accountId}`)
       await accountManager.deleteTestAccount(account.accountId)
+      console.log(`[Worker ${workerIndex}] Deleted test account successfully`)
     } catch (error) {
-      console.warn(`⚠ Failed to delete test account: ${error}`)
+      console.warn(`[Worker ${workerIndex}] Per-test cleanup failed (will retry in worker cleanup): ${error}`)
+      // Don't throw - let the worker-level cleanup handle it
     }
   },
 

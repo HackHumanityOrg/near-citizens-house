@@ -11,13 +11,25 @@ import {
   verifyRequestSchema,
   attestationIdStringSchema,
   createVerificationError,
+  setBackendKeyPoolRedis,
   type SelfVerificationResult,
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
+import { getRedisClient } from "@/lib/redis"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
 import { createApiEvent, logger, Op } from "@/lib/logger"
+
+// Initialize Redis for backend key pool (for concurrent transaction support)
+// This is lazy - the actual connection happens on first use
+let redisInitialized = false
+async function ensureRedisInitialized(): Promise<void> {
+  if (redisInitialized) return
+  const redis = await getRedisClient()
+  setBackendKeyPoolRedis({ incr: (key: string) => redis.incr(key) })
+  redisInitialized = true
+}
 
 // Maximum age for signature timestamps (10 minutes)
 // Extended to allow time for Self app ID verification process
@@ -443,6 +455,9 @@ export async function POST(request: NextRequest) {
         nonce: nonceBase64,
         timestamp: signatureTimestamp,
       })
+
+      // Initialize Redis for backend key pool (enables concurrent transactions)
+      await ensureRedisInitialized()
 
       await verificationDb.storeVerification({
         nullifier: nullifier.toString(),

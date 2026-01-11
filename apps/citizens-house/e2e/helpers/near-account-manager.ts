@@ -1,5 +1,5 @@
 import { Account } from "@near-js/accounts"
-import { KeyPair, KeyPairEd25519 } from "@near-js/crypto"
+import { KeyPair, KeyPairEd25519, PublicKey } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import { FailoverRpcProvider, JsonRpcProvider } from "@near-js/providers"
@@ -7,28 +7,52 @@ import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import { deriveWorkerKey, getRunIdTag } from "./deterministic-keys"
 
-// RPC URL configuration for E2E tests
-// Uses paid RPC first (NEXT_PUBLIC_NEAR_RPC_URL) and FastNEAR as fallback
+// ============================================================================
+// RPC Configuration for E2E Tests
+// Primary: NEAR_RPC_URL env var (or FastNEAR by default)
+// Fallback: FastNEAR (reliable - API key in header)
+// ============================================================================
+
+/**
+ * Get FastNEAR URL for the current network
+ */
 function getFastNearUrl(): string {
   const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
-  return networkId === "mainnet" ? "https://free.rpc.fastnear.com" : "https://test.rpc.fastnear.com"
+  return networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+}
+
+/**
+ * Get FastNEAR RPC headers including API key
+ */
+function getFastNearHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const apiKey = process.env.FASTNEAR_API_KEY
+  if (apiKey) {
+    headers["X-API-Key"] = apiKey
+  }
+  return headers
+}
+
+function isFastNearUrl(url: string): boolean {
+  return url.includes("fastnear.com")
 }
 
 function getRpcUrls(): string[] {
-  const primaryUrl = process.env.NEXT_PUBLIC_NEAR_RPC_URL || getFastNearUrl()
-  const fallbackUrl = getFastNearUrl()
-
-  return primaryUrl === fallbackUrl ? [primaryUrl] : [primaryUrl, fallbackUrl]
+  // Primary: NEAR_RPC_URL env var or FastNEAR, Fallback: FastNEAR
+  const fastNearUrl = getFastNearUrl()
+  const primaryUrl = process.env.NEAR_RPC_URL || fastNearUrl
+  return [primaryUrl, fastNearUrl]
 }
 
 function createRpcProvider(rpcUrls: string[]): Provider {
-  const primaryProvider = new JsonRpcProvider({ url: rpcUrls[0] })
+  // Primary RPC (NEAR_RPC_URL or FastNEAR)
+  const primaryHeaders = isFastNearUrl(rpcUrls[0]) ? getFastNearHeaders() : undefined
+  const primaryProvider = new JsonRpcProvider({ url: rpcUrls[0], headers: primaryHeaders })
 
-  if (rpcUrls.length === 1) {
-    return primaryProvider
-  }
+  // Fallback: FastNEAR with API key header
+  const fallbackHeaders = getFastNearHeaders()
+  const fallbackProvider = new JsonRpcProvider({ url: rpcUrls[1], headers: fallbackHeaders })
 
-  const fallbackProvider = new JsonRpcProvider({ url: rpcUrls[1] })
   return new FailoverRpcProvider([primaryProvider, fallbackProvider])
 }
 
@@ -55,6 +79,7 @@ export class NearAccountManager {
   private rpcUrls: string[]
   private parentAccountId: string
   private parentSigner: KeyPairSigner // Original parent key for addKey operations
+  private parentPublicKey: PublicKey // Parent's public key (added to subaccounts for cleanup)
   private workerSigner: KeyPairSigner // Worker-specific key for account creation
   private workerKey: KeyPairEd25519
   private workerIndex: number
@@ -65,7 +90,7 @@ export class NearAccountManager {
     this.workerIndex = workerIndex
 
     this.rpcUrls = getRpcUrls()
-    // Use paid RPC with FastNEAR fallback for E2E transaction support
+    // Primary RPC with FastNEAR fallback for E2E tests
     this.provider = createRpcProvider(this.rpcUrls)
 
     // Initialize parent account from Doppler env vars
@@ -81,6 +106,7 @@ export class NearAccountManager {
     // Parent signer for addKey operations (uses original NEAR_PRIVATE_KEY)
     const parentKeyPair = KeyPair.fromString(parentPrivateKey as KeyPairString)
     this.parentSigner = new KeyPairSigner(parentKeyPair)
+    this.parentPublicKey = parentKeyPair.getPublicKey()
 
     // Worker-specific key derived from parent key + worker index
     // Each worker gets its own key with independent nonce sequence
@@ -92,12 +118,15 @@ export class NearAccountManager {
    * Checks if a key exists on the parent account (view call, no nonce needed)
    */
   private async keyExistsOnChain(publicKeyStr: string): Promise<boolean> {
-    for (const rpcUrl of this.rpcUrls) {
+    for (let i = 0; i < this.rpcUrls.length; i++) {
+      const rpcUrl = this.rpcUrls[i]
+      // Use FastNEAR headers for all RPC calls (works for both primary and fallback)
+      const headers: Record<string, string> = { ...getFastNearHeaders(), "Content-Type": "application/json" }
       try {
         // Use RPC view call to check if key exists
         const response = await fetch(rpcUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
             id: "check-key",
@@ -237,8 +266,20 @@ export class NearAccountManager {
         // Use worker-specific signer (independent nonce sequence)
         const parentAccount = new Account(this.parentAccountId, this.provider, this.workerSigner)
 
-        // Create subaccount with 0.1 NEAR (100000000000000000000000 yoctoNEAR)
-        await parentAccount.createAccount(subaccountId, keyPair.getPublicKey(), BigInt("100000000000000000000000"))
+        // Create subaccount with batch transaction:
+        // 1. CreateAccount
+        // 2. Transfer 0.01 NEAR (10000000000000000000000 yoctoNEAR)
+        // 3. AddKey (random key for test operations)
+        // 4. AddKey (parent key for cleanup - prevents orphaned accounts)
+        await parentAccount.signAndSendTransaction({
+          receiverId: subaccountId,
+          actions: [
+            actionCreators.createAccount(),
+            actionCreators.transfer(BigInt("10000000000000000000000")), // 0.01 NEAR
+            actionCreators.addKey(keyPair.getPublicKey(), actionCreators.fullAccessKey()), // Random key for tests
+            actionCreators.addKey(this.parentPublicKey, actionCreators.fullAccessKey()), // Parent key for cleanup
+          ],
+        })
 
         const account: TestAccount = { accountId: subaccountId, publicKey, privateKey }
         this.createdAccounts.push(account)
@@ -261,7 +302,12 @@ export class NearAccountManager {
 
         // Check if this is a retryable error
         const isRateLimitError = errorMessage.includes("429") || errorMessage.includes("DEPRECATED")
-        const isNetworkError = errorMessage.includes("ECONNRESET") || errorMessage.includes("timeout")
+        const isNetworkError =
+          errorMessage.includes("ECONNRESET") ||
+          errorMessage.includes("timeout") ||
+          errorMessage.includes("Exceeded") || // Both RPC providers failed
+          errorMessage.includes("expired") || // Transaction expired
+          errorMessage.includes("Server error") // RPC server error
         const isRetryable = isRateLimitError || isNetworkError
 
         if (!isRetryable || attempt === maxRetries) {
@@ -294,6 +340,7 @@ export class NearAccountManager {
 
   /**
    * Deletes a test subaccount and returns remaining balance to parent.
+   * Tries the random test key first, falls back to parent key if that fails.
    */
   async deleteTestAccount(accountId: string): Promise<void> {
     const account = this.createdAccounts.find((a) => a.accountId === accountId)
@@ -302,20 +349,37 @@ export class NearAccountManager {
       return
     }
 
+    // Try with random test key first
     try {
       const keyPair = KeyPair.fromString(account.privateKey as KeyPairString)
       const signer = new KeyPairSigner(keyPair)
       const subaccount = new Account(accountId, this.provider, signer)
 
-      // Delete account and send remaining balance back to parent
       await subaccount.signAndSendTransaction({
         receiverId: accountId,
         actions: [actionCreators.deleteAccount(this.parentAccountId)],
       })
 
       this.createdAccounts = this.createdAccounts.filter((a) => a.accountId !== accountId)
+      return
     } catch (error) {
-      console.error(`Failed to delete account ${accountId}:`, error)
+      const msg = error instanceof Error ? error.message : String(error)
+      console.warn(`Random key failed for ${accountId}, trying parent key: ${msg.slice(0, 80)}`)
+    }
+
+    // Fallback: try with parent key (added to all subaccounts during creation)
+    try {
+      const subaccount = new Account(accountId, this.provider, this.parentSigner)
+
+      await subaccount.signAndSendTransaction({
+        receiverId: accountId,
+        actions: [actionCreators.deleteAccount(this.parentAccountId)],
+      })
+
+      this.createdAccounts = this.createdAccounts.filter((a) => a.accountId !== accountId)
+      console.log(`Deleted ${accountId} using parent key (fallback)`)
+    } catch (error) {
+      console.error(`Failed to delete account ${accountId} (both keys failed):`, error)
       throw error
     }
   }

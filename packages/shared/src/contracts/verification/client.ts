@@ -26,6 +26,10 @@ import {
 } from "./types"
 import { NEAR_CONFIG } from "../../config"
 import { createRpcProvider } from "../../rpc"
+import { backendKeyPool, setBackendKeyPoolRedis } from "./backend-key-pool"
+
+// Re-export for app initialization
+export { setBackendKeyPoolRedis }
 
 export type { IVerificationDatabase, VerificationDataWithSignature, Verification, VerificationSummary }
 
@@ -56,11 +60,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 
       // Account constructor types don't match the actual implementation
       // The provider and signer interfaces are compatible at runtime
-      this.account = new Account(
-        this.backendAccountId,
-        this.provider,
-        signer as unknown as Signer,
-      )
+      this.account = new Account(this.backendAccountId, this.provider, signer as unknown as Signer)
 
       console.log(`[NearContractDB] Initialized with account: ${this.backendAccountId}`)
       console.log(`[NearContractDB] Contract ID: ${this.contractId}`)
@@ -203,6 +203,10 @@ export class NearContractDatabase implements IVerificationDatabase {
 
   /**
    * Internal implementation of storeVerification (wrapped with timeout by public method)
+   *
+   * Uses the backend key pool for parallel transaction support.
+   * Each request gets the next available key via atomic Redis INCR,
+   * enabling concurrent transactions without nonce collisions.
    */
   private async storeVerificationImpl(data: VerificationDataWithSignature): Promise<void> {
     try {
@@ -227,15 +231,18 @@ export class NearContractDatabase implements IVerificationDatabase {
         public_signals: selfProofData.publicSignals,
       }
 
-      console.log("[NearContractDB] Calling store_verification on contract...")
+      // Get account with next pooled key (atomic via Redis)
+      // Each key has its own nonce sequence, enabling parallel transactions
+      const { account: pooledAccount, keyIndex } = await backendKeyPool.createAccountWithNextKey()
+      console.log(`[NearContractDB] Calling store_verification using key ${keyIndex}...`)
 
       // Use sendTransactionAsync which broadcasts and returns immediately
       // This uses waitUntil: "NONE" internally, avoiding long waits for execution
       // We then poll to confirm the verification was stored
 
-      // Step 1: Create and sign the transaction
+      // Step 1: Create and sign the transaction with pooled key
       const signedTx = await this.withTimeout(
-        this.account!.createSignedTransaction(this.contractId, [
+        pooledAccount.createSignedTransaction(this.contractId, [
           actionCreators.functionCall(
             "store_verification",
             {

@@ -22,30 +22,48 @@ function getFastNearUrl(): string {
   return networkId === "mainnet" ? "https://free.rpc.fastnear.com" : "https://test.rpc.fastnear.com"
 }
 
+function getFastNearHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const apiKey = process.env.FASTNEAR_API_KEY
+  if (apiKey) {
+    headers["X-API-Key"] = apiKey
+  }
+  return headers
+}
+
+function isFastNearUrl(url: string): boolean {
+  return url.includes("fastnear.com")
+}
+
 function getRpcUrls(): string[] {
-  const primaryUrl = process.env.NEXT_PUBLIC_NEAR_RPC_URL || getFastNearUrl()
+  const primaryUrl = process.env.NEAR_RPC_URL || getFastNearUrl()
   const fallbackUrl = getFastNearUrl()
 
   return primaryUrl === fallbackUrl ? [primaryUrl] : [primaryUrl, fallbackUrl]
 }
 
 function createRpcProvider(rpcUrls: string[]): Provider {
-  const primaryProvider = new JsonRpcProvider({ url: rpcUrls[0] })
+  const primaryHeaders = isFastNearUrl(rpcUrls[0]) ? getFastNearHeaders() : undefined
+  const primaryProvider = new JsonRpcProvider({ url: rpcUrls[0], headers: primaryHeaders })
 
   if (rpcUrls.length === 1) {
     return primaryProvider
   }
 
-  const fallbackProvider = new JsonRpcProvider({ url: rpcUrls[1] })
+  const fallbackProvider = new JsonRpcProvider({ url: rpcUrls[1], headers: getFastNearHeaders() })
   return new FailoverRpcProvider([primaryProvider, fallbackProvider])
 }
 
 async function keyExistsOnChain(rpcUrls: string[], accountId: string, publicKeyStr: string): Promise<boolean> {
   for (const rpcUrl of rpcUrls) {
     try {
+      const headers = {
+        "Content-Type": "application/json",
+        ...(isFastNearUrl(rpcUrl) ? getFastNearHeaders() : {}),
+      }
       const response = await fetch(rpcUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: "check-key",
