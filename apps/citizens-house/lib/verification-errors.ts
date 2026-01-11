@@ -11,7 +11,7 @@ import { VERIFICATION_ERROR_MESSAGES, type VerificationErrorCode } from "@near-c
  * Error codes that indicate non-recoverable issues.
  * Users cannot retry verification with the same account/passport.
  */
-export const NON_RETRYABLE_ERRORS = ["DUPLICATE_PASSPORT", "OFAC_CHECK_FAILED"] as const
+export const NON_RETRYABLE_ERRORS = ["DUPLICATE_PASSPORT", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
 
 export type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
 
@@ -22,8 +22,10 @@ export function getErrorTitle(errorCode: string | null | undefined): string {
   switch (errorCode) {
     case "DUPLICATE_PASSPORT":
       return "Already Verified"
-    case "OFAC_CHECK_FAILED":
-      return "Verification Blocked"
+    case "ACCOUNT_ALREADY_VERIFIED":
+      return "Account Already Verified"
+    case "CONTRACT_PAUSED":
+      return "Verification Unavailable"
     default:
       return "Verification Failed"
   }
@@ -44,8 +46,10 @@ export function getErrorMessage(errorCode: string | null | undefined, fallbackMe
   switch (errorCode) {
     case "DUPLICATE_PASSPORT":
       return "This passport has already been used to verify another NEAR account. Each passport can only verify one account."
-    case "OFAC_CHECK_FAILED":
-      return "Verification is not available in your region due to regulatory requirements."
+    case "ACCOUNT_ALREADY_VERIFIED":
+      return "This NEAR account is already verified. Connect a different account to continue."
+    case "CONTRACT_PAUSED":
+      return "Verification is temporarily unavailable. Please try again later."
     default:
       // Check if it's a known error code from shared types
       if (errorCode in VERIFICATION_ERROR_MESSAGES) {

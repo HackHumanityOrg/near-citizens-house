@@ -41,7 +41,7 @@ Security and type-safety review checklist to be verified before deployment:
 - `apps/*/lib/actions/*.ts` - Server action validation
 - `packages/shared/src/config.ts` - Environment variable validation
 - `packages/shared/src/verification.ts` - Signature parsing
-- `packages/shared/src/zk-verify.ts` - ZK proof verification and RPC failover
+- `packages/shared/src/zk-verify.ts` - ZK proof verification and RPC handling
 - `packages/shared/src/verification-contract.ts` - Contract database abstraction
 - `packages/shared/src/types.ts` - Zod validation schemas for all API boundaries
 - `contracts/*/src/lib.rs` - Input validation and panic prevention
@@ -56,7 +56,7 @@ Automated tests for custom cryptographic operations:
 | `verifyNearSignature()`        | verification.ts | Valid signatures accepted, invalid signatures rejected, wrong signer detection, wrong message detection, signature format validation |
 | `extractEd25519PublicKeyHex()` | verification.ts | "ed25519:" prefix handling, base58 decoding, 32-byte hex output, invalid input handling                                              |
 | `parseUserContextData()`       | verification.ts | Hex-encoded input parsing, JSON input parsing, null byte removal, malformed input handling                                           |
-| `verifyStoredProof()`          | zk-verify.ts    | Groth16 proof coordinate ordering (b array swap), public signals extraction, RPC failover with timeout handling                      |
+| `verifyStoredProof()`          | zk-verify.ts    | Groth16 proof coordinate ordering (b array swap), public signals extraction, RPC timeout handling                                    |
 | Borsh NEP-413 Schema           | verification.ts | 32-byte nonce array, optional callbackUrl field, TypeScript/Rust serialization compatibility                                         |
 
 ### 1.3 Unit Tests for Smart Contracts

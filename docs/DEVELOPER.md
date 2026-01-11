@@ -258,16 +258,15 @@ pnpm test:contracts:all           # Run all contract tests
 
 ### Required (Frontend - Public)
 
-| Variable                   | Description                    | Example    |
-| -------------------------- | ------------------------------ | ---------- |
-| `NEXT_PUBLIC_NEAR_NETWORK` | NEAR network (testnet/mainnet) | `testnet`  |
+| Variable                   | Description                    | Example   |
+| -------------------------- | ------------------------------ | --------- |
+| `NEXT_PUBLIC_NEAR_NETWORK` | NEAR network (testnet/mainnet) | `testnet` |
 
 ### Optional (Server-Side)
 
-| Variable           | Description                                        | Example                                       |
-| ------------------ | -------------------------------------------------- | --------------------------------------------- |
-| `NEAR_RPC_URL`     | Custom NEAR RPC (default: FastNEAR)                | `https://lb.drpc.live/near-testnet/your-key`  |
-| `FASTNEAR_API_KEY` | FastNEAR API key for higher rate limits            | `your-api-key`                                |
+| Variable           | Description                             | Example        |
+| ------------------ | --------------------------------------- | -------------- |
+| `FASTNEAR_API_KEY` | FastNEAR API key for higher rate limits | `your-api-key` |
 
 ### Security Notes
 
@@ -698,7 +697,6 @@ In Vercel dashboard, add all environment variables:
 - `NEAR_ACCOUNT_ID`
 - `NEAR_PRIVATE_KEY` (⚠️ Use Vercel secrets - server-side only)
 - `NEXT_PUBLIC_NEAR_NETWORK`
-- `NEAR_RPC_URL` (optional - defaults to FastNEAR)
 - `FASTNEAR_API_KEY` (optional - for higher rate limits)
 - `CELO_RPC_URL`
 
@@ -780,7 +778,6 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 
 - [ ] Private keys in Vercel environment (not committed)
 - [ ] `mockPassport: false` in production (currently `true` for testnet)
-- [ ] OFAC checking enabled if required by your jurisdiction
 - [ ] Rate limiting on `/api/verify` endpoint
 - [ ] HTTPS enforced on all endpoints
 
@@ -910,7 +907,7 @@ new SelfBackendVerifier(
   endpoint, // Your /api/verify endpoint
   mockPassport, // false for production
   AllowedAttestationIds, // Document types accepted
-  configStore, // Verification config (age, OFAC)
+  configStore, // Verification config
   "uuid", // User ID type
 )
 ```

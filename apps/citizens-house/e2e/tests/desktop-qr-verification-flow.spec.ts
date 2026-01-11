@@ -2,7 +2,6 @@
 import { test, expect } from "../fixtures/dynamic-wallet.fixture"
 import { createVerificationRequest } from "../helpers/near-signing"
 import { setupSelfWebSocketMock } from "../helpers/self-websocket-mock"
-import { v4 as uuidv4 } from "uuid"
 
 /**
  * Complete End-to-End Verification Flow
@@ -134,8 +133,17 @@ test.describe("Complete Verification E2E Flow", () => {
 
     console.log("\nPhase 2: Direct API verification call")
 
-    // Generate session ID for tracking
-    const sessionId = uuidv4()
+    await page.waitForFunction(() => Object.keys(localStorage).some((key) => key.startsWith("self-session-")))
+
+    const sessionKey = await page.evaluate(() => {
+      return Object.keys(localStorage).find((key) => key.startsWith("self-session-")) || null
+    })
+
+    if (!sessionKey) {
+      throw new Error("Failed to find Self verification session key in localStorage")
+    }
+
+    const sessionId = sessionKey.replace("self-session-", "")
 
     // Get the signing message (must match what the app uses)
     const verificationContract = process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "unknown-contract"
@@ -154,8 +162,8 @@ test.describe("Complete Verification E2E Flow", () => {
     // Call the verification API directly
     // 120s timeout needed because:
     // 1. NEAR RPC calls can be slow (access key lookup, nonce check)
-    // 2. Contract storage includes polling for on-chain confirmation (up to 90s on mainnet)
-    // 3. FailoverRpcProvider may need to try multiple RPCs before succeeding
+    // 2. Contract execution waits for EXECUTED_OPTIMISTIC confirmation
+    // 3. FastNEAR RPC calls can be slow under load
     const response = await page.request.post("/api/verification/verify", {
       data: verificationBody,
       headers: { "Content-Type": "application/json" },
@@ -190,7 +198,7 @@ test.describe("Complete Verification E2E Flow", () => {
 
     // Wait for Step 3 success screen to appear
     // With production build, no Fast Refresh - state persists
-    await expect(page.getByTestId("success-section")).toBeVisible({ timeout: 15000 })
+    await expect(page.getByTestId("success-section")).toBeVisible({ timeout: 60000 })
     console.log("✓ Phase 3 complete: Step 3 success screen displayed")
 
     // =========================================================================

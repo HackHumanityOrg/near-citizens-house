@@ -42,11 +42,11 @@ export type GetVerificationsResult = {
  * Core data fetching logic - separated for caching.
  * Fetches accounts from NEAR contract and verifies each one.
  */
-async function fetchAndVerifyVerifications(fromIndex: number, limit: number): Promise<GetVerificationsResult> {
+async function fetchAndVerifyVerifications(page: number, pageSize: number): Promise<GetVerificationsResult> {
   const nearDb = verificationDb as NearContractDatabase
 
-  // Get paginated accounts from NEAR contract
-  const { accounts, total } = await nearDb.listVerifications(fromIndex, limit)
+  // Get paginated accounts from NEAR contract (newest first)
+  const { accounts, total } = await nearDb.listVerificationsNewestFirst(page, pageSize)
 
   // Verify each account in parallel
   const verifiedAccounts = await Promise.all(
@@ -186,7 +186,7 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
     return { accounts: [], total: 0 }
   }
 
-  const result = await getCachedVerifications(params.data.page * params.data.pageSize, params.data.pageSize)
+  const result = await getCachedVerifications(params.data.page, params.data.pageSize)
   event.set("accounts_returned", result.accounts.length)
   event.set("total", result.total)
   event.info("Verifications fetched with status")

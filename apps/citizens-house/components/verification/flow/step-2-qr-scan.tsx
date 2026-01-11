@@ -7,6 +7,7 @@ import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-cit
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { useAnalytics } from "@/lib/analytics"
+import { getErrorMessage } from "@/lib/verification-errors"
 import { StarPattern } from "../icons/star-pattern"
 
 type SelfApp = ReturnType<SelfAppBuilder["build"]>
@@ -46,12 +47,12 @@ interface Step2QrScanProps {
 
 export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: Step2QrScanProps) {
   const analytics = useAnalytics()
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",
   )
   const trackedStartRef = useRef(false)
   const trackedQrDisplayRef = useRef(false)
+  const confirmationInProgressRef = useRef(false)
 
   // Track verification started and QR code displayed
   useEffect(() => {
@@ -142,17 +143,67 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
     window.open(deeplink, "_blank")
   }
 
+  const finalizeWithError = (message: string, code?: string) => {
+    confirmationInProgressRef.current = false
+    analytics.trackVerificationFailed(nearSignature.accountId, code || "VERIFICATION_FAILED", message)
+    setVerificationStatus("error")
+    onError(message, code)
+  }
+
+  const confirmBackendStatus = async () => {
+    const maxPolls = 60 // 2 minutes at 2s interval
+    const pollIntervalMs = 2000
+
+    for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
+      try {
+        const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionId)}`)
+
+        if (response.ok) {
+          const data = await response.json()
+
+          if (data.status === "success") {
+            const method = window.innerWidth < 768 ? "deeplink" : "qr"
+            analytics.trackVerificationCompleted(nearSignature.accountId, method)
+            confirmationInProgressRef.current = false
+            setVerificationStatus("success")
+            onSuccess()
+            return
+          }
+
+          if (data.status === "error") {
+            const code = data.errorCode || data.error
+            const message = getErrorMessage(code, data.error)
+            finalizeWithError(message, code)
+            return
+          }
+
+          if (data.status === "expired") {
+            finalizeWithError("Verification timed out. Please try again.", "TIMEOUT")
+            return
+          }
+        } else if (response.status >= 400 && response.status < 500 && response.status !== 404) {
+          finalizeWithError("Verification session expired. Please try again.", "TIMEOUT")
+          return
+        }
+      } catch (error) {
+        console.warn("Failed to check verification status", error)
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+    }
+
+    finalizeWithError("Verification timed out. Please try again.", "TIMEOUT")
+  }
+
   const handleSuccess = () => {
-    const method = window.innerWidth < 768 ? "deeplink" : "qr"
-    analytics.trackVerificationCompleted(nearSignature.accountId, method)
-    setVerificationStatus("success")
-    onSuccess()
+    if (confirmationInProgressRef.current) return
+    confirmationInProgressRef.current = true
+    setVerificationStatus("verifying")
+    void confirmBackendStatus()
   }
 
   const handleError = () => {
-    analytics.trackVerificationFailed(nearSignature.accountId, "QR_SCAN_FAILED", "QR scan verification failed")
-    setVerificationStatus("error")
-    onError("Verification failed. Please try again.", "QR_SCAN_FAILED")
+    finalizeWithError("Verification failed. Please try again.", "QR_SCAN_FAILED")
   }
 
   return (
@@ -267,6 +318,13 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
                       />
                     </div>
                   </div>
+
+                  {verificationStatus === "verifying" && (
+                    <div className="mt-[16px] flex items-center gap-[8px] text-[14px] text-[#757575] dark:text-[#a3a3a3]">
+                      <Loader2 className="h-[16px] w-[16px] animate-spin" />
+                      <span className="font-fk-grotesk">Finalizing verification on-chain...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Column: Instructions Panel */}

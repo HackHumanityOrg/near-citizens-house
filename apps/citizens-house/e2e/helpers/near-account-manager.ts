@@ -2,15 +2,14 @@ import { Account } from "@near-js/accounts"
 import { KeyPair, KeyPairEd25519, PublicKey } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
-import { FailoverRpcProvider, JsonRpcProvider } from "@near-js/providers"
+import { JsonRpcProvider } from "@near-js/providers"
 import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import { deriveWorkerKey, getRunIdTag } from "./deterministic-keys"
 
 // ============================================================================
 // RPC Configuration for E2E Tests
-// Primary: NEAR_RPC_URL env var (or FastNEAR by default)
-// Fallback: FastNEAR (reliable - API key in header)
+// FastNEAR is the only supported RPC endpoint.
 // ============================================================================
 
 /**
@@ -33,27 +32,8 @@ function getFastNearHeaders(): Record<string, string> {
   return headers
 }
 
-function isFastNearUrl(url: string): boolean {
-  return url.includes("fastnear.com")
-}
-
-function getRpcUrls(): string[] {
-  // Primary: NEAR_RPC_URL env var or FastNEAR, Fallback: FastNEAR
-  const fastNearUrl = getFastNearUrl()
-  const primaryUrl = process.env.NEAR_RPC_URL || fastNearUrl
-  return [primaryUrl, fastNearUrl]
-}
-
-function createRpcProvider(rpcUrls: string[]): Provider {
-  // Primary RPC (NEAR_RPC_URL or FastNEAR)
-  const primaryHeaders = isFastNearUrl(rpcUrls[0]) ? getFastNearHeaders() : undefined
-  const primaryProvider = new JsonRpcProvider({ url: rpcUrls[0], headers: primaryHeaders })
-
-  // Fallback: FastNEAR with API key header
-  const fallbackHeaders = getFastNearHeaders()
-  const fallbackProvider = new JsonRpcProvider({ url: rpcUrls[1], headers: fallbackHeaders })
-
-  return new FailoverRpcProvider([primaryProvider, fallbackProvider])
+function createRpcProvider(rpcUrl: string): Provider {
+  return new JsonRpcProvider({ url: rpcUrl, headers: getFastNearHeaders() })
 }
 
 interface TestAccount {
@@ -76,7 +56,7 @@ interface TestAccount {
  */
 export class NearAccountManager {
   private provider: Provider
-  private rpcUrls: string[]
+  private rpcUrl: string
   private parentAccountId: string
   private parentSigner: KeyPairSigner // Original parent key for addKey operations
   private parentPublicKey: PublicKey // Parent's public key (added to subaccounts for cleanup)
@@ -89,9 +69,8 @@ export class NearAccountManager {
   constructor(workerIndex: number) {
     this.workerIndex = workerIndex
 
-    this.rpcUrls = getRpcUrls()
-    // Primary RPC with FastNEAR fallback for E2E tests
-    this.provider = createRpcProvider(this.rpcUrls)
+    this.rpcUrl = getFastNearUrl()
+    this.provider = createRpcProvider(this.rpcUrl)
 
     // Initialize parent account from Doppler env vars
     const parentAccountId = process.env.NEAR_ACCOUNT_ID
@@ -118,35 +97,30 @@ export class NearAccountManager {
    * Checks if a key exists on the parent account (view call, no nonce needed)
    */
   private async keyExistsOnChain(publicKeyStr: string): Promise<boolean> {
-    for (let i = 0; i < this.rpcUrls.length; i++) {
-      const rpcUrl = this.rpcUrls[i]
-      // Use FastNEAR headers for all RPC calls (works for both primary and fallback)
-      const headers: Record<string, string> = { ...getFastNearHeaders(), "Content-Type": "application/json" }
-      try {
-        // Use RPC view call to check if key exists
-        const response = await fetch(rpcUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: "check-key",
-            method: "query",
-            params: {
-              request_type: "view_access_key",
-              finality: "final",
-              account_id: this.parentAccountId,
-              public_key: publicKeyStr,
-            },
-          }),
-        })
-        const data = await response.json()
-        // If key exists, result will have permission info; if not, error
-        if (!data.error && data.result?.permission) {
-          return true
-        }
-      } catch {
-        // Try fallback RPC if primary fails
+    const headers: Record<string, string> = { ...getFastNearHeaders(), "Content-Type": "application/json" }
+    try {
+      const response = await fetch(this.rpcUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "check-key",
+          method: "query",
+          params: {
+            request_type: "view_access_key",
+            finality: "final",
+            account_id: this.parentAccountId,
+            public_key: publicKeyStr,
+          },
+        }),
+      })
+      const data = await response.json()
+      // If key exists, result will have permission info; if not, error
+      if (!data.error && data.result?.permission) {
+        return true
       }
+    } catch {
+      // Ignore transient RPC errors
     }
 
     return false
@@ -355,10 +329,7 @@ export class NearAccountManager {
       const signer = new KeyPairSigner(keyPair)
       const subaccount = new Account(accountId, this.provider, signer)
 
-      await subaccount.signAndSendTransaction({
-        receiverId: accountId,
-        actions: [actionCreators.deleteAccount(this.parentAccountId)],
-      })
+      await subaccount.deleteAccount(this.parentAccountId)
 
       this.createdAccounts = this.createdAccounts.filter((a) => a.accountId !== accountId)
       return
@@ -371,10 +342,7 @@ export class NearAccountManager {
     try {
       const subaccount = new Account(accountId, this.provider, this.parentSigner)
 
-      await subaccount.signAndSendTransaction({
-        receiverId: accountId,
-        actions: [actionCreators.deleteAccount(this.parentAccountId)],
-      })
+      await subaccount.deleteAccount(this.parentAccountId)
 
       this.createdAccounts = this.createdAccounts.filter((a) => a.accountId !== accountId)
       console.log(`Deleted ${accountId} using parent key (fallback)`)
