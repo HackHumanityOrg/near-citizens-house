@@ -255,11 +255,19 @@ function VerificationStartContent() {
 
   // Handle retry from error modal
   const handleRetry = () => {
+    // Determine error context before resetting state
+    const wasSigningError = currentStep === VerificationProgressStep.WalletConnected
+
     setIsErrorModalOpen(false)
     setErrorMessage(null)
     setErrorCode(null)
     setNearSignature(null)
     setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
+
+    // Auto-retry signing only for signing errors
+    if (wasSigningError && isConnected) {
+      handleSignMessage()
+    }
   }
 
   // Handle disconnect
