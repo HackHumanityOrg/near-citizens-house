@@ -194,6 +194,11 @@ function VerificationStartContent() {
     }
   }, [isConnected, accountId, analytics])
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [currentStep])
+
   // Handle wallet connection
   const handleConnect = async () => {
     try {
