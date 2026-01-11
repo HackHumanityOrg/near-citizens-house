@@ -14,11 +14,11 @@ export type { ParsedSignatureData, ProofData, Nep413Payload }
 
 /**
  * Attestation type names for display purposes.
- * Self.xyz supports 3 document types: Passport (1), Biometric ID Card (2), Aadhaar (3)
+ * Self.xyz supports 3 document types: Passport (1), National ID (2), Aadhaar (3)
  */
 export const ATTESTATION_TYPE_NAMES: Record<string, string> = {
   "1": "Passport",
-  "2": "Biometric ID Card",
+  "2": "National ID",
   "3": "Aadhaar",
 }
 
