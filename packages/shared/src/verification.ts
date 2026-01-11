@@ -13,6 +13,25 @@ import type { ParsedSignatureData, ProofData, Nep413Payload } from "./contracts/
 export type { ParsedSignatureData, ProofData, Nep413Payload }
 
 /**
+ * Attestation type names for display purposes.
+ * Self.xyz supports 3 document types: Passport (1), National ID (2), Aadhaar (3)
+ */
+export const ATTESTATION_TYPE_NAMES: Record<string, string> = {
+  "1": "Passport",
+  "2": "National ID",
+  "3": "Aadhaar",
+}
+
+/**
+ * Get human-readable attestation type name.
+ * Returns "Unknown" for unrecognized attestation IDs.
+ */
+export function getAttestationTypeName(attestationId: string | number): string {
+  const id = String(attestationId)
+  return ATTESTATION_TYPE_NAMES[id] || `Unknown (${id})`
+}
+
+/**
  * NEP-413 payload schema for Borsh binary serialization.
  *
  * Note: This is a Borsh schema (not Zod) required by the `borsh` library's serialize() function.

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@near-citizens/ui"
+import { getAttestationTypeName } from "@near-citizens/shared"
 import { useAnalytics } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
@@ -189,7 +190,8 @@ function buildTerminalOutput(
   lines.push("")
 
   // Step 2
-  lines.push("[2/3] Verifying ZK passport proof (Celo)...")
+  const docType = getAttestationTypeName(account.attestationId)
+  lines.push(`[2/3] Verifying ZK ${docType} proof (Celo)...`)
   if (verification.zkValid) {
     lines.push(`    ✓ Groth16 ZK proof verified via Celo (${account.selfProof.publicSignals.length} signals)`)
   } else {
@@ -221,7 +223,7 @@ function buildTerminalOutput(
     lines.push("════════════════════════════════════════════════════════════════════════════════")
     lines.push("")
     lines.push(`  nullifier: ${p.nullifier}`)
-    lines.push(`  attestation_id: ${p.attestationId}`)
+    lines.push(`  attestation_id: ${p.attestationId} (${getAttestationTypeName(p.attestationId)})`)
     lines.push(`  verified_at: ${p.verifiedAt}`)
     lines.push(`  verified_at_iso: ${new Date(p.verifiedAt).toISOString()}`)
     lines.push("")

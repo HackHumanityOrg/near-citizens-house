@@ -23,7 +23,11 @@ export class InMemoryConfigStore {
 }
 
 // Attestation types: 1=Passport, 2=BiometricIDCard, 3=Aadhaar
-const AllowedAttestationIds = new Map<1 | 2 | 3, boolean>([[1, true]])
+const AllowedAttestationIds = new Map<1 | 2 | 3, boolean>([
+  [1, true], // Passport
+  [2, true], // BiometricIDCard (National ID)
+  [3, true], // Aadhaar
+])
 
 let selfBackendVerifier: SelfBackendVerifier | null = null
 

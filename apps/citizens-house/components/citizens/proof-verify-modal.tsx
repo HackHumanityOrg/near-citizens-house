@@ -2,9 +2,27 @@
 
 import { useCallback } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@near-citizens/ui"
+import { getAttestationTypeName } from "@near-citizens/shared"
 import { useAnalytics } from "@/lib/analytics"
 import { Download, ExternalLink } from "lucide-react"
 import type { ZkProof } from "@near-citizens/shared"
+
+/**
+ * Get the verification key filename based on attestation type.
+ * Different attestation types use different circuits with different verification keys.
+ */
+function getVkeyFilename(attestationId: string): string {
+  switch (attestationId) {
+    case "1":
+      return "vkey-passport.json"
+    case "2":
+      return "vkey-national-id.json"
+    case "3":
+      return "vkey-aadhaar.json"
+    default:
+      return "vkey-passport.json"
+  }
+}
 
 // Props specific to this modal - combines proof with metadata
 interface ZkProofData {
@@ -48,6 +66,9 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
 
   if (!data) return null
 
+  const vkeyFile = getVkeyFilename(data.attestationId)
+  const docType = getAttestationTypeName(data.attestationId)
+
   const proofJson = {
     pi_a: data.proof.a,
     pi_b: data.proof.b,
@@ -89,7 +110,7 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
             <p className="text-[13px] leading-[1.5] text-[#a0a0a0] font-mono">
               <span className="text-[#ffda1e]">3.</span> Run:{" "}
               <code className="bg-[#333] dark:bg-white/10 px-2 py-0.5 rounded text-[#fcfaf7] text-[11px]">
-                snarkjs groth16 verify vkey.json public.json proof.json
+                snarkjs groth16 verify {vkeyFile} public.json proof.json
               </code>
             </p>
           </div>
@@ -109,9 +130,9 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
               public.json
             </Button>
             <Button variant="citizens-primary" size="citizens-xl" asChild>
-              <a href="/vkey.json" download="vkey.json">
+              <a href={`/${vkeyFile}`} download={vkeyFile}>
                 <Download className="h-4 w-4" />
-                vkey.json
+                {vkeyFile}
               </a>
             </Button>
           </div>
@@ -136,16 +157,16 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
           </div>
 
           <p className="text-[12px] leading-[1.4] text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
-            The verification key is for Self.xyz&apos;s{" "}
+            The verification key is for Self.xyz&apos;s {docType} circuit. View the{" "}
             <a
-              href="https://github.com/selfxyz/self/blob/main/contracts/contracts/verifiers/disclose/Verifier_vc_and_disclose.sol"
+              href="https://github.com/selfxyz/self/tree/main/contracts/contracts/verifiers/disclose"
               target="_blank"
               rel="noopener noreferrer"
               className="underline text-foreground hover:text-[#ffda1e] transition-colors"
             >
-              vc_and_disclose circuit
-            </a>{" "}
-            (E-Passport attestation).
+              verifier contracts on GitHub
+            </a>
+            .
           </p>
         </div>
       </DialogContent>
