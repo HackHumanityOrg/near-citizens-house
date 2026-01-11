@@ -15,15 +15,12 @@ import {
   Identicon,
 } from "@near-citizens/ui"
 import { useNearWallet } from "@near-citizens/shared"
-import { useIsAdmin } from "@/hooks/admin"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
-import { FEATURE_FLAGS } from "@/lib/feature-flags"
 
 export function Header() {
   const pathname = usePathname()
   const isLandingOrVerification = pathname === "/" || pathname?.startsWith("/verification")
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
-  const { isAdmin, loading: adminLoading } = useIsAdmin()
 
   return (
     <header className="relative z-50 bg-transparent">
@@ -35,22 +32,7 @@ export function Header() {
         </Link>
 
         {/* Mobile Navigation - Center */}
-        <nav className="flex items-center gap-4">
-          {/* Governance routes - depend on feature flag */}
-          {FEATURE_FLAGS.GOVERNANCE_ENABLED && (
-            <>
-              <Link href="/governance/proposals" className="text-base hover:opacity-70 transition-opacity">
-                Proposals
-              </Link>
-              {!adminLoading && isAdmin && (
-                <Link href="/governance/admin" className="text-base hover:opacity-70 transition-opacity">
-                  Admin
-                </Link>
-              )}
-            </>
-          )}
-          {/* Future non-governance routes would go here without flags */}
-        </nav>
+        <nav className="flex items-center gap-4">{/* Navigation links can be added here */}</nav>
 
         {/* Mobile Right Side: Wallet + Theme Toggle */}
         <div className="flex items-center gap-4">
@@ -100,22 +82,7 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="flex items-center gap-20">
-          {/* Governance routes - depend on feature flag */}
-          {FEATURE_FLAGS.GOVERNANCE_ENABLED && (
-            <>
-              <Link href="/governance/proposals" className="text-base hover:opacity-70 transition-opacity">
-                Proposals
-              </Link>
-              {!adminLoading && isAdmin && (
-                <Link href="/governance/admin" className="text-base hover:opacity-70 transition-opacity">
-                  Admin
-                </Link>
-              )}
-            </>
-          )}
-          {/* Future non-governance routes would go here without flags */}
-        </nav>
+        <nav className="flex items-center gap-20">{/* Navigation links can be added here */}</nav>
 
         {/* Desktop Right Side: Wallet + Theme Toggle */}
         {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}

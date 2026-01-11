@@ -282,11 +282,6 @@ function VerificationStartContent() {
     setCurrentStep(VerificationProgressStep.NotConnected)
   }
 
-  // Handle vote for proposals
-  const handleVoteForProposals = () => {
-    router.push("/governance")
-  }
-
   return (
     <div className="min-h-full bg-white dark:bg-black">
       {/* Main Content */}
@@ -317,11 +312,7 @@ function VerificationStartContent() {
 
         {/* Step 3: Success */}
         {currentStep === VerificationProgressStep.VerificationComplete && accountId && (
-          <Step3Success
-            accountId={accountId}
-            onDisconnect={handleDisconnect}
-            onVoteForProposals={handleVoteForProposals}
-          />
+          <Step3Success accountId={accountId} onDisconnect={handleDisconnect} />
         )}
       </div>
 
