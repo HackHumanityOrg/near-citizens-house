@@ -5,12 +5,11 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "../../../packages/ui/styles/theme.css";
+@import "../styles/theme.css";
 
 /* Tell Tailwind v4 which files to scan for CSS classes */
-@source "../../../packages/ui/src";
-@source "../../components";
-@source "../../app";
+@source "../components";
+@source "../app";
 
 @layer base {
   * {

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @near-citizens/citizens-house dev",
-    "build": "pnpm --recursive --filter \"./packages/*\" run type-check && pnpm --filter @near-citizens/citizens-house build",
+    "build": "pnpm --filter @near-citizens/citizens-house build",
     "build:contract": "pnpm --filter verified-accounts build:contract",
     "build:contract:verification": "cd contracts/verified-accounts && cargo near build non-reproducible-wasm",
     "test:contract:verification": "cd contracts/verified-accounts && cargo test --features testing -- --test-threads=1",
@@ -18,7 +18,7 @@
     "check:contract:verification": "cd contracts/verified-accounts && rustup target add wasm32-unknown-unknown && cargo check --target wasm32-unknown-unknown",
     "deploy:testnet": "pnpm --filter verified-accounts deploy:testnet",
     "deploy:testnet:verification": "pnpm --filter verified-accounts deploy:testnet",
-    "register-backend-keys": "npx tsx packages/shared/src/contracts/verification/register-backend-keys.ts",
+    "register-backend-keys": "npx tsx apps/citizens-house/scripts/register-backend-keys.ts",
     "cleanup-orphan-accounts": "npx tsx apps/citizens-house/e2e/scripts/cleanup-orphan-accounts.ts",
     "lint": "pnpm --recursive lint",
     "lint:fix": "pnpm --recursive lint:fix",
