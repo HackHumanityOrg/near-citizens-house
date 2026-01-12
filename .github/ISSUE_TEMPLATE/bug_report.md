@@ -8,27 +8,25 @@ assignees: ''
 
 ---
 
-**Describe the bug**
+## Describe the bug
 A clear and concise description of what the bug is.
 
-**Impact**
+## Impact
 e.g. Could not verify my ID document using the Self app on this device
 
-**Steps To Reproduce**
-Steps to reproduce the behavior:
+## Steps To Reproduce & actual result
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
 
-**Actual behavior**
-The problematic behavior you observe when you took the steps
-
-**Expected behavior**
+## Expected behavior
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
+## Screenshots
 If applicable, add screenshots to help explain your problem.
+
+## Context
 
 **Desktop:**
  - OS & Version: [e.g. Mac OS Sonoma 14.6.1]
