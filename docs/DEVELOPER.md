@@ -136,30 +136,16 @@ This is a **pnpm workspace monorepo** with the following structure:
 
 ```
 ├── apps/
-│   ├── verified-accounts/      # Identity verification app (port 3000)
-│   │   ├── app/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   ├── public/
-│   │   └── package.json
-│   └── citizens-house/         # DAO governance app (port 3001)
+│   └── citizens-house/         # Main Next.js app (port 3000)
 │       ├── app/
 │       ├── components/
+│       │   └── ui/             # Shared UI components (shadcn/ui)
 │       ├── lib/
-│       └── package.json
-├── packages/
-│   ├── ui/                     # Shared UI components
-│   │   ├── src/
-│   │   │   ├── components/
-│   │   │   ├── hooks/
-│   │   │   └── index.ts
-│   │   └── package.json
-│   └── shared/                 # Shared utilities and integrations
-│       ├── src/
-│       │   ├── database.ts
-│       │   ├── types.ts
-│       │   ├── utils.ts
-│       │   └── config.ts
+│       │   └── shared/         # NEAR/Self.xyz integrations
+│       ├── e2e/
+│       ├── public/
+│       ├── scripts/
+│       │   └── register-backend-keys.ts
 │       └── package.json
 ├── contracts/
 │   ├── verified-accounts/      # Identity verification contract (Rust)
@@ -169,7 +155,7 @@ This is a **pnpm workspace monorepo** with the following structure:
 └── .env
 ```
 
-**Environment variables** are shared at the root `.env` file and inherited by all apps and packages.
+**Environment variables** are shared at the root `.env` file and inherited by the app.
 
 ---
 
@@ -198,43 +184,21 @@ Edit `.env` with your configuration (see [Environment Variables](#environment-va
 
 ### 3. Run Development Server
 
-**Option A: All apps at once**
-
 ```bash
-pnpm dev:all
+pnpm dev
 ```
 
-This starts both verified-accounts (port 3000) and citizens-house (port 3001) simultaneously.
-
-**Option B: Individual apps**
-
-```bash
-# Identity verification app only
-pnpm dev:verification
-
-# DAO governance app only
-pnpm dev:governance
-```
-
-Open [http://localhost:3000](http://localhost:3000) for verified-accounts or [http://localhost:3001](http://localhost:3001) for citizens-house.
+This starts the Citizens House app on [http://localhost:3000](http://localhost:3000).
 
 ### 4. Development Commands
 
 ```bash
-# All apps (runs in root)
-pnpm dev:all              # Start all apps simultaneously
-pnpm build:all            # Build all apps for production
-pnpm lint:all             # Lint all apps
-pnpm format:all           # Format all apps with Prettier
-
-# Verified Accounts app (identity verification)
-pnpm dev:verification     # Start verified-accounts dev server (port 3000)
-pnpm build:verification   # Build verified-accounts for production
-pnpm lint:verification    # Lint verified-accounts
-
-# Citizens House app (DAO governance)
-pnpm dev:governance       # Start citizens-house dev server (port 3001)
-pnpm build:governance     # Build citizens-house for production
+# App (runs in root)
+pnpm dev                     # Start Citizens House dev server (port 3000)
+pnpm build                   # Build the app for production
+pnpm lint                    # Lint the app
+pnpm format                  # Format with Prettier
+pnpm test                    # Run unit tests
 
 # Smart Contracts
 pnpm build:contract:verification  # Build verified-accounts contract
@@ -568,7 +532,7 @@ Returns paginated list of all verified accounts.
 
 ### Abstraction Pattern
 
-The shared database abstraction layer (`packages/shared/src/database.ts`) exports:
+The verification database abstraction lives in `apps/citizens-house/lib/shared/contracts/verification/client.ts` and exports:
 
 ```typescript
 interface IVerificationDatabase {
@@ -581,21 +545,21 @@ interface IVerificationDatabase {
 
 **Note:** Nullifier uniqueness is validated by the contract during `store_verification()`. No separate pre-check method exists to avoid unnecessary RPC overhead.
 
-**Current Implementation:** `NearContractDatabase` (`packages/shared/src/near-contract-db.ts`)
+**Current Implementation:** `NearContractDatabase` (`apps/citizens-house/lib/shared/contracts/verification/client.ts`)
 
 - Connects to NEAR smart contract using @near-js packages
 - Backend writes with private key authentication
 - Public reads via RPC calls
 - Supports pagination
 
-**Usage:** Both apps import from the shared package:
+**Usage:** The app imports via the local shared alias:
 
 ```typescript
-import { db, IVerificationDatabase } from "@near-citizens-house/shared"
+import { verificationDb, type IVerificationDatabase } from "@near-citizens/shared/contracts/verification/client"
 ```
 
 **To Switch Implementations:**
-Simply change the implementation in `packages/shared/src/database.ts` to return a different database backend (e.g., PostgreSQL, MongoDB). All apps will automatically use the new implementation.
+Update `verificationDb` in `apps/citizens-house/lib/shared/contracts/verification/client.ts` to return a different backend (e.g., PostgreSQL, MongoDB).
 
 ### Data Models
 
@@ -674,7 +638,7 @@ Currently no automated frontend tests. Manual testing checklist:
 
 ### Frontend Deployment (Vercel)
 
-#### Verified Accounts App
+#### Citizens House App
 
 **1. Push to GitHub:**
 
@@ -682,12 +646,12 @@ Currently no automated frontend tests. Manual testing checklist:
 git push origin main
 ```
 
-**2. Create Vercel project for verified-accounts:**
+**2. Create Vercel project:**
 
 - Create new project in Vercel dashboard
 - Select GitHub repository
-- Set **Root Directory** to `apps/verified-accounts`
-- Or use CLI: `vercel --prod --cwd apps/verified-accounts`
+- Set **Root Directory** to `apps/citizens-house`
+- Or use CLI: `vercel --prod --cwd apps/citizens-house`
 
 **3. Configure Environment Variables:**
 
@@ -707,29 +671,11 @@ Vercel will automatically deploy on push. Monitor build logs for issues.
 **Build Configuration:**
 
 - **Framework:** Next.js
-- **Root Directory:** `apps/verified-accounts`
-- **Build Command:** `pnpm build:verification`
+- **Root Directory:** `apps/citizens-house`
+- **Build Command:** `pnpm build` (or leave default)
 - **Output Directory:** `.next`
 - **Install Command:** `pnpm install --frozen-lockfile`
 - **Node Version:** 18.x or higher
-
-#### Citizens House App
-
-**1. Create separate Vercel project for citizens-house:**
-
-- Create new project in Vercel dashboard
-- Select same GitHub repository
-- Set **Root Directory** to `apps/citizens-house`
-
-**2. Configure Environment Variables:** (same as above)
-
-**3. Build Configuration:**
-
-- **Framework:** Next.js
-- **Root Directory:** `apps/citizens-house`
-- **Build Command:** `pnpm build:governance`
-- **Output Directory:** `.next`
-- **Install Command:** `pnpm install --frozen-lockfile`
 
 ### Smart Contract Deployment
 
@@ -802,53 +748,16 @@ near contract call-function as-read-only v1.YOUR_ACCOUNT.testnet \
 ```
 near-citizens-house/
 ├── apps/
-│   ├── verified-accounts/               # Identity verification app (port 3000)
-│   │   ├── app/
-│   │   │   ├── api/
-│   │   │   │   ├── verify/route.ts      # Main verification endpoint
-│   │   │   │   └── verified-accounts/   # List endpoints
-│   │   │   ├── verified-accounts/page.tsx
-│   │   │   ├── layout.tsx               # Root layout
-│   │   │   ├── page.tsx                 # Homepage with verification flow
-│   │   │   └── globals.css
-│   │   ├── components/
-│   │   │   ├── verification-flow.tsx
-│   │   │   ├── self-verification.tsx
-│   │   │   ├── near-wallet-button.tsx
-│   │   │   └── shared/
-│   │   ├── lib/
-│   │   │   ├── config.ts
-│   │   │   └── types.ts
-│   │   ├── public/
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   │
-│   └── citizens-house/                  # DAO governance app (port 3001)
+│   └── citizens-house/                  # Main Next.js app (port 3000)
 │       ├── app/
 │       ├── components/
+│       │   └── ui/                      # Shared UI components
 │       ├── lib/
+│       │   └── shared/                  # NEAR/Self.xyz integrations
+│       ├── e2e/
 │       ├── public/
-│       ├── package.json
-│       └── tsconfig.json
-│
-├── packages/
-│   ├── ui/                              # Shared UI components
-│   │   ├── src/
-│   │   │   ├── components/              # Reusable UI components
-│   │   │   ├── hooks/                   # Custom React hooks
-│   │   │   ├── index.ts
-│   │   │   └── globals.css
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   │
-│   └── shared/                          # Shared utilities and integrations
-│       ├── src/
-│       │   ├── config.ts                # App configuration
-│       │   ├── types.ts                 # Shared TypeScript types
-│       │   ├── verification.ts          # Verification logic
-│       │   ├── verification-contract.ts # Verified accounts contract client
-│       │   ├── self-verifier.ts         # Self.xyz verifier
-│       │   └── zk-verify.ts             # ZK proof verification
+│       ├── scripts/
+│       │   └── register-backend-keys.ts
 │       ├── package.json
 │       └── tsconfig.json
 │
@@ -875,12 +784,11 @@ near-citizens-house/
 
 **Key Points:**
 
-- **Shared packages** (`packages/`) are installed as dependencies in both apps
-- **Environment variables** are at the root and inherited by all apps/packages
+- **Shared UI** lives in `apps/citizens-house/components/ui`
+- **Shared utilities** live in `apps/citizens-house/lib/shared`
+- **Environment variables** are at the root and inherited by the app
 - **Contracts** remain at the root level (unchanged from previous structure)
-- Each app has its own `package.json`, `tsconfig.json`, and Next.js configuration
-- UI components are published to `packages/ui` for reuse across apps
-- Shared utilities and database logic are in `packages/shared`
+- The app has its own `package.json`, `tsconfig.json`, and Next.js configuration
 
 ---
 

@@ -250,11 +250,11 @@ redis://default:PASSWORD@host:port
 | Output Directory | (leave default)         |
 | Install Command  | (leave default)         |
 
-**Monorepo setting (important for shared packages):**
+**Monorepo setting:**
 
-In Project Settings → General → Root Directory, ensure **"Include source files outside of the Root Directory in the Build Step"** is checked. This is enabled by default for projects created after August 2020 and is required to access `packages/shared` and `packages/ui`.
+No special setting is required because shared UI/components and utilities live under `apps/citizens-house`.
 
-Vercel auto-detects pnpm workspace from the lockfile and installs all workspace dependencies automatically.
+Vercel auto-detects the pnpm workspace from the lockfile and installs dependencies automatically.
 
 ### 6.3 Environment variables
 
