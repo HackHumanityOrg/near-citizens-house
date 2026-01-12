@@ -10,6 +10,9 @@ assignees: ''
 **Describe the bug**
 A clear and concise description of what the bug is.
 
+**Impact**
+e.g. Could not verify my ID document using the Self app on this device
+
 **Steps To Reproduce**
 Steps to reproduce the behavior:
 1. Go to '...'
