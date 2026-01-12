@@ -1,8 +1,10 @@
 "use client"
 
-import { useEffect, useState, Suspense, useRef } from "react"
+import { useEffect, useState, Suspense, useRef, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAnalytics } from "@/lib/analytics"
+import { clientLogger } from "@/lib/logger-client"
+import { LogScope, Op } from "@/lib/logger"
 import { Loader2 } from "lucide-react"
 import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
@@ -20,12 +22,27 @@ function VerifyCallbackContent() {
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const trackedResultRef = useRef(false)
 
+  const logContext = useMemo(
+    () => ({
+      scope: LogScope.VERIFICATION,
+      component: "verification.callback",
+      session_id: sessionId ?? undefined,
+    }),
+    [sessionId],
+  )
+
   // Track verification result when status changes
   useEffect(() => {
     if (trackedResultRef.current) return
 
     if (status === "success" && accountId) {
       analytics.trackVerificationCompleted(accountId, "deeplink")
+      clientLogger.info("Verification callback completed", {
+        ...logContext,
+        operation: Op.VERIFICATION.CALLBACK_RESULT,
+        account_id: accountId,
+        status,
+      })
       trackedResultRef.current = true
     } else if (status === "error" || status === "expired") {
       // Get accountId from localStorage if available
@@ -34,12 +51,24 @@ function VerifyCallbackContent() {
       // Use actual error code if available, fallback to generic codes
       const trackingErrorCode = errorCode || (status === "expired" ? "TIMEOUT" : "VERIFICATION_FAILED")
       analytics.trackVerificationFailed(storedAccountId, trackingErrorCode, errorMessage || undefined)
+      clientLogger.warn("Verification callback failed", {
+        ...logContext,
+        operation: Op.VERIFICATION.CALLBACK_RESULT,
+        account_id: storedAccountId,
+        status,
+        error_code: trackingErrorCode,
+        error_message: errorMessage ?? undefined,
+      })
       trackedResultRef.current = true
     }
-  }, [status, accountId, sessionId, errorMessage, errorCode, analytics])
+  }, [status, accountId, sessionId, errorMessage, errorCode, analytics, logContext])
 
   useEffect(() => {
     if (!sessionId) {
+      clientLogger.warn("Missing sessionId in verification callback", {
+        ...logContext,
+        operation: Op.VERIFICATION.CALLBACK_INIT,
+      })
       setStatus("error")
       setErrorMessage("Invalid callback URL - missing session ID")
       return
@@ -74,19 +103,32 @@ function VerifyCallbackContent() {
           // (30 seconds) before treating 404 as terminal.
           const GRACE_PERIOD_POLLS = 15
           if (response.status === 404 && pollCount < GRACE_PERIOD_POLLS) {
-            console.log(
-              `[VerifyCallback] Session not found yet (poll ${pollCount + 1}/${GRACE_PERIOD_POLLS}), retrying...`,
-            )
+            clientLogger.debug("Verification session not found yet, retrying", {
+              ...logContext,
+              operation: Op.VERIFICATION.CALLBACK_POLL,
+              poll_count: pollCount + 1,
+              grace_period_polls: GRACE_PERIOD_POLLS,
+              status_code: response.status,
+            })
             return false // Continue polling
           }
           // Other 4xx = client error (invalid/expired session) - terminal, stop polling
           if (response.status >= 400 && response.status < 500) {
+            clientLogger.warn("Verification status API client error", {
+              ...logContext,
+              operation: Op.VERIFICATION.CALLBACK_POLL,
+              status_code: response.status,
+            })
             setStatus("error")
             setErrorMessage("Invalid or expired verification session. Please try again.")
             return true
           }
           // 5xx = server error - keep retrying
-          console.error(`[VerifyCallback] Server error: ${response.status}`)
+          clientLogger.error("Verification status API server error", {
+            ...logContext,
+            operation: Op.VERIFICATION.CALLBACK_POLL,
+            status_code: response.status,
+          })
           return false
         }
 
@@ -125,7 +167,15 @@ function VerifyCallbackContent() {
           return false
         }
         // Log unexpected errors for debugging
-        console.error("[VerifyCallback] Polling error:", error)
+        const errorDetails =
+          error instanceof Error
+            ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
+            : { error_message: String(error) }
+        clientLogger.error("Verification callback polling error", {
+          ...logContext,
+          operation: Op.VERIFICATION.CALLBACK_POLL,
+          ...errorDetails,
+        })
         // Network error - keep polling (but only if still mounted)
         return false
       }
@@ -167,7 +217,7 @@ function VerifyCallbackContent() {
         timeoutId = null
       }
     }
-  }, [sessionId])
+  }, [sessionId, logContext])
 
   // Auto-redirect on success (skip the intermediate "Continue" screen)
   useEffect(() => {

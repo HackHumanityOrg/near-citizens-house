@@ -14,6 +14,7 @@ import { BatchLogRecordProcessor, LoggerProvider, ConsoleLogRecordExporter } fro
 import { resourceFromAttributes } from "@opentelemetry/resources"
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions"
 import { logs } from "@opentelemetry/api-logs"
+import { logger, LogScope, Op } from "@/lib/logger"
 
 // PostHog configuration
 const POSTHOG_LOGS_ENDPOINT = "https://us.i.posthog.com/i/v1/logs"
@@ -97,11 +98,13 @@ export function initOtelLogging(): void {
 
   // Log that OpenTelemetry is initialized
   if (DEPLOYMENT_ENV === "development") {
-    console.log("[OpenTelemetry] Logging initialized", {
+    logger.info("OpenTelemetry logging initialized", {
+      scope: LogScope.INSTRUMENTATION,
+      operation: Op.INSTRUMENTATION.INIT,
       service: SERVICE_NAME,
       version: SERVICE_VERSION,
       env: DEPLOYMENT_ENV,
-      posthogEnabled: !!POSTHOG_PROJECT_TOKEN,
+      posthog_enabled: !!POSTHOG_PROJECT_TOKEN,
     })
   }
 }

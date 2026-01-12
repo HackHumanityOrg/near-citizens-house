@@ -423,8 +423,7 @@ function createVerificationContract(): IVerificationDatabase {
       "Missing required NEAR configuration. Please set:\n" +
         "- NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT (contract account address)\n" +
         "- NEAR_ACCOUNT_ID (backend wallet account)\n" +
-        "- NEAR_PRIVATE_KEY (backend wallet private key)\n" +
-        "See DEVELOPER.md for setup instructions.",
+        "- NEAR_PRIVATE_KEY (backend wallet private key)",
     )
   }
 

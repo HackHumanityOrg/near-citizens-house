@@ -1,6 +1,7 @@
 "use server"
 
 import { verificationDb } from "@near-citizens/shared"
+import { logger, LogScope, Op } from "@/lib/logger"
 
 /**
  * Check if a NEAR account is verified
@@ -17,10 +18,25 @@ export async function checkVerificationStatus(accountId: string): Promise<boolea
 
   try {
     const isVerified = await verificationDb.isVerified(accountId)
-    console.log(`[Verification] Check status for ${accountId}: ${isVerified}`)
+    logger.info("Verification status checked", {
+      scope: LogScope.VERIFICATION,
+      operation: Op.VERIFICATION.CHECK_STATUS,
+      account_id: accountId,
+      is_verified: isVerified,
+    })
     return isVerified
   } catch (error) {
-    console.error(`[Verification] Error checking status for ${accountId}:`, error)
+    const errorDetails =
+      error instanceof Error
+        ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
+        : { error_message: String(error) }
+
+    logger.error("Failed to check verification status", {
+      scope: LogScope.VERIFICATION,
+      operation: Op.VERIFICATION.CHECK_STATUS,
+      account_id: accountId,
+      ...errorDetails,
+    })
     return false
   }
 }

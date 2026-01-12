@@ -1,56 +1,103 @@
-# Identity Verification & DAO Governance
+# How It Works
 
-## How Identity Verification Works
+## Overview
 
-The user connects their NEAR wallet and signs a message using the NEP-413 standard, which proves they control the wallet. This signature is embedded in Self.xyz QR code as "user context data"—an arbitrary JSON object that Self.xyz carries throughout the verification process.
+NEAR Citizens House links a NEAR wallet to a single real-world identity using Self.xyz zero-knowledge proofs. The Next.js web app coordinates wallet signing and QR/deeplink issuance, the Self mobile app generates a Groth16 proof from a passport/ID, and the backend writes the result to the NEAR verified-accounts contract. A Citizens view can re-verify stored proofs for transparency.
 
-The user scans this QR with the Self.xyz mobile app, which reads their passport's NFC chip and generates a Groth16 zero-knowledge proof. This proof confirms the passport is valid—without revealing any personal information. After the proof is generated, the Self app calls the `/api/verify` endpoint with the proof and user context data.
+## Core components
 
-The web app backend receives the proof and validates it using the Self SDK. It then extracts the NEAR signature from the user context data and validates the format and timestamp freshness (signatures must be <10 minutes old). The backend does not cryptographically verify the signature—that happens on-chain.
+- **Web app (Next.js)**: `/verification` flow, wallet connect, QR/deeplink, and `/citizens` table.
+- **Verification API**: `POST /api/verification/verify` validates proofs and writes on-chain; `GET /api/verification/status` reports session state for polling and mobile callbacks.
+- **Self.xyz**: QR/deeplink SDK and Self app; Self relayers deliver proofs to the backend, which uses `SelfBackendVerifier` to validate them against the Self hub.
+- **NEAR verified-accounts contract**: stores verifications, verifies NEP-413 signatures on-chain, enforces uniqueness.
+- **Redis**: short-lived session status and nonce replay protection.
+- **Celo verifier**: optional re-verification of stored proofs via Self’s IdentityVerificationHub contract.
 
-The backend calls `store_verification()` using `backend_wallet` on the contract. The contract verifies that the caller is the authorized `backend_wallet`, then performs on-chain NEP-413 signature verification using Ed25519. It also checks that the nullifier (a unique hash derived from the passport) hasn't been used before, and that the account isn't already verified. This ensures one passport can only verify one NEAR account.
+## End-to-end verification flow
 
-### What Gets Stored Onchain
+1. **Wallet signature**: the user connects a NEAR wallet and signs a NEP-413 challenge (message + 32-byte nonce + recipient). The challenge is derived from the app URL and contract ID, but it is not unique because it has to be rebuilt deterministically later.
+2. **QR/deeplink creation**: the app builds a Self payload (`SelfAppBuilder`) containing:
+   - `userId` (UUID session ID)
+   - `userDefinedData` with NEP-413 fields (accountId, publicKey, signature, nonce, timestamp). The challenge is not included in userDefinedData because it wouldn't fit the QR code size limitations.
+3. **Self app proof**: the Self mobile app reads the passport NFC and produces a Groth16 proof. Self relayers submit the proof to `POST /api/verification/verify` with `attestationId`, proof, public signals, and `userContextData`.
+4. **Backend verification**:
+   - verifies the ZK proof via `SelfBackendVerifier` (which validates against the Self hub and config)
+   - extracts the nullifier and signature payload from `userContextData`
+   - checks signature freshness (10 min) and nonce replay via Redis
+   - confirms the public key is a full-access key via NEAR RPC
+   - updates the Redis session for client polling
+5. **On-chain write**: the backend calls `store_verification` using a key pool derived from `NEAR_PRIVATE_KEY` (10 rotating access keys to support concurrency).
+6. **Contract checks**: the contract ensures the backend wallet is the caller, verifies the NEP-413 signature with `ed25519_verify`, enforces unique nullifier + account, and stores the verification.
+7. **Client completion**: the UI polls `GET /api/verification/status`; mobile users return via `/verification/callback`, which polls until the session is marked `success` or `error`.
 
-The contract stores the nullifier, NEAR account ID, attestation type, timestamp, and the full ZK proof for potential future re-verification. No personally identifiable information is ever stored.
+## Verification sequence
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant SelfApp as Self App (Mobile)
-    participant BW as Server
-    participant Contract as Verified Accounts Contract
+    participant Wallet as NEAR Wallet
+    participant Web as Web App
+    participant SelfApp as Self App
+    participant Relayer as Self Relayer
+    participant Backend as Verification API
+    participant Hub as Self Hub (Celo)
+    participant Rpc as NEAR RPC
+    participant Redis
+    participant Contract as NEAR Verified-Accounts
 
-    User->>User: Connect NEAR wallet
-    User->>User: Sign message (NEP-413)
-    User->>User: Generate QR (signature in user context data)
-
-    User->>SelfApp: Scan QR
-    SelfApp->>SelfApp: Scan passport NFC
-    SelfApp->>SelfApp: Generate ZK proof (Groth16)
-    SelfApp->>BW: POST /api/verify (proof + user context data)
-
-    BW->>BW: Verify ZK proof (Self SDK)
-    BW->>BW: Extract signature, validate format & freshness
-    BW->>Contract: store_verification()
-
-    Contract->>Contract: Verify caller == backend_wallet
-    Contract->>Contract: Verify NEP-413 signature (Ed25519)
-    Contract->>Contract: Check signature not reused
-    Contract->>Contract: Check nullifier unused
-    Contract->>Contract: Check account not already verified
-    Contract-->>BW: Success
-
-    BW-->>SelfApp: Success
-    SelfApp-->>User: Verification complete
+    User->>Web: Open /verification/start
+    User->>Wallet: Sign NEP-413 challenge
+    Wallet-->>Web: Signature + publicKey + nonce
+    Web->>SelfApp: QR/deeplink (sessionId + userDefinedData)
+    SelfApp->>SelfApp: Read passport NFC + build proof
+    SelfApp->>Relayer: Proof + userContextData
+    Relayer->>Backend: POST /api/verification/verify
+    Backend->>Hub: SelfBackendVerifier.verify(...)
+    Hub-->>Backend: Validity + nullifier + disclosures
+    Backend->>Rpc: Check full-access key
+    Backend->>Redis: Reserve nonce
+    Backend->>Contract: store_verification(...)
+    Contract-->>Backend: success
+    Backend->>Redis: Update session status
+    Backend-->>Web: status=success (polled)
+    Web-->>User: Verification complete
 ```
 
----
+## Citizens audit & re-verification
 
-## Trust Model
+The `/citizens` page lists verifications directly from the contract. For each record, the server action re-verifies:
 
-The system has one trusted actor: the **`backend_wallet`**. This is the NEAR account that runs the verification server.
+- **ZK proof** via Self’s IdentityVerificationHub on Celo (`verifyStoredProofWithDetails`)
+- **NEP-413 signature** by rebuilding the signed payload from `user_context_data`.
 
-The `backend_wallet` is the only account that can write to the Verified Accounts contract (via `store_verification()`).
+## On-chain data
 
-However, its power is limited. The contract re-verifies all signatures on-chain, so `backend_wallet` cannot forge wallet ownership. Nullifier uniqueness is enforced on-chain, so it cannot register duplicate passports. If compromised, the wallet can be rotated via `update_backend_wallet()`, but that needs to happen before any malicious action is taken.
+The contract stores:
+
+- `nullifier` (unique identity hash)
+- `near_account_id`
+- `attestation_id` (passport/ID type)
+- `verified_at` timestamp
+- `self_proof` (Groth16 proof + public signals)
+- `user_context_data` (signature payload used for audit)
+
+## Backend wallet authority
+
+The verified-accounts contract is admin-gated: only the backend wallet can write records or change operational state. It is the sole caller allowed to:
+
+- `store_verification` (write a new verification)
+- `pause` / `unpause` (freeze or resume writes)
+- `update_backend_wallet` (rotate the admin account)
+
+This matters because the contract does **not** verify Self proofs itself. Proofs are validated off-chain by the backend, so end users are never trusted to write directly. The backend wallet submits writes only after the proof and NEP-413 signature checks pass, and the contract enforces the caller check on-chain.
+
+## Why backend verification (vs on-chain)
+
+Self supports an on-chain flow where an EVM contract inherits `SelfVerificationRoot` and calls the IdentityVerificationHub on Celo. The hub verifies the proof and calls back the contract with disclosed fields. That flow is great for EVM apps, but it assumes Celo execution and a relayer submitting proofs on-chain.
+
+NEAR contracts cannot call the Celo hub directly, so implementing the on-chain flow would require a Celo contract plus cross-chain messaging (bridge/relayer) back to NEAR, or forcing users to manage a Celo wallet. Using `SelfBackendVerifier` keeps the proof check anchored to the same hub/config while letting the backend write the verified result to the NEAR contract, so users only need a NEAR wallet and the Self app.
+
+## Trust model & networks
+
+- **Backend wallet** is the only writer; the contract enforces signature validity and uniqueness.
+- **Backend verification** checks full-access keys and proof validity; the contract does not verify proofs itself.

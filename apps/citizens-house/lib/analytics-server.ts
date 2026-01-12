@@ -1,4 +1,5 @@
 import { PostHog } from "posthog-node"
+import { logger, LogScope, Op } from "./logger"
 
 let posthog: PostHog | null = null
 
@@ -13,6 +14,24 @@ export function getPostHogServer(): PostHog | null {
     })
   }
   return posthog
+}
+
+function logAnalyticsError(message: string, error: unknown, extra: Record<string, unknown> = {}): void {
+  const errorDetails =
+    error instanceof Error
+      ? {
+          error_type: error.name,
+          error_message: error.message,
+          error_stack: error.stack,
+        }
+      : { error_message: String(error) }
+
+  logger.error(message, {
+    scope: LogScope.ANALYTICS,
+    operation: Op.VERIFICATION.ANALYTICS,
+    ...extra,
+    ...errorDetails,
+  })
 }
 
 export async function trackVerificationCompletedServer(props: {
@@ -50,12 +69,20 @@ export async function trackVerificationCompletedServer(props: {
 
   // Use captureImmediate to guarantee the HTTP request completes
   // before the serverless function terminates (prevents event loss)
-  await ph.captureImmediate({
-    distinctId: props.accountId,
-    event: "verification_completed",
-    properties,
-    timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
-  })
+  try {
+    await ph.captureImmediate({
+      distinctId: props.accountId,
+      event: "verification_completed",
+      properties,
+      timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
+    })
+  } catch (error) {
+    logAnalyticsError("Failed to capture verification completed", error, {
+      account_id: props.accountId,
+      session_id: props.sessionId,
+      attestation_id: props.attestationId,
+    })
+  }
 }
 
 export async function trackVerificationFailedServer(props: {
@@ -104,12 +131,21 @@ export async function trackVerificationFailedServer(props: {
     ...personProps,
   }
 
-  await ph.captureImmediate({
-    distinctId: props.distinctId,
-    event: "verification_failed",
-    properties,
-    timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
-  })
+  try {
+    await ph.captureImmediate({
+      distinctId: props.distinctId,
+      event: "verification_failed",
+      properties,
+      timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
+    })
+  } catch (error) {
+    logAnalyticsError("Failed to capture verification failed", error, {
+      distinct_id: props.distinctId,
+      account_id: props.accountId,
+      session_id: props.sessionId,
+      error_code: props.errorCode,
+    })
+  }
 }
 
 /**
@@ -124,7 +160,15 @@ export async function captureServerException(
   const ph = getPostHogServer()
   if (!ph) return
 
-  await ph.captureException(error, distinctId, additionalProperties)
+  try {
+    await ph.captureException(error, distinctId, additionalProperties)
+  } catch (captureError) {
+    logAnalyticsError("Failed to capture server exception", captureError, {
+      distinct_id: distinctId,
+      error_type: error.name,
+      error_message: error.message,
+    })
+  }
 }
 
 /**

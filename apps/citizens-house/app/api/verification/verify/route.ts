@@ -18,7 +18,7 @@ import {
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
-import { createApiEvent, logger, Op } from "@/lib/logger"
+import { createApiEvent, logger, LogScope, Op } from "@/lib/logger"
 
 // Initialize Redis for backend key pool (for concurrent transaction support)
 // This is lazy - the actual connection happens on first use
@@ -138,6 +138,7 @@ async function hasFullAccessKey(accountId: string, publicKey: string): Promise<b
     return isFullAccessPermission(accessKey.permission)
   } catch (error) {
     logger.warn("Failed to query access key", {
+      scope: LogScope.API,
       operation: Op.VERIFICATION.ACCESS_KEY_CHECK,
       account_id: accountId,
       error_message: error instanceof Error ? error.message : "Unknown error",
@@ -148,7 +149,7 @@ async function hasFullAccessKey(accountId: string, publicKey: string): Promise<b
 
 export async function POST(request: NextRequest) {
   // Create wide event for this request
-  const event = createApiEvent("verification.verify", request)
+  const event = createApiEvent(Op.API.VERIFICATION_VERIFY, request)
 
   const selfNetwork = SELF_CONFIG.networkId
   let sessionId: string | undefined
@@ -199,6 +200,7 @@ export async function POST(request: NextRequest) {
       })
     } catch (error) {
       logger.warn("Failed to track verification_failed event", {
+        scope: LogScope.API,
         operation: Op.VERIFICATION.ANALYTICS,
         error_message: error instanceof Error ? error.message : "Unknown error",
       })
@@ -215,6 +217,7 @@ export async function POST(request: NextRequest) {
         })
       } catch (error) {
         logger.warn("Failed to update verification session", {
+          scope: LogScope.API,
           operation: Op.VERIFICATION.SESSION_UPDATE,
           session_id: sessionId,
           error_message: error instanceof Error ? error.message : "Unknown error",
@@ -443,6 +446,7 @@ export async function POST(request: NextRequest) {
 
     if (!nonceReserved) {
       logger.warn("Nonce replay attempt detected", {
+        scope: LogScope.API,
         operation: Op.VERIFICATION.NONCE_CHECK,
         account_id: data.accountId as string,
         attestation_id: attestationId.toString(),
@@ -529,6 +533,7 @@ export async function POST(request: NextRequest) {
         })
       } catch (error) {
         logger.warn("Failed to track verification_completed event", {
+          scope: LogScope.API,
           operation: Op.VERIFICATION.ANALYTICS,
           account_id: nearSignature.accountId,
           error_message: error instanceof Error ? error.message : "Unknown error",

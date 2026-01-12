@@ -131,7 +131,7 @@ The verification process typically takes 1-2 minutes to complete as it involves:
 
 ## For Developers
 
-Interested in integrating this verification system or contributing to the project? See [DEVELOPER.md](./docs/DEVELOPER.md) for technical documentation, setup instructions, and architecture details.
+Interested in integrating this verification system or contributing to the project? Open a GitHub issue for technical documentation and setup guidance.
 
 ## Resources
 

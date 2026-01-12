@@ -11,6 +11,7 @@
  */
 
 import posthog from "posthog-js"
+import { LogScope, type LogOperation } from "./logging"
 
 // Service metadata
 const SERVICE_NAME = "citizens-house"
@@ -23,7 +24,8 @@ export type ClientLogLevel = "debug" | "info" | "warn" | "error"
  */
 export interface ClientLogAttributes {
   // Operation context
-  operation?: string
+  operation?: LogOperation
+  scope?: LogScope
   component?: string
 
   // User context
@@ -96,11 +98,11 @@ export const clientLogger = {
  * Client-side wide event builder
  */
 export class ClientWideEvent {
-  private operation: string
+  private operation: LogOperation
   private attributes: ClientLogAttributes = {}
   private startTime: number
 
-  constructor(operation: string) {
+  constructor(operation: LogOperation) {
     this.operation = operation
     this.startTime = Date.now()
     this.attributes.operation = operation
@@ -169,6 +171,6 @@ export class ClientWideEvent {
 /**
  * Create a client-side wide event
  */
-export function createClientEvent(operation: string): ClientWideEvent {
+export function createClientEvent(operation: LogOperation): ClientWideEvent {
   return new ClientWideEvent(operation)
 }

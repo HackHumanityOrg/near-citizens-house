@@ -14,7 +14,7 @@ import {
   type Verification,
   type ProofData,
 } from "@near-citizens/shared"
-import { createServerActionEvent, logger, Op } from "@/lib/logger"
+import { createServerActionEvent, logger, LogScope, Op } from "@/lib/logger"
 
 const paginationSchema = z.object({
   page: z.number().int().min(0).max(100000),
@@ -67,6 +67,7 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
           // Log successful verification with RPC endpoint used
           if (zkResult.isValid && zkResult.rpcUrl) {
             logger.debug("ZK proof verified", {
+              scope: LogScope.VERIFICATION,
               operation: Op.VERIFICATION.ZK_VERIFY,
               account_id: account.nearAccountId,
               rpc_url: zkResult.rpcUrl,
@@ -75,6 +76,7 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
         } catch (error) {
           // Graceful degradation: RPC failed but account is verified by contract
           logger.warn("ZK re-verification failed, but account is contract-verified", {
+            scope: LogScope.VERIFICATION,
             operation: Op.VERIFICATION.ZK_VERIFY,
             account_id: account.nearAccountId,
             error_message: error instanceof Error ? error.message : String(error),
@@ -132,6 +134,7 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
       } catch (error) {
         // Final catch-all: Always display account even if verification completely fails
         logger.error("Unexpected error verifying account", {
+          scope: LogScope.VERIFICATION,
           operation: Op.VERIFICATION.VERIFY_ACCOUNT,
           account_id: account.nearAccountId,
           error_message: error instanceof Error ? error.message : String(error),
@@ -174,7 +177,7 @@ const getCachedVerifications = unstable_cache(fetchAndVerifyVerifications, ["ver
  * All verification (ZK proof via Celo + NEAR signature) happens server-side.
  */
 export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
-  const event = createServerActionEvent("citizens.getVerificationsWithStatus")
+  const event = createServerActionEvent(Op.SERVER_ACTION.CITIZENS_GET_VERIFICATIONS_WITH_STATUS)
   event.set("page", page)
   event.set("page_size", pageSize)
 
@@ -198,7 +201,7 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
  * Used by the UI to skip verification steps for already-verified accounts.
  */
 export async function checkIsVerified(nearAccountId: string): Promise<boolean> {
-  const event = createServerActionEvent("citizens.checkIsVerified")
+  const event = createServerActionEvent(Op.SERVER_ACTION.CITIZENS_CHECK_IS_VERIFIED)
   event.setUser({ account_id: nearAccountId })
 
   // Validate account ID format

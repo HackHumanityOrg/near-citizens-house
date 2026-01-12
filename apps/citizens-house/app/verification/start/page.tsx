@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef, Suspense } from "react"
+import { useState, useEffect, useRef, Suspense, useMemo } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@near-citizens/shared"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { useAnalytics } from "@/lib/analytics"
+import { clientLogger } from "@/lib/logger-client"
+import { LogScope, Op } from "@/lib/logger"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
 import { Step3Success } from "../../../components/verification/flow/step-3-success"
@@ -100,6 +102,14 @@ function VerificationStartContent() {
   const { isConnected, accountId, isLoading, connect, disconnect, signMessage } = useNearWallet()
   const analytics = useAnalytics()
 
+  const logContext = useMemo(
+    () => ({
+      scope: LogScope.VERIFICATION,
+      component: "verification.start",
+    }),
+    [],
+  )
+
   // State management
   const [currentStep, setCurrentStep] = useState<VerificationProgressStep>(VerificationProgressStep.NotConnected)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
@@ -147,18 +157,32 @@ function VerificationStartContent() {
       try {
         const isVerified = await checkIsVerified(accountId)
         if (isVerified) {
+          clientLogger.info("Account already verified", {
+            ...logContext,
+            operation: Op.VERIFICATION.START_CHECK_EXISTING,
+            account_id: accountId,
+          })
           // Skip to success step
           setCurrentStep(VerificationProgressStep.VerificationComplete)
         }
       } catch (error) {
-        console.error("Error checking verification:", error)
+        const errorDetails =
+          error instanceof Error
+            ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
+            : { error_message: String(error) }
+        clientLogger.error("Failed to check verification status", {
+          ...logContext,
+          operation: Op.VERIFICATION.START_CHECK_EXISTING,
+          account_id: accountId,
+          ...errorDetails,
+        })
       } finally {
         setIsCheckingVerification(false)
       }
     }
 
     checkVerification()
-  }, [accountId])
+  }, [accountId, logContext])
 
   // Handle URL params from callback (mobile flow)
   useEffect(() => {
@@ -179,7 +203,16 @@ function VerificationStartContent() {
             setAttestationId(data.attestationId ?? null)
           }
         } catch (error) {
-          console.warn("Failed to fetch attestation status", error)
+          const errorDetails =
+            error instanceof Error
+              ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
+              : { error_message: String(error) }
+          clientLogger.warn("Failed to fetch attestation status", {
+            ...logContext,
+            operation: Op.VERIFICATION.START_ATTESTATION_STATUS,
+            session_id: sessionIdParam,
+            ...errorDetails,
+          })
         }
       })()
       handled = true
@@ -196,7 +229,7 @@ function VerificationStartContent() {
     if (handled) {
       router.replace(pathname, { scroll: false })
     }
-  }, [searchParams, isConnected, router, pathname])
+  }, [searchParams, isConnected, router, pathname, logContext])
 
   // Track wallet connection
   useEffect(() => {
@@ -216,7 +249,15 @@ function VerificationStartContent() {
     try {
       await connect()
     } catch (error) {
-      console.error("Error connecting wallet:", error)
+      const errorDetails =
+        error instanceof Error
+          ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
+          : { error_message: String(error) }
+      clientLogger.error("Wallet connection failed", {
+        ...logContext,
+        operation: Op.VERIFICATION.START_CONNECT_WALLET,
+        ...errorDetails,
+      })
       setErrorMessage("Failed to connect wallet. Please try again.")
       setIsErrorModalOpen(true)
     }
@@ -237,13 +278,27 @@ function VerificationStartContent() {
       }
 
       analytics.trackMessageSigned(accountId)
+      clientLogger.info("Verification message signed", {
+        ...logContext,
+        operation: Op.VERIFICATION.START_SIGN_MESSAGE,
+        account_id: accountId,
+      })
       setNearSignature(signature)
       setCurrentStep(VerificationProgressStep.MessageSigned)
       toast.success("Successfully Verified NEAR Wallet.")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to sign message"
       const errorCode = message.includes("rejected") || message.includes("cancelled") ? "USER_REJECTED" : "UNKNOWN"
+      const errorDetails = error instanceof Error ? { error_type: error.name, error_stack: error.stack } : {}
       analytics.trackMessageSignFailed(accountId, { code: errorCode, message })
+      clientLogger.warn("Verification message signing failed", {
+        ...logContext,
+        operation: Op.VERIFICATION.START_SIGN_MESSAGE,
+        account_id: accountId,
+        error_code: errorCode,
+        error_message: message,
+        ...errorDetails,
+      })
       setErrorMessage(message)
       setIsErrorModalOpen(true)
     } finally {

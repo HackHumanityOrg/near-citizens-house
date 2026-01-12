@@ -7,6 +7,8 @@ import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-cit
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { useAnalytics } from "@/lib/analytics"
+import { clientLogger } from "@/lib/logger-client"
+import { LogScope, Op } from "@/lib/logger"
 import { getErrorMessage } from "@/lib/verification-errors"
 import { StarPattern } from "../icons/star-pattern"
 
@@ -53,6 +55,16 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   const trackedStartRef = useRef(false)
   const trackedQrDisplayRef = useRef(false)
   const confirmationInProgressRef = useRef(false)
+
+  const logContext = useMemo(
+    () => ({
+      scope: LogScope.VERIFICATION,
+      component: "verification.step2",
+      account_id: nearSignature.accountId,
+      session_id: sessionId,
+    }),
+    [nearSignature.accountId, sessionId],
+  )
 
   // Track verification started and QR code displayed
   useEffect(() => {
@@ -145,6 +157,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
 
   const finalizeWithError = (message: string, code?: string) => {
     confirmationInProgressRef.current = false
+    clientLogger.warn("Verification QR flow failed", {
+      ...logContext,
+      operation: Op.VERIFICATION.STEP2_FINALIZE,
+      error_code: code || "VERIFICATION_FAILED",
+      error_message: message,
+    })
     analytics.trackVerificationFailed(nearSignature.accountId, code || "VERIFICATION_FAILED", message)
     setVerificationStatus("error")
     onError(message, code)
@@ -164,6 +182,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
           if (data.status === "success") {
             const method = window.innerWidth < 768 ? "deeplink" : "qr"
             analytics.trackVerificationCompleted(nearSignature.accountId, method)
+            clientLogger.info("Verification status confirmed", {
+              ...logContext,
+              operation: Op.VERIFICATION.STEP2_CONFIRM_STATUS,
+              attestation_id: data.attestationId,
+              status: data.status,
+            })
             confirmationInProgressRef.current = false
             setVerificationStatus("success")
             onSuccess(data.attestationId)
@@ -186,7 +210,16 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
           return
         }
       } catch (error) {
-        console.warn("Failed to check verification status", error)
+        const errorDetails =
+          error instanceof Error
+            ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
+            : { error_message: String(error) }
+        clientLogger.warn("Failed to check verification status", {
+          ...logContext,
+          operation: Op.VERIFICATION.STEP2_CONFIRM_STATUS,
+          poll_count: pollCount + 1,
+          ...errorDetails,
+        })
       }
 
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))

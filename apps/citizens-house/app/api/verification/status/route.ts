@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/session-store"
-import { createApiEvent } from "@/lib/logger"
+import { createApiEvent, Op } from "@/lib/logger"
 
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -9,7 +9,7 @@ function isValidSessionId(sessionId: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  const event = createApiEvent("verification.status", request)
+  const event = createApiEvent(Op.API.VERIFICATION_STATUS, request)
   const sessionId = request.nextUrl.searchParams.get("sessionId")
 
   if (!sessionId) {

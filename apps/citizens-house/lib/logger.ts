@@ -11,6 +11,17 @@
  */
 
 import { logs, SeverityNumber } from "@opentelemetry/api-logs"
+import {
+  LogScope,
+  type LogOperation,
+  type ApiOperation,
+  type ServerActionOperation,
+  type E2EOperation,
+  Op,
+} from "./logging"
+
+export { LogScope, Op }
+export type { LogOperation, ApiOperation, ServerActionOperation, E2EOperation }
 
 // Service metadata
 const SERVICE_NAME = "citizens-house"
@@ -31,7 +42,7 @@ const SEVERITY_MAP: Record<LogLevel, { text: string; number: SeverityNumber }> =
 }
 
 // Sampling configuration for tail sampling
-const SAMPLE_RATE_SUCCESS = 0.1 // Keep 10% of successful requests
+const SAMPLE_RATE_SUCCESS = 1 // Keep 100% of successful requests
 const SLOW_REQUEST_THRESHOLD_MS = 2000 // Always keep requests slower than 2s
 
 // =============================================================================
@@ -45,33 +56,7 @@ const SLOW_REQUEST_THRESHOLD_MS = 2000 // Always keep requests slower than 2s
 //   logger.info("Message", { operation: Op.VERIFICATION.VERIFY_ACCOUNT, ... })
 // =============================================================================
 
-/** Redis connection and operations */
-export const OpRedis = {
-  /** Redis client connection lifecycle */
-  CONNECT: "redis.connect",
-} as const
-
-/** Verification API operations */
-export const OpVerification = {
-  /** Full-access key validation */
-  ACCESS_KEY_CHECK: "verification.access_key_check",
-  /** Signature nonce validation */
-  NONCE_CHECK: "verification.nonce_check",
-  /** Session state updates */
-  SESSION_UPDATE: "verification.session_update",
-  /** Analytics event tracking */
-  ANALYTICS: "verification.analytics",
-  /** ZK proof re-verification */
-  ZK_VERIFY: "verification.zk_verify",
-  /** Full account verification */
-  VERIFY_ACCOUNT: "verification.verify_account",
-} as const
-
-/** Namespace for all operation constants */
-export const Op = {
-  REDIS: OpRedis,
-  VERIFICATION: OpVerification,
-} as const
+// Operation constants live in lib/logging.ts
 
 /**
  * Base attributes included in every log
@@ -139,7 +124,8 @@ export interface ErrorContext {
  */
 export interface WideEventAttributes extends Partial<RequestContext>, Partial<UserContext>, Partial<ErrorContext> {
   // Operation name (like a span name)
-  operation?: string
+  operation?: LogOperation
+  scope?: LogScope
 
   // Custom attributes
   [key: string]: unknown
@@ -160,7 +146,7 @@ function shouldSample(level: LogLevel, attributes: WideEventAttributes): boolean
   }
 
   // Always keep verification events
-  if (attributes.operation?.startsWith("verification")) {
+  if (attributes.scope === LogScope.VERIFICATION || attributes.operation?.startsWith("verification")) {
     return true
   }
 
@@ -268,8 +254,8 @@ function log(level: LogLevel, message: string, attributes: WideEventAttributes =
     attributes: flatAttrs,
   })
 
-  // Also log to console in development for debugging
-  if (DEPLOYMENT_ENV === "development") {
+  // Also log to console in development/test for debugging
+  if (DEPLOYMENT_ENV === "development" || DEPLOYMENT_ENV === "test") {
     const consoleMethod = level === "error" || level === "fatal" ? "error" : level === "warn" ? "warn" : "log"
 
     console[consoleMethod](`[${severity.text}] ${message}`, flatAttrs)
@@ -313,11 +299,11 @@ export const logger = {
  * ```
  */
 export class WideEvent {
-  private operation: string
+  private operation: LogOperation
   private attributes: WideEventAttributes = {}
   private startTime: number
 
-  constructor(operation: string) {
+  constructor(operation: LogOperation) {
     this.operation = operation
     this.startTime = Date.now()
     this.attributes.operation = operation
@@ -441,22 +427,26 @@ export class WideEvent {
 /**
  * Create a new wide event builder
  */
-export function createWideEvent(operation: string): WideEvent {
+export function createWideEvent(operation: LogOperation): WideEvent {
   return new WideEvent(operation)
 }
 
 /**
  * Server action logger - creates a wide event for server actions
  */
-export function createServerActionEvent(actionName: string): WideEvent {
-  return createWideEvent(`server_action.${actionName}`)
+export function createServerActionEvent(operation: ServerActionOperation): WideEvent {
+  const event = createWideEvent(operation)
+  event.set("scope", LogScope.SERVER_ACTION)
+  return event
 }
 
 /**
  * API route logger - creates a wide event for API routes
  */
-export function createApiRouteEvent(routeName: string): WideEvent {
-  return createWideEvent(`api.${routeName}`)
+export function createApiRouteEvent(operation: ApiOperation): WideEvent {
+  const event = createWideEvent(operation)
+  event.set("scope", LogScope.API)
+  return event
 }
 
 /**
@@ -483,10 +473,18 @@ export function extractRequestContext(request: Request, route?: string): Request
 }
 
 /**
+ * Derive a Next.js API path from an API operation
+ */
+function getApiRoutePath(operation: ApiOperation): string {
+  const routeName = operation.replace(/^api\./, "")
+  return `/api/${routeName.replace(/\./g, "/")}`
+}
+
+/**
  * Create a wide event for an API route with request context already populated
  */
-export function createApiEvent(routeName: string, request: Request): WideEvent {
-  const event = createApiRouteEvent(routeName)
-  event.setRequest(extractRequestContext(request, `/api/${routeName.replace(/\./g, "/")}`))
+export function createApiEvent(operation: ApiOperation, request: Request): WideEvent {
+  const event = createApiRouteEvent(operation)
+  event.setRequest(extractRequestContext(request, getApiRoutePath(operation)))
   return event
 }

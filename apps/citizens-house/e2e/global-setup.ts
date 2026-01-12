@@ -15,6 +15,9 @@ import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import type { FullConfig } from "@playwright/test"
 import { deriveWorkerKey } from "./helpers/deterministic-keys"
+import { logger, LogScope, Op } from "../lib/logger"
+
+const logContext = { scope: LogScope.E2E, operation: Op.E2E.GLOBAL_SETUP }
 
 // FastNEAR RPC configuration
 function getFastNearUrl(): string {
@@ -79,7 +82,10 @@ async function globalSetup(config: FullConfig) {
   const workerCount = config.workers ?? 1
 
   if (!parentAccountId || !parentPrivateKey) {
-    console.log("[Global Setup] NEAR_ACCOUNT_ID or NEAR_PRIVATE_KEY not set, skipping key registration")
+    logger.warn("Global setup skipped: NEAR credentials not set", {
+      ...logContext,
+      reason: "missing_env",
+    })
     return
   }
 
@@ -87,7 +93,12 @@ async function globalSetup(config: FullConfig) {
   const privateKey = parentPrivateKey
   const rpcUrl = getFastNearUrl()
   const host = rpcUrl.replace(/https?:\/\//, "").split("/")[0]
-  console.log(`[Global Setup] Checking worker keys for ${workerCount} workers on ${accountId} via ${host}`)
+  logger.info("Checking worker keys for e2e setup", {
+    ...logContext,
+    worker_count: workerCount,
+    account_id: accountId,
+    rpc_host: host,
+  })
 
   // Derive all worker keys and check which ones need to be registered
   // PublicKey type: the return type of calling getPublicKey() on a derived worker key
@@ -103,14 +114,23 @@ async function globalSetup(config: FullConfig) {
 
     if (!exists) {
       keysToRegister.push({ workerIndex: i, publicKey })
-      console.log(`[Global Setup] Worker ${i}: Key needs registration (${publicKeyStr.slice(0, 20)}...)`)
+      logger.info("Worker key needs registration", {
+        ...logContext,
+        worker_index: i,
+        public_key_prefix: `${publicKeyStr.slice(0, 20)}...`,
+      })
     } else {
-      console.log(`[Global Setup] Worker ${i}: Key already registered`)
+      logger.info("Worker key already registered", {
+        ...logContext,
+        worker_index: i,
+      })
     }
   }
 
   if (keysToRegister.length === 0) {
-    console.log("[Global Setup] All worker keys already registered, nothing to do")
+    logger.info("All worker keys already registered", {
+      ...logContext,
+    })
     return
   }
 
@@ -122,9 +142,12 @@ async function globalSetup(config: FullConfig) {
   const batchSize = Number.isFinite(configuredBatchSize) && configuredBatchSize > 0 ? configuredBatchSize : 25
   const totalBatches = Math.ceil(keysToRegister.length / batchSize)
 
-  console.log(
-    `[Global Setup] Registering ${keysToRegister.length} worker keys in ${totalBatches} batch(es) of ${batchSize}...`,
-  )
+  logger.info("Registering worker keys", {
+    ...logContext,
+    key_count: keysToRegister.length,
+    batch_count: totalBatches,
+    batch_size: batchSize,
+  })
 
   async function registerBatch(batch: { workerIndex: number; publicKey: PublicKey }[], batchIndex: number) {
     let pending = batch
@@ -140,11 +163,12 @@ async function globalSetup(config: FullConfig) {
           receiverId: accountId,
           actions,
         })
-        console.log(
-          `[Global Setup] Registered batch ${batchIndex}/${totalBatches} (${pending.length} key${
-            pending.length === 1 ? "" : "s"
-          })`,
-        )
+        logger.info("Registered worker key batch", {
+          ...logContext,
+          batch_index: batchIndex,
+          batch_total: totalBatches,
+          key_count: pending.length,
+        })
         return
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
@@ -163,15 +187,24 @@ async function globalSetup(config: FullConfig) {
           }
 
           if (missing.length === 0) {
-            console.log(`[Global Setup] Batch ${batchIndex}/${totalBatches} keys already registered`)
+            logger.info("Batch keys already registered", {
+              ...logContext,
+              batch_index: batchIndex,
+              batch_total: totalBatches,
+            })
             return
           }
 
           pending = missing
           const delay = baseDelayMs + Math.random() * 500
-          console.log(
-            `[Global Setup] Batch ${batchIndex}/${totalBatches} had existing keys, retrying missing in ${Math.round(delay)}ms (attempt ${attempt}/${maxRetries})`,
-          )
+          logger.warn("Batch had existing keys, retrying missing", {
+            ...logContext,
+            batch_index: batchIndex,
+            batch_total: totalBatches,
+            attempt,
+            max_retries: maxRetries,
+            delay_ms: Math.round(delay),
+          })
           await sleep(delay)
           continue
         }
@@ -185,14 +218,26 @@ async function globalSetup(config: FullConfig) {
           msg.includes("Server error")
 
         if (!isRetryable || attempt === maxRetries) {
-          console.error(`[Global Setup] Failed to register batch ${batchIndex}/${totalBatches}:`, msg)
+          logger.error("Failed to register worker key batch", {
+            ...logContext,
+            batch_index: batchIndex,
+            batch_total: totalBatches,
+            error_message: msg,
+            error_type: error instanceof Error ? error.name : undefined,
+            error_stack: error instanceof Error ? error.stack : undefined,
+          })
           throw error
         }
 
         const delay = baseDelayMs * attempt + Math.random() * 500
-        console.log(
-          `[Global Setup] Batch ${batchIndex}/${totalBatches} failed, retrying in ${Math.round(delay)}ms (attempt ${attempt}/${maxRetries})`,
-        )
+        logger.warn("Batch registration failed, retrying", {
+          ...logContext,
+          batch_index: batchIndex,
+          batch_total: totalBatches,
+          attempt,
+          max_retries: maxRetries,
+          delay_ms: Math.round(delay),
+        })
         await sleep(delay)
       }
     }
