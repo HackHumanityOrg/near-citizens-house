@@ -2,19 +2,19 @@ import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import {
   SELF_CONFIG,
+  NEAR_CONFIG,
   getSigningMessage,
-  verificationDb,
   getVerifier,
   getRpcProvider,
   verifyNearSignature,
   verifyRequestSchema,
   attestationIdStringSchema,
   createVerificationError,
-  setBackendKeyPoolRedis,
   type SelfVerificationResult,
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
+import { setBackendKeyPoolRedis, verificationDb } from "@near-citizens/shared/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
 import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
@@ -467,6 +467,37 @@ export async function POST(request: NextRequest) {
       recipient,
     }
 
+    // Ensure backend wallet is configured for on-chain storage.
+    // verificationDb can run in read-only mode for pages, but this endpoint must be able to write.
+    if (!NEAR_CONFIG.backendAccountId || !NEAR_CONFIG.backendPrivateKey) {
+      return respondWithError({
+        code: "INTERNAL_ERROR",
+        status: 500,
+        details: "Backend wallet credentials not configured",
+        stage: "config",
+        attestationId,
+      })
+    }
+
+    // Create/update a pending session early so the callback can poll reliably.
+    // If the final session update fails after a successful on-chain write, status can fall back to the contract.
+    if (sessionId) {
+      try {
+        await updateSession(sessionId, {
+          status: "pending",
+          accountId: nearSignature.accountId,
+          attestationId: attestationIdString,
+        })
+      } catch (error) {
+        logger.warn("Failed to update verification session", {
+          operation: Op.VERIFICATION.SESSION_UPDATE,
+          session_id: sessionId,
+          account_id: nearSignature.accountId,
+          error_message: error instanceof Error ? error.message : "Unknown error",
+        })
+      }
+    }
+
     // Note: NEAR signature verification is performed by the smart contract (single source of truth)
     // The contract implements full NEP-413 verification with ed25519_verify
 
@@ -538,12 +569,22 @@ export async function POST(request: NextRequest) {
       // Update session status for deep link callback
       // The userId from Self.xyz is used as the sessionId in our deep link flow
       if (sessionId) {
-        await updateSession(sessionId, {
-          status: "success",
-          accountId: nearSignature.accountId,
-          attestationId: attestationIdString,
-        })
-        event.set("session_updated", true)
+        try {
+          await updateSession(sessionId, {
+            status: "success",
+            accountId: nearSignature.accountId,
+            attestationId: attestationIdString,
+          })
+          event.set("session_updated", true)
+        } catch (error) {
+          logger.warn("Failed to update verification session", {
+            operation: Op.VERIFICATION.SESSION_UPDATE,
+            session_id: sessionId,
+            account_id: nearSignature.accountId,
+            error_message: error instanceof Error ? error.message : "Unknown error",
+          })
+          event.set("session_updated", false)
+        }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : ""

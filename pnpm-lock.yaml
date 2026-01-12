@@ -19,10 +19,10 @@ importers:
         version: 16.1.1
       allure-js-commons:
         specifier: ^3.4.3
-        version: 3.4.3
+        version: 3.4.4(allure-playwright@3.4.4(@playwright/test@1.57.0))
       allure-vitest:
         specifier: ^3.4.3
-        version: 3.4.3(@vitest/runner@4.0.16)(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2))
+        version: 3.4.4(@vitest/runner@4.0.16)(allure-playwright@3.4.4(@playwright/test@1.57.0))(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2))
       eslint:
         specifier: ^9.39.2
         version: 9.39.2(jiti@2.6.1)
@@ -53,148 +53,6 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.70.0(react@19.2.3))
-      '@near-citizens/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@near-citizens/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
-      '@opentelemetry/api-logs':
-        specifier: ^0.208.0
-        version: 0.208.0
-      '@opentelemetry/exporter-logs-otlp-http':
-        specifier: ^0.208.0
-        version: 0.208.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/resources':
-        specifier: ^2.2.0
-        version: 2.2.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-logs':
-        specifier: ^0.208.0
-        version: 0.208.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-node':
-        specifier: ^0.208.0
-        version: 0.208.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.38.0
-        version: 1.38.0
-      '@selfxyz/qrcode':
-        specifier: ^1.0.17
-        version: 1.0.17(lottie-react@2.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@vercel/analytics':
-        specifier: ^1.6.1
-        version: 1.6.1(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
-      '@vercel/toolbar':
-        specifier: ^0.1.41
-        version: 0.1.41(@vercel/analytics@1.6.1(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2))
-      autoprefixer:
-        specifier: ^10.4.23
-        version: 10.4.23(postcss@8.5.6)
-      date-fns:
-        specifier: ^4.1.0
-        version: 4.1.0
-      framer-motion:
-        specifier: ^12.24.12
-        version: 12.24.12(@emotion/is-prop-valid@1.2.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      lottie-react:
-        specifier: ^2.4.1
-        version: 2.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      lucide-react:
-        specifier: ^0.562.0
-        version: 0.562.0(react@19.2.3)
-      next:
-        specifier: ^16.1.1
-        version: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      posthog-js:
-        specifier: ^1.311.0
-        version: 1.313.0
-      posthog-node:
-        specifier: ^5.18.1
-        version: 5.18.1
-      react:
-        specifier: ^19.2.3
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.2.3
-        version: 19.2.3(react@19.2.3)
-      react-hook-form:
-        specifier: ^7.69.0
-        version: 7.70.0(react@19.2.3)
-      redis:
-        specifier: ^5.10.0
-        version: 5.10.0
-      sonner:
-        specifier: ^2.0.7
-        version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      swr:
-        specifier: ^2.3.8
-        version: 2.3.8(react@19.2.3)
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@near-js/accounts':
-        specifier: ^2.5.1
-        version: 2.5.1(aa211f6842ae8a1a94a4a8d5025a4b2f)
-      '@near-js/crypto':
-        specifier: ^2.5.1
-        version: 2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1))
-      '@near-js/providers':
-        specifier: ^2.5.1
-        version: 2.5.1(@near-js/crypto@2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/transactions@2.5.1(@near-js/crypto@2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1))
-      '@near-js/signers':
-        specifier: ^2.5.1
-        version: 2.5.1(@near-js/crypto@2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/keystores@2.5.1(@near-js/crypto@2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/types@2.5.1))(@near-js/transactions@2.5.1(@near-js/crypto@2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))
-      '@near-js/transactions':
-        specifier: ^2.5.1
-        version: 2.5.1(@near-js/crypto@2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1))
-      '@near-js/utils':
-        specifier: ^2.5.1
-        version: 2.5.1(@near-js/types@2.5.1)
-      '@next/eslint-plugin-next':
-        specifier: ^16.1.1
-        version: 16.1.1
-      '@noble/curves':
-        specifier: ^1.8.1
-        version: 1.8.1
-      '@noble/hashes':
-        specifier: ^1.8.0
-        version: 1.8.0
-      '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.57.0
-      '@tailwindcss/postcss':
-        specifier: ^4.1.18
-        version: 4.1.18
-      '@types/node':
-        specifier: ^25
-        version: 25.0.3
-      '@types/react':
-        specifier: ^19
-        version: 19.2.7
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.7)
-      allure-playwright:
-        specifier: ^3.4.4
-        version: 3.4.4(@playwright/test@1.57.0)
-      eslint-config-next:
-        specifier: ^16.1.1
-        version: 16.1.1(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
-      postcss:
-        specifier: ^8.5
-        version: 8.5.6
-      tailwindcss:
-        specifier: ^4.1.18
-        version: 4.1.18
-      tw-animate-css:
-        specifier: ^1.4.0
-        version: 1.4.0
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-
-  packages/shared:
-    dependencies:
       '@hot-labs/near-connect':
         specifier: ^0.8.1
         version: 0.8.1
@@ -237,55 +95,24 @@ importers:
       '@noble/hashes':
         specifier: ^2.0.1
         version: 2.0.1
-      '@selfxyz/common':
-        specifier: ^0.0.9
-        version: 0.0.9
-      '@selfxyz/core':
-        specifier: ^1.1.0-beta.7
-        version: 1.1.0-beta.7
-      '@walletconnect/sign-client':
-        specifier: ^2.23.1
-        version: 2.23.1(typescript@5.9.3)(zod@3.25.76)
-      borsh:
-        specifier: ^2.0.0
-        version: 2.0.0
-      bs58:
-        specifier: ^6.0.0
-        version: 6.0.0
-      buffer:
-        specifier: ^6.0.3
-        version: 6.0.3
-      ethers:
-        specifier: ^6.16.0
-        version: 6.16.0
-      react:
-        specifier: ^19.2.0
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.2.0
-        version: 19.2.3(react@19.2.3)
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^25
-        version: 25.0.3
-      '@types/react':
-        specifier: ^19
-        version: 19.2.7
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.7)
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.16
-        version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)
-
-  packages/ui:
-    dependencies:
+      '@opentelemetry/api-logs':
+        specifier: ^0.208.0
+        version: 0.208.0
+      '@opentelemetry/exporter-logs-otlp-http':
+        specifier: ^0.208.0
+        version: 0.208.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources':
+        specifier: ^2.2.0
+        version: 2.2.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-logs':
+        specifier: ^0.208.0
+        version: 0.208.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-node':
+        specifier: ^0.208.0
+        version: 0.208.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.38.0
+        version: 1.38.0
       '@radix-ui/react-accordion':
         specifier: ^1.2.11
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -316,31 +143,106 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@selfxyz/common':
+        specifier: ^0.0.9
+        version: 0.0.9
+      '@selfxyz/core':
+        specifier: ^1.1.0-beta.7
+        version: 1.1.0-beta.7
+      '@selfxyz/qrcode':
+        specifier: ^1.0.17
+        version: 1.0.17(lottie-react@2.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@vercel/analytics':
+        specifier: ^1.6.1
+        version: 1.6.1(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      '@vercel/toolbar':
+        specifier: ^0.1.41
+        version: 0.1.41(@vercel/analytics@1.6.1(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2))
+      '@walletconnect/sign-client':
+        specifier: ^2.23.1
+        version: 2.23.1(typescript@5.9.3)(zod@3.25.76)
+      autoprefixer:
+        specifier: ^10.4.23
+        version: 10.4.23(postcss@8.5.6)
+      borsh:
+        specifier: ^2.0.0
+        version: 2.0.0
+      bs58:
+        specifier: ^6.0.0
+        version: 6.0.0
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
+      ethers:
+        specifier: ^6.16.0
+        version: 6.16.0
+      framer-motion:
+        specifier: ^12.24.12
+        version: 12.24.12(@emotion/is-prop-valid@1.2.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      lottie-react:
+        specifier: ^2.4.1
+        version: 2.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.3)
       next:
-        specifier: ^16.0.3
+        specifier: ^16.1.1
         version: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      posthog-js:
+        specifier: ^1.311.0
+        version: 1.313.0
+      posthog-node:
+        specifier: ^5.18.1
+        version: 5.18.1
       react:
-        specifier: ^19.2.0
+        specifier: ^19.2.3
         version: 19.2.3
       react-dom:
-        specifier: ^19.2.0
+        specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      react-hook-form:
+        specifier: ^7.69.0
+        version: 7.70.0(react@19.2.3)
+      redis:
+        specifier: ^5.10.0
+        version: 5.10.0
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      swr:
+        specifier: ^2.3.8
+        version: 2.3.8(react@19.2.3)
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
+      '@next/eslint-plugin-next':
+        specifier: ^16.1.1
+        version: 16.1.1
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tailwindcss/postcss':
+        specifier: ^4.1.18
+        version: 4.1.18
       '@types/node':
         specifier: ^25
         version: 25.0.3
@@ -350,6 +252,21 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.7)
+      allure-playwright:
+        specifier: ^3.4.4
+        version: 3.4.4(@playwright/test@1.57.0)
+      eslint-config-next:
+        specifier: ^16.1.1
+        version: 16.1.1(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+      postcss:
+        specifier: ^8.5
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^4.1.18
+        version: 4.1.18
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -2597,14 +2514,6 @@ packages:
   ajv@8.17.1:
     resolution: {integrity: sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==}
 
-  allure-js-commons@3.4.3:
-    resolution: {integrity: sha512-2n2uUFVmI7OaKXfkUPq2AcD1ksPR/WXZ9IhmQlMylb8bNpPChn1QPA/W97+RDYawFgvfhnadzIrH9ZWTWKjiNg==}
-    peerDependencies:
-      allure-playwright: 3.4.3
-    peerDependenciesMeta:
-      allure-playwright:
-        optional: true
-
   allure-js-commons@3.4.4:
     resolution: {integrity: sha512-37BHoe/P27UpLu0/hR6yEYvrBg9aC/uoSyS9/lF9wYEbfIYSiw/UAl92qn/zO/buFdKK078FJux+9xPnNT7APQ==}
     peerDependencies:
@@ -2618,8 +2527,8 @@ packages:
     peerDependencies:
       '@playwright/test': '>=1.53.0'
 
-  allure-vitest@3.4.3:
-    resolution: {integrity: sha512-nEvSCrJiPoQ/k0LXZgDDu7SbFsvnuUuzcLNGXu3c5aG5FN7pwDi21EDMEZRJeUciexyNGLVe7lMFHE1seB936w==}
+  allure-vitest@3.4.4:
+    resolution: {integrity: sha512-pbJjZboHZVBOcugjNaDmyX4N7M5boEboZF473Xr59YItnHm9x9j+4MdO4MhvVNt6xd1n8uCdNZ0F35cXkBt7mg==}
     peerDependencies:
       '@vitest/runner': '>=1.3.0'
       vitest: '>=1.3.0'
@@ -4631,6 +4540,9 @@ packages:
     resolution: {integrity: sha512-SdsKMrI9TdgjdweUSR9MweHA4EJ8YxHn8DFaDisvhVlUOe4BF1tLD7GAj0lIqWVl+dPb/rExr0Btby5loQm20Q==}
     engines: {node: '>=10'}
     hasBin: true
+
+  server-only@0.0.1:
+    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
 
   set-function-length@1.2.2:
     resolution: {integrity: sha512-pgRc4hJ4/sNjWCSS9AmnS40x3bNMDTknHgL5UaMBTMyJnU90EgWh1Rz+MC9eFu4BuN/UwZjKQuY/1v3rM7HMfg==}
@@ -7916,10 +7828,6 @@ snapshots:
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
-  allure-js-commons@3.4.3:
-    dependencies:
-      md5: 2.3.0
-
   allure-js-commons@3.4.4(allure-playwright@3.4.4(@playwright/test@1.57.0)):
     dependencies:
       md5: 2.3.0
@@ -7931,10 +7839,10 @@ snapshots:
       '@playwright/test': 1.57.0
       allure-js-commons: 3.4.4(allure-playwright@3.4.4(@playwright/test@1.57.0))
 
-  allure-vitest@3.4.3(@vitest/runner@4.0.16)(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)):
+  allure-vitest@3.4.4(@vitest/runner@4.0.16)(allure-playwright@3.4.4(@playwright/test@1.57.0))(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)):
     dependencies:
       '@vitest/runner': 4.0.16
-      allure-js-commons: 3.4.3
+      allure-js-commons: 3.4.4(allure-playwright@3.4.4(@playwright/test@1.57.0))
       vitest: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)
     transitivePeerDependencies:
       - allure-playwright
@@ -10188,6 +10096,8 @@ snapshots:
   semver@6.3.1: {}
 
   semver@7.7.3: {}
+
+  server-only@0.0.1: {}
 
   set-function-length@1.2.2:
     dependencies:

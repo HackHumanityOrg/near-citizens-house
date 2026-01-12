@@ -6,6 +6,8 @@
  * the runtime types are correct but TypeScript definitions don't match.
  * See: https://github.com/near/near-api-js/issues/1179
  */
+import "server-only"
+
 import { Account } from "@near-js/accounts"
 import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
@@ -409,6 +411,129 @@ export class NearContractDatabase implements IVerificationDatabase {
   }
 }
 
+export class NearContractReadOnlyDatabase implements IVerificationDatabase {
+  private provider: Provider
+  private contractId: string
+
+  constructor(contractId: string) {
+    this.contractId = contractId
+    this.provider = createRpcProvider()
+  }
+
+  async isVerified(nearAccountId: string): Promise<boolean> {
+    try {
+      const result = await this.provider.callFunction<boolean>(this.contractId, "is_verified", {
+        account_id: nearAccountId,
+      })
+      return result ?? false
+    } catch (error) {
+      console.error("[NearContractDB] Error checking account:", error)
+      throw error
+    }
+  }
+
+  async storeVerification(_data: VerificationDataWithSignature): Promise<void> {
+    throw new Error(
+      "verificationDb.storeVerification() is not available without NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY configured.",
+    )
+  }
+
+  async getVerification(nearAccountId: string): Promise<VerificationSummary | null> {
+    try {
+      const result = await this.provider.callFunction<ContractVerificationSummary>(
+        this.contractId,
+        "get_verification",
+        {
+          account_id: nearAccountId,
+        },
+      )
+
+      if (!result) {
+        return null
+      }
+
+      return contractVerificationSummarySchema.parse(result)
+    } catch (error) {
+      console.error("[NearContractDB] Error getting verification:", error)
+      return null
+    }
+  }
+
+  async getFullVerification(nearAccountId: string): Promise<Verification | null> {
+    try {
+      const result = await this.provider.callFunction<ContractVerification>(this.contractId, "get_full_verification", {
+        account_id: nearAccountId,
+      })
+
+      if (!result) {
+        return null
+      }
+
+      return contractVerificationSchema.parse(result)
+    } catch (error) {
+      console.error("[NearContractDB] Error getting full verification:", error)
+      return null
+    }
+  }
+
+  async listVerifications(
+    fromIndex: number = 0,
+    limit: number = 50,
+  ): Promise<{ accounts: Verification[]; total: number }> {
+    try {
+      const [total, accounts] = await Promise.all([
+        this.provider.callFunction<number>(this.contractId, "get_verified_count", {}),
+        this.provider.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
+          from_index: fromIndex,
+          limit: Math.min(limit, 100),
+        }),
+      ])
+
+      const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
+
+      return { accounts: verifications, total: total ?? 0 }
+    } catch (error) {
+      console.error("[NearContractDB] Error getting paginated verifications:", error)
+      return { accounts: [], total: 0 }
+    }
+  }
+
+  async listVerificationsNewestFirst(
+    page: number = 0,
+    pageSize: number = 50,
+  ): Promise<{ accounts: Verification[]; total: number }> {
+    try {
+      const total = (await this.provider.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
+
+      if (total === 0) {
+        return { accounts: [], total }
+      }
+
+      const safePage = Math.max(0, page)
+      const remaining = Math.max(total - safePage * pageSize, 0)
+
+      if (remaining === 0) {
+        return { accounts: [], total }
+      }
+
+      const limit = Math.min(pageSize, remaining, 100)
+      const fromIndex = Math.max(total - (safePage + 1) * pageSize, 0)
+
+      const accounts = await this.provider.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
+        from_index: fromIndex,
+        limit,
+      })
+
+      const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
+
+      return { accounts: verifications.reverse(), total }
+    } catch (error) {
+      console.error("[NearContractDB] Error getting paginated verifications:", error)
+      return { accounts: [], total: 0 }
+    }
+  }
+}
+
 // ============================================================================
 // Singleton Database Instance (Lazy Initialization)
 // ============================================================================
@@ -418,12 +543,10 @@ let dbInstance: IVerificationDatabase | null = null
 function createVerificationContract(): IVerificationDatabase {
   const { verificationContractId, backendAccountId, backendPrivateKey } = NEAR_CONFIG
 
-  if (!verificationContractId || !backendAccountId || !backendPrivateKey) {
+  if (!verificationContractId) {
     throw new Error(
       "Missing required NEAR configuration. Please set:\n" +
         "- NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT (contract account address)\n" +
-        "- NEAR_ACCOUNT_ID (backend wallet account)\n" +
-        "- NEAR_PRIVATE_KEY (backend wallet private key)\n" +
         "See DEVELOPER.md for setup instructions.",
     )
   }
@@ -432,7 +555,13 @@ function createVerificationContract(): IVerificationDatabase {
   console.log(`[VerificationContract] Contract: ${verificationContractId}`)
   console.log(`[VerificationContract] Network: ${NEAR_CONFIG.networkId}`)
 
-  return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId)
+  if (backendAccountId && backendPrivateKey) {
+    console.log("[VerificationContract] Mode: read-write")
+    return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId)
+  }
+
+  console.log("[VerificationContract] Mode: read-only")
+  return new NearContractReadOnlyDatabase(verificationContractId)
 }
 
 // Lazy singleton - only initialize when first accessed (not during build)

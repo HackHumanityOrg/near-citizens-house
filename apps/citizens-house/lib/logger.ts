@@ -10,6 +10,8 @@
  * @see https://posthog.com/docs/logs
  */
 
+import "server-only"
+
 import { logs, SeverityNumber } from "@opentelemetry/api-logs"
 
 // Service metadata

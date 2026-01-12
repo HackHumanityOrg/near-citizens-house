@@ -1,6 +1,6 @@
 "use server"
 
-import { verificationDb } from "@near-citizens/shared"
+import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
 
 /**
  * Check if a NEAR account is verified

@@ -7,8 +7,8 @@ export * from "./validation"
 // RPC Provider
 export * from "./rpc"
 
-// Contracts
-export * from "./contracts/verification"
+// Contracts (types only; client exported via subpath)
+export * from "./contracts/verification/types"
 
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"

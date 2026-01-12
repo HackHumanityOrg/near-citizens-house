@@ -37,13 +37,13 @@ Security and type-safety review checklist to be verified before deployment:
 
 **Key Files to Review:**
 
-- `apps/verified-accounts/app/api/verify/route.ts` - API schema validation
+- `apps/citizens-house/app/api/verification/verify/route.ts` - API schema validation
 - `apps/*/lib/actions/*.ts` - Server action validation
-- `packages/shared/src/config.ts` - Environment variable validation
-- `packages/shared/src/verification.ts` - Signature parsing
-- `packages/shared/src/zk-verify.ts` - ZK proof verification and RPC handling
-- `packages/shared/src/verification-contract.ts` - Contract database abstraction
-- `packages/shared/src/types.ts` - Zod validation schemas for all API boundaries
+- `apps/citizens-house/lib/shared/config.ts` - Environment variable validation
+- `apps/citizens-house/lib/shared/verification.ts` - Signature parsing
+- `apps/citizens-house/lib/shared/zk-verify.ts` - ZK proof verification and RPC handling
+- `apps/citizens-house/lib/shared/contracts/verification/client.ts` - Contract database abstraction
+- `apps/citizens-house/lib/shared/contracts/verification/types.ts` - Zod schemas for contract inputs/outputs
 - `contracts/*/src/lib.rs` - Input validation and panic prevention
 
 ### 1.2 Unit Tests for Critical Cryptographic Functions
