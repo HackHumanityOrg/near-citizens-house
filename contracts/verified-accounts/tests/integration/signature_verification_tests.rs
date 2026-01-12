@@ -406,7 +406,7 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
             .args_json(json!({
                 "nullifier": format!("pagination_nullifier_{}", i),
                 "near_account_id": user.id(),
-                "attestation_id": format!("{}", i),
+                "attestation_id": format!("{}", i + 1),
                 "signature_data": {
                     "account_id": user.id(),
                     "signature": signature,
