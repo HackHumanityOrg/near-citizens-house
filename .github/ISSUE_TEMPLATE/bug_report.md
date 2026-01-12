@@ -1,6 +1,7 @@
 ---
 name: Bug report
 about: Create a report to help us improve
+type: bug
 title: ''
 labels: ''
 assignees: ''
@@ -39,8 +40,8 @@ If applicable, add screenshots to help explain your problem.
  - Browser & Version (if applicable) [e.g. Chrome 143, Safari 18.5]
 
 **Additional context**
+- Self app version: [e.g. 2.9.10]
 - Wallet: [e.g. Meteor, Intear]
 - ID document type: [e.g. Passport, EU ID card, Aadhaar card]
-- ID document nationality: [e.g. USA, GBR]
 
 Add any other context about the problem here.
