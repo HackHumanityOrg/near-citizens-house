@@ -14,6 +14,8 @@
  * - Keys derived in-memory from NEAR_PRIVATE_KEY + index
  * - Private keys never leave the Lambda function's memory
  */
+import "server-only"
+
 import { sha256 } from "@noble/hashes/sha2.js"
 import { ed25519 } from "@noble/curves/ed25519.js"
 import { baseEncode } from "@near-js/utils"
