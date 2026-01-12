@@ -219,7 +219,7 @@ const faqs = [
         </p>
         <p>
           If you encounter issues during the verification process or have any questions, please{" "}
-            <a href="https://t.me/nearcitizenshouse" target="_blank" rel="noopener noreferrer" className="underline">
+            <a href="https://t.me/nearcitizenshouse/6" target="_blank" rel="noopener noreferrer" className="underline">
               reach out for Support
             </a>
           . We will get back to you promptly to help you create your NEAR Verified Account.
