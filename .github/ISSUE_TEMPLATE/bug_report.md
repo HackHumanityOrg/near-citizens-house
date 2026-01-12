@@ -1,0 +1,43 @@
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**Steps To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+**Actual behavior**
+The problematic behavior you observe when you took the steps
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Screenshots**
+If applicable, add screenshots to help explain your problem.
+
+**Desktop:**
+ - OS & Version: [e.g. Mac OS Sonoma 14.6.1]
+ - Browser & Version [e.g. Chrome 143, Safari 18.5]
+
+**Mobile/Tablet:**
+ - Device: [e.g. iPhone 15]
+ - OS: [e.g. iOS 18.5]
+ - Browser & Version (if applicable) [e.g. Chrome 143, Safari 18.5]
+
+**Additional context**
+- Wallet: [e.g. Meteor, Intear]
+- ID document type: [e.g. Passport, EU ID card, Aadhaar card]
+- ID document nationality: [e.g. USA, GBR]
+
+Add any other context about the problem here.
