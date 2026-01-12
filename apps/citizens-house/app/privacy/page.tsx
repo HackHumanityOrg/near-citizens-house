@@ -152,7 +152,7 @@ function PrivacyPolicyContent() {
             The Website, the Apps and the Tools are not intended for children under eighteen (18) years of age. No one under age eighteen (18) may provide any personal information to us or our service providers or on or through the Website, the Apps and the Tools. We and our service providers do not knowingly or intentionally collect personal information from children under the age of eighteen (18). If you are under eighteen (18), do not use or provide any information on or through the Website, the Apps and the Tools, or register on the Website, the Apps, or the Tools, or use any of the interactive or public comment features of this Website, the Apps or the Tools or provide any information about yourself to us or our service providers, including your name, address, telephone number, email address, or any screen name or user name you may use.
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            If we or our service providers learn we have collected or received personal information from a child under eighteen (18) years of age, we will delete that information. If you believe we or our service providers might have any information from or about a child under the age of eighteen (18), please report this information at XXX@XXXX
+            If we or our service providers learn we have collected or received personal information from a child under eighteen (18) years of age, we will delete that information. If you believe we or our service providers might have any information from or about a child under the age of eighteen (18), please report this information at info@citizenshouse.org
           </p>
         </div>
       </section>
@@ -354,7 +354,7 @@ function PrivacyPolicyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            You may request access to, correction of, or deletion of certain personal information we maintain about you by contacting us at [XXXXX]. We may need to verify your identity before responding to your request. Please note that we may retain certain information as required or permitted by law, for security purposes, and to maintain the integrity of the Website and related governance verification features.
+            You may request access to, correction of, or deletion of certain personal information we maintain about you by contacting us at info@citizenshouse.org. We may need to verify your identity before responding to your request. Please note that we may retain certain information as required or permitted by law, for security purposes, and to maintain the integrity of the Website and related governance verification features.
           </p>
         </div>
       </section>
@@ -510,7 +510,7 @@ function PrivacyPolicyContent() {
             To ask questions or comment about this privacy policy and our privacy practices, please direct such inquiries to:
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            E-mail: TBD
+            E-mail: info@citizenshouse.org
           </p>
         </div>
       </section>
@@ -692,7 +692,7 @@ function EUUKPrivacyContent() {
             </li>
           </ul>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            Requests may be submitted by contacting us at [xxxxx].
+            Requests may be submitted by contacting us at info@citizenshouse.org.
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
             We may request additional information to verify your identity before responding. Where processing is based on consent, you may withdraw your consent at any time by contacting us, without affecting the lawfulness of processing carried out prior to withdrawal. We aim to respond to verified requests within one month, unless a longer period is permitted under applicable law.
@@ -749,7 +749,7 @@ function EUUKPrivacyContent() {
             For questions, concerns, or to exercise your EU/UK data protection rights, please contact:
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            Email: [PRIVACY EMAIL]
+            Email: info@citizenshouse.org
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
             Subject line: &ldquo;EU/UK Privacy Rights &ndash; NEAR Citizen House&rdquo;

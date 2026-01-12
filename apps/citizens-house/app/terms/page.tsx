@@ -98,9 +98,6 @@ export default function TermsPage() {
                   Will not attempt to bypass, spoof, reuse, or manipulate identity verification mechanisms;
                 </li>
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                  Are not a resident, citizen, or located in any jurisdiction subject to comprehensive sanctions imposed by the United States, the United Kingdom, the European Union, or the United Nations;
-                </li>
-                <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                   Will not use virtual private networks (VPNs), proxies, automation, scripts, bots, or other technical means to circumvent eligibility, jurisdictional, or verification restrictions;
                 </li>
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -674,7 +671,7 @@ export default function TermsPage() {
                 For questions regarding these Terms, please contact:
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Email: [TBD]
+                Email: info@citizenshouse.org
               </p>
             </div>
           </section>
