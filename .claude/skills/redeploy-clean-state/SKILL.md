@@ -29,6 +29,7 @@ doppler run -- printenv | grep -E '^(NEAR|NEXT_PUBLIC_NEAR)'
 ```
 
 Extract:
+
 - `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` - contract address (e.g., `verification-v1.parent.near`)
 - `NEAR_ACCOUNT_ID` - backend wallet address
 - `NEXT_PUBLIC_NEAR_NETWORK` - network (testnet or mainnet)
@@ -62,12 +63,19 @@ pub fn clean(limit: u64) -> Self {
 
     match &mut contract {
         VersionedContract::V1(c) => {
-            let keys: Vec<AccountId> = c.verifications.keys().take(limit as usize).collect();
+            let keys: Vec<AccountId> = {
+                let keys_vector = c.verifications.keys_as_vector();
+                let limit = std::cmp::min(limit, keys_vector.len());
+                (0..limit)
+                    .filter_map(|index| keys_vector.get(index))
+                    .collect()
+            };
+            let mut removed = 0u64;
 
-            let removed = keys.len();
-            for key in keys {
-                if let Some(v) = c.verifications.remove(&key) {
+            for account_id in keys {
+                if let Some(v) = c.verifications.remove(&account_id) {
                     c.nullifiers.remove(&v.into_current().nullifier);
+                    removed += 1;
                 }
             }
 
@@ -78,6 +86,11 @@ pub fn clean(limit: u64) -> Self {
     contract
 }
 ```
+
+Notes:
+
+- `LookupSet` is non-iterable, so nullifiers are removed alongside their verification entries.
+- Full state wipe is guaranteed after account deletion/recreation in Steps 6–9.
 
 ### Step 4: Build and Deploy Cleanup Version
 
