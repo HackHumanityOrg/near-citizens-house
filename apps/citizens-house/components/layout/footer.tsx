@@ -19,7 +19,7 @@ export function Footer() {
             </Link>
             <span className="text-[14px] leading-[1.2] text-[#040404] dark:text-white tracking-[0.14px]">•</span>
             <a
-              href="https://t.me/nearcitizenshouse"
+              href="https://t.me/nearcitizenshouse/6"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk"
@@ -98,7 +98,7 @@ export function Footer() {
             Citizens
           </Link>
           <a
-            href="https://t.me/nearcitizenshouse"
+            href="https://t.me/nearcitizenshouse/6"
             target="_blank"
             rel="noopener noreferrer"
             className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk text-right"
