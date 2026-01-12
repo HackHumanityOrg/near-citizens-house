@@ -3,8 +3,6 @@
 import { z } from "zod"
 import { unstable_cache } from "next/cache"
 import {
-  verificationDb,
-  NearContractDatabase,
   verifyStoredProofWithDetails,
   parseUserContextData,
   verifyNearSignature,
@@ -14,6 +12,7 @@ import {
   type Verification,
   type ProofData,
 } from "@near-citizens/shared"
+import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
 import { createServerActionEvent, logger, Op } from "@/lib/logger"
 
 const paginationSchema = z.object({
@@ -43,10 +42,8 @@ export type GetVerificationsResult = {
  * Fetches accounts from NEAR contract and verifies each one.
  */
 async function fetchAndVerifyVerifications(page: number, pageSize: number): Promise<GetVerificationsResult> {
-  const nearDb = verificationDb as NearContractDatabase
-
   // Get paginated accounts from NEAR contract (newest first)
-  const { accounts, total } = await nearDb.listVerificationsNewestFirst(page, pageSize)
+  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(page, pageSize)
 
   // Verify each account in parallel
   const verifiedAccounts = await Promise.all(

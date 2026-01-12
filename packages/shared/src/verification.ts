@@ -197,7 +197,11 @@ export function verifyNearSignature(
     // Step 7: Verify with @near-js/crypto PublicKey.verify()
     const isValid = publicKey.verify(messageHash, signatureBytes)
 
-    return { valid: isValid }
+    if (!isValid) {
+      return { valid: false, error: "Invalid NEAR signature" }
+    }
+
+    return { valid: true }
   } catch (error) {
     return { valid: false, error: error instanceof Error ? error.message : "Signature verification failed" }
   }
