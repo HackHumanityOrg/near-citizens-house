@@ -193,7 +193,7 @@ New account "verification-v1.deploy.existing-funded.near" created successfully.
 
 ### 3.1 Build
 
-Reproducible builds are required for releases. Ensure Docker is installed, `Cargo.lock` is committed, the repo is clean, and `Cargo.toml` includes NEP-330 metadata (`package.metadata.near.reproducible_build`).
+Reproducible builds are required for releases. Ensure Docker is installed, `Cargo.lock` is checked in, the repo is clean, and `Cargo.toml` includes NEP-330 metadata (`package.metadata.near.reproducible_build`).
 
 ```bash
 cd contracts/verified-accounts
@@ -212,12 +212,11 @@ Contract successfully built: target/near/verified_accounts.wasm
 
 ```bash
 shasum -a 256 target/near/verified_accounts.wasm
-git rev-parse HEAD
 ```
 
-Record the SHA-256 output and the commit hash in your release notes.
+Record the SHA-256 output in your release notes.
 
-Latest reproducible build (HEAD `fea687219e`) SHA-256: `8a70b8cc96c700bdb8fa5d51c059a60b86507b569865b30218b49a9d71327ca3`.
+Latest reproducible build SHA-256: `ff82868043221bb2439f74d19574af114b849d73aa87efae8df63a3d794d67ea`.
 
 Save the SHA-256; you will compare it to the on-chain contract hash in Step 4.4.
 
