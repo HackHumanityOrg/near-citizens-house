@@ -6,30 +6,41 @@ Step-by-step guide to deploy the NEAR Verified Accounts system.
 
 ## Key Points
 
-- **Rust 1.86.0 exactly** - 1.87+ has WASM incompatibilities
-- Contract account needs 2-5 NEAR for storage; backend wallet needs 1+ NEAR for gas
+- **Rust 1.86.0 exactly**
+- Storage is billed per byte and locked from the **contract account** balance; keep a 5+ NEAR buffer
+- Gas is paid by the **transaction signer**; the backend wallet signs write calls (`store_verification`, `pause`, `unpause`, `update_backend_wallet`) and pays gas + 1 yocto per call, so keep 1+ NEAR on the backend wallet
 - Private keys must NEVER be exposed to frontend
+- Backend wallet keys (`NEAR_ACCOUNT_ID` / `NEAR_PRIVATE_KEY`) must remain active; any funded account can serve as the backend wallet, but this playbook uses a sub-account under `$ROOT`
 - Use reproducible builds (`cargo near build reproducible-wasm`) and record the WASM SHA-256
 - **Never reinitialize on upgrades** - use `without-init-call` flag
-- Self.xyz mainnet = real passports; testnet = mock/staging passports
-- Plan contract-key rotation: move full-access control to a DAO/multisig and delete deployer keys
+- Rotate contract full-access keys to the Security Council, then delete the deployer key; optionally lock upgrades by removing all full-access keys
 
 ---
 
 ## Checklist
 
-### Pre-deploy
+### Contract pre-deploy
 
-- [ ] Confirm target network (`testnet` vs `mainnet`)
-- [ ] Decide who controls contract full-access keys (Security Council DAO or multisig)
-- [ ] Install Docker if you want reproducible builds
-- [ ] Prepare Vercel environment variables and mark `NEAR_PRIVATE_KEY` as sensitive
+- [ ] Confirm mainnet deployment and a funded deployer account
+- [ ] Decide who controls contract full-access keys (Security Council)
+- [ ] Install Docker (required for reproducible builds)
+- [ ] Create deployer, backend wallet, and contract accounts
 
-### Post-deploy
+### Contract post-deploy
 
 - [ ] `get_backend_wallet` returns the backend wallet
 - [ ] Contract SHA-256 matches local WASM build
-- [ ] Deployer key removed from contract account (DAO/multisig key retained)
+- [ ] Backend wallet keys still present (`near account list-keys $BACKEND_WALLET.$ROOT`)
+- [ ] Deployer key removed from contract account (Security Council key retained)
+
+### Frontend pre-deploy
+
+- [ ] Register backend key pool keys (`pnpm register-backend-keys`)
+- [ ] Provision Redis and collect `REDIS_URL`
+- [ ] Prepare Vercel environment variables and mark `NEAR_PRIVATE_KEY` as sensitive
+
+### Frontend post-deploy
+
 - [ ] End-to-end verification flow completes successfully
 
 ---
@@ -73,62 +84,76 @@ near x.x.x
 Set these once and use throughout all commands:
 
 ```bash
-# Your parent account (will be created via faucet)
-PARENT=your-account.testnet
+# Existing funded mainnet account (top-level)
+ROOT=existing-funded.near
 
-# Contract name (will be deployed as $CONTRACT.$PARENT)
+# Deployer account (sub-account of ROOT; owns the contract account)
+DEPLOYER=deploy.$ROOT
+
+# Contract name (will be deployed as $CONTRACT.$DEPLOYER)
 CONTRACT=verification-v1
 
-# Backend wallet name (will be created as $BACKEND_WALLET.$PARENT)
+# Backend wallet name (will be created as $BACKEND_WALLET.$ROOT)
 BACKEND_WALLET=backend-wallet
+```
+
+Account structure (mainnet):
+
+```
+$ROOT (top-level account, funded)
+├─ $DEPLOYER (sub-account used to deploy/own the contract)
+│  └─ $CONTRACT.$DEPLOYER (verification contract account)
+└─ $BACKEND_WALLET.$ROOT (backend signer wallet)
 ```
 
 ---
 
-## Step 0: Create Parent Account
+## Step 0: Create Deployer Account (Mainnet)
 
-First, create your parent account using the testnet faucet. This account will own your sub-accounts and needs funds to create them.
+If you already have a funded mainnet account you want to use as `$DEPLOYER`, skip this step.
+
+Otherwise, create `$DEPLOYER` as a sub-account of `$ROOT`. CLI creation on mainnet is limited to sub-accounts; use a wallet/registrar for a top-level `.near` account:
 
 ```bash
-near account create-account sponsor-by-faucet-service $PARENT \
+near account create-account fund-myself $DEPLOYER '10 NEAR' \
   autogenerate-new-keypair save-to-keychain \
-  network-config testnet create
+  sign-as $ROOT \
+  network-config mainnet sign-with-keychain send
 ```
 
 **Expected output:**
 
 ```
-The account "your-account.testnet" was created successfully.
-Transaction: ...
+New account "deploy.existing-funded.near" created successfully.
 ```
 
-The faucet provides ~10 NEAR for testing. You can also get additional testnet tokens from [near-faucet.io](https://near-faucet.io/).
+Ensure `$ROOT` has enough NEAR to fund the new account.
 
 ---
 
 ## Step 1: Create Backend Wallet
 
-The backend wallet is the only account authorized to write verification records. Created as a sub-account of your parent.
+The backend wallet is the only account authorized to write verification records. It can be any funded mainnet account, but this playbook creates it as a sub-account of `$ROOT` (sibling of the deployer).
 
-> **Note:** We use `save-to-legacy-keychain` here (not `save-to-keychain`) so the private key is saved to `~/.near-credentials/...` and can be exported for Vercel. This matches near-cli-rs legacy keychain behavior (file-based credentials).
+> **Note:** We use `save-to-legacy-keychain` here (compatible with the JS CLI) so the private key is saved under `~/.near-credentials/...` and can be exported for Vercel. `save-to-keychain` stores keys in the OS keychain, which is harder to export.
 
 ```bash
-near account create-account fund-myself $BACKEND_WALLET.$PARENT '1 NEAR' \
+near account create-account fund-myself $BACKEND_WALLET.$ROOT '1 NEAR' \
   autogenerate-new-keypair save-to-legacy-keychain \
-  sign-as $PARENT \
-  network-config testnet sign-with-keychain send
+  sign-as $ROOT \
+  network-config mainnet sign-with-keychain send
 ```
 
 **Expected output:**
 
 ```
-New account "backend-wallet.your-account.testnet" created successfully.
+New account "backend-wallet.existing-funded.near" created successfully.
 ```
 
 Export the private key:
 
 ```bash
-cat ~/.near-credentials/testnet/$BACKEND_WALLET.$PARENT.json
+cat ~/.near-credentials/mainnet/$BACKEND_WALLET.$ROOT.json
 ```
 
 **Expected output:**
@@ -147,19 +172,19 @@ Save the `private_key` value (starts with `ed25519:`) for Vercel.
 
 ## Step 2: Create Verification Contract Account
 
-Create as a sub-account of your parent account:
+Create as a sub-account of your deployer account:
 
 ```bash
-near account create-account fund-myself $CONTRACT.$PARENT '5 NEAR' \
+near account create-account fund-myself $CONTRACT.$DEPLOYER '5 NEAR' \
   autogenerate-new-keypair save-to-keychain \
-  sign-as $PARENT \
-  network-config testnet sign-with-keychain send
+  sign-as $DEPLOYER \
+  network-config mainnet sign-with-keychain send
 ```
 
 **Expected output:**
 
 ```
-New account "verification-v1.your-account.testnet" created successfully.
+New account "verification-v1.deploy.existing-funded.near" created successfully.
 ```
 
 ---
@@ -187,9 +212,14 @@ Contract successfully built: target/near/verified_accounts.wasm
 
 ```bash
 shasum -a 256 target/near/verified_accounts.wasm
+git rev-parse HEAD
 ```
 
-Save this hash; you will compare it to the on-chain contract hash in Step 4.4.
+Record the SHA-256 output and the commit hash in your release notes.
+
+Latest reproducible build (HEAD `fea687219e`) SHA-256: `8a70b8cc96c700bdb8fa5d51c059a60b86507b569865b30218b49a9d71327ca3`.
+
+Save the SHA-256; you will compare it to the on-chain contract hash in Step 4.4.
 
 ---
 
@@ -198,70 +228,96 @@ Save this hash; you will compare it to the on-chain contract hash in Step 4.4.
 ### 4.1 Deploy the WASM
 
 ```bash
-near contract deploy $CONTRACT.$PARENT \
+near contract deploy $CONTRACT.$DEPLOYER \
   use-file target/near/verified_accounts.wasm \
   without-init-call \
-  network-config testnet sign-with-keychain send
+  network-config mainnet sign-with-keychain send
 ```
 
 ### 4.2 Initialize
 
 ```bash
-near contract call-function as-transaction $CONTRACT.$PARENT new \
-  json-args "{\"backend_wallet\":\"$BACKEND_WALLET.$PARENT\"}" \
+near contract call-function as-transaction $CONTRACT.$DEPLOYER new \
+  json-args "{\"backend_wallet\":\"$BACKEND_WALLET.$ROOT\"}" \
   prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' \
-  sign-as $CONTRACT.$PARENT \
-  network-config testnet sign-with-keychain send
+  sign-as $CONTRACT.$DEPLOYER \
+  network-config mainnet sign-with-keychain send
 ```
 
 ### 4.3 Verify
 
 ```bash
-near contract call-function as-read-only $CONTRACT.$PARENT get_backend_wallet \
+near contract call-function as-read-only $CONTRACT.$DEPLOYER get_backend_wallet \
   json-args '{}' \
-  network-config testnet now
+  network-config mainnet now
 ```
 
 **Expected output:**
 
 ```
-"backend-wallet.your-account.testnet"
+"backend-wallet.existing-funded.near"
 ```
 
 ### 4.4 Verify contract hash
 
 ```bash
-near account view-account-summary $CONTRACT.$PARENT \
-  network-config testnet now
+near account view-account-summary $CONTRACT.$DEPLOYER \
+  network-config mainnet now
 ```
 
 Check the `Contract (SHA-256 checksum hex)` line matches the hash from Step 3.2.
 
 ### 4.5 Secure contract account keys (recommended)
 
-Rotate the contract account’s full-access keys to a Security Council DAO or multisig and remove the deployer key:
+Rotate the contract account’s full-access keys to the Security Council, then delete the deployer key. This only affects the **contract account**; do **not** delete backend wallet keys used by the web app.
 
 ```bash
 # List keys
-near account list-keys $CONTRACT.$PARENT network-config testnet now
+near account list-keys $CONTRACT.$DEPLOYER network-config mainnet now
 
-# Add DAO/multisig key (replace with your DAO public key)
-near account add-key $CONTRACT.$PARENT <DAO_PUBLIC_KEY> \
-  network-config testnet sign-with-keychain send
+# Add Security Council full-access key
+near account add-key $CONTRACT.$DEPLOYER \
+  grant-full-access use-manually-provided-public-key <SECURITY_COUNCIL_PUBLIC_KEY> \
+  network-config mainnet sign-with-keychain send
 
 # Delete deployer key (replace with the public key you used to deploy)
-near account delete-key $CONTRACT.$PARENT <DEPLOYER_PUBLIC_KEY> \
-  network-config testnet sign-with-keychain send
+near account delete-keys $CONTRACT.$DEPLOYER \
+  public-keys <DEPLOYER_PUBLIC_KEY> \
+  network-config mainnet sign-with-keychain send
 
 # Confirm keys after rotation
-near account list-keys $CONTRACT.$PARENT network-config testnet now
+near account list-keys $CONTRACT.$DEPLOYER network-config mainnet now
 ```
 
-If you want to lock upgrades permanently, delete all full-access keys. Only do this after you are sure upgrades are no longer needed.
+Rotating the backend wallet account:
+
+```bash
+near contract call-function as-transaction $CONTRACT.$DEPLOYER update_backend_wallet \
+  json-args '{"new_backend_wallet":"NEW_BACKEND.$ROOT"}' \
+  prepaid-gas '30.0 Tgas' attached-deposit '1 yoctoNEAR' \
+  sign-as $BACKEND_WALLET.$ROOT \
+  network-config mainnet sign-with-keychain send
+```
+
+Then update `NEAR_ACCOUNT_ID` / `NEAR_PRIVATE_KEY` in Vercel and rerun `pnpm register-backend-keys`.
+
+If you want to lock upgrades permanently, delete all full-access keys. Since this contract has no self-upgrade method, upgrades become impossible.
 
 ---
 
-## Step 5: Set Up Redis
+## Step 5: Register Backend Key Pool
+
+The web app uses a 10-key pool derived from `NEAR_PRIVATE_KEY`. Register those keys on the backend wallet once per environment. Make sure `NEXT_PUBLIC_NEAR_NETWORK` is set for the target network before running this script:
+
+```bash
+NEXT_PUBLIC_NEAR_NETWORK=mainnet pnpm register-backend-keys
+```
+
+This requires `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` in your environment and ~0.1 NEAR per key for gas.
+
+---
+
+## Step 6: Set Up Redis
 
 Redis is required for:
 
@@ -284,27 +340,27 @@ redis://default:PASSWORD@host:port
 
 ---
 
-## Step 6: Deploy Frontend to Vercel
+## Step 7: Deploy Frontend to Vercel
 
 ### Option A: One-Click Deploy (Recommended)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,NEXT_PUBLIC_USERJOT_PROJECT_ID,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID&envDescription=Production%20deployment.%20Mark%20NEAR_PRIVATE_KEY%20as%20Sensitive%20in%20Vercel%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs&skippable-integrations=1)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,FASTNEAR_API_KEY,CELO_RPC_URL,NEXT_PUBLIC_POSTHOG_KEY,NEXT_PUBLIC_USERJOT_PROJECT_ID,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,REDIS_URL&envDefaults=%7B%22NEXT_PUBLIC_NEAR_NETWORK%22%3A%22mainnet%22%2C%22NEXT_PUBLIC_SELF_NETWORK%22%3A%22mainnet%22%2C%22CELO_RPC_URL%22%3A%22https%3A//forno.celo.org%22%2C%22NEXT_PUBLIC_APP_URL%22%3A%22https%3A//your-app.vercel.app%22%7D&envDescription=Production%20deployment.%20Re-add%20NEAR_PRIVATE_KEY%20as%20Sensitive%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs)
 
 1. Connect GitHub and create the repository
-2. Add Redis Cloud store (or skip to configure manually)
-3. Fill in environment variables from Steps 0-4
+2. Add Redis Cloud store (required). Confirm it populates `REDIS_URL` or copy it manually.
+3. Fill in environment variables from Steps 0-6 for the **Production** environment
 4. Deploy
-5. **Important**: After deployment, go to Project Settings → Environment Variables and mark `NEAR_PRIVATE_KEY` as **Sensitive** (click edit → check "Sensitive"). This ensures the private key cannot be read again.
+5. **Important**: Delete `NEAR_PRIVATE_KEY`, re-add it as **Sensitive**, then redeploy so the new value is applied.
 
 ### Option B: Manual Setup
 
-#### 6.1 Connect repository
+#### 7.1 Connect repository
 
 1. Go to [vercel.com](https://vercel.com)
 2. Import your GitHub repository
 3. Set **Root Directory** to `apps/citizens-house`
 
-### 6.2 Build settings
+### 7.2 Build settings
 
 | Setting          | Value                   |
 | ---------------- | ----------------------- |
@@ -313,49 +369,58 @@ redis://default:PASSWORD@host:port
 | Output Directory | (leave default)         |
 | Install Command  | (leave default)         |
 
-### 6.3 Environment variables
+### 7.3 Environment variables
 
-**Required:**
+**Required (Production environment):**
 
-| Variable                                 | Example                                | Notes                                        |
-| ---------------------------------------- | -------------------------------------- | -------------------------------------------- |
-| `NEXT_PUBLIC_NEAR_NETWORK`               | `testnet`                              | or `mainnet`                                 |
-| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | `verification-v1.your-account.testnet` | `$CONTRACT.$PARENT`                          |
-| `NEXT_PUBLIC_SELF_NETWORK`               | `mainnet`                              | `mainnet` for real passports                 |
-| `NEXT_PUBLIC_APP_URL`                    | `https://your-app.vercel.app`          |                                              |
-| `NEAR_ACCOUNT_ID`                        | `backend-wallet.your-account.testnet`  | `$BACKEND_WALLET.$PARENT`                    |
-| `NEAR_PRIVATE_KEY`                       | `ed25519:...`                          | **Mark as Sensitive in Vercel after deploy** |
-| `REDIS_URL`                              | `redis://...`                          | Auto-set by Redis Cloud integration          |
+| Variable                                 | Example                                       | Notes                                              |
+| ---------------------------------------- | --------------------------------------------- | -------------------------------------------------- |
+| `NEXT_PUBLIC_NEAR_NETWORK`               | `mainnet`                                     | mainnet for production                             |
+| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | `verification-v1.deploy.existing-funded.near` | `$CONTRACT.$DEPLOYER`                              |
+| `NEXT_PUBLIC_SELF_NETWORK`               | `mainnet`                                     | mainnet recommended (real passports + OFAC)        |
+| `NEXT_PUBLIC_APP_URL`                    | `https://your-app.vercel.app`                 | update after first deploy if needed                |
+| `NEAR_ACCOUNT_ID`                        | `backend-wallet.existing-funded.near`         | `$BACKEND_WALLET.$ROOT`                            |
+| `NEAR_PRIVATE_KEY`                       | `ed25519:...`                                 | must be added as **Sensitive**                     |
+| `REDIS_URL`                              | `redis://...`                                 | Redis integration output                           |
+| `FASTNEAR_API_KEY`                       | `fastnear_api_key`                            | required for RPC rate limits (X-API-Key header)    |
+| `CELO_RPC_URL`                           | `https://forno.celo.org`                      | mainnet default (override if needed)               |
+| `NEXT_PUBLIC_POSTHOG_KEY`                | `phc_...`                                     | PostHog project key                                |
+| `NEXT_PUBLIC_USERJOT_PROJECT_ID`         | `userjot_project_id`                          | UserJot feedback widget                            |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`   | `walletconnect_project_id`                    | WalletConnect support (MyNearWallet, Unity Wallet) |
 
-**Optional:**
+Set these for **Production** (and Preview if you need previews). Any environment variable change requires a redeploy to take effect.
 
-| Variable                               | Purpose                                                    |
-| -------------------------------------- | ---------------------------------------------------------- |
-| `FASTNEAR_API_KEY`                     | FastNEAR API key for higher rate limits (X-API-Key header) |
-| `CELO_RPC_URL`                         | Custom Celo RPC (default: forno.celo.org)                  |
-| `NEXT_PUBLIC_POSTHOG_KEY`              | PostHog analytics                                          |
-| `NEXT_PUBLIC_USERJOT_PROJECT_ID`       | UserJot feedback widget                                    |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect support (MyNearWallet, Unity Wallet)         |
+**Network pairing notes:**
+
+- NEAR and Self networks are independent, but this playbook assumes Self mainnet; use testnet only in the appendix for mock passports.
 
 **Security notes:**
 
-After deployment, mark `NEAR_PRIVATE_KEY` as **Sensitive** in the Vercel dashboard:
+After deployment, delete and re-add `NEAR_PRIVATE_KEY` as **Sensitive** in the Vercel dashboard (Sensitive cannot be toggled on existing values):
 
 1. Go to Project Settings → Environment Variables
-2. Click the three dots next to `NEAR_PRIVATE_KEY` → Edit
-3. Check the **Sensitive** checkbox and save
+2. Delete `NEAR_PRIVATE_KEY`
+3. Re-add it with the **Sensitive** option enabled (Production, and Preview if needed)
+4. Redeploy so the updated value is applied
 
 Once marked as Sensitive, the value can never be read again (even by project owners). This protects your private key from accidental exposure.
 
 ---
 
-## Step 7: Verify Deployment
+## Step 8: Verify Deployment
+
+> **⚠️ ENVIRONMENT CHECK**: Confirm `$CONTRACT.$DEPLOYER` and `$BACKEND_WALLET.$ROOT` are on the target network.
 
 ```bash
 # Check contract
-near contract call-function as-read-only $CONTRACT.$PARENT get_verified_count \
+near contract call-function as-read-only $CONTRACT.$DEPLOYER get_verified_count \
   json-args '{}' \
-  network-config testnet now
+  network-config mainnet now
+```
+
+```bash
+# Check backend wallet keys are still present
+near account list-keys $BACKEND_WALLET.$ROOT network-config mainnet now
 ```
 
 **Expected output:**
@@ -383,26 +448,43 @@ To upgrade without losing state:
 cd contracts/verified-accounts && cargo near build reproducible-wasm
 
 # Deploy WITHOUT init
-near contract deploy $CONTRACT.$PARENT \
+near contract deploy $CONTRACT.$DEPLOYER \
   use-file target/near/verified_accounts.wasm \
   without-init-call \
-  network-config testnet sign-with-keychain send
+  network-config mainnet sign-with-keychain send
 ```
 
 ---
 
-## Mainnet
+## Rollback (if deployment fails)
 
-Same steps with these changes:
+Keep the last known good WASM from Step 3.2 so you can redeploy it if needed. If you already removed the deployer key, use the Security Council DAO key to sign the rollback deployment.
 
 ```bash
-# Update environment variables for mainnet
-PARENT=your-account.near  # mainnet uses .near suffix
+near contract deploy $CONTRACT.$DEPLOYER \
+  use-file <PREVIOUS_WASM_PATH> \
+  without-init-call \
+  network-config mainnet sign-with-keychain send
+```
+
+If backend wallet rotation caused issues, restore the previous `NEAR_ACCOUNT_ID` / `NEAR_PRIVATE_KEY` and rerun `pnpm register-backend-keys`.
+
+---
+
+## Testnet Appendix (Optional)
+
+If you need a testnet deployment for staging or mock passports, use the same steps with these changes:
+
+```bash
+ROOT=your-account.testnet  # testnet uses .testnet suffix
+DEPLOYER=deploy.$ROOT
 CONTRACT=verification-v1
 BACKEND_WALLET=backend-wallet
 ```
 
-- Use `network-config mainnet` instead of `testnet`
-- Set `NEXT_PUBLIC_NEAR_NETWORK=mainnet`
-- Fund accounts with real NEAR (no faucet on mainnet)
-- RPC uses FastNEAR: `https://rpc.mainnet.fastnear.com`
+- Create the ROOT account with the faucet: `near account create-account sponsor-by-faucet-service $ROOT autogenerate-new-keypair save-to-keychain network-config testnet create`
+- Create DEPLOYER as a sub-account: `near account create-account fund-myself $DEPLOYER '10 NEAR' autogenerate-new-keypair save-to-keychain sign-as $ROOT network-config testnet sign-with-keychain send`
+- Use `network-config testnet` in all commands
+- Set `NEXT_PUBLIC_NEAR_NETWORK=testnet`
+- For mock passports set `NEXT_PUBLIC_SELF_NETWORK=testnet` (no OFAC); keep Self mainnet for real passports
+- Testnet tokens: faucet + https://near-faucet.io/
