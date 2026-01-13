@@ -148,9 +148,9 @@ jobs:
         working-directory: contracts/verified-accounts
         run: |
           cargo test --features testing 2>&1 | tee test_output.txt
-          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
-          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
-          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
+          # Sum ALL passed/failed counts from all "test result:" lines (cargo outputs one per crate)
+          PASSED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= passed)' | awk '{sum+=$1} END {print sum+0}')
+          FAILED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= failed)' | awk '{sum+=$1} END {print sum+0}')
           echo "passed=$PASSED" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
         continue-on-error: true
@@ -215,8 +215,10 @@ jobs:
         run: |
           mkdir -p allure-results
           pnpm test 2>&1 | tee ts_test_output.txt
-          PASSED=$(grep -oP 'Tests\s+\K\d+(?=\s+passed)' ts_test_output.txt || echo "0")
-          FAILED=$(grep -oP '\d+(?=\s+failed)' ts_test_output.txt || echo "0")
+          # Strip ANSI color codes before parsing (vitest output contains them)
+          CLEAN_OUTPUT=$(sed 's/\x1b\[[0-9;]*m//g' ts_test_output.txt)
+          PASSED=$(echo "$CLEAN_OUTPUT" | grep -oP 'Tests\s+\K\d+(?=\s+passed)' || echo "0")
+          FAILED=$(echo "$CLEAN_OUTPUT" | grep -oP '\d+(?=\s+failed)' || echo "0")
           echo "passed=$PASSED" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
         continue-on-error: true
@@ -302,9 +304,9 @@ jobs:
         working-directory: contracts/verified-accounts
         run: |
           cargo test --features integration-tests 2>&1 | tee test_output.txt
-          SUMMARY=$(grep "test result:" test_output.txt | tail -1)
-          PASSED=$(echo "$SUMMARY" | grep -oP '\d+(?= passed)' || echo "0")
-          FAILED=$(echo "$SUMMARY" | grep -oP '\d+(?= failed)' || echo "0")
+          # Sum ALL passed/failed counts from all "test result:" lines (cargo outputs one per crate)
+          PASSED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= passed)' | awk '{sum+=$1} END {print sum+0}')
+          FAILED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= failed)' | awk '{sum+=$1} END {print sum+0}')
           echo "passed=$PASSED" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
         continue-on-error: true
