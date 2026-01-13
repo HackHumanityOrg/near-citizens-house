@@ -8,7 +8,7 @@ NEAR Citizens House links a NEAR wallet to a single real-world identity using Se
 
 - **Web app (Next.js)**: `/verification` flow, wallet connect, QR/deeplink, and `/citizens` table.
 - **Verification API**: `POST /api/verification/verify` validates proofs and writes on-chain; `GET /api/verification/status` reports session state for polling and mobile callbacks.
-- **Self.xyz**: QR/deeplink SDK and Self app; the app submits proofs to the backend endpoint, which uses `SelfBackendVerifier` to validate proofs using scope/config checks.
+- **Self.xyz**: QR/deeplink SDK and Self app; Self relayers submit proofs to the backend endpoint, which uses `SelfBackendVerifier` to validate proofs using scope/config checks.
 - **NEAR verified-accounts contract**: stores verifications, verifies NEP-413 signatures on-chain, enforces uniqueness.
 - **Redis**: short-lived session status and nonce replay protection.
 - **Celo verifier**: optional re-verification of stored proofs by resolving the verifier address via Self’s IdentityVerificationHub, then calling the verifier contract (`verifyStoredProofWithDetails`).
@@ -19,7 +19,7 @@ NEAR Citizens House links a NEAR wallet to a single real-world identity using Se
 2. **QR/deeplink creation**: the app builds a Self payload (`SelfAppBuilder`) containing:
    - `userId` (UUID session ID used as the Self user identifier, required by Self)
    - `userDefinedData` with NEP-413 fields (accountId, publicKey, signature, nonce, timestamp). Self docs describe `userDefinedData` as an app-supplied string passed through verification and encoded to bytes in the QR flow. The challenge and recipient are omitted to reduce QR payload size; the backend reconstructs them from config and accountId.
-3. **Self app proof**: the Self mobile app reads the passport NFC and initiates proof generation; Self’s TEE/relayer flow produces the Groth16 proof. The Self app submits the proof to `POST /api/verification/verify` with `attestationId`, proof, public signals, and `userContextData`.
+3. **Self app proof**: the Self mobile app reads the passport NFC and initiates proof generation; Self’s TEE/relayer flow produces the Groth16 proof. Self relayers submit the proof to `POST /api/verification/verify` with `attestationId`, proof, public signals, and `userContextData`.
 4. **Backend verification**:
    - verifies the ZK proof via `SelfBackendVerifier` (scope/config checks)
    - extracts the nullifier from `discloseOutput` and signature payload from `userData.userDefinedData`
@@ -105,5 +105,5 @@ NEAR contracts cannot call the Celo hub directly, so implementing the on-chain f
 
 ## Trust model & networks
 
-- **Backend wallet** is the only writer; the contract enforces signature validity and uniqueness.
+- **Backend wallet** is the only writer; the contract enforces signature validity, nullifier uniqueness, and account uniqueness.
 - **Backend verification** checks full-access keys and proof validity; the contract does not verify proofs itself.
