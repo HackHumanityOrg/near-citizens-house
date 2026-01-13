@@ -92,6 +92,8 @@ Notes:
 - `LookupSet` is non-iterable, so nullifiers are removed alongside their verification entries.
 - Full state wipe is guaranteed after account deletion/recreation in Steps 6–9.
 
+> Reproducible builds use committed code only. Commit the temporary `clean` method (e.g., on a short-lived branch) before building.
+
 ### Step 4: Build and Deploy Cleanup Version
 
 ```bash
@@ -137,7 +139,10 @@ near account create-account fund-myself <CONTRACT_ACCOUNT> '5 NEAR' \
 ### Step 8: Revert Contract Code and Rebuild
 
 ```bash
-git checkout contracts/verified-accounts/src/lib.rs
+# Switch back to the baseline branch/commit without the clean method
+# (reproducible builds require a clean git state)
+git checkout <BASE_BRANCH>
+
 pnpm build:contract:verification
 ```
 

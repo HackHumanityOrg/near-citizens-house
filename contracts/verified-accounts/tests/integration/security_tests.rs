@@ -142,7 +142,7 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
 
     // Read WASM file
     let wasm = std::fs::read(WASM_PATH).expect(
-        "Could not find WASM file. Please build the contract first with `cargo near build`",
+        "Could not find WASM file. Please build the contract first with `cargo near build reproducible-wasm`",
     );
 
     // Create backend account (will have enough balance from dev_create_account)

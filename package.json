@@ -6,7 +6,7 @@
     "dev": "pnpm --filter @near-citizens/citizens-house dev",
     "build": "pnpm --filter @near-citizens/citizens-house build",
     "build:contract": "pnpm --filter verified-accounts build:contract",
-    "build:contract:verification": "cd contracts/verified-accounts && cargo near build non-reproducible-wasm",
+    "build:contract:verification": "cd contracts/verified-accounts && cargo near build reproducible-wasm",
     "test:contract:verification": "cd contracts/verified-accounts && cargo test --features testing -- --test-threads=1",
     "test:contract:verification:integration": "cd contracts/verified-accounts && cargo test --features integration-tests -- --test-threads=1",
     "test:contract:verified-accounts-interface": "cd contracts/verified-accounts-interface && cargo test -- --test-threads=1",

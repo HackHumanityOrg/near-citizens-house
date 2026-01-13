@@ -34,7 +34,7 @@ pub async fn init() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>
 
     // Read the WASM file
     let wasm = std::fs::read(WASM_PATH).expect(
-        "Could not find WASM file. Please build the contract first with `cargo near build`",
+        "Could not find WASM file. Please build the contract first with `cargo near build reproducible-wasm`",
     );
 
     // Create a dev account that will be our backend wallet

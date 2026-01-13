@@ -16,6 +16,7 @@ Smart contract for storing Self.xyz passport verification records on NEAR blockc
 
 - Rust 1.86.0 (NEAR VM compatibility)
 - `cargo-near` for contract builds
+- Docker (required for `reproducible-wasm` builds)
 - `wasm-opt` from binaryen (for optimization)
 
 ```bash
@@ -23,9 +24,11 @@ Smart contract for storing Self.xyz passport verification records on NEAR blockc
 rustup override set 1.86.0
 rustup target add wasm32-unknown-unknown
 # Build contract
-cargo near build non-reproducible-wasm
+cargo near build reproducible-wasm
 # Output: target/near/verified_accounts.wasm
 ```
+
+> Reproducible builds require Docker and a clean git working tree with `Cargo.lock` committed.
 
 ## Deploying
 
@@ -114,7 +117,7 @@ Blockchain Storage (permanent)
 
 ```bash
 # Build for development
-cargo near build non-reproducible-wasm
+cargo near build reproducible-wasm
 # Run tests
 cargo test
 # Check contract size
@@ -129,7 +132,7 @@ ls -lh target/near/verified_accounts.wasm
 ## Important Notes
 
 - Rust 1.87+ generates WASM opcodes incompatible with NEAR VM - use 1.86.0
-- Always use `cargo near build` for proper ABI generation
+- Always use `cargo near build reproducible-wasm` for release builds (Docker + clean git required)
 - Contract state changes are permanent and irreversible
 - Storage costs are covered by the contract account balance
 - Use a multisig or hardware-secured backend wallet and rotate keys on compromise

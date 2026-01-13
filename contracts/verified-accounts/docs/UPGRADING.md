@@ -152,14 +152,16 @@ pub fn into_current(self) -> VerificationV2 {
 
 1. **Test locally:**
 
+   > Reproducible builds require Docker and a clean git working tree with `Cargo.lock` committed.
+
    ```bash
    # From contracts/verified-accounts
-   cargo near build non-reproducible-wasm
+   cargo near build reproducible-wasm
    mkdir -p tests/fixtures/v1
    cp target/near/verified_accounts.wasm tests/fixtures/v1/verified_accounts.wasm
 
    cd tests/fixtures/v2
-   cargo near build non-reproducible-wasm
+   cargo near build reproducible-wasm
    cp target/near/verified_accounts_v2_fixture.wasm verified_accounts.wasm
    cd ../../..
 
@@ -169,7 +171,7 @@ pub fn into_current(self) -> VerificationV2 {
 2. **Deploy the new contract code:**
 
    ```bash
-   cargo near build non-reproducible-wasm
+   cargo near build reproducible-wasm
    near contract deploy CONTRACT_ID.testnet \
      use-file target/near/verified_accounts.wasm \
      without-init-call \
@@ -204,12 +206,12 @@ Integration tests use the V1 and V2 WASM fixtures in `tests/fixtures/v1` and `te
 
 ```bash
 # From contracts/verified-accounts
-cargo near build non-reproducible-wasm
+cargo near build reproducible-wasm
 mkdir -p tests/fixtures/v1
 cp target/near/verified_accounts.wasm tests/fixtures/v1/verified_accounts.wasm
 
 cd tests/fixtures/v2
-cargo near build non-reproducible-wasm
+cargo near build reproducible-wasm
 cp target/near/verified_accounts_v2_fixture.wasm verified_accounts.wasm
 cd ../../..
 

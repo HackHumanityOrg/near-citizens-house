@@ -35,7 +35,9 @@ The fixture is built and used in `tests/integration/versioning_tests.rs` to vali
 
 ```bash
 cd tests/fixtures/v2
-cargo near build non-reproducible-wasm
+cargo near build reproducible-wasm
 ```
+
+> `reproducible-wasm` builds use the committed source; ensure the repo is clean before building fixtures.
 
 The WASM output is used by integration tests to simulate contract upgrades.

@@ -9,8 +9,28 @@ Step-by-step guide to deploy the NEAR Verified Accounts system.
 - **Rust 1.86.0 exactly** - 1.87+ has WASM incompatibilities
 - Contract account needs 2-5 NEAR for storage; backend wallet needs 1+ NEAR for gas
 - Private keys must NEVER be exposed to frontend
+- Use reproducible builds (`cargo near build reproducible-wasm`) and record the WASM SHA-256
 - **Never reinitialize on upgrades** - use `without-init-call` flag
 - Self.xyz mainnet = real passports; testnet = mock/staging passports
+- Plan contract-key rotation: move full-access control to a DAO/multisig and delete deployer keys
+
+---
+
+## Checklist
+
+### Pre-deploy
+
+- [ ] Confirm target network (`testnet` vs `mainnet`)
+- [ ] Decide who controls contract full-access keys (Security Council DAO or multisig)
+- [ ] Install Docker if you want reproducible builds
+- [ ] Prepare Vercel environment variables and mark `NEAR_PRIVATE_KEY` as sensitive
+
+### Post-deploy
+
+- [ ] `get_backend_wallet` returns the backend wallet
+- [ ] Contract SHA-256 matches local WASM build
+- [ ] Deployer key removed from contract account (DAO/multisig key retained)
+- [ ] End-to-end verification flow completes successfully
 
 ---
 
@@ -90,7 +110,7 @@ The faucet provides ~10 NEAR for testing. You can also get additional testnet to
 
 The backend wallet is the only account authorized to write verification records. Created as a sub-account of your parent.
 
-> **Note:** We use `save-to-legacy-keychain` here (not `save-to-keychain`) so the private key is saved to a file that can be exported for Vercel.
+> **Note:** We use `save-to-legacy-keychain` here (not `save-to-keychain`) so the private key is saved to `~/.near-credentials/...` and can be exported for Vercel. This matches near-cli-rs legacy keychain behavior (file-based credentials).
 
 ```bash
 near account create-account fund-myself $BACKEND_WALLET.$PARENT '1 NEAR' \
@@ -146,9 +166,13 @@ New account "verification-v1.your-account.testnet" created successfully.
 
 ## Step 3: Build Contract
 
+### 3.1 Build
+
+Reproducible builds are required for releases. Ensure Docker is installed, `Cargo.lock` is committed, the repo is clean, and `Cargo.toml` includes NEP-330 metadata (`package.metadata.near.reproducible_build`).
+
 ```bash
 cd contracts/verified-accounts
-cargo near build non-reproducible-wasm
+cargo near build reproducible-wasm
 ```
 
 **Expected output:**
@@ -158,6 +182,14 @@ cargo near build non-reproducible-wasm
     Finished release [optimized] target(s)
 Contract successfully built: target/near/verified_accounts.wasm
 ```
+
+### 3.2 Record the WASM hash
+
+```bash
+shasum -a 256 target/near/verified_accounts.wasm
+```
+
+Save this hash; you will compare it to the on-chain contract hash in Step 4.4.
 
 ---
 
@@ -195,6 +227,37 @@ near contract call-function as-read-only $CONTRACT.$PARENT get_backend_wallet \
 ```
 "backend-wallet.your-account.testnet"
 ```
+
+### 4.4 Verify contract hash
+
+```bash
+near account view-account-summary $CONTRACT.$PARENT \
+  network-config testnet now
+```
+
+Check the `Contract (SHA-256 checksum hex)` line matches the hash from Step 3.2.
+
+### 4.5 Secure contract account keys (recommended)
+
+Rotate the contract account’s full-access keys to a Security Council DAO or multisig and remove the deployer key:
+
+```bash
+# List keys
+near account list-keys $CONTRACT.$PARENT network-config testnet now
+
+# Add DAO/multisig key (replace with your DAO public key)
+near account add-key $CONTRACT.$PARENT <DAO_PUBLIC_KEY> \
+  network-config testnet sign-with-keychain send
+
+# Delete deployer key (replace with the public key you used to deploy)
+near account delete-key $CONTRACT.$PARENT <DEPLOYER_PUBLIC_KEY> \
+  network-config testnet sign-with-keychain send
+
+# Confirm keys after rotation
+near account list-keys $CONTRACT.$PARENT network-config testnet now
+```
+
+If you want to lock upgrades permanently, delete all full-access keys. Only do this after you are sure upgrades are no longer needed.
 
 ---
 
@@ -249,12 +312,6 @@ redis://default:PASSWORD@host:port
 | Build Command    | (leave default)         |
 | Output Directory | (leave default)         |
 | Install Command  | (leave default)         |
-
-**Monorepo setting (important for shared packages):**
-
-In Project Settings → General → Root Directory, ensure **"Include source files outside of the Root Directory in the Build Step"** is checked. This is enabled by default for projects created after August 2020 and is required to access `packages/shared` and `packages/ui`.
-
-Vercel auto-detects pnpm workspace from the lockfile and installs all workspace dependencies automatically.
 
 ### 6.3 Environment variables
 
@@ -323,7 +380,7 @@ To upgrade without losing state:
 
 ```bash
 # Rebuild
-cd contracts/verified-accounts && cargo near build non-reproducible-wasm
+cd contracts/verified-accounts && cargo near build reproducible-wasm
 
 # Deploy WITHOUT init
 near contract deploy $CONTRACT.$PARENT \
