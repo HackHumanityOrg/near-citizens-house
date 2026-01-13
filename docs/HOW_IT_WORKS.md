@@ -2,7 +2,7 @@
 
 ## Overview
 
-NEAR Citizens House links a NEAR wallet to a single real-world identity using Self.xyz zero-knowledge proofs. The Next.js web app coordinates wallet signing and QR/deeplink issuance, the Self mobile app generates a Groth16 proof from a passport/ID, and the backend writes the result to the NEAR verified-accounts contract. A Citizens view can re-verify stored proofs for transparency.
+NEAR Citizens House links a NEAR wallet to a single real-world identity using Self.xyz zero-knowledge proofs. The Next.js web app coordinates wallet signing and QR/deeplink issuance, the Self mobile app scans the document and triggers proof generation via Self’s TEE/relayer flow, and the backend writes the verified result to the NEAR verified-accounts contract. A Citizens view can re-verify stored proofs for transparency.
 
 ## Core components
 
@@ -15,15 +15,15 @@ NEAR Citizens House links a NEAR wallet to a single real-world identity using Se
 
 ## End-to-end verification flow
 
-1. **Wallet signature**: the user connects a NEAR wallet and signs a NEP-413 challenge (message + 32-byte nonce + recipient). The challenge is derived from the app URL and contract ID, but it is not unique because it has to be rebuilt deterministically later.
+1. **Wallet signature**: the user connects a NEAR wallet and signs a NEP-413 challenge (message + 32-byte nonce + recipient). The message is derived from the app URL and contract ID so it can be rebuilt deterministically later; uniqueness comes from the random nonce.
 2. **QR/deeplink creation**: the app builds a Self payload (`SelfAppBuilder`) containing:
    - `userId` (UUID session ID)
-   - `userDefinedData` with NEP-413 fields (accountId, publicKey, signature, nonce, timestamp). The challenge is not included in userDefinedData because it wouldn't fit the QR code size limitations.
-3. **Self app proof**: the Self mobile app reads the passport NFC and produces a Groth16 proof. Self relayers submit the proof to `POST /api/verification/verify` with `attestationId`, proof, public signals, and `userContextData`.
+   - `userDefinedData` with NEP-413 fields (accountId, publicKey, signature, nonce, timestamp). Self docs describe `userDefinedData` as an app-supplied string passed through verification (often used to select configs/disclosures) and encoded to bytes in the QR flow. The challenge and recipient are omitted to keep the QR payload small; the backend reconstructs them from config and accountId.
+3. **Self app proof**: the Self mobile app reads the passport NFC and initiates proof generation; Self’s TEE/relayer flow produces the Groth16 proof. Self relayers submit the proof to `POST /api/verification/verify` with `attestationId`, proof, public signals, and `userContextData`.
 4. **Backend verification**:
    - verifies the ZK proof via `SelfBackendVerifier` (which validates against the Self hub and config)
-   - extracts the nullifier and signature payload from `userContextData`
-   - checks signature freshness (10 min) and nonce replay via Redis
+   - extracts the nullifier from `discloseOutput` and signature payload from `userData.userDefinedData`
+   - rebuilds the NEP-413 challenge/recipient, checks signature freshness (10 min), and enforces nonce replay via Redis
    - confirms the public key is a full-access key via NEAR RPC
    - updates the Redis session for client polling
 5. **On-chain write**: the backend calls `store_verification` using a key pool derived from `NEAR_PRIVATE_KEY` (10 rotating access keys to support concurrency).
@@ -49,8 +49,8 @@ sequenceDiagram
     User->>Wallet: Sign NEP-413 challenge
     Wallet-->>Web: Signature + publicKey + nonce
     Web->>SelfApp: QR/deeplink (sessionId + userDefinedData)
-    SelfApp->>SelfApp: Read passport NFC + build proof
-    SelfApp->>Relayer: Proof + userContextData
+    SelfApp->>SelfApp: Read passport NFC + request proof
+    SelfApp->>Relayer: Proof request + userContextData
     Relayer->>Backend: POST /api/verification/verify
     Backend->>Hub: SelfBackendVerifier.verify(...)
     Hub-->>Backend: Validity + nullifier + disclosures

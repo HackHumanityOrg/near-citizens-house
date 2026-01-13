@@ -9,6 +9,8 @@
  * failure to allow recovery after transient errors.
  */
 
+import "server-only"
+
 import { createClient } from "redis"
 import { logger, LogScope, Op } from "./logger"
 

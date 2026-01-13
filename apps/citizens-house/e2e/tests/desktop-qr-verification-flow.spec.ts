@@ -280,11 +280,18 @@ test.describe("Complete Verification E2E Flow", () => {
     // Trigger the WebSocket mock to send proof_verified event
     // This simulates the Self.xyz mobile app completing verification
     if (triggerWebSocketSuccess) {
+      const statusRequestPromise = page.waitForRequest((request) => request.url().includes("/api/verification/status"))
+
       triggerWebSocketSuccess()
       logger.info("WebSocket success triggered", {
         ...logContext,
         phase: 3,
       })
+
+      const statusRequest = await statusRequestPromise
+      const statusUrl = new URL(statusRequest.url())
+      expect(statusUrl.searchParams.get("sessionId")).toBe(sessionId)
+      expect(statusUrl.searchParams.get("accountId")).toBe(testAccount.accountId)
     }
 
     // Wait for Step 3 success screen to appear

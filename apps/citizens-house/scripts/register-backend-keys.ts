@@ -12,13 +12,15 @@
  *   - NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY set in environment
  *   - Backend wallet must have enough NEAR for gas (~0.1 NEAR per key)
  */
+import "server-only"
+
 import { Account } from "@near-js/accounts"
 import { KeyPair } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import type { Signer } from "@near-js/signers"
-import { NEAR_CONFIG } from "../../config"
-import { createRpcProvider } from "../../rpc"
-import { backendKeyPool } from "./backend-key-pool"
+import { NEAR_CONFIG } from "../lib/shared/config"
+import { createRpcProvider } from "../lib/shared/rpc"
+import { backendKeyPool } from "../lib/shared/contracts/verification/backend-key-pool"
 
 async function main(): Promise<void> {
   const { backendAccountId, backendPrivateKey, networkId } = NEAR_CONFIG
@@ -32,7 +34,7 @@ async function main(): Promise<void> {
   console.log(`Account: ${backendAccountId}`)
   console.log(`Network: ${networkId}`)
   console.log(`Pool Size: ${backendKeyPool.getPoolSize()} keys`)
-  console.log(``)
+  console.log("")
 
   // Create account with master key for adding new keys
   const masterKeyPair = KeyPair.fromString(backendPrivateKey as `ed25519:${string}`)
@@ -73,23 +75,23 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(``)
-  console.log(`=== Summary ===`)
+  console.log("")
+  console.log("=== Summary ===")
   console.log(`  Added: ${added}`)
   console.log(`  Already registered: ${existing}`)
   console.log(`  Failed: ${failed}`)
-  console.log(``)
+  console.log("")
 
   if (failed > 0) {
     console.error(`Warning: ${failed} key(s) failed to register`)
     process.exit(1)
   }
 
-  console.log(`Backend key pool registered successfully!`)
-  console.log(``)
-  console.log(`Next steps:`)
-  console.log(`  1. Deploy the updated code to use the key pool`)
-  console.log(`  2. Run E2E tests: E2E_TESTING=true pnpm exec playwright test --workers=10`)
+  console.log("Backend key pool registered successfully!")
+  console.log("")
+  console.log("Next steps:")
+  console.log("  1. Deploy the updated code to use the key pool")
+  console.log("  2. Run E2E tests: E2E_TESTING=true pnpm exec playwright test --workers=10")
 }
 
 main().catch((error) => {

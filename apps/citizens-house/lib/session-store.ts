@@ -1,6 +1,8 @@
 // Redis-backed session store for tracking verification status
 // Sessions are stored with automatic TTL expiration
 
+import "server-only"
+
 import { getRedisClient } from "./redis"
 import { logger, LogScope, Op, type LogOperation } from "./logger"
 

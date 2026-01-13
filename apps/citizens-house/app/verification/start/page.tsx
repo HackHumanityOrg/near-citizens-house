@@ -7,7 +7,7 @@ import { useNearWallet, CONSTANTS, type NearSignatureData } from "@near-citizens
 import { checkIsVerified } from "@/app/citizens/actions"
 import { useAnalytics } from "@/lib/analytics"
 import { clientLogger } from "@/lib/logger-client"
-import { LogScope, Op } from "@/lib/logger"
+import { LogScope, Op } from "@/lib/logging"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
 import { Step3Success } from "../../../components/verification/flow/step-3-success"

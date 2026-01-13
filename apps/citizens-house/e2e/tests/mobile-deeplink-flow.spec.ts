@@ -151,6 +151,7 @@ test.describe("Mobile Deeplink Verification Flow", () => {
       }
 
       let callbackSessionId: string | null = null
+      let callbackAccountId: string | null = null
 
       try {
         const parsedUrl = new URL(lastOpenedUrl)
@@ -167,18 +168,21 @@ test.describe("Mobile Deeplink Verification Flow", () => {
           if (selfApp?.deeplinkCallback) {
             const callbackUrl = new URL(selfApp.deeplinkCallback)
             callbackSessionId = callbackUrl.searchParams.get("sessionId")
+            callbackAccountId = callbackUrl.searchParams.get("accountId")
           }
         }
       } catch {
         callbackSessionId = null
+        callbackAccountId = null
       }
 
-      return { lastOpenedUrl, callbackSessionId }
+      return { lastOpenedUrl, callbackSessionId, callbackAccountId }
     })
 
     expect(deeplinkData.lastOpenedUrl).toBeTruthy()
     expect(deeplinkData.lastOpenedUrl).toContain("redirect.self.xyz")
     expect(deeplinkData.callbackSessionId).toBeTruthy()
+    expect(deeplinkData.callbackAccountId).toBe(testAccount.accountId)
 
     const storedSessionId = await page.evaluate(() => {
       const key = Object.keys(localStorage).find((item) => item.startsWith("self-session-"))
@@ -192,6 +196,9 @@ test.describe("Mobile Deeplink Verification Flow", () => {
       throw new Error("Missing sessionId from deeplink callback")
     }
 
+    await page.evaluate((id) => {
+      localStorage.removeItem(`self-session-${id}`)
+    }, sessionId)
     logStep(9, "Sending verification request to API")
     const verificationBody = createVerificationRequest(testAccount, signingMessage, sessionId)
     const expectedAttestationLabel = getAttestationTypeName(verificationBody.attestationId)
@@ -229,7 +236,14 @@ test.describe("Mobile Deeplink Verification Flow", () => {
     expect(responseBody.attestationId).toBe(verificationBody.attestationId)
 
     logStep(10, "Navigating to callback URL")
-    await page.goto(`/verification/callback?sessionId=${sessionId}`)
+    const statusRequestPromise = page.waitForRequest((request) => request.url().includes("/api/verification/status"))
+    await page.goto(
+      `/verification/callback?sessionId=${sessionId}&accountId=${encodeURIComponent(testAccount.accountId)}`,
+    )
+    const statusRequest = await statusRequestPromise
+    const statusUrl = new URL(statusRequest.url())
+    expect(statusUrl.searchParams.get("sessionId")).toBe(sessionId)
+    expect(statusUrl.searchParams.get("accountId")).toBe(testAccount.accountId)
     await page.waitForURL(/\/verification\/start/, { timeout: 20000 })
 
     logStep(11, "Verifying success screen")

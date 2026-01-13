@@ -48,7 +48,7 @@ export default function PrivacyPage() {
           <Tabs
             defaultValue="privacy"
             className="w-full"
-            onValueChange={(value) => setActiveTab(value as "privacy" | "eu-uk")}
+            onValueChange={(value: string) => setActiveTab(value as "privacy" | "eu-uk")}
           >
             <TabsList className="w-full sm:w-auto h-auto p-1 bg-[#f1f1f1] dark:bg-[#2a2a2a] rounded-[4px]">
               <TabsTrigger

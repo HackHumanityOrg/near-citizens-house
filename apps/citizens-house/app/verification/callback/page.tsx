@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense, useRef, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAnalytics } from "@/lib/analytics"
 import { clientLogger } from "@/lib/logger-client"
-import { LogScope, Op } from "@/lib/logger"
+import { LogScope, Op } from "@/lib/logging"
 import { Loader2 } from "lucide-react"
 import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
@@ -15,6 +15,7 @@ function VerifyCallbackContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = searchParams.get("sessionId")
+  const accountIdFromUrl = searchParams.get("accountId")
   const analytics = useAnalytics()
   const [status, setStatus] = useState<VerificationStatus>("checking")
   const [accountId, setAccountId] = useState<string | null>(null)
@@ -45,12 +46,30 @@ function VerifyCallbackContent() {
       })
       trackedResultRef.current = true
     } else if (status === "error" || status === "expired") {
-      // Get accountId from localStorage if available
-      const storedSession = sessionId ? localStorage.getItem(`self-session-${sessionId}`) : null
-      const storedAccountId = storedSession ? JSON.parse(storedSession).accountId : "unknown"
+      const storedAccountId = (() => {
+        if (accountIdFromUrl) return accountIdFromUrl
+        if (!sessionId) return "unknown"
+
+        try {
+          const storedSession = localStorage.getItem(`self-session-${sessionId}`)
+          if (!storedSession) return "unknown"
+
+          const parsed = JSON.parse(storedSession) as { accountId?: unknown }
+          return typeof parsed.accountId === "string" ? parsed.accountId : "unknown"
+        } catch {
+          return "unknown"
+        }
+      })()
+
       // Use actual error code if available, fallback to generic codes
       const trackingErrorCode = errorCode || (status === "expired" ? "TIMEOUT" : "VERIFICATION_FAILED")
-      analytics.trackVerificationFailed(storedAccountId, trackingErrorCode, errorMessage || undefined)
+
+      try {
+        analytics.trackVerificationFailed(storedAccountId, trackingErrorCode, errorMessage || undefined)
+      } catch {
+        // Don't crash UI on analytics failures
+      }
+
       clientLogger.warn("Verification callback failed", {
         ...logContext,
         operation: Op.VERIFICATION.CALLBACK_RESULT,
@@ -61,7 +80,7 @@ function VerifyCallbackContent() {
       })
       trackedResultRef.current = true
     }
-  }, [status, accountId, sessionId, errorMessage, errorCode, analytics, logContext])
+  }, [status, accountId, sessionId, accountIdFromUrl, errorMessage, errorCode, analytics, logContext])
 
   useEffect(() => {
     if (!sessionId) {
@@ -88,7 +107,26 @@ function VerifyCallbackContent() {
       abortController = new AbortController()
 
       try {
-        const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionId)}`, {
+        const storedAccountId =
+          accountIdFromUrl ??
+          (() => {
+            try {
+              const storedSession = localStorage.getItem(`self-session-${sessionId}`)
+              if (!storedSession) return null
+
+              const parsed = JSON.parse(storedSession) as { accountId?: unknown }
+              return typeof parsed.accountId === "string" ? parsed.accountId : null
+            } catch {
+              return null
+            }
+          })()
+
+        const params = new URLSearchParams({ sessionId })
+        if (storedAccountId) {
+          params.set("accountId", storedAccountId)
+        }
+
+        const response = await fetch(`/api/verification/status?${params.toString()}`, {
           signal: abortController.signal,
         })
 
@@ -217,7 +255,7 @@ function VerifyCallbackContent() {
         timeoutId = null
       }
     }
-  }, [sessionId, logContext])
+  }, [sessionId, accountIdFromUrl, logContext])
 
   // Auto-redirect on success (skip the intermediate "Continue" screen)
   useEffect(() => {

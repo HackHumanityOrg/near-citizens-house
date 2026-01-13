@@ -2,13 +2,14 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
+import { Buffer } from "buffer"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-citizens/shared"
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { useAnalytics } from "@/lib/analytics"
 import { clientLogger } from "@/lib/logger-client"
-import { LogScope, Op } from "@/lib/logger"
+import { LogScope, Op } from "@/lib/logging"
 import { getErrorMessage } from "@/lib/verification-errors"
 import { StarPattern } from "../icons/star-pattern"
 
@@ -128,7 +129,7 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
       userIdType: "uuid",
       userDefinedData: userDefinedData,
       disclosures: SELF_CONFIG.disclosures,
-      deeplinkCallback: `${SELF_CONFIG.deeplinkCallback}?sessionId=${sessionId}`,
+      deeplinkCallback: `${SELF_CONFIG.deeplinkCallback}?sessionId=${sessionId}&accountId=${encodeURIComponent(nearSignature.accountId)}`,
     }).build()
   }, [nearSignature, sessionId])
 
@@ -174,7 +175,9 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
 
     for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
       try {
-        const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionId)}`)
+        const response = await fetch(
+          `/api/verification/status?sessionId=${encodeURIComponent(sessionId)}&accountId=${encodeURIComponent(nearSignature.accountId)}`,
+        )
 
         if (response.ok) {
           const data = await response.json()

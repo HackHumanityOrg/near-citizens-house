@@ -10,10 +10,9 @@ Click the Deploy button to deploy your own instance. You'll need to deploy the [
 
 ## Project Structure
 
-- **apps/citizens-house** - Main Next.js app with identity verification & governance (port 3000)
-- **packages/ui** - Shared UI components (shadcn/ui)
-- **packages/shared** - NEAR/Self.xyz integrations
+- **apps/citizens-house** - Main Next.js app with identity verification & governance (port 3000); includes `components/ui` and `lib/shared`
 - **contracts/** - NEAR smart contracts (Rust)
+- **scripts/** - Repo-level operational scripts
 
 ## Quick Start
 

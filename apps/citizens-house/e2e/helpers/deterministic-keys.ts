@@ -1,5 +1,5 @@
-import { sha256 } from "@noble/hashes/sha2"
-import { ed25519 } from "@noble/curves/ed25519"
+import { sha256 } from "@noble/hashes/sha2.js"
+import { ed25519 } from "@noble/curves/ed25519.js"
 import { baseEncode } from "@near-js/utils"
 import { KeyPairEd25519 } from "@near-js/crypto"
 
