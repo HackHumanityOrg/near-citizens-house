@@ -10,6 +10,7 @@ declare global {
     uj: {
       init: (projectId: string, options?: { widget?: boolean }) => void
       identify: (userId: string, traits?: Record<string, unknown>) => void
+      setWidgetEnabled?: (enabled: boolean) => void
     }
   }
 }
