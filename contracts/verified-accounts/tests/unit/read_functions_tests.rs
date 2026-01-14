@@ -73,7 +73,7 @@ fn test_read_functions_with_verified_accounts() {
         let user_a = accounts(2);
         let signer_a = create_signer(&user_a);
         let sig_a =
-            create_valid_signature(&signer_a, &user_a, "Identify myself", &[9; 32], &user_a);
+            create_valid_signature(&signer_a, &user_a, "Identify myself", &[9; 32], &accounts(0));
         contract.store_verification(
             "nullifier_a".to_string(),
             user_a,
@@ -88,7 +88,7 @@ fn test_read_functions_with_verified_accounts() {
         let user_b = accounts(3);
         let signer_b = create_signer(&user_b);
         let sig_b =
-            create_valid_signature(&signer_b, &user_b, "Identify myself", &[10; 32], &user_b);
+            create_valid_signature(&signer_b, &user_b, "Identify myself", &[10; 32], &accounts(0));
         contract.store_verification(
             "nullifier_b".to_string(),
             user_b,

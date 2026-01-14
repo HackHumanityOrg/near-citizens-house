@@ -5,7 +5,7 @@ import { NearConnector } from "@hot-labs/near-connect"
 import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from "@hot-labs/near-connect"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
-import { NEAR_CONFIG, CONSTANTS } from "./config"
+import { NEAR_CONFIG, CONSTANTS, getSigningRecipient } from "./config"
 import type { NearSignatureData } from "./contracts/verification"
 
 type SignAndSendTransactionsParams = {
@@ -134,11 +134,12 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
       const messageToSign = message || CONSTANTS.SIGNING_MESSAGE
 
       try {
+        const recipient = getSigningRecipient()
         const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(32)))
 
         const signedMessage = (await (wallet as NearWalletBase).signMessage({
           message: messageToSign,
-          recipient: accountId,
+          recipient,
           nonce,
         })) as SignedMessage
 
@@ -149,7 +150,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           challenge: messageToSign, // Keep for interface compatibility
           timestamp: Date.now(), // Keep for interface compatibility
           nonce: Array.from(nonce), // Required for NEP-413 verification
-          recipient: accountId, // Required for NEP-413 verification
+          recipient, // Required for NEP-413 verification
         }
       } catch (error) {
         console.error("Failed to sign message:", error)

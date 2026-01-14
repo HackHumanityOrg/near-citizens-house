@@ -7,7 +7,7 @@
 
 import { KeyPair } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
-import { computeNep413Hash } from "@near-citizens/shared"
+import { computeNep413Hash, getSigningRecipient } from "@near-citizens/shared"
 import { randomBytes } from "crypto"
 
 interface TestAccount {
@@ -42,7 +42,7 @@ function getRandomAttestationId(): AttestationId {
  *
  * @param account - Test account with privateKey
  * @param message - The challenge message to sign
- * @param recipient - The recipient account ID (usually the signer's account)
+ * @param recipient - The recipient account ID (verification contract)
  * @returns SignatureData object ready for verification API
  */
 export function signNep413Message(account: TestAccount, message: string, recipient?: string): SignatureData {
@@ -52,7 +52,7 @@ export function signNep413Message(account: TestAccount, message: string, recipie
   const nonce = randomBytes(32)
   const nonceArray = Array.from(nonce)
 
-  const recipientId = recipient || account.accountId
+  const recipientId = recipient ?? getSigningRecipient()
   const messageHashHex = computeNep413Hash(message, nonceArray, recipientId)
   const messageHash = Buffer.from(messageHashHex, "hex")
 

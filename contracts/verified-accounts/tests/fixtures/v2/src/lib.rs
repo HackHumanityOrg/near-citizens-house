@@ -429,8 +429,9 @@ impl VersionedContract {
         );
 
         assert_eq!(
-            signature_data.recipient, near_account_id,
-            "Signature recipient must match near_account_id"
+            signature_data.recipient,
+            env::current_account_id(),
+            "Signature recipient must match contract account"
         );
 
         // Verify the NEAR signature

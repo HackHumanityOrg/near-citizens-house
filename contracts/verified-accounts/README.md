@@ -96,7 +96,7 @@ pub fn store_verification(
 - Verify `signature_data.public_key` is an active full-access key for `signature_data.account_id` via RPC `view_access_key`.
 - Enforce one-time challenges and nonce TTL (expire and reject replayed signatures).
 - Bind the signature to this service by including the contract ID and domain in `signature_data.challenge`.
-- Ensure `signature_data.recipient` equals the account being verified (contract requirement).
+- Ensure `signature_data.recipient` equals the verification contract account.
 - Log and rate-limit verification writes to detect anomalies.
 
 ## Architecture

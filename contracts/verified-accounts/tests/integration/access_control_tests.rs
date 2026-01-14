@@ -35,7 +35,7 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 32],
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"
@@ -162,7 +162,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 32],
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"
@@ -194,7 +194,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 32],
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"

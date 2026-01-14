@@ -155,7 +155,7 @@ fn test_store_verification_when_paused() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(

@@ -30,7 +30,7 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 16], // Invalid: should be 32 bytes
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"
@@ -72,7 +72,7 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 32],
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"
@@ -115,7 +115,7 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 32],
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"
@@ -137,7 +137,7 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("integration", "validation", "recipient")]
-#[allure_description("Verifies that recipient mismatch between near_account_id and signature_data.recipient is rejected.")]
+#[allure_description("Verifies that signature_data.recipient must match the contract account.")]
 #[allure_test]
 #[tokio::test]
 async fn test_recipient_mismatch() -> anyhow::Result<()> {
@@ -169,7 +169,7 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
     step("Verify recipient mismatch is rejected", || {
         assert!(result.is_failure());
         let failure_msg = format!("{:?}", result.failures());
-        assert!(failure_msg.contains("Signature recipient must match"));
+        assert!(failure_msg.contains("Signature recipient must match contract account"));
     });
 
     Ok(())

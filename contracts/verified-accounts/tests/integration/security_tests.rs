@@ -22,7 +22,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
     // Generate a valid NEP-413 signature
     let nonce: [u8; 32] = [42u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
@@ -234,7 +234,7 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
     let user = worker.dev_create_account().await?;
     let nonce: [u8; 32] = [99u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
