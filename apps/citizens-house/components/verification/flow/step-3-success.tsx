@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check } from "lucide-react"
+import { Check, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getAttestationTypeName } from "@near-citizens/shared"
 import { StarPattern } from "../icons/star-pattern"
@@ -49,7 +49,7 @@ export function Step3Success({ accountId, attestationId, onDisconnect }: Step3Su
       <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
         {/* Yellow gradient background */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_650px_420px_at_center_30%,_rgba(255,218,30,0.4)_0%,_rgba(253,221,57,0.3)_25%,_rgba(249,230,136,0.2)_45%,_rgba(245,236,189,0.14)_60%,_rgba(242,242,242,0.06)_75%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_650px_420px_at_center_30%,_rgba(255,218,30,0.28)_0%,_rgba(253,221,57,0.2)_30%,_rgba(249,230,136,0.14)_55%,_transparent_80%)]" />
         </div>
 
         {/* Star pattern - positioned near right edge */}
@@ -250,15 +250,14 @@ export function Step3Success({ accountId, attestationId, onDisconnect }: Step3Su
         <div className="flex flex-col items-center w-full">
           <div className="bg-white dark:bg-black border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[24px] flex items-center justify-center py-[24px] md:py-[40px] px-0 w-full max-w-[650px]">
             <div className="flex flex-col gap-[24px] md:gap-[40px] items-center w-full max-w-[520px] px-[24px] md:px-0">
-              {/* Mobile title */}
-              <h2 className="md:hidden font-fk-grotesk font-medium text-[24px] leading-[32px] text-[#090909] dark:text-white w-full">
-                NEAR Verified Account Complete
-              </h2>
-
-              {/* Desktop welcome message */}
-              <p className="hidden md:block font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-neutral-200 w-full">
-                Welcome to Citizens House! You are now eligible to participate in governance decisions.
-              </p>
+              <div className="flex flex-col gap-[16px] items-start w-full">
+                <h2 className="font-fk-grotesk font-medium text-[24px] leading-[32px] text-[#090909] dark:text-white w-full">
+                  Welcome to Citizens House!
+                </h2>
+                <p className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-neutral-200 w-full">
+                  You are now eligible to participate in governance decisions.
+                </p>
+              </div>
 
               {/* Verification status box */}
               <div
@@ -363,10 +362,12 @@ export function Step3Success({ accountId, attestationId, onDisconnect }: Step3Su
                 </Button>
               )}
 
-              {/* Desktop: bottom message */}
-              <p className="hidden md:block font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-neutral-200 w-full">
-                You can safely disconnect your wallet and reconnect it when you come back to vote on an open proposal.
-              </p>
+              <div className="flex gap-[8px] items-start w-full">
+                <Info className="mt-[2px] h-[22px] w-[22px] text-black dark:text-white" />
+                <p className="font-fk-grotesk text-[16px] leading-[28px] text-[#757575] dark:text-neutral-400 w-full">
+                  You can safely disconnect your wallet and reconnect it when you come back to vote on an open proposal.
+                </p>
+              </div>
             </div>
           </div>
         </div>
