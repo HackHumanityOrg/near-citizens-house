@@ -166,6 +166,14 @@ export const USERJOT_CONFIG = {
 }
 
 // Application Constants
+export function getSigningRecipient(): string {
+  const contractId = NEAR_CONFIG.verificationContractId
+  if (!contractId) {
+    throw new Error("Verification contract ID not configured")
+  }
+  return contractId
+}
+
 export function getSigningMessage(): string {
   const contractId = NEAR_CONFIG.verificationContractId || "unknown-contract"
   return `Identify myself for ${contractId} at ${APP_URL}`

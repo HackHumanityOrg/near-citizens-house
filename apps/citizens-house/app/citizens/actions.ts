@@ -8,6 +8,7 @@ import {
   verifyNearSignature,
   buildProofData,
   getSigningMessage,
+  getSigningRecipient,
   nearAccountIdSchema,
   type Verification,
   type ProofData,
@@ -92,7 +93,7 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
 
         if (sigData) {
           const signatureChallenge = sigData.challenge || getSigningMessage()
-          const signatureRecipient = sigData.recipient || sigData.accountId
+          const signatureRecipient = sigData.recipient ?? getSigningRecipient()
 
           const sigResult = verifyNearSignature(
             signatureChallenge,

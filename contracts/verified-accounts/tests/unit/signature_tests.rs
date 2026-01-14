@@ -38,7 +38,7 @@ fn test_invalid_signature() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(
@@ -83,7 +83,7 @@ fn test_invalid_nonce_length() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
                     nonce: vec![0; 16],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(
@@ -128,7 +128,7 @@ fn test_invalid_signature_length() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(
@@ -173,7 +173,7 @@ fn test_nonce_too_long() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
                     nonce: vec![0; 33],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(
@@ -218,7 +218,7 @@ fn test_signature_too_long() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(
@@ -261,7 +261,7 @@ fn test_signature_from_different_key_rejected() {
         || {
             let signer_other = create_signer(&other);
             let mut sig_data =
-                create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &user);
+                create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &accounts(0));
             let user_pk = create_signer(&user).public_key();
             sig_data.public_key = user_pk.to_string().parse().unwrap();
 
@@ -303,7 +303,7 @@ fn test_signature_wrong_nonce_rejected() {
     step("Create valid signature then tamper nonce", || {
         let signer = create_signer(&user);
         let mut sig_data =
-            create_valid_signature(&signer, &user, "Identify myself", &[10; 32], &user);
+            create_valid_signature(&signer, &user, "Identify myself", &[10; 32], &accounts(0));
         sig_data.nonce = vec![42u8; 32];
 
         assert_panic_with(
@@ -346,7 +346,7 @@ fn test_signature_wrong_recipient_rejected() {
     step("Create valid signature then tamper recipient", || {
         let signer = create_signer(&user);
         let mut sig_data =
-            create_valid_signature(&signer, &user, "Identify myself", &[11; 32], &user);
+            create_valid_signature(&signer, &user, "Identify myself", &[11; 32], &accounts(0));
         sig_data.recipient = other.clone();
 
         assert_panic_with(
@@ -360,7 +360,7 @@ fn test_signature_wrong_recipient_rejected() {
                     "ctx".to_string(),
                 );
             },
-            "Signature recipient must match near_account_id",
+            "Signature recipient must match contract account",
         );
     });
 }
@@ -388,7 +388,7 @@ fn test_signature_wrong_challenge_rejected() {
     step("Create valid signature then tamper challenge", || {
         let signer = create_signer(&user);
         let mut sig_data =
-            create_valid_signature(&signer, &user, "Identify myself", &[12; 32], &user);
+            create_valid_signature(&signer, &user, "Identify myself", &[12; 32], &accounts(0));
         sig_data.challenge = "Different message".to_string();
 
         assert_panic_with(
@@ -428,7 +428,7 @@ fn test_invalid_signature_contents() {
     step("Create valid signature then flip a byte", || {
         let signer = create_signer(&user);
         let mut sig_data =
-            create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &user);
+            create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &accounts(0));
         sig_data.signature[0] ^= 0xFF;
 
         assert_panic_with(

@@ -39,7 +39,7 @@ fn test_public_signals_too_many() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 let too_many_signals_proof = SelfProofData {
@@ -96,7 +96,7 @@ fn test_public_signal_item_too_long() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 let mut signals = vec!["0".to_string(); 20];
@@ -157,7 +157,7 @@ fn test_proof_component_a_too_long() {
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
                         nonce: vec![0; 32],
-                        recipient: user.clone(),
+                        recipient: accounts(0),
                     };
 
                     let bad_proof = SelfProofData {
@@ -217,7 +217,7 @@ fn test_proof_component_b_too_long() {
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
                         nonce: vec![0; 32],
-                        recipient: user.clone(),
+                        recipient: accounts(0),
                     };
 
                     let bad_proof = SelfProofData {
@@ -265,7 +265,7 @@ fn test_public_signals_at_max_length_allowed() {
         testing_env!(context.build());
         let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[6; 32], &user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[6; 32], &accounts(0));
         (contract, user, sig_data)
     });
 
@@ -318,7 +318,7 @@ fn test_public_signals_under_max_allowed() {
         testing_env!(context.build());
         let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &accounts(0));
         (contract, user, sig_data)
     });
 
@@ -360,7 +360,7 @@ fn test_proof_components_at_max_length_allowed() {
         testing_env!(context.build());
         let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[8; 32], &user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[8; 32], &accounts(0));
         (contract, user, sig_data)
     });
 
@@ -423,7 +423,7 @@ fn test_proof_component_c_too_long() {
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
                         nonce: vec![0; 32],
-                        recipient: user.clone(),
+                        recipient: accounts(0),
                     };
 
                     let bad_proof = SelfProofData {

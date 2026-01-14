@@ -104,7 +104,7 @@ _Input Validation:_
 - NEP-413 nonce must be exactly 32 bytes
 - NEP-413 signature must be exactly 64 bytes
 - Signature account ID must match near_account_id
-- Signature recipient must match near_account_id
+- Signature recipient must match the contract account
 - Nullifier max length (80 chars)
 - User ID max length (80 chars)
 - Attestation ID max length (1 char)

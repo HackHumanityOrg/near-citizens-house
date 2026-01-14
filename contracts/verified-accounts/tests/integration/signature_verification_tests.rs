@@ -31,7 +31,7 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 32],
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"
@@ -65,7 +65,7 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
     // Generate a valid NEP-413 signature
     let nonce: [u8; 32] = [1u8; 32]; // Non-zero nonce for clarity
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
@@ -143,11 +143,12 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
     let nonce1: [u8; 32] = [1u8; 32];
     let nonce2: [u8; 32] = [2u8; 32];
     let challenge = "Identify myself";
+    let recipient = contract.id().to_string();
 
     let (signature1, public_key1) =
-        generate_nep413_signature(&user1, challenge, &nonce1, user1.id().as_str());
+        generate_nep413_signature(&user1, challenge, &nonce1, &recipient);
     let (signature2, public_key2) =
-        generate_nep413_signature(&user2, challenge, &nonce2, user2.id().as_str());
+        generate_nep413_signature(&user2, challenge, &nonce2, &recipient);
 
     // First verification should succeed
     let first_result = backend
@@ -163,7 +164,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
                 "public_key": public_key1,
                 "challenge": challenge,
                 "nonce": nonce1.to_vec(),
-                "recipient": user1.id()
+                "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "context1"
@@ -194,7 +195,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
                 "public_key": public_key2,
                 "challenge": challenge,
                 "nonce": nonce2.to_vec(),
-                "recipient": user2.id()
+                "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "context2"
@@ -228,7 +229,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
     let nonce1: [u8; 32] = [1u8; 32];
     let nonce2: [u8; 32] = [2u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature1, public_key1) =
         generate_nep413_signature(&user, challenge, &nonce1, &recipient);
@@ -249,7 +250,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
                 "public_key": public_key1,
                 "challenge": challenge,
                 "nonce": nonce1.to_vec(),
-                "recipient": recipient
+                "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "context1"
@@ -280,7 +281,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
                 "public_key": public_key2,
                 "challenge": challenge,
                 "nonce": nonce2.to_vec(),
-                "recipient": recipient
+                "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "context2"
@@ -316,7 +317,7 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
     // Generate a valid NEP-413 signature
     let nonce: [u8; 32] = [42u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
@@ -395,7 +396,7 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
         let user = worker.dev_create_account().await?;
         let nonce: [u8; 32] = [i as u8; 32];
         let challenge = "Identify myself";
-        let recipient = user.id().to_string();
+        let recipient = contract.id().to_string();
 
         let (signature, public_key) =
             generate_nep413_signature(&user, challenge, &nonce, &recipient);
@@ -480,11 +481,12 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
     let nonce1: [u8; 32] = [3u8; 32];
     let nonce2: [u8; 32] = [4u8; 32];
     let challenge = "Identify myself";
+    let recipient = contract.id().to_string();
 
     let (signature1, public_key1) =
-        generate_nep413_signature(&user1, challenge, &nonce1, user1.id().as_str());
+        generate_nep413_signature(&user1, challenge, &nonce1, &recipient);
     let (signature2, public_key2) =
-        generate_nep413_signature(&user2, challenge, &nonce2, user2.id().as_str());
+        generate_nep413_signature(&user2, challenge, &nonce2, &recipient);
 
     // First verification with attestation_id "1"
     let first_result = backend
@@ -500,7 +502,7 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
                 "public_key": public_key1,
                 "challenge": challenge,
                 "nonce": nonce1.to_vec(),
-                "recipient": user1.id()
+                "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "context1"
@@ -531,7 +533,7 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
                 "public_key": public_key2,
                 "challenge": challenge,
                 "nonce": nonce2.to_vec(),
-                "recipient": user2.id()
+                "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "context2"

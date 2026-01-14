@@ -4,6 +4,7 @@ import {
   SELF_CONFIG,
   NEAR_CONFIG,
   getSigningMessage,
+  getSigningRecipient,
   getVerifier,
   getRpcProvider,
   verifyNearSignature,
@@ -41,7 +42,7 @@ const CLOCK_SKEW_MS = 10 * 1000
 /**
  * Parse userDefinedData to extract signature JSON.
  * The QR code contains signature data without challenge/recipient (to reduce size).
- * Backend reconstructs these from known values.
+ * Backend reconstructs these from config values.
  */
 function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
   if (!userDefinedDataRaw) return null
@@ -407,7 +408,18 @@ export async function POST(request: NextRequest) {
     // Reconstruct challenge and recipient from known values
     // (not included in QR code to reduce size)
     const expectedChallenge = getSigningMessage()
-    const recipient = data.accountId as string // NEP-413 recipient must match accountId
+    let recipient: string
+    try {
+      recipient = getSigningRecipient()
+    } catch {
+      return respondWithError({
+        code: "INTERNAL_ERROR",
+        status: 500,
+        details: "Verification contract ID not configured",
+        stage: "config",
+        attestationId,
+      })
+    }
 
     const signatureCheck = verifyNearSignature(
       expectedChallenge,
@@ -522,7 +534,7 @@ export async function POST(request: NextRequest) {
       // Store signature data for on-chain re-verification
       // challenge and recipient are omitted - backend reconstructs them from:
       //   challenge = getSigningMessage()
-      //   recipient = accountId
+      //   recipient = getSigningRecipient()
       const fullUserContextData = JSON.stringify({
         accountId: data.accountId,
         publicKey: data.publicKey,

@@ -31,7 +31,7 @@ const randomNonce = Array.from({ length: 32 }, () => Math.floor(Math.random() * 
 
 // Test account IDs
 const testAccountId = "test.testnet"
-const testRecipient = "test.testnet"
+const testRecipient = "verification.testnet"
 
 // Sample user context data in various formats
 const validUserContextJson = {
@@ -788,7 +788,7 @@ describe("Near Citizens House", () => {
             expect(result?.signature.accountId).toBe(sampleSigData.accountId)
             expect(result?.signature.publicKey).toBe(sampleSigData.publicKey)
             expect(result?.signature.challenge).toBe("Identify myself")
-            expect(result?.signature.recipient).toBe(sampleSigData.accountId)
+            expect(result?.signature.recipient).toBe(sampleSigData.recipient)
           })
 
           it("should convert nonce to base64", async () => {

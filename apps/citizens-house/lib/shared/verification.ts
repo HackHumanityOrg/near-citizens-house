@@ -7,7 +7,7 @@ import { PublicKey } from "@near-js/crypto"
 import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
-import { getSigningMessage } from "./config"
+import { getSigningMessage, getSigningRecipient } from "./config"
 import type { ParsedSignatureData, ProofData, Nep413Payload, AttestationIdString } from "./contracts/verification"
 
 export type { ParsedSignatureData, ProofData, Nep413Payload }
@@ -230,7 +230,7 @@ export function buildProofData(
   if (!sigData) return null
 
   const challenge = sigData.challenge ?? getSigningMessage()
-  const recipient = sigData.recipient ?? sigData.accountId
+  const recipient = sigData.recipient ?? getSigningRecipient()
   const nep413Hash = computeNep413Hash(challenge, sigData.nonce, recipient)
   const publicKeyHex = extractEd25519PublicKeyHex(sigData.publicKey)
 

@@ -3,7 +3,7 @@
 use near_crypto::{InMemorySigner, KeyType, SecretKey, Signer};
 use near_sdk::serde::de::DeserializeOwned;
 use near_sdk::serde::Deserialize;
-use near_sdk::{env, test_utils::VMContextBuilder, AccountId};
+use near_sdk::{env, test_utils::accounts, test_utils::VMContextBuilder, AccountId};
 use verified_accounts::{NearSignatureData, SelfProofData, ZkProof};
 
 // Re-export event structs from the contract for test use
@@ -15,6 +15,7 @@ pub use verified_accounts::{
 /// Includes 1 yoctoNEAR attached deposit by default for payable functions
 pub fn get_context(predecessor: AccountId) -> VMContextBuilder {
     let mut builder = VMContextBuilder::new();
+    builder.current_account_id(accounts(0));
     builder.predecessor_account_id(predecessor);
     builder.attached_deposit(near_sdk::NearToken::from_yoctonear(1));
     builder
@@ -69,7 +70,7 @@ pub fn create_test_sig_data(user: AccountId) -> verified_accounts::NearSignature
         public_key: public_key_str.parse().unwrap(),
         challenge: "Identify myself".to_string(),
         nonce: vec![0; 32],
-        recipient: user,
+        recipient: env::current_account_id(),
     }
 }
 

@@ -46,7 +46,7 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
                 "nonce": vec![0u8; 32],
-                "recipient": user.id()
+                "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "test"
@@ -186,7 +186,7 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
     // First verify a user
     let nonce: [u8; 32] = [5u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 

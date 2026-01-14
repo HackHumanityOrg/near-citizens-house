@@ -38,7 +38,7 @@ fn test_account_id_mismatch() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(
@@ -60,7 +60,7 @@ fn test_account_id_mismatch() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "security")]
-#[allure_description("Verifies that store_verification rejects when signature recipient doesn't match near_account_id parameter.")]
+#[allure_description("Verifies that store_verification rejects when signature recipient doesn't match the contract account.")]
 #[allure_test]
 #[test]
 fn test_recipient_mismatch() {
@@ -97,7 +97,7 @@ fn test_recipient_mismatch() {
                     "test_user_context_data".to_string(),
                 );
             },
-            "Signature recipient must match near_account_id",
+            "Signature recipient must match contract account",
         );
     });
 }
@@ -198,7 +198,7 @@ fn test_nullifier_too_long() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 let too_long_nullifier = "x".repeat(81);
@@ -245,7 +245,7 @@ fn test_nullifier_empty() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(
@@ -290,7 +290,7 @@ fn test_attestation_id_too_long() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 let too_long_attestation_id = "xx".to_string();
@@ -337,7 +337,7 @@ fn test_attestation_id_invalid_value() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
                     nonce: vec![0; 32],
-                    recipient: user.clone(),
+                    recipient: accounts(0),
                 };
 
                 let invalid_attestation_id = "9".to_string();
@@ -386,7 +386,7 @@ fn test_user_context_data_too_long() {
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
                         nonce: vec![0; 32],
-                        recipient: user.clone(),
+                        recipient: accounts(0),
                     };
 
                     let too_long_user_context = "x".repeat(4097);
@@ -422,7 +422,7 @@ fn test_nullifier_max_length_allowed() {
         testing_env!(context.build());
         let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[2; 32], &user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[2; 32], &accounts(0));
         (contract, user, sig_data)
     });
 
@@ -458,7 +458,7 @@ fn test_attestation_id_single_char_allowed() {
         testing_env!(context.build());
         let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &accounts(0));
         (contract, user, sig_data)
     });
 
@@ -494,7 +494,7 @@ fn test_user_context_data_max_length_allowed() {
         testing_env!(context.build());
         let contract = VersionedContract::new(backend);
         let signer = create_signer(&user);
-        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &user);
+        let sig_data = create_valid_signature(&signer, &user, "Identify myself", &[5; 32], &accounts(0));
         (contract, user, sig_data)
     });
 

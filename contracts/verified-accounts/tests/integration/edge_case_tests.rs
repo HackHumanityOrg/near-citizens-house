@@ -21,7 +21,7 @@ async fn test_max_length_user_context_data() -> anyhow::Result<()> {
 
     let nonce: [u8; 32] = [99u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
@@ -77,7 +77,7 @@ async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {
 
     let nonce: [u8; 32] = [100u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
@@ -146,7 +146,7 @@ async fn test_nonce_all_zeros() -> anyhow::Result<()> {
     // All-zeros nonce (edge case - weak randomness, but should still be accepted)
     let nonce: [u8; 32] = [0u8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
@@ -200,7 +200,7 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
     // All-0xFF nonce (max byte values)
     let nonce: [u8; 32] = [0xFFu8; 32];
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
 
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 

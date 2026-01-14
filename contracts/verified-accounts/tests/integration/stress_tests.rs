@@ -37,7 +37,7 @@ async fn store_verification(
     attestation_id: &str,
     nonce: [u8; 32],
 ) -> anyhow::Result<()> {
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
     let (signature, public_key) =
         generate_nep413_signature(user, CHALLENGE_MESSAGE, &nonce, &recipient);
 
@@ -55,7 +55,7 @@ async fn store_verification(
                 "public_key": public_key,
                 "challenge": CHALLENGE_MESSAGE,
                 "nonce": nonce.to_vec(),
-                "recipient": user.id()
+                "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
             "user_context_data": "stress-test"

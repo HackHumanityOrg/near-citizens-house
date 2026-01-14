@@ -31,7 +31,7 @@ fn test_unauthorized_write() {
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
                     nonce: vec![0; 32],
-                    recipient: accounts(2),
+                    recipient: accounts(0),
                 };
 
                 contract.store_verification(

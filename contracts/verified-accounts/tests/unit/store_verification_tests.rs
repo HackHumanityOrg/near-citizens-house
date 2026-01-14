@@ -48,7 +48,7 @@ fn test_happy_path_store_verification() {
 
             let challenge = "Identify myself";
             let nonce = vec![0u8; 32];
-            let sig_data = create_valid_signature(&signer, &user, challenge, &nonce, &user);
+            let sig_data = create_valid_signature(&signer, &user, challenge, &nonce, &accounts(0));
 
             (contract, user, sig_data)
         });
@@ -117,7 +117,7 @@ fn test_verification_timestamp_matches_block_time() {
             let contract = VersionedContract::new(backend);
             let signer = create_signer(&user);
             let sig_data =
-                create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &user);
+                create_valid_signature(&signer, &user, "Identify myself", &[13; 32], &accounts(0));
             (contract, user, sig_data, expected_ts)
         });
 
@@ -158,7 +158,7 @@ fn test_nullifier_reuse_rejected() {
         let user_a = accounts(2);
         let signer_a = create_signer(&user_a);
         let sig_a =
-            create_valid_signature(&signer_a, &user_a, "Identify myself", &[0; 32], &user_a);
+            create_valid_signature(&signer_a, &user_a, "Identify myself", &[0; 32], &accounts(0));
         contract.store_verification(
             "shared_nullifier".to_string(),
             user_a,
@@ -173,7 +173,7 @@ fn test_nullifier_reuse_rejected() {
         let user_b = accounts(3);
         let signer_b = create_signer(&user_b);
         let sig_b =
-            create_valid_signature(&signer_b, &user_b, "Identify myself", &[2; 32], &user_b);
+            create_valid_signature(&signer_b, &user_b, "Identify myself", &[2; 32], &accounts(0));
         assert_panic_with(
             || {
                 contract.store_verification(
@@ -212,7 +212,7 @@ fn test_double_verification_rejected() {
     });
 
     step("Store first verification for user", || {
-        let sig_one = create_valid_signature(&signer, &user, "Identify myself", &[3; 32], &user);
+        let sig_one = create_valid_signature(&signer, &user, "Identify myself", &[3; 32], &accounts(0));
         contract.store_verification(
             "n1".to_string(),
             user.clone(),
@@ -224,7 +224,7 @@ fn test_double_verification_rejected() {
     });
 
     step("Attempt second verification for same user", || {
-        let sig_two = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &user);
+        let sig_two = create_valid_signature(&signer, &user, "Identify myself", &[4; 32], &accounts(0));
         assert_panic_with(
             || {
                 contract.store_verification(

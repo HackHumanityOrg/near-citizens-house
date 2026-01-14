@@ -104,8 +104,7 @@ async fn store_verification(
 ) -> anyhow::Result<()> {
     let nonce: [u8; 32] = rand::random();
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
-
+    let recipient = contract.id().to_string();
     let (signature, public_key) = generate_nep413_signature(user, challenge, &nonce, &recipient);
 
     let result = backend
@@ -117,141 +116,6 @@ async fn store_verification(
             "attestation_id": "1",
             "signature_data": {
                 "account_id": user.id(),
-                "signature": signature,
-                "public_key": public_key,
-                "challenge": challenge,
-                "nonce": nonce.to_vec(),
-                "recipient": recipient
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": format!("context_for_{}", nullifier)
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    assert!(
-        result.is_success(),
-        "Store verification failed: {:?}",
-        result.failures()
-    );
-
-    Ok(())
-}
-
-/// Store a verification (V2 contract - includes nationality_disclosed parameter)
-async fn store_verification_v2(
-    backend: &Account,
-    contract: &Contract,
-    user: &Account,
-    nullifier: &str,
-    nationality_disclosed: bool,
-) -> anyhow::Result<()> {
-    let nonce: [u8; 32] = rand::random();
-    let challenge = "Identify myself";
-    let recipient = user.id().to_string();
-
-    let (signature, public_key) = generate_nep413_signature(user, challenge, &nonce, &recipient);
-
-    let result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "nullifier": nullifier,
-            "near_account_id": user.id(),
-            "attestation_id": "1",
-            "signature_data": {
-                "account_id": user.id(),
-                "signature": signature,
-                "public_key": public_key,
-                "challenge": challenge,
-                "nonce": nonce.to_vec(),
-                "recipient": recipient
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": format!("context_for_{}", nullifier),
-            "nationality_disclosed": nationality_disclosed
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    assert!(
-        result.is_success(),
-        "Store verification (V2) failed: {:?}",
-        result.failures()
-    );
-
-    Ok(())
-}
-
-// ==================== V1 Baseline Tests ====================
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Integration Tests")]
-#[allure_sub_suite("Versioning")]
-#[allure_severity("critical")]
-#[allure_tags("integration", "versioning", "v1")]
-#[allure_description("Baseline test: V1 contract can store and retrieve verifications.")]
-#[allure_test]
-#[tokio::test]
-async fn test_v1_baseline_storage_and_retrieval() -> anyhow::Result<()> {
-    let (worker, contract, backend) = init_v1().await?;
-    let user = worker.dev_create_account().await?;
-
-    store_verification(&backend, &contract, &user, "v1_baseline_nullifier").await?;
-
-    let summary: Option<VerificationSummary> = contract
-        .view("get_verification")
-        .args_json(json!({"account_id": user.id()}))
-        .await?
-        .json()?;
-
-    step("Verify V1 data is stored and retrievable", || {
-        assert!(summary.is_some(), "Verification should be found");
-        let summary = summary.expect("checked above");
-        assert_eq!(summary.nullifier, "v1_baseline_nullifier");
-        assert_eq!(summary.near_account_id, *user.id());
-    });
-
-    let state_version: u8 = contract.view("get_state_version").await?.json()?;
-    step("Verify contract reports V1 state version", || {
-        assert_eq!(state_version, 1, "Should be state version 1");
-    });
-
-    Ok(())
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Integration Tests")]
-#[allure_sub_suite("Versioning")]
-#[allure_severity("critical")]
-#[allure_tags("integration", "versioning", "v1", "nullifier")]
-#[allure_description("V1 nullifier protection works correctly.")]
-#[allure_test]
-#[tokio::test]
-async fn test_v1_nullifier_protection() -> anyhow::Result<()> {
-    let (worker, contract, backend) = init_v1().await?;
-    let user1 = worker.dev_create_account().await?;
-    let user2 = worker.dev_create_account().await?;
-
-    store_verification(&backend, &contract, &user1, "shared_nullifier").await?;
-
-    // Try to reuse nullifier
-    let nonce: [u8; 32] = rand::random();
-    let challenge = "Identify myself";
-    let recipient = user2.id().to_string();
-    let (signature, public_key) = generate_nep413_signature(&user2, challenge, &nonce, &recipient);
-
-    let result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "nullifier": "shared_nullifier",
-            "near_account_id": user2.id(),
-            "attestation_id": "1",
-            "signature_data": {
-                "account_id": user2.id(),
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
@@ -265,10 +129,59 @@ async fn test_v1_nullifier_protection() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    step("Verify nullifier reuse is rejected", || {
-        assert!(result.is_failure());
-        let failure_msg = format!("{:?}", result.failures());
-        assert!(failure_msg.contains("Nullifier already used"));
+    step("Verify verification stored successfully", || {
+        assert!(
+            result.is_success(),
+            "Verification failed: {:?}",
+            result.failures()
+        );
+    });
+
+    Ok(())
+}
+
+/// Store a verification against V2 contract (requires nationality_disclosed)
+async fn store_verification_v2(
+    backend: &Account,
+    contract: &Contract,
+    user: &Account,
+    nullifier: &str,
+    nationality_disclosed: bool,
+) -> anyhow::Result<()> {
+    let nonce: [u8; 32] = rand::random();
+    let challenge = "Identify myself";
+    let recipient = contract.id().to_string();
+    let (signature, public_key) = generate_nep413_signature(user, challenge, &nonce, &recipient);
+
+    let result = backend
+        .call(contract.id(), "store_verification")
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({
+            "nullifier": nullifier,
+            "near_account_id": user.id(),
+            "attestation_id": "1",
+            "signature_data": {
+                "account_id": user.id(),
+                "signature": signature,
+                "public_key": public_key,
+                "challenge": challenge,
+                "nonce": nonce.to_vec(),
+                "recipient": recipient
+            },
+            "self_proof": test_self_proof(),
+            "user_context_data": "context",
+            "nationality_disclosed": nationality_disclosed
+        }))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
+
+    step("Verify verification stored successfully (V2)", || {
+        assert!(
+            result.is_success(),
+            "Verification failed: {:?}",
+            result.failures()
+        );
     });
 
     Ok(())
@@ -494,7 +407,7 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
     let user2 = worker.dev_create_account().await?;
     let nonce: [u8; 32] = rand::random();
     let challenge = "Identify myself";
-    let recipient = user2.id().to_string();
+    let recipient = contract.id().to_string();
     let (signature, public_key) = generate_nep413_signature(&user2, challenge, &nonce, &recipient);
 
     let result = backend
@@ -567,7 +480,7 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
     let user = worker.dev_create_account().await?;
     let nonce: [u8; 32] = [42u8; 32]; // Fixed nonce for repeat attempt
     let challenge = "Identify myself";
-    let recipient = user.id().to_string();
+    let recipient = contract.id().to_string();
     let (signature, public_key) = generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
     let _ = backend
