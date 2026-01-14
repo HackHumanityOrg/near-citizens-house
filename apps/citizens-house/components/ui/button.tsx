@@ -38,6 +38,7 @@ const buttonVariants = cva(
         "citizens-lg": "h-[36px] px-4 text-[14px]",
         "citizens-xl": "h-[40px] px-4 text-[14px]",
         "citizens-2xl": "h-[44px] px-5 text-[14px]",
+        "citizens-3xl": "h-[48px] px-6 text-[16px]",
         "citizens-icon": "h-[36px] w-[36px]",
       },
     },

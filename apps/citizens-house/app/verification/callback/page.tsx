@@ -6,6 +6,7 @@ import { useAnalytics } from "@/lib/analytics"
 import { clientLogger } from "@/lib/logger-client"
 import { LogScope, Op } from "@/lib/logging"
 import { Loader2 } from "lucide-react"
+import { Button } from "@near-citizens/ui"
 import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
@@ -285,7 +286,7 @@ function VerifyCallbackContent() {
       <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
         {/* Yellow gradient background */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_650px_420px_at_center_30%,_rgba(255,218,30,0.4)_0%,_rgba(253,221,57,0.3)_25%,_rgba(249,230,136,0.2)_45%,_rgba(245,236,189,0.14)_60%,_rgba(242,242,242,0.06)_75%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_650px_420px_at_center_30%,_rgba(255,218,30,0.28)_0%,_rgba(253,221,57,0.2)_30%,_rgba(249,230,136,0.14)_55%,_transparent_80%)]" />
         </div>
 
         {/* Star pattern - positioned near right edge */}
@@ -399,19 +400,23 @@ function VerifyCallbackContent() {
 
                   {/* Action Button */}
                   {isNonRetryableError(errorCode) ? (
-                    <button
+                    <Button
                       onClick={handleGoHome}
-                      className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] h-[56px] px-6 rounded-[4px] font-fk-grotesk font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
+                      variant="citizens-primary"
+                      size="citizens-3xl"
+                      className="mt-4 w-full"
                     >
                       Back to Home
-                    </button>
+                    </Button>
                   ) : (
-                    <button
+                    <Button
                       onClick={handleTryAgain}
-                      className="mt-4 w-full bg-[#040404] dark:bg-white text-[#d8d8d8] dark:text-[#040404] h-[56px] px-6 rounded-[4px] font-fk-grotesk font-medium text-[16px] leading-[20px] cursor-pointer hover:opacity-90 transition-opacity"
+                      variant="citizens-primary"
+                      size="citizens-3xl"
+                      className="mt-4 w-full"
                     >
                       Try Again
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -430,7 +435,7 @@ function LoadingFallback() {
       <section className="relative h-[320px] md:h-[380px] -mt-32 pt-32 overflow-hidden">
         {/* Yellow gradient background */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.5)_0%,_rgba(253,221,57,0.4)_20%,_rgba(249,230,136,0.3)_40%,_rgba(245,236,189,0.15)_60%,_rgba(242,242,242,0.05)_80%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_1200px_800px_at_center_center,_rgba(255,218,30,0.3)_0%,_rgba(253,221,57,0.2)_20%,_rgba(249,230,136,0.15)_40%,_transparent_70%)]" />
+          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_650px_420px_at_center_30%,_rgba(255,218,30,0.4)_0%,_rgba(253,221,57,0.3)_25%,_rgba(249,230,136,0.2)_45%,_rgba(245,236,189,0.14)_60%,_rgba(242,242,242,0.06)_75%,_transparent_100%)] dark:bg-[radial-gradient(ellipse_650px_420px_at_center_30%,_rgba(255,218,30,0.28)_0%,_rgba(253,221,57,0.2)_30%,_rgba(249,230,136,0.14)_55%,_transparent_80%)]" />
         </div>
 
         {/* Star pattern - positioned near right edge */}

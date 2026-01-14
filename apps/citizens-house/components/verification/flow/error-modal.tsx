@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { Button } from "@near-citizens/ui"
 import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
 
 interface ErrorModalProps {
@@ -78,25 +79,25 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
         {/* Button section */}
         <div className="flex gap-[16px] items-center pt-[24px] pb-0 px-0 w-full">
           {isNonRetryable ? (
-            <button
+            <Button
               onClick={onClose}
-              className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] cursor-pointer hover:opacity-90 transition-opacity"
+              variant="citizens-primary"
+              size="citizens-3xl"
               data-testid="error-close-button"
+              className="flex-1"
             >
-              <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
-                Close
-              </p>
-            </button>
+              Close
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={onRetry}
-              className="basis-0 bg-[#040404] dark:bg-white flex gap-[8px] grow h-[56px] items-center justify-center min-h-px min-w-px px-[24px] py-[14px] rounded-[4px] cursor-pointer hover:opacity-90 transition-opacity"
+              variant="citizens-primary"
+              size="citizens-3xl"
               data-testid="error-retry-button"
+              className="flex-1"
             >
-              <p className="font-inter font-medium leading-[20px] text-[16px] text-[#d8d8d8] dark:text-[#040404] text-center text-nowrap">
-                Sign Message
-              </p>
-            </button>
+              Sign Message
+            </Button>
           )}
         </div>
       </div>
