@@ -99,6 +99,52 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     initializeWalletConnector()
   }, [])
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    let lastHiddenState: boolean | null = null
+    const mediaQuery = window.matchMedia("(max-width: 640px)")
+
+    const updateUserJotVisibility = () => {
+      const isMobile = mediaQuery.matches
+      const isWalletPopupOpen = isMobile && !!document.querySelector(".hot-connector-popup")
+
+      if (lastHiddenState === isWalletPopupOpen) {
+        return
+      }
+
+      lastHiddenState = isWalletPopupOpen
+      document.body.classList.toggle("userjot-hidden-for-wallet-selector", isWalletPopupOpen)
+
+      if (typeof window.uj?.setWidgetEnabled === "function") {
+        window.uj?.setWidgetEnabled?.(!isWalletPopupOpen)
+      }
+    }
+
+    updateUserJotVisibility()
+
+    const observer = new MutationObserver(updateUserJotVisibility)
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    })
+    mediaQuery.addEventListener("change", updateUserJotVisibility)
+
+    return () => {
+      observer.disconnect()
+      mediaQuery.removeEventListener("change", updateUserJotVisibility)
+      document.body.classList.remove("userjot-hidden-for-wallet-selector")
+
+      if (typeof window.uj?.setWidgetEnabled === "function") {
+        window.uj?.setWidgetEnabled?.(true)
+      }
+    }
+  }, [])
+
   const connect = useCallback(async () => {
     if (!nearConnector) {
       console.error("Connector not initialized")

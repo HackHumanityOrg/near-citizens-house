@@ -23,3 +23,9 @@
       "calt" 1;
   }
 }
+
+body.userjot-hidden-for-wallet-selector .userjot-widget,
+body.userjot-hidden-for-wallet-selector .userjot-widget-container,
+body.userjot-hidden-for-wallet-selector #userjot-widget-container {
+  display: none !important;
+}
