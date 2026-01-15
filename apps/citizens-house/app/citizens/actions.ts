@@ -38,6 +38,26 @@ export type GetVerificationsResult = {
   total: number
 }
 
+const getCachedProofVerification = unstable_cache(
+  async (storedProof: Verification["selfProof"], attestationId: number) => {
+    const result = await verifyStoredProofWithDetails(
+      {
+        proof: storedProof.proof,
+        publicSignals: storedProof.publicSignals,
+      },
+      attestationId,
+    )
+
+    if (result.error) {
+      throw new Error(result.error)
+    }
+
+    return result
+  },
+  ["proof-verification"],
+  { tags: ["proof-verification"], revalidate: false },
+)
+
 /**
  * Core data fetching logic - separated for caching.
  * Fetches accounts from NEAR contract and verifies each one.
@@ -54,13 +74,7 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
         let zkResult
         try {
           // 1. Verify ZK proof via Celo on-chain verifier
-          zkResult = await verifyStoredProofWithDetails(
-            {
-              proof: account.selfProof.proof,
-              publicSignals: account.selfProof.publicSignals,
-            },
-            Number(account.attestationId),
-          )
+          zkResult = await getCachedProofVerification(account.selfProof, Number(account.attestationId))
 
           // Log successful verification with RPC endpoint used
           if (zkResult.isValid && zkResult.rpcUrl) {
