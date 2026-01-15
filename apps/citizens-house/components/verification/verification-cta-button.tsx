@@ -9,7 +9,6 @@ import { Button, cn } from "@near-citizens/ui"
 
 type VerificationCtaButtonProps = {
   className?: string
-  size?: "hero" | "steps"
   labelDisconnected?: string
   labelConnected?: string
   testId?: string
@@ -17,7 +16,6 @@ type VerificationCtaButtonProps = {
 
 export function VerificationCtaButton({
   className,
-  size = "hero",
   labelDisconnected = "Connect NEAR Wallet",
   labelConnected = "Get Verified",
   testId = "connect-wallet-button",
@@ -59,9 +57,6 @@ export function VerificationCtaButton({
     }
   }
 
-  // Exact Figma specs: pl-8px pr-24px py-8px, gap-12px, icon: 32x32 with 8px padding
-  const sizeClassName = size === "steps" ? "h-[56px]" : ""
-
   const content = (
     <>
       <div className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[2px] bg-white dark:bg-black p-[8px]">
@@ -89,12 +84,11 @@ export function VerificationCtaButton({
       <Button
         asChild
         variant="citizens-primary"
-        size={null}
+        size="citizens-3xl"
         data-testid={`${testId}-connected`}
         className={cn(
-          "h-auto gap-[12px] overflow-hidden rounded-[4px] pl-[8px] pr-[24px] py-[8px] text-[16px] font-medium leading-[24px]",
+          "justify-start gap-[12px] overflow-hidden rounded-[4px] pl-[8px] pr-[24px] py-[8px] font-medium",
           "font-fk-grotesk",
-          sizeClassName,
           className,
         )}
       >
@@ -110,12 +104,11 @@ export function VerificationCtaButton({
       disabled={isLoading}
       aria-busy={isLoading}
       variant="citizens-primary"
-      size={null}
+      size="citizens-3xl"
       data-testid={testId}
       className={cn(
-        "h-auto gap-[12px] overflow-hidden rounded-[4px] pl-[8px] pr-[24px] py-[8px] text-[16px] font-medium leading-[24px]",
+        "justify-start gap-[12px] overflow-hidden rounded-[4px] pl-[8px] pr-[24px] py-[8px] font-medium",
         "font-fk-grotesk",
-        sizeClassName,
         className,
       )}
     >

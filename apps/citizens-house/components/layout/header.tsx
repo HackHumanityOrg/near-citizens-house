@@ -88,7 +88,7 @@ export function Header() {
         {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
         <div className="flex items-center gap-10 ml-auto">
           {isLandingOrVerification && !isConnected ? null : isLoading ? (
-            <Button variant="citizens-primary" size="citizens-xl" disabled>
+            <Button variant="citizens-primary" size="citizens-3xl" disabled>
               <Loader2 className="h-4 w-4 animate-spin" />
               Connecting...
             </Button>
@@ -117,7 +117,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="citizens-primary" size="citizens-xl" onClick={connect}>
+            <Button variant="citizens-primary" size="citizens-3xl" onClick={connect}>
               Connect Wallet
             </Button>
           )}
