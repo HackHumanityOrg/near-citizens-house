@@ -15,13 +15,15 @@
 
 import posthog from "posthog-js"
 import { useEffect } from "react"
+import { AnalyticsProperties } from "@/lib/analytics-schema"
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     // Capture the exception in PostHog
     posthog.captureException(error, {
-      error_boundary: "global",
-      error_digest: error.digest,
+      [AnalyticsProperties.errorBoundary]: "global",
+      [AnalyticsProperties.errorDigest]: error.digest,
+      [AnalyticsProperties.trackingSource]: "client",
     })
   }, [error])
 

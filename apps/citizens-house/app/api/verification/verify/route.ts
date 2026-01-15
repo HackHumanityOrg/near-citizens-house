@@ -18,7 +18,12 @@ import {
 import { setBackendKeyPoolRedis, verificationDb } from "@near-citizens/shared/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
-import { trackVerificationCompletedServer, trackVerificationFailedServer } from "@/lib/analytics-server"
+import {
+  extractPostHogDistinctIdFromCookies,
+  trackVerificationCompletedServer,
+  trackVerificationFailedServer,
+  trackVerificationStartedServer,
+} from "@/lib/analytics-server"
 import { createApiEvent, logger, LogScope, Op } from "@/lib/logger"
 
 // Initialize Redis for backend key pool (for concurrent transaction support)
@@ -151,6 +156,9 @@ async function hasFullAccessKey(accountId: string, publicKey: string): Promise<b
 export async function POST(request: NextRequest) {
   // Create wide event for this request
   const event = createApiEvent(Op.API.VERIFICATION_VERIFY, request)
+  const eventAttributes = event.getAttributes()
+  const requestId = typeof eventAttributes.request_id === "string" ? eventAttributes.request_id : undefined
+  const distinctId = extractPostHogDistinctIdFromCookies(request.headers.get("cookie") || undefined)
 
   const selfNetwork = SELF_CONFIG.networkId
   let sessionId: string | undefined
@@ -187,9 +195,10 @@ export async function POST(request: NextRequest) {
 
     try {
       await trackVerificationFailedServer({
-        distinctId: accountId ?? sessionId ?? "unknown",
+        distinctId: distinctId ?? sessionId ?? requestId ?? "unknown",
         accountId,
         sessionId,
+        requestId,
         nationality,
         attestationId: attestationId ? attestationId.toString() : undefined,
         errorCode: code,
@@ -248,6 +257,23 @@ export async function POST(request: NextRequest) {
 
     // Update wide event with attestation ID
     event.setVerification({ attestation_id: attestationIdString, stage: "started" })
+
+    try {
+      await trackVerificationStartedServer({
+        distinctId: distinctId ?? requestId ?? "unknown",
+        accountId,
+        attestationId: attestationIdString,
+        sessionId,
+        requestId,
+        selfNetwork,
+      })
+    } catch (error) {
+      logger.warn("Failed to track verification_started event", {
+        scope: LogScope.API,
+        operation: Op.VERIFICATION.ANALYTICS,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
+    }
 
     let selfVerificationResult
 
@@ -572,6 +598,8 @@ export async function POST(request: NextRequest) {
           selfNetwork,
           isValid,
           sessionId,
+          requestId,
+          distinctId: distinctId ?? nearSignature.accountId,
           timestamp: Date.now(),
         })
       } catch (error) {

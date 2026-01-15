@@ -15,13 +15,15 @@ import Link from "next/link"
 import { useEffect } from "react"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
+import { AnalyticsProperties } from "@/lib/analytics-schema"
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     // Capture the exception in PostHog
     posthog.captureException(error, {
-      error_boundary: "route",
-      error_digest: error.digest,
+      [AnalyticsProperties.errorBoundary]: "route",
+      [AnalyticsProperties.errorDigest]: error.digest,
+      [AnalyticsProperties.trackingSource]: "client",
     })
   }, [error])
 

@@ -13,6 +13,7 @@
 import "server-only"
 
 import { logs, SeverityNumber } from "@opentelemetry/api-logs"
+import { redactSensitiveFields } from "./analytics-schema"
 import {
   LogScope,
   type LogOperation,
@@ -69,6 +70,7 @@ interface BaseAttributes {
   "service.version": string
   "deployment.environment": string
   "deployment.region": string
+  tracking_source: "server"
 
   // Timestamp
   timestamp: string
@@ -176,6 +178,7 @@ function buildBaseAttributes(): BaseAttributes {
     "service.version": SERVICE_VERSION,
     "deployment.environment": DEPLOYMENT_ENV,
     "deployment.region": REGION,
+    tracking_source: "server",
     timestamp: new Date(now).toISOString(),
     timestamp_ms: now,
   }
@@ -242,8 +245,10 @@ function log(level: LogLevel, message: string, attributes: WideEventAttributes =
     ...attributes,
   }
 
+  const sanitizedAttributes = redactSensitiveFields(allAttributes)
+
   // Flatten for OpenTelemetry
-  const flatAttrs = flattenAttributes(allAttributes)
+  const flatAttrs = flattenAttributes(sanitizedAttributes)
 
   // Get the OpenTelemetry logger
   const otelLogger = logs.getLogger(SERVICE_NAME)

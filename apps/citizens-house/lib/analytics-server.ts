@@ -2,6 +2,7 @@ import "server-only"
 
 import { PostHog } from "posthog-node"
 import { logger, LogScope, Op } from "./logger"
+import { AnalyticsProperties } from "./analytics-schema"
 
 let posthog: PostHog | null = null
 
@@ -16,6 +17,23 @@ export function getPostHogServer(): PostHog | null {
     })
   }
   return posthog
+}
+
+export function extractPostHogDistinctIdFromCookies(cookieHeader?: string | string[]): string | undefined {
+  if (!cookieHeader) return undefined
+
+  const cookieString = Array.isArray(cookieHeader) ? cookieHeader.join("; ") : cookieHeader
+  const postHogCookieMatch = cookieString.match(/ph_phc_[^_]+_posthog=([^;]+)/)
+
+  if (!postHogCookieMatch?.[1]) return undefined
+
+  try {
+    const decodedCookie = decodeURIComponent(postHogCookieMatch[1])
+    const postHogData = JSON.parse(decodedCookie) as { distinct_id?: string }
+    return postHogData.distinct_id
+  } catch {
+    return undefined
+  }
 }
 
 function logAnalyticsError(message: string, error: unknown, extra: Record<string, unknown> = {}): void {
@@ -36,6 +54,49 @@ function logAnalyticsError(message: string, error: unknown, extra: Record<string
   })
 }
 
+export async function trackVerificationStartedServer(props: {
+  distinctId: string
+  accountId?: string
+  attestationId: string
+  sessionId?: string
+  requestId?: string
+  selfNetwork?: string
+  verificationMethod?: string
+  timestamp?: number
+}): Promise<void> {
+  const ph = getPostHogServer()
+  if (!ph) return
+
+  const properties = {
+    [AnalyticsProperties.attestationId]: props.attestationId,
+    [AnalyticsProperties.trackingSource]: "server",
+    [AnalyticsProperties.verificationStage]: "started",
+    ...(props.accountId ? { [AnalyticsProperties.accountId]: props.accountId } : {}),
+    ...(props.sessionId ? { [AnalyticsProperties.sessionId]: props.sessionId } : {}),
+    ...(props.requestId ? { [AnalyticsProperties.requestId]: props.requestId } : {}),
+    ...(props.selfNetwork ? { [AnalyticsProperties.selfNetwork]: props.selfNetwork } : {}),
+    ...(props.verificationMethod ? { [AnalyticsProperties.verificationMethod]: props.verificationMethod } : {}),
+    ...(props.accountId ? {} : { $process_person_profile: false }),
+  }
+
+  try {
+    await ph.captureImmediate({
+      distinctId: props.distinctId,
+      event: "verification_started",
+      properties,
+      timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
+    })
+  } catch (error) {
+    logAnalyticsError("Failed to capture verification started", error, {
+      [AnalyticsProperties.distinctId]: props.distinctId,
+      [AnalyticsProperties.accountId]: props.accountId,
+      [AnalyticsProperties.sessionId]: props.sessionId,
+      [AnalyticsProperties.attestationId]: props.attestationId,
+      [AnalyticsProperties.requestId]: props.requestId,
+    })
+  }
+}
+
 export async function trackVerificationCompletedServer(props: {
   accountId: string
   nationality?: string
@@ -43,29 +104,33 @@ export async function trackVerificationCompletedServer(props: {
   selfNetwork?: string
   isValid?: boolean
   sessionId?: string
+  requestId?: string
+  distinctId?: string
   timestamp?: number
 }): Promise<void> {
   const ph = getPostHogServer()
   if (!ph) return
 
   const properties = {
-    account_id: props.accountId,
-    attestation_id: props.attestationId,
-    tracking_source: "server",
-    ...(props.nationality ? { nationality: props.nationality } : {}),
-    ...(props.selfNetwork ? { self_network: props.selfNetwork } : {}),
-    ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
-    ...(props.sessionId ? { session_id: props.sessionId } : {}),
+    [AnalyticsProperties.accountId]: props.accountId,
+    [AnalyticsProperties.attestationId]: props.attestationId,
+    [AnalyticsProperties.trackingSource]: "server",
+    [AnalyticsProperties.verificationStage]: "completed",
+    ...(props.nationality ? { [AnalyticsProperties.nationality]: props.nationality } : {}),
+    ...(props.selfNetwork ? { [AnalyticsProperties.selfNetwork]: props.selfNetwork } : {}),
+    ...(typeof props.isValid === "boolean" ? { [AnalyticsProperties.isValid]: props.isValid } : {}),
+    ...(props.sessionId ? { [AnalyticsProperties.sessionId]: props.sessionId } : {}),
+    ...(props.requestId ? { [AnalyticsProperties.requestId]: props.requestId } : {}),
     // Set person properties
     $set: {
-      near_account: props.accountId,
-      last_verification_at: new Date().toISOString(),
-      ...(props.nationality ? { nationality: props.nationality } : {}),
+      [AnalyticsProperties.nearAccount]: props.accountId,
+      [AnalyticsProperties.lastVerificationAt]: new Date().toISOString(),
+      ...(props.nationality ? { [AnalyticsProperties.nationality]: props.nationality } : {}),
     },
 
     $set_once: {
-      first_verification_at: new Date().toISOString(),
-      ...(props.nationality ? { first_nationality: props.nationality } : {}),
+      [AnalyticsProperties.firstVerificationAt]: new Date().toISOString(),
+      ...(props.nationality ? { [AnalyticsProperties.firstNationality]: props.nationality } : {}),
     },
   }
 
@@ -73,16 +138,17 @@ export async function trackVerificationCompletedServer(props: {
   // before the serverless function terminates (prevents event loss)
   try {
     await ph.captureImmediate({
-      distinctId: props.accountId,
+      distinctId: props.distinctId ?? props.accountId,
       event: "verification_completed",
       properties,
       timestamp: props.timestamp ? new Date(props.timestamp) : undefined,
     })
   } catch (error) {
     logAnalyticsError("Failed to capture verification completed", error, {
-      account_id: props.accountId,
-      session_id: props.sessionId,
-      attestation_id: props.attestationId,
+      [AnalyticsProperties.accountId]: props.accountId,
+      [AnalyticsProperties.sessionId]: props.sessionId,
+      [AnalyticsProperties.attestationId]: props.attestationId,
+      [AnalyticsProperties.requestId]: props.requestId,
     })
   }
 }
@@ -98,6 +164,7 @@ export async function trackVerificationFailedServer(props: {
   selfNetwork?: string
   isValid?: boolean
   sessionId?: string
+  requestId?: string
   timestamp?: number
 }): Promise<void> {
   const ph = getPostHogServer()
@@ -109,27 +176,34 @@ export async function trackVerificationFailedServer(props: {
     props.accountId && props.nationality
       ? {
           $set: {
-            near_account: props.accountId,
-            last_failed_verification_at: new Date().toISOString(),
-            nationality: props.nationality,
+            [AnalyticsProperties.nearAccount]: props.accountId,
+            [AnalyticsProperties.lastFailedVerificationAt]: new Date().toISOString(),
+            [AnalyticsProperties.nationality]: props.nationality,
           },
           $set_once: {
-            first_nationality: props.nationality,
+            [AnalyticsProperties.firstNationality]: props.nationality,
           },
         }
       : {}
 
   const properties = {
-    tracking_source: "server",
-    error_code: props.errorCode,
-    verification_stage: props.stage,
-    ...(props.accountId ? { account_id: props.accountId } : {}),
-    ...(props.attestationId ? { attestation_id: props.attestationId } : {}),
-    ...(props.nationality ? { nationality: props.nationality } : {}),
-    ...(props.errorReason ? { error_reason: props.errorReason } : {}),
-    ...(props.selfNetwork ? { self_network: props.selfNetwork } : {}),
-    ...(typeof props.isValid === "boolean" ? { is_valid: props.isValid } : {}),
-    ...(props.sessionId ? { session_id: props.sessionId } : {}),
+    [AnalyticsProperties.trackingSource]: "server",
+    [AnalyticsProperties.errorCode]: props.errorCode,
+    [AnalyticsProperties.verificationStage]: props.stage,
+    ...(props.accountId ? { [AnalyticsProperties.accountId]: props.accountId } : {}),
+    ...(props.attestationId ? { [AnalyticsProperties.attestationId]: props.attestationId } : {}),
+    ...(props.nationality ? { [AnalyticsProperties.nationality]: props.nationality } : {}),
+    ...(props.errorReason
+      ? {
+          [AnalyticsProperties.errorReason]: props.errorReason,
+          [AnalyticsProperties.errorMessage]: props.errorReason,
+        }
+      : {}),
+    ...(props.selfNetwork ? { [AnalyticsProperties.selfNetwork]: props.selfNetwork } : {}),
+    ...(typeof props.isValid === "boolean" ? { [AnalyticsProperties.isValid]: props.isValid } : {}),
+    ...(props.sessionId ? { [AnalyticsProperties.sessionId]: props.sessionId } : {}),
+    ...(props.requestId ? { [AnalyticsProperties.requestId]: props.requestId } : {}),
+    ...(props.accountId ? {} : { $process_person_profile: false }),
     ...personProps,
   }
 
@@ -142,10 +216,11 @@ export async function trackVerificationFailedServer(props: {
     })
   } catch (error) {
     logAnalyticsError("Failed to capture verification failed", error, {
-      distinct_id: props.distinctId,
-      account_id: props.accountId,
-      session_id: props.sessionId,
-      error_code: props.errorCode,
+      [AnalyticsProperties.distinctId]: props.distinctId,
+      [AnalyticsProperties.accountId]: props.accountId,
+      [AnalyticsProperties.sessionId]: props.sessionId,
+      [AnalyticsProperties.requestId]: props.requestId,
+      [AnalyticsProperties.errorCode]: props.errorCode,
     })
   }
 }
@@ -166,9 +241,9 @@ export async function captureServerException(
     await ph.captureException(error, distinctId, additionalProperties)
   } catch (captureError) {
     logAnalyticsError("Failed to capture server exception", captureError, {
-      distinct_id: distinctId,
-      error_type: error.name,
-      error_message: error.message,
+      [AnalyticsProperties.distinctId]: distinctId,
+      [AnalyticsProperties.errorType]: error.name,
+      [AnalyticsProperties.errorMessage]: error.message,
     })
   }
 }

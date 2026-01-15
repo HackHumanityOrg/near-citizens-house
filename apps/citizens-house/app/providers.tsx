@@ -6,10 +6,14 @@ import { NearWalletProvider, useNearWallet } from "@near-citizens/shared"
 import { ErrorBoundary } from "@near-citizens/ui"
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react"
+import { AnalyticsProperties, redactSensitiveFields } from "@/lib/analytics-schema"
 
 interface ProvidersProps {
   children: React.ReactNode
 }
+
+const CONSENT_FEATURE_FLAG = false
+const CONSENT_STORAGE_KEY = "posthog_consent"
 
 export function Providers({ children }: ProvidersProps) {
   return (
@@ -62,6 +66,19 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         },
         // Console log recording - captures console.log, console.warn, console.error in session replays
         enable_recording_console_log: true,
+        // Feature-flagged consent mode (disabled by default)
+        opt_out_capturing_by_default: CONSENT_FEATURE_FLAG,
+        before_send: (event) => {
+          if (!event || typeof event.event !== "string") return event
+          if (event.event.startsWith("$")) return event
+
+          return {
+            ...event,
+            properties: redactSensitiveFields(event.properties || {}),
+            $set: redactSensitiveFields(event.$set || {}),
+            $set_once: redactSensitiveFields(event.$set_once || {}),
+          }
+        },
         // Debug mode in development - enables verbose logging
         loaded: (posthog) => {
           if (process.env.NODE_ENV === "development") {
@@ -77,6 +94,18 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         self_network: process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet",
         app_version: process.env.NEXT_PUBLIC_APP_VERSION || "unknown",
       })
+
+      if (CONSENT_FEATURE_FLAG) {
+        const storedConsent = window.localStorage.getItem(CONSENT_STORAGE_KEY)
+
+        if (storedConsent === "granted") {
+          posthog.opt_in_capturing()
+        }
+
+        if (storedConsent === "denied") {
+          posthog.opt_out_capturing()
+        }
+      }
     }
   }, [])
 
@@ -92,6 +121,7 @@ export function PostHogIdentifier() {
   const posthog = usePostHog()
   const { accountId, isConnected } = useNearWallet()
   const identifiedAccountRef = useRef<string | null>(null)
+  const aliasedAccountsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (!posthog) return
@@ -99,19 +129,26 @@ export function PostHogIdentifier() {
     if (isConnected && accountId) {
       // Only identify if we haven't already identified this account
       if (identifiedAccountRef.current !== accountId) {
+        const currentDistinctId = posthog.get_distinct_id()
+
+        if (currentDistinctId && !aliasedAccountsRef.current.has(accountId)) {
+          posthog.alias(accountId, currentDistinctId)
+          aliasedAccountsRef.current.add(accountId)
+        }
+
         // PostHog identify() signature: identify(distinctId, userPropertiesToSet, userPropertiesToSetOnce)
         posthog.identify(
           accountId,
           // Properties to $set (updated on every identify)
           {
-            near_account: accountId,
-            near_network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
+            [AnalyticsProperties.nearAccount]: accountId,
+            [AnalyticsProperties.nearNetwork]: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
           },
 
           // Properties to $set_once (only set if not already set)
           {
-            first_connected_at: new Date().toISOString(),
-            first_connected_url: typeof window !== "undefined" ? window.location.href : "",
+            [AnalyticsProperties.firstConnectedAt]: new Date().toISOString(),
+            [AnalyticsProperties.firstConnectedUrl]: typeof window !== "undefined" ? window.location.href : "",
           },
         )
         identifiedAccountRef.current = accountId
@@ -120,6 +157,7 @@ export function PostHogIdentifier() {
       // User disconnected - reset PostHog to anonymous state
       posthog.reset()
       identifiedAccountRef.current = null
+      aliasedAccountsRef.current.clear()
     }
   }, [posthog, accountId, isConnected])
 

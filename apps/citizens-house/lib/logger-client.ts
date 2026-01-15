@@ -11,6 +11,7 @@
  */
 
 import posthog from "posthog-js"
+import { redactSensitiveFields } from "./analytics-schema"
 import { LogScope, type LogOperation } from "./logging"
 
 // Service metadata
@@ -55,20 +56,23 @@ function log(level: ClientLogLevel, message: string, attributes: ClientLogAttrib
   const properties = {
     log_message: message,
     log_level: level,
+    tracking_source: "client",
     "service.name": SERVICE_NAME,
     "deployment.environment": DEPLOYMENT_ENV,
     timestamp: new Date().toISOString(),
     ...attributes,
   }
 
+  const sanitizedProperties = redactSensitiveFields(properties)
+
   // Send to PostHog
-  posthog.capture(eventName, properties)
+  posthog.capture(eventName, sanitizedProperties)
 
   // Also log to console in development
   if (DEPLOYMENT_ENV === "development") {
     const consoleMethod = level === "error" ? "error" : level === "warn" ? "warn" : "log"
 
-    console[consoleMethod](`[${level.toUpperCase()}] ${message}`, properties)
+    console[consoleMethod](`[${level.toUpperCase()}] ${message}`, sanitizedProperties)
   }
 }
 

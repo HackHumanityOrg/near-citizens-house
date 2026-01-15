@@ -36,49 +36,30 @@ export const onRequestError = async (
 ) => {
   // Only run in Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { getPostHogServer } = await import("./lib/analytics-server")
+    const { extractPostHogDistinctIdFromCookies, getPostHogServer } = await import("./lib/analytics-server")
+    const { AnalyticsProperties } = await import("./lib/analytics-schema")
     const posthog = getPostHogServer()
 
     if (!posthog) return
 
     // Try to extract distinct_id from PostHog cookie
-    let distinctId: string | undefined
-
-    if (request.headers.cookie) {
-      // Normalize multiple cookie arrays to string
-      const cookieString = Array.isArray(request.headers.cookie)
-        ? request.headers.cookie.join("; ")
-        : request.headers.cookie
-
-      // Match PostHog cookie pattern: ph_phc_<project_key>_posthog
-      const postHogCookieMatch = cookieString.match(/ph_phc_[^_]+_posthog=([^;]+)/)
-
-      if (postHogCookieMatch?.[1]) {
-        try {
-          const decodedCookie = decodeURIComponent(postHogCookieMatch[1])
-          const postHogData = JSON.parse(decodedCookie)
-          distinctId = postHogData.distinct_id
-        } catch {
-          // Failed to parse PostHog cookie - continue without distinct_id
-        }
-      }
-    }
+    const distinctId = extractPostHogDistinctIdFromCookies(request.headers.cookie)
 
     // Capture the exception with context
     await posthog.captureException(err, distinctId, {
       // Request context
-      $current_url: request.path,
-      request_method: request.method,
+      [AnalyticsProperties.currentUrl]: request.path,
+      [AnalyticsProperties.requestMethod]: request.method,
       // Next.js routing context
-      router_kind: context.routerKind,
-      route_path: context.routePath,
-      route_type: context.routeType,
-      render_source: context.renderSource,
-      revalidate_reason: context.revalidateReason,
-      render_type: context.renderType,
+      [AnalyticsProperties.routerKind]: context.routerKind,
+      [AnalyticsProperties.routePath]: context.routePath,
+      [AnalyticsProperties.routeType]: context.routeType,
+      [AnalyticsProperties.renderSource]: context.renderSource,
+      [AnalyticsProperties.revalidateReason]: context.revalidateReason,
+      [AnalyticsProperties.renderType]: context.renderType,
       // Error metadata
-      error_digest: err.digest,
-      tracking_source: "server",
+      [AnalyticsProperties.errorDigest]: err.digest,
+      [AnalyticsProperties.trackingSource]: "server",
     })
   }
 }
