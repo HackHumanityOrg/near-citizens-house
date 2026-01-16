@@ -12,8 +12,15 @@ const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".g
  * Edge Config provides sub-millisecond reads globally.
  */
 async function checkMaintenanceMode(): Promise<boolean> {
+  // Check if EDGE_CONFIG is configured
+  if (!process.env.EDGE_CONFIG) {
+    console.warn("[Middleware] EDGE_CONFIG environment variable not set")
+    return false // Fail open
+  }
+
   try {
     const maintenance = await get<boolean>("maintenance")
+    console.log("[Middleware] Edge Config maintenance value:", maintenance)
     return maintenance === true
   } catch (error) {
     console.error("[Middleware] Error reading Edge Config:", error)
