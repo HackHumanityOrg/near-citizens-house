@@ -71,10 +71,10 @@ export async function middleware(request: NextRequest) {
   console.log("[Middleware] Maintenance check result:", { pathname, isPaused })
 
   if (isPaused) {
-    // Redirect to maintenance page
-    const maintenanceUrl = new URL("/maintenance", request.url)
-    console.log("[Middleware] Redirecting to maintenance:", maintenanceUrl.toString())
-    return NextResponse.redirect(maintenanceUrl)
+    // Rewrite to maintenance page (keeps URL, serves maintenance content)
+    request.nextUrl.pathname = "/maintenance"
+    console.log("[Middleware] Rewriting to maintenance page")
+    return NextResponse.rewrite(request.nextUrl)
   }
 
   return NextResponse.next()
