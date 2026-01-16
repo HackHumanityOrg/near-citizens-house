@@ -8,6 +8,7 @@ import { UserJotWidget } from "@near-citizens/shared"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { BetaBanner } from "@/components/layout/beta-banner"
+import { ConsentBanner } from "@/components/layout/consent-banner"
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "./providers"
 import "./globals.css"
@@ -48,6 +49,7 @@ export default function RootLayout({
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
+            <ConsentBanner />
             <Toaster />
           </Providers>
         </ThemeProvider>

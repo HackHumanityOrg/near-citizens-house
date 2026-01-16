@@ -12,7 +12,7 @@ interface ProvidersProps {
   children: React.ReactNode
 }
 
-const CONSENT_FEATURE_FLAG = false
+const CONSENT_FEATURE_FLAG = true
 const CONSENT_STORAGE_KEY = "posthog_consent"
 
 export function Providers({ children }: ProvidersProps) {
@@ -66,8 +66,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         },
         // Console log recording - captures console.log, console.warn, console.error in session replays
         enable_recording_console_log: true,
-        // Feature-flagged consent mode (disabled by default)
-        opt_out_capturing_by_default: CONSENT_FEATURE_FLAG,
+        // Consent mode (opt-out behavior)
+        opt_out_capturing_by_default: false,
         before_send: (event) => {
           if (!event || typeof event.event !== "string") return event
           if (event.event.startsWith("$")) return event
