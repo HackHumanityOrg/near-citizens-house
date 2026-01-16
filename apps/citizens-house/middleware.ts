@@ -57,17 +57,23 @@ function isExemptPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  console.log("[Middleware] Processing path:", pathname)
+
   // Skip middleware for exempt paths
   if (isExemptPath(pathname)) {
+    console.log("[Middleware] Path is exempt, skipping:", pathname)
     return NextResponse.next()
   }
 
   // Check if maintenance mode is enabled
   const isPaused = await checkMaintenanceMode()
 
+  console.log("[Middleware] Maintenance check result:", { pathname, isPaused })
+
   if (isPaused) {
     // Redirect to maintenance page
     const maintenanceUrl = new URL("/maintenance", request.url)
+    console.log("[Middleware] Redirecting to maintenance:", maintenanceUrl.toString())
     return NextResponse.redirect(maintenanceUrl)
   }
 
