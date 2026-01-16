@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
+import { checkBotId } from "botid/server"
 import {
   SELF_CONFIG,
   NEAR_CONFIG,
@@ -170,6 +171,16 @@ export async function POST(request: NextRequest) {
   event.setVerification({
     self_network: selfNetwork,
   })
+
+  // Check if request is from a bot (Vercel BotID)
+  // In local development, this always returns isBot: false
+  const botCheck = await checkBotId()
+  if (botCheck.isBot) {
+    event.setStatus(403)
+    event.setError({ code: "BOT_DETECTED", message: "Bot detected" })
+    event.warn("Bot detected, blocking request")
+    return NextResponse.json({ error: "Access denied" }, { status: 403 })
+  }
 
   const respondWithError = async ({
     code,
