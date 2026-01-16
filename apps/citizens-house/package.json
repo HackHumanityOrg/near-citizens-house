@@ -53,6 +53,7 @@
     "@selfxyz/core": "^1.1.0-beta.7",
     "@selfxyz/qrcode": "^1.0.17",
     "@vercel/analytics": "^1.6.1",
+    "@vercel/edge-config": "^1.4.3",
     "@vercel/toolbar": "^0.1.41",
     "@walletconnect/sign-client": "^2.23.1",
     "autoprefixer": "^10.4.23",
