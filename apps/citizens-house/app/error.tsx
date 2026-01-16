@@ -3,30 +3,17 @@
 /**
  * Route-Level Error Boundary
  *
- * This component catches errors that occur in route components and sends them to PostHog.
+ * This component catches errors that occur in route components.
  * Unlike global-error.tsx, this runs within the root layout so styling is preserved.
  *
  * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling#using-error-boundaries
- * @see https://posthog.com/docs/error-tracking/installation/nextjs
  */
 
-import posthog from "posthog-js"
 import Link from "next/link"
-import { useEffect } from "react"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
-import { AnalyticsProperties } from "@/lib/analytics-schema"
 
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => {
-    // Capture the exception in PostHog
-    posthog.captureException(error, {
-      [AnalyticsProperties.errorBoundary]: "route",
-      [AnalyticsProperties.errorDigest]: error.digest,
-      [AnalyticsProperties.trackingSource]: "client",
-    })
-  }, [error])
-
+export default function Error({ error: _error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <div className="bg-white dark:bg-[#181921]">
       {/* Hero Section - Fixed height with gradient background */}

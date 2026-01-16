@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { SWRConfig } from "swr"
-import { NearWalletProvider, useNearWallet } from "@near-citizens/shared"
+import { NearWalletProvider } from "@near-citizens/shared"
 import { ErrorBoundary } from "@near-citizens/ui"
 import posthog from "posthog-js"
-import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react"
-import { AnalyticsProperties, redactSensitiveFields } from "@/lib/analytics-schema"
+import { PostHogProvider as PHProvider } from "posthog-js/react"
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -26,11 +25,7 @@ export function Providers({ children }: ProvidersProps) {
         }}
       >
         <NearWalletProvider>
-          <ErrorBoundary>
-            {/* Global PostHog identification based on NEAR wallet connection */}
-            <PostHogIdentifier />
-            {children}
-          </ErrorBoundary>
+          <ErrorBoundary>{children}</ErrorBoundary>
         </NearWalletProvider>
       </SWRConfig>
     </PostHogProvider>
@@ -68,31 +63,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         enable_recording_console_log: true,
         // Consent mode (opt-out behavior)
         opt_out_capturing_by_default: false,
-        before_send: (event) => {
-          if (!event || typeof event.event !== "string") return event
-          if (event.event.startsWith("$")) return event
-
-          return {
-            ...event,
-            properties: redactSensitiveFields(event.properties || {}),
-            $set: redactSensitiveFields(event.$set || {}),
-            $set_once: redactSensitiveFields(event.$set_once || {}),
-          }
-        },
-        // Debug mode in development - enables verbose logging
-        loaded: (posthog) => {
-          if (process.env.NODE_ENV === "development") {
-            posthog.debug()
-          }
-        },
-      })
-
-      // Register super properties that apply to all events
-      posthog.register({
-        environment: process.env.NODE_ENV,
-        near_network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
-        self_network: process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet",
-        app_version: process.env.NEXT_PUBLIC_APP_VERSION || "unknown",
       })
 
       if (CONSENT_FEATURE_FLAG) {
@@ -110,56 +80,4 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return <PHProvider client={posthog}>{children}</PHProvider>
-}
-
-/**
- * Global PostHog identification component.
- * Automatically identifies users by their NEAR wallet address when connected.
- * This ensures all events are attributed to the correct user, even on page reload.
- */
-export function PostHogIdentifier() {
-  const posthog = usePostHog()
-  const { accountId, isConnected } = useNearWallet()
-  const identifiedAccountRef = useRef<string | null>(null)
-  const aliasedAccountsRef = useRef<Set<string>>(new Set())
-
-  useEffect(() => {
-    if (!posthog) return
-
-    if (isConnected && accountId) {
-      // Only identify if we haven't already identified this account
-      if (identifiedAccountRef.current !== accountId) {
-        const currentDistinctId = posthog.get_distinct_id()
-
-        if (currentDistinctId && !aliasedAccountsRef.current.has(accountId)) {
-          posthog.alias(accountId, currentDistinctId)
-          aliasedAccountsRef.current.add(accountId)
-        }
-
-        // PostHog identify() signature: identify(distinctId, userPropertiesToSet, userPropertiesToSetOnce)
-        posthog.identify(
-          accountId,
-          // Properties to $set (updated on every identify)
-          {
-            [AnalyticsProperties.nearAccount]: accountId,
-            [AnalyticsProperties.nearNetwork]: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
-          },
-
-          // Properties to $set_once (only set if not already set)
-          {
-            [AnalyticsProperties.firstConnectedAt]: new Date().toISOString(),
-            [AnalyticsProperties.firstConnectedUrl]: typeof window !== "undefined" ? window.location.href : "",
-          },
-        )
-        identifiedAccountRef.current = accountId
-      }
-    } else if (!isConnected && identifiedAccountRef.current) {
-      // User disconnected - reset PostHog to anonymous state
-      posthog.reset()
-      identifiedAccountRef.current = null
-      aliasedAccountsRef.current.clear()
-    }
-  }, [posthog, accountId, isConnected])
-
-  return null
 }

@@ -50,26 +50,17 @@ export class NearContractDatabase implements IVerificationDatabase {
   }
 
   private async init() {
-    try {
-      // KeyPair.fromString expects a string but the type definition is overly strict
-      // Runtime accepts ed25519:... format strings which we use
-      const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
-      const signer = new KeyPairSigner(keyPair)
+    // KeyPair.fromString expects a string but the type definition is overly strict
+    // Runtime accepts ed25519:... format strings which we use
+    const keyPair = KeyPair.fromString(this.backendPrivateKey as `ed25519:${string}`)
+    const signer = new KeyPairSigner(keyPair)
 
-      // Create RPC provider (FastNEAR)
-      this.provider = createRpcProvider()
+    // Create RPC provider (FastNEAR)
+    this.provider = createRpcProvider()
 
-      // Account constructor types don't match the actual implementation
-      // The provider and signer interfaces are compatible at runtime
-      this.account = new Account(this.backendAccountId, this.provider, signer as unknown as Signer)
-
-      console.log(`[NearContractDB] Initialized with account: ${this.backendAccountId}`)
-      console.log(`[NearContractDB] Contract ID: ${this.contractId}`)
-      console.log(`[NearContractDB] Network: ${NEAR_CONFIG.networkId}`)
-    } catch (error) {
-      console.error("[NearContractDB] Initialization error:", error)
-      throw error
-    }
+    // Account constructor types don't match the actual implementation
+    // The provider and signer interfaces are compatible at runtime
+    this.account = new Account(this.backendAccountId, this.provider, signer as unknown as Signer)
   }
 
   private async ensureInitialized() {
@@ -138,10 +129,6 @@ export class NearContractDatabase implements IVerificationDatabase {
 
     let delayMs = initialDelayMs
 
-    console.log(
-      `[NearContractDB] Starting poll (${isMainnet ? "mainnet" : "testnet"}): ${maxAttempts} attempts, ${initialDelayMs}ms initial delay`,
-    )
-
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         // Add timeout to individual verification check to prevent hanging
@@ -151,14 +138,10 @@ export class NearContractDatabase implements IVerificationDatabase {
           `poll attempt ${attempt}`,
         )
         if (verified) {
-          console.log(`[NearContractDB] Verification confirmed on attempt ${attempt}`)
           return true
         }
-        console.log(`[NearContractDB] Poll attempt ${attempt}: not yet verified`)
-      } catch (error) {
-        // Log but continue polling - RPC might be temporarily unavailable
-        const errMsg = error instanceof Error ? error.message : String(error)
-        console.warn(`[NearContractDB] Poll attempt ${attempt} failed: ${errMsg}`)
+      } catch {
+        // Continue polling - RPC might be temporarily unavailable
       }
 
       if (attempt < maxAttempts) {
@@ -184,13 +167,8 @@ export class NearContractDatabase implements IVerificationDatabase {
   async isVerified(nearAccountId: string): Promise<boolean> {
     await this.ensureInitialized()
 
-    try {
-      // Add timeout to prevent hanging on slow RPC
-      return await this.withTimeout(this.isVerifiedInternal(nearAccountId), 10000, "isVerified")
-    } catch (error) {
-      console.error("[NearContractDB] Error checking account:", error)
-      throw error
-    }
+    // Add timeout to prevent hanging on slow RPC
+    return await this.withTimeout(this.isVerifiedInternal(nearAccountId), 10000, "isVerified")
   }
 
   async storeVerification(data: VerificationDataWithSignature): Promise<void> {
@@ -235,12 +213,11 @@ export class NearContractDatabase implements IVerificationDatabase {
 
       // Get account with next pooled key (atomic via Redis)
       // Each key has its own nonce sequence, enabling parallel transactions
-      const { account: pooledAccount, keyIndex } = await backendKeyPool.createAccountWithNextKey()
-      console.log(`[NearContractDB] Calling store_verification using key ${keyIndex}...`)
+      const { account: pooledAccount } = await backendKeyPool.createAccountWithNextKey()
 
       // Send transaction and wait for execution to surface contract failures.
       const executionTimeoutMs = this.isMainnet() ? 45000 : 30000
-      const result = await this.withTimeout(
+      await this.withTimeout(
         pooledAccount.callFunctionRaw({
           contractId: this.contractId,
           methodName: "store_verification",
@@ -259,27 +236,15 @@ export class NearContractDatabase implements IVerificationDatabase {
         executionTimeoutMs,
         "transaction execution",
       )
-
-      const txHash = result?.transaction?.hash ?? result?.transaction_outcome?.id ?? "unknown"
-      console.log("[NearContractDB] Transaction executed:", { txHash, nearAccountId: data.nearAccountId })
-
-      return
     } catch (error) {
-      console.error("[NearContractDB] Error storing verification:", error)
-
       // Check if this is a timeout error where the transaction might have succeeded
       // RPC can return 500 errors while the transaction actually completes on-chain
       if (this.isRpcTimeoutError(error)) {
-        console.log("[NearContractDB] RPC timeout detected, checking if verification succeeded...")
-
         // Poll to check if verification actually succeeded despite the error
         const verified = await this.pollForVerification(data.nearAccountId)
         if (verified) {
-          console.log("[NearContractDB] Verification confirmed on-chain despite RPC timeout")
           return // Success - don't throw
         }
-
-        console.log("[NearContractDB] Verification not found after timeout, throwing original error")
       }
 
       // Parse contract panic message if available
@@ -313,8 +278,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       // Validate and transform contract response using Zod schema
       // Automatically converts snake_case to camelCase and nanoseconds to milliseconds
       return contractVerificationSummarySchema.parse(result)
-    } catch (error) {
-      console.error("[NearContractDB] Error getting verification:", error)
+    } catch {
       // Return null for not found instead of throwing
       return null
     }
@@ -335,8 +299,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       // Validate and transform contract response using Zod schema
       // Automatically converts snake_case to camelCase and nanoseconds to milliseconds
       return contractVerificationSchema.parse(result)
-    } catch (error) {
-      console.error("[NearContractDB] Error getting full verification:", error)
+    } catch {
       // Return null for not found instead of throwing
       return null
     }
@@ -362,8 +325,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
 
       return { accounts: verifications, total: total ?? 0 }
-    } catch (error) {
-      console.error("[NearContractDB] Error getting paginated verifications:", error)
+    } catch {
       return { accounts: [], total: 0 }
     }
   }
@@ -404,8 +366,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
 
       return { accounts: verifications.reverse(), total }
-    } catch (error) {
-      console.error("[NearContractDB] Error getting paginated verifications:", error)
+    } catch {
       return { accounts: [], total: 0 }
     }
   }
@@ -421,15 +382,10 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
   }
 
   async isVerified(nearAccountId: string): Promise<boolean> {
-    try {
-      const result = await this.provider.callFunction<boolean>(this.contractId, "is_verified", {
-        account_id: nearAccountId,
-      })
-      return result ?? false
-    } catch (error) {
-      console.error("[NearContractDB] Error checking account:", error)
-      throw error
-    }
+    const result = await this.provider.callFunction<boolean>(this.contractId, "is_verified", {
+      account_id: nearAccountId,
+    })
+    return result ?? false
   }
 
   async storeVerification(_data: VerificationDataWithSignature): Promise<void> {
@@ -453,8 +409,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
       }
 
       return contractVerificationSummarySchema.parse(result)
-    } catch (error) {
-      console.error("[NearContractDB] Error getting verification:", error)
+    } catch {
       return null
     }
   }
@@ -470,8 +425,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
       }
 
       return contractVerificationSchema.parse(result)
-    } catch (error) {
-      console.error("[NearContractDB] Error getting full verification:", error)
+    } catch {
       return null
     }
   }
@@ -492,8 +446,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
       const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
 
       return { accounts: verifications, total: total ?? 0 }
-    } catch (error) {
-      console.error("[NearContractDB] Error getting paginated verifications:", error)
+    } catch {
       return { accounts: [], total: 0 }
     }
   }
@@ -527,8 +480,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
       const verifications = (accounts ?? []).map((item) => contractVerificationSchema.parse(item))
 
       return { accounts: verifications.reverse(), total }
-    } catch (error) {
-      console.error("[NearContractDB] Error getting paginated verifications:", error)
+    } catch {
       return { accounts: [], total: 0 }
     }
   }
@@ -551,16 +503,10 @@ function createVerificationContract(): IVerificationDatabase {
     )
   }
 
-  console.log("[VerificationContract] Using NEAR smart contract")
-  console.log(`[VerificationContract] Contract: ${verificationContractId}`)
-  console.log(`[VerificationContract] Network: ${NEAR_CONFIG.networkId}`)
-
   if (backendAccountId && backendPrivateKey) {
-    console.log("[VerificationContract] Mode: read-write")
     return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId)
   }
 
-  console.log("[VerificationContract] Mode: read-only")
   return new NearContractReadOnlyDatabase(verificationContractId)
 }
 

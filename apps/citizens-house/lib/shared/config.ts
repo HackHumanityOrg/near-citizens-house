@@ -44,35 +44,7 @@ const envSchema = z.object({
 })
 
 // Validate environment at module load time
-const envResult = envSchema.safeParse(process.env)
-if (!envResult.success) {
-  const issues = envResult.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ")
-  console.warn(`[Config] Environment validation warnings: ${issues}`)
-}
-
-// Log configuration status on server-side for debugging
-if (typeof window === "undefined") {
-  const hasBackendWallet = !!(process.env.NEAR_ACCOUNT_ID && process.env.NEAR_PRIVATE_KEY)
-  const hasContracts = !!process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT
-  if (!hasBackendWallet) {
-    console.warn("[Config] Backend wallet credentials not configured - write operations will fail")
-  }
-  if (!hasContracts) {
-    console.warn("[Config] No contract addresses configured - contract operations will fail")
-  }
-  if (!process.env.REDIS_URL) {
-    console.warn("[Config] REDIS_URL not configured - session storage will fail")
-  }
-
-  // Log network configuration
-  const nearNetwork = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
-  const selfNetwork = process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet"
-  console.log(`[Config] NEAR network: ${nearNetwork}`)
-  console.log(`[Config] Self.xyz network: ${selfNetwork}`)
-  if (nearNetwork !== selfNetwork) {
-    console.log(`[Config] Running in mixed-network mode (NEAR ${nearNetwork} + Self ${selfNetwork})`)
-  }
-}
+envSchema.safeParse(process.env)
 
 // NEAR Network Configuration
 const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet"

@@ -66,7 +66,6 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
             testnet: NEAR_CONFIG.networkId === "testnet" ? [rpcUrl] : ["https://rpc.testnet.near.org"],
           },
           autoConnect: true,
-          logger: process.env.NODE_ENV === "development" ? console : undefined,
           walletConnect: walletConnectClient,
         })
 
@@ -90,8 +89,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
         setNearConnector(connector)
         setIsLoading(false)
-      } catch (error) {
-        console.error("Failed to initialize NEAR wallet connector:", error)
+      } catch {
         setIsLoading(false)
       }
     }
@@ -147,7 +145,6 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
   const connect = useCallback(async () => {
     if (!nearConnector) {
-      console.error("Connector not initialized")
       return
     }
     // Show wallet selector and connect with the chosen one
@@ -199,7 +196,6 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           recipient, // Required for NEP-413 verification
         }
       } catch (error) {
-        console.error("Failed to sign message:", error)
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
         throw new Error(`Failed to sign message: ${errorMessage}`)
       }
@@ -246,7 +242,6 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
         return result
       } catch (error) {
-        console.error("Failed to sign and send transaction:", error)
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
         throw new Error(`Transaction failed: ${errorMessage}`)
       }

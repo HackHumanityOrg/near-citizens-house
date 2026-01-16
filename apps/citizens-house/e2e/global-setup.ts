@@ -15,9 +15,6 @@ import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import type { FullConfig } from "@playwright/test"
 import { deriveWorkerKey } from "./helpers/deterministic-keys"
-import { logger, LogScope, Op } from "../lib/logger"
-
-const logContext = { scope: LogScope.E2E, operation: Op.E2E.GLOBAL_SETUP }
 
 // FastNEAR RPC configuration
 function getFastNearUrl(): string {
@@ -82,23 +79,12 @@ async function globalSetup(config: FullConfig) {
   const workerCount = config.workers ?? 1
 
   if (!parentAccountId || !parentPrivateKey) {
-    logger.warn("Global setup skipped: NEAR credentials not set", {
-      ...logContext,
-      reason: "missing_env",
-    })
     return
   }
 
   const accountId = parentAccountId
   const privateKey = parentPrivateKey
   const rpcUrl = getFastNearUrl()
-  const host = rpcUrl.replace(/https?:\/\//, "").split("/")[0]
-  logger.info("Checking worker keys for e2e setup", {
-    ...logContext,
-    worker_count: workerCount,
-    account_id: accountId,
-    rpc_host: host,
-  })
 
   // Derive all worker keys and check which ones need to be registered
   // PublicKey type: the return type of calling getPublicKey() on a derived worker key
@@ -114,23 +100,10 @@ async function globalSetup(config: FullConfig) {
 
     if (!exists) {
       keysToRegister.push({ workerIndex: i, publicKey })
-      logger.info("Worker key needs registration", {
-        ...logContext,
-        worker_index: i,
-        public_key_prefix: `${publicKeyStr.slice(0, 20)}...`,
-      })
-    } else {
-      logger.info("Worker key already registered", {
-        ...logContext,
-        worker_index: i,
-      })
     }
   }
 
   if (keysToRegister.length === 0) {
-    logger.info("All worker keys already registered", {
-      ...logContext,
-    })
     return
   }
 
@@ -140,16 +113,8 @@ async function globalSetup(config: FullConfig) {
 
   const configuredBatchSize = Number(process.env.E2E_KEY_BATCH_SIZE || "25")
   const batchSize = Number.isFinite(configuredBatchSize) && configuredBatchSize > 0 ? configuredBatchSize : 25
-  const totalBatches = Math.ceil(keysToRegister.length / batchSize)
 
-  logger.info("Registering worker keys", {
-    ...logContext,
-    key_count: keysToRegister.length,
-    batch_count: totalBatches,
-    batch_size: batchSize,
-  })
-
-  async function registerBatch(batch: { workerIndex: number; publicKey: PublicKey }[], batchIndex: number) {
+  async function registerBatch(batch: { workerIndex: number; publicKey: PublicKey }[]) {
     let pending = batch
     const maxRetries = 5
     const baseDelayMs = 1000
@@ -162,12 +127,6 @@ async function globalSetup(config: FullConfig) {
         await parentAccount.signAndSendTransaction({
           receiverId: accountId,
           actions,
-        })
-        logger.info("Registered worker key batch", {
-          ...logContext,
-          batch_index: batchIndex,
-          batch_total: totalBatches,
-          key_count: pending.length,
         })
         return
       } catch (error) {
@@ -187,24 +146,11 @@ async function globalSetup(config: FullConfig) {
           }
 
           if (missing.length === 0) {
-            logger.info("Batch keys already registered", {
-              ...logContext,
-              batch_index: batchIndex,
-              batch_total: totalBatches,
-            })
             return
           }
 
           pending = missing
           const delay = baseDelayMs + Math.random() * 500
-          logger.warn("Batch had existing keys, retrying missing", {
-            ...logContext,
-            batch_index: batchIndex,
-            batch_total: totalBatches,
-            attempt,
-            max_retries: maxRetries,
-            delay_ms: Math.round(delay),
-          })
           await sleep(delay)
           continue
         }
@@ -218,35 +164,18 @@ async function globalSetup(config: FullConfig) {
           msg.includes("Server error")
 
         if (!isRetryable || attempt === maxRetries) {
-          logger.error("Failed to register worker key batch", {
-            ...logContext,
-            batch_index: batchIndex,
-            batch_total: totalBatches,
-            error_message: msg,
-            error_type: error instanceof Error ? error.name : undefined,
-            error_stack: error instanceof Error ? error.stack : undefined,
-          })
           throw error
         }
 
         const delay = baseDelayMs * attempt + Math.random() * 500
-        logger.warn("Batch registration failed, retrying", {
-          ...logContext,
-          batch_index: batchIndex,
-          batch_total: totalBatches,
-          attempt,
-          max_retries: maxRetries,
-          delay_ms: Math.round(delay),
-        })
         await sleep(delay)
       }
     }
   }
 
   for (let start = 0; start < keysToRegister.length; start += batchSize) {
-    const batchIndex = Math.floor(start / batchSize) + 1
     const batch = keysToRegister.slice(start, start + batchSize)
-    await registerBatch(batch, batchIndex)
+    await registerBatch(batch)
   }
 }
 

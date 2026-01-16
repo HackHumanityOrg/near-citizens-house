@@ -3,7 +3,6 @@
 import { useCallback } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@near-citizens/ui"
 import { getAttestationTypeName } from "@near-citizens/shared"
-import { useAnalytics } from "@/lib/analytics"
 import { Download, ExternalLink } from "lucide-react"
 import type { ZkProof } from "@near-citizens/shared"
 
@@ -41,28 +40,21 @@ interface ZkProofVerifyModalProps {
 }
 
 export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModalProps) {
-  const analytics = useAnalytics()
-
-  const downloadJson = useCallback(
-    (content: object, filename: string) => {
-      analytics.trackZkProofDownloaded(data?.nearAccountId || "unknown", filename)
-      const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    },
-    [analytics, data?.nearAccountId],
-  )
+  const downloadJson = useCallback((content: object, filename: string) => {
+    const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [])
 
   const openSnarkjs = useCallback(() => {
-    analytics.trackExternalVerifierOpened("snarkjs")
     window.open("https://github.com/iden3/snarkjs", "_blank")
-  }, [analytics])
+  }, [])
 
   if (!data) return null
 

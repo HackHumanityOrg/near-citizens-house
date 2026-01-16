@@ -6,9 +6,6 @@ import { JsonRpcProvider } from "@near-js/providers"
 import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import { deriveWorkerKey, getRunIdTag } from "./deterministic-keys"
-import { logger, LogScope, Op } from "../../lib/logger"
-
-const logContext = { scope: LogScope.E2E, operation: Op.E2E.NEAR_ACCOUNT_MANAGER }
 
 // ============================================================================
 // RPC Configuration for E2E Tests
@@ -147,10 +144,6 @@ export class NearAccountManager {
     // This avoids nonce collisions when multiple workers start simultaneously
     const exists = await this.keyExistsOnChain(publicKeyStr)
     if (exists) {
-      logger.info("Worker key already registered on-chain", {
-        ...logContext,
-        worker_index: this.workerIndex,
-      })
       this.workerKeyRegistered = true
       return
     }
@@ -166,11 +159,6 @@ export class NearAccountManager {
 
         // Add full access key for worker
         await parentAccount.addFullAccessKey(publicKey)
-        logger.info("Added worker key to parent account", {
-          ...logContext,
-          worker_index: this.workerIndex,
-          public_key_prefix: `${publicKeyStr.slice(0, 20)}...`,
-        })
         this.workerKeyRegistered = true
         return
       } catch (error) {
@@ -179,10 +167,6 @@ export class NearAccountManager {
         // Key already exists = success (idempotent)
         // Error messages vary: "AddKeyAlreadyExists", "already exists", "already used for an existing access key"
         if (msg.includes("AddKeyAlreadyExists") || msg.includes("already exists") || msg.includes("already used")) {
-          logger.info("Worker key already registered on parent account", {
-            ...logContext,
-            worker_index: this.workerIndex,
-          })
           this.workerKeyRegistered = true
           return
         }
@@ -191,22 +175,11 @@ export class NearAccountManager {
         // Retry with backoff, then check if our key was added by someone else
         if (msg.includes("nonce") && attempt < maxRetries) {
           const delay = baseDelayMs * attempt + Math.random() * 500
-          logger.warn("Nonce collision while registering worker key", {
-            ...logContext,
-            worker_index: this.workerIndex,
-            attempt,
-            max_retries: maxRetries,
-            delay_ms: Math.round(delay),
-          })
           await this.sleep(delay)
 
           // Check again if key now exists (might have been added by another attempt)
           const nowExists = await this.keyExistsOnChain(publicKeyStr)
           if (nowExists) {
-            logger.info("Worker key now exists after retry", {
-              ...logContext,
-              worker_index: this.workerIndex,
-            })
             this.workerKeyRegistered = true
             return
           }
@@ -277,11 +250,6 @@ export class NearAccountManager {
 
         const account: TestAccount = { accountId: subaccountId, publicKey, privateKey }
         this.createdAccounts.push(account)
-        logger.info("Created test account", {
-          ...logContext,
-          worker_index: this.workerIndex,
-          account_id: subaccountId,
-        })
 
         return account
       } catch (error) {
@@ -293,11 +261,6 @@ export class NearAccountManager {
 
         if (isAccountExistsError) {
           // Account was created in a previous attempt that timed out
-          logger.info("Account already exists from previous attempt", {
-            ...logContext,
-            worker_index: this.workerIndex,
-            account_id: subaccountId,
-          })
           const account: TestAccount = { accountId: subaccountId, publicKey, privateKey }
           this.createdAccounts.push(account)
           return account
@@ -314,28 +277,11 @@ export class NearAccountManager {
         const isRetryable = isRateLimitError || isNetworkError
 
         if (!isRetryable || attempt === maxRetries) {
-          logger.error("Failed to create test account", {
-            ...logContext,
-            worker_index: this.workerIndex,
-            account_id: subaccountId,
-            attempt,
-            max_retries: maxRetries,
-            error_message: errorMessage,
-            error_type: error instanceof Error ? error.name : undefined,
-            error_stack: error instanceof Error ? error.stack : undefined,
-          })
           throw error
         }
 
         // Exponential backoff with jitter
         const delay = baseDelayMs * Math.pow(2, attempt - 1) + Math.random() * 500
-        logger.warn("Retrying test account creation", {
-          ...logContext,
-          worker_index: this.workerIndex,
-          attempt,
-          max_retries: maxRetries,
-          delay_ms: Math.round(delay),
-        })
         await this.sleep(delay)
       }
     }
@@ -358,10 +304,6 @@ export class NearAccountManager {
   async deleteTestAccount(accountId: string): Promise<void> {
     const account = this.createdAccounts.find((a) => a.accountId === accountId)
     if (!account) {
-      logger.warn("Account not found in created accounts list", {
-        ...logContext,
-        account_id: accountId,
-      })
       return
     }
 
@@ -375,38 +317,16 @@ export class NearAccountManager {
 
       this.createdAccounts = this.createdAccounts.filter((a) => a.accountId !== accountId)
       return
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error)
-      logger.warn("Random key failed, trying parent key", {
-        ...logContext,
-        account_id: accountId,
-        error_message: msg.slice(0, 80),
-      })
+    } catch {
+      // Random key failed, try parent key
     }
 
     // Fallback: try with parent key (added to all subaccounts during creation)
-    try {
-      const subaccount = new Account(accountId, this.provider, this.parentSigner)
+    const subaccount = new Account(accountId, this.provider, this.parentSigner)
 
-      await subaccount.deleteAccount(this.parentAccountId)
+    await subaccount.deleteAccount(this.parentAccountId)
 
-      this.createdAccounts = this.createdAccounts.filter((a) => a.accountId !== accountId)
-      logger.info("Deleted test account using parent key", {
-        ...logContext,
-        account_id: accountId,
-      })
-    } catch (error) {
-      const errorDetails =
-        error instanceof Error
-          ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
-          : { error_message: String(error) }
-      logger.error("Failed to delete test account", {
-        ...logContext,
-        account_id: accountId,
-        ...errorDetails,
-      })
-      throw error
-    }
+    this.createdAccounts = this.createdAccounts.filter((a) => a.accountId !== accountId)
   }
 
   /**
@@ -418,20 +338,8 @@ export class NearAccountManager {
     for (const account of accountsToDelete) {
       try {
         await this.deleteTestAccount(account.accountId)
-        logger.info("Deleted test account", {
-          ...logContext,
-          account_id: account.accountId,
-        })
-      } catch (e) {
-        const errorDetails =
-          e instanceof Error
-            ? { error_type: e.name, error_message: e.message, error_stack: e.stack }
-            : { error_message: String(e) }
-        logger.warn("Failed to delete test account", {
-          ...logContext,
-          account_id: account.accountId,
-          ...errorDetails,
-        })
+      } catch {
+        // Failed to delete test account, continue with others
       }
     }
   }

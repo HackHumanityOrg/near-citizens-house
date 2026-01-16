@@ -3,30 +3,22 @@
 /**
  * Global Error Boundary for Root Layout
  *
- * This component catches errors that occur in the root layout and sends them to PostHog.
+ * This component catches errors that occur in the root layout.
  * It must include its own <html> and <body> tags since it replaces the root layout on error.
  *
  * Note: This component cannot use shared UI components or context providers since it
  * replaces the entire root layout. Styles are inlined to ensure they're available.
  *
  * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling#handling-global-errors
- * @see https://posthog.com/docs/error-tracking/installation/nextjs
  */
 
-import posthog from "posthog-js"
-import { useEffect } from "react"
-import { AnalyticsProperties } from "@/lib/analytics-schema"
-
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => {
-    // Capture the exception in PostHog
-    posthog.captureException(error, {
-      [AnalyticsProperties.errorBoundary]: "global",
-      [AnalyticsProperties.errorDigest]: error.digest,
-      [AnalyticsProperties.trackingSource]: "client",
-    })
-  }, [error])
-
+export default function GlobalError({
+  error: _error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
   return (
     <html lang="en">
       <head>

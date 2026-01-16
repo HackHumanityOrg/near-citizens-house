@@ -41,8 +41,6 @@ function getFastNearHeaders(): Record<string, string> {
  */
 export function createRpcProvider(): Provider {
   const rpcUrl = NEAR_CONFIG.rpcUrl
-  const host = rpcUrl.replace(/https?:\/\//, "").split("/")[0]
-  console.log(`[RPC] JsonRpcProvider: ${host}`)
   const headers = getFastNearHeaders()
   return new JsonRpcProvider({ url: rpcUrl, headers }, RPC_RETRY_OPTIONS)
 }

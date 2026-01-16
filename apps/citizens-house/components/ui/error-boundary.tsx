@@ -30,10 +30,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error for debugging - in production this could go to an error tracking service
-    console.error("[ErrorBoundary] Caught error:", error)
-    console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack)
+  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
+    // Error captured in state for display - no logging needed
   }
 
   handleReset = () => {

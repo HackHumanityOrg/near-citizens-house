@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@near-citizens/ui"
 import { getAttestationTypeName } from "@near-citizens/shared"
-import { useAnalytics } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
 import { ProofVerifyModal } from "./proof-verify-modal"
@@ -16,19 +15,16 @@ interface Props {
 }
 
 export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
-  const analytics = useAnalytics()
   const [showSignatureModal, setShowSignatureModal] = useState(false)
   const [showZkProofModal, setShowZkProofModal] = useState(false)
 
   if (!data) return null
 
   const handleOpenSignatureModal = () => {
-    analytics.trackSignatureVerificationOpened(data.account.nearAccountId)
     setShowSignatureModal(true)
   }
 
   const handleOpenZkProofModal = () => {
-    analytics.trackZkProofDownloaded(data.account.nearAccountId, "modal_opened")
     setShowZkProofModal(true)
   }
 

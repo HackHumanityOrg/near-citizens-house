@@ -36,14 +36,13 @@ export async function middleware(request: NextRequest) {
 
   try {
     const maintenance = await get("maintenance")
-    console.log("[Middleware] maintenance:", maintenance, typeof maintenance)
 
     if (maintenance === true || maintenance === "true") {
       request.nextUrl.pathname = "/maintenance"
       return NextResponse.rewrite(request.nextUrl)
     }
-  } catch (error) {
-    console.error("[Middleware] Error reading Edge Config:", error)
+  } catch {
+    // Edge Config read failed - continue without maintenance mode
   }
 
   return NextResponse.next()

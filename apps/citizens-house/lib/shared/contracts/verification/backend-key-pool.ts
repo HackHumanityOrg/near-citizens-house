@@ -71,8 +71,6 @@ class BackendKeyPool {
       const derivedKey = this.deriveKey(masterKey, i)
       this.keys.push(derivedKey)
     }
-
-    console.log(`[BackendKeyPool] Derived ${POOL_SIZE} keys from master key`)
   }
 
   /**
@@ -121,7 +119,6 @@ class BackendKeyPool {
     // The provider and signer interfaces are compatible at runtime
     const account = new Account(NEAR_CONFIG.backendAccountId, provider, signer as unknown as Signer)
 
-    console.log(`[BackendKeyPool] Using key ${keyIndex} for transaction`)
     return { account, keyIndex }
   }
 

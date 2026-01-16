@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { useAnalytics } from "@/lib/analytics"
 import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@near-citizens/ui"
 import { NEAR_CONFIG, getAttestationTypeName } from "@near-citizens/shared"
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
@@ -38,20 +37,9 @@ function formatDate(timestamp: number): string {
 }
 
 export function VerificationsTable({ accounts, total, page, pageSize: _pageSize, totalPages }: Props) {
-  const analytics = useAnalytics()
   const [selectedAccount, setSelectedAccount] = useState<VerificationWithStatus | null>(null)
-  const trackedPageRef = useRef<number | null>(null)
-
-  // Track page view
-  useEffect(() => {
-    if (trackedPageRef.current !== page) {
-      analytics.trackVerificationsViewed(page)
-      trackedPageRef.current = page
-    }
-  }, [page, analytics])
 
   const handleViewDetails = (account: VerificationWithStatus) => {
-    analytics.trackAccountDetailsViewed(account.account.nearAccountId)
     setSelectedAccount(account)
   }
 

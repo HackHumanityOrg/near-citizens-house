@@ -19,10 +19,6 @@ if (USE_MOCK_VERIFIER && process.env.NODE_ENV === "production" && !E2E_TESTING) 
   throw new Error("CRITICAL: SKIP_ZK_VERIFICATION cannot be enabled in production")
 }
 
-if (USE_MOCK_VERIFIER) {
-  console.warn("[Self Verifier] ⚠️  SKIP_ZK_VERIFICATION is enabled - ZK proofs will NOT be verified")
-}
-
 /**
  * Mock verifier for E2E testing.
  * Returns a valid-looking response without actually verifying ZK proofs.

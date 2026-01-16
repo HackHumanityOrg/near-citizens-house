@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import {
-  SELF_CONFIG,
   NEAR_CONFIG,
   getSigningMessage,
   getSigningRecipient,
@@ -18,13 +17,6 @@ import {
 import { setBackendKeyPoolRedis, verificationDb } from "@near-citizens/shared/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
-import {
-  extractPostHogDistinctIdFromCookies,
-  trackVerificationCompletedServer,
-  trackVerificationFailedServer,
-  trackVerificationStartedServer,
-} from "@/lib/analytics-server"
-import { createApiEvent, logger, LogScope, Op } from "@/lib/logger"
 
 // Initialize Redis for backend key pool (for concurrent transaction support)
 // This is lazy - the actual connection happens on first use
@@ -142,40 +134,19 @@ async function hasFullAccessKey(accountId: string, publicKey: string): Promise<b
     })) as { permission?: unknown }
 
     return isFullAccessPermission(accessKey.permission)
-  } catch (error) {
-    logger.warn("Failed to query access key", {
-      scope: LogScope.API,
-      operation: Op.VERIFICATION.ACCESS_KEY_CHECK,
-      account_id: accountId,
-      error_message: error instanceof Error ? error.message : "Unknown error",
-    })
+  } catch {
     return false
   }
 }
 
 export async function POST(request: NextRequest) {
-  // Create wide event for this request
-  const event = createApiEvent(Op.API.VERIFICATION_VERIFY, request)
-  const eventAttributes = event.getAttributes()
-  const requestId = typeof eventAttributes.request_id === "string" ? eventAttributes.request_id : undefined
-  const distinctId = extractPostHogDistinctIdFromCookies(request.headers.get("cookie") || undefined)
-
-  const selfNetwork = SELF_CONFIG.networkId
   let sessionId: string | undefined
   let accountId: string | undefined
-  let nationality: string | undefined
-  let isValid: boolean | undefined
-
-  // Set initial verification context
-  event.setVerification({
-    self_network: selfNetwork,
-  })
 
   const respondWithError = async ({
     code,
     status,
     details,
-    stage,
     attestationId,
   }: {
     code: Parameters<typeof createVerificationError>[0]
@@ -186,36 +157,6 @@ export async function POST(request: NextRequest) {
   }) => {
     const errorResponse = createVerificationError(code, details)
 
-    // Update wide event with error context
-    event.setStatus(status)
-    event.setError({ code, message: errorResponse.reason })
-    event.setVerification({ stage, attestation_id: attestationId?.toString() })
-    event.setUser({ account_id: accountId, session_id: sessionId })
-    event.error(`Verification failed: ${code}`)
-
-    try {
-      await trackVerificationFailedServer({
-        distinctId: distinctId ?? sessionId ?? requestId ?? "unknown",
-        accountId,
-        sessionId,
-        requestId,
-        nationality,
-        attestationId: attestationId ? attestationId.toString() : undefined,
-        errorCode: code,
-        errorReason: errorResponse.reason,
-        stage,
-        selfNetwork,
-        isValid,
-        timestamp: Date.now(),
-      })
-    } catch (error) {
-      logger.warn("Failed to track verification_failed event", {
-        scope: LogScope.API,
-        operation: Op.VERIFICATION.ANALYTICS,
-        error_message: error instanceof Error ? error.message : "Unknown error",
-      })
-    }
-
     if (sessionId) {
       try {
         await updateSession(sessionId, {
@@ -225,13 +166,8 @@ export async function POST(request: NextRequest) {
           error: errorResponse.reason,
           errorCode: code,
         })
-      } catch (error) {
-        logger.warn("Failed to update verification session", {
-          scope: LogScope.API,
-          operation: Op.VERIFICATION.SESSION_UPDATE,
-          session_id: sessionId,
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        })
+      } catch {
+        // Failed to update session, continue with error response
       }
     }
 
@@ -255,26 +191,6 @@ export async function POST(request: NextRequest) {
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
     const attestationIdString = attestationIdStringSchema.parse(attestationId.toString())
 
-    // Update wide event with attestation ID
-    event.setVerification({ attestation_id: attestationIdString, stage: "started" })
-
-    try {
-      await trackVerificationStartedServer({
-        distinctId: distinctId ?? requestId ?? "unknown",
-        accountId,
-        attestationId: attestationIdString,
-        sessionId,
-        requestId,
-        selfNetwork,
-      })
-    } catch (error) {
-      logger.warn("Failed to track verification_started event", {
-        scope: LogScope.API,
-        operation: Op.VERIFICATION.ANALYTICS,
-        error_message: error instanceof Error ? error.message : "Unknown error",
-      })
-    }
-
     let selfVerificationResult
 
     try {
@@ -291,21 +207,9 @@ export async function POST(request: NextRequest) {
     }
 
     sessionId = selfVerificationResult.userData?.userIdentifier
-    nationality =
-      typeof selfVerificationResult.discloseOutput?.nationality === "string"
-        ? selfVerificationResult.discloseOutput.nationality
-        : undefined
 
     const validity = selfVerificationResult.isValidDetails || {}
-    isValid = validity.isValid
-
-    // Update wide event with verification results
-    event.setVerification({
-      is_valid: isValid,
-      nationality,
-      stage: "self_verified",
-    })
-    event.setUser({ session_id: sessionId })
+    const isValid = validity.isValid
 
     // Type guards: ensure SDK returned expected boolean fields
     if (typeof isValid !== "boolean") {
@@ -483,13 +387,6 @@ export async function POST(request: NextRequest) {
     const nonceReserved = await reserveSignatureNonce(data.accountId as string, nonceBase64, nonceTtlSeconds)
 
     if (!nonceReserved) {
-      logger.warn("Nonce replay attempt detected", {
-        scope: LogScope.API,
-        operation: Op.VERIFICATION.NONCE_CHECK,
-        account_id: data.accountId as string,
-        attestation_id: attestationId.toString(),
-        nonce_base64: nonceBase64,
-      })
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -530,13 +427,8 @@ export async function POST(request: NextRequest) {
           accountId: nearSignature.accountId,
           attestationId: attestationIdString,
         })
-      } catch (error) {
-        logger.warn("Failed to update verification session", {
-          operation: Op.VERIFICATION.SESSION_UPDATE,
-          session_id: sessionId,
-          account_id: nearSignature.accountId,
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        })
+      } catch {
+        // Failed to update session, continue with verification
       }
     }
 
@@ -585,32 +477,6 @@ export async function POST(request: NextRequest) {
       // Next.js 16 requires a cacheLife profile as second argument
       revalidateTag("verifications", "max")
 
-      // Update wide event with success context
-      event.setUser({ account_id: nearSignature.accountId })
-      event.setVerification({ nullifier: nullifier.toString(), stage: "stored" })
-
-      // Track verification completed for analytics
-      try {
-        await trackVerificationCompletedServer({
-          accountId: nearSignature.accountId,
-          nationality,
-          attestationId: attestationIdString,
-          selfNetwork,
-          isValid,
-          sessionId,
-          requestId,
-          distinctId: distinctId ?? nearSignature.accountId,
-          timestamp: Date.now(),
-        })
-      } catch (error) {
-        logger.warn("Failed to track verification_completed event", {
-          scope: LogScope.API,
-          operation: Op.VERIFICATION.ANALYTICS,
-          account_id: nearSignature.accountId,
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        })
-      }
-
       // Update session status for deep link callback
       // The userId from Self.xyz is used as the sessionId in our deep link flow
       if (sessionId) {
@@ -620,15 +486,8 @@ export async function POST(request: NextRequest) {
             accountId: nearSignature.accountId,
             attestationId: attestationIdString,
           })
-          event.set("session_updated", true)
-        } catch (error) {
-          logger.warn("Failed to update verification session", {
-            operation: Op.VERIFICATION.SESSION_UPDATE,
-            session_id: sessionId,
-            account_id: nearSignature.accountId,
-            error_message: error instanceof Error ? error.message : "Unknown error",
-          })
-          event.set("session_updated", false)
+        } catch {
+          // Failed to update session, but verification succeeded
         }
       }
     } catch (error) {
@@ -643,11 +502,6 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
-
-    // Emit successful verification wide event
-    event.setStatus(200)
-    event.setVerification({ stage: "completed" })
-    event.info("Verification completed successfully")
 
     return NextResponse.json(
       {
