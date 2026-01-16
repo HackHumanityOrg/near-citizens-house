@@ -53,8 +53,6 @@ new StatusPage("citizens-house-status", {
   url: "citizens-house-status",
 
   // Branding
-  // Uses prefers-color-scheme media query to switch between black (light) and white (dark) logo
-  logo: "https://citizenshouse.org/logo-header-statuspage.svg",
   favicon: "https://citizenshouse.org/favicon.ico",
   redirectTo: "https://citizenshouse.org",
 
