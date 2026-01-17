@@ -161,7 +161,7 @@ export const AttestationIds = {
 export const SizeLimits = {
   NULLIFIER: 80,
   USER_ID: 80,
-  ATTESTATION_ID: 1,
+  ATTESTATION_ID: 1, // Self.xyz uses 1, 2, 3
   USER_CONTEXT_DATA: 4096,
   PUBLIC_SIGNALS_COUNT: 21,
   PROOF_COMPONENT: 80,

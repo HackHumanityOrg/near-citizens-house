@@ -14,7 +14,7 @@ fn test_verification_summary_serialization() {
     let summary = VerificationSummary {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
-        attestation_id: "1".to_string(),
+        attestation_id: 1,
         verified_at: 1234567890,
     };
 
@@ -41,7 +41,7 @@ fn test_verification_serialization() {
     let verification = Verification {
         nullifier: "nullifier123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
-        attestation_id: "1".to_string(),
+        attestation_id: 1,
         verified_at: 1234567890,
         self_proof: SelfProofData {
             proof: ZkProof {
@@ -167,7 +167,7 @@ fn test_verification_summary_json_roundtrip() {
     let summary = VerificationSummary {
         nullifier: "123456789012345678901234567890".to_string(),
         near_account_id: "alice.testnet".parse().unwrap(),
-        attestation_id: "1".to_string(),
+        attestation_id: 1,
         verified_at: 1700000000000000000, // Realistic nanosecond timestamp
     };
 
@@ -191,7 +191,7 @@ fn test_verification_with_21_signals() {
     let verification = Verification {
         nullifier: "nullifier".to_string(),
         near_account_id: "user.near".parse().unwrap(),
-        attestation_id: "1".to_string(),
+        attestation_id: 1,
         verified_at: 0,
         self_proof: SelfProofData {
             proof: ZkProof {

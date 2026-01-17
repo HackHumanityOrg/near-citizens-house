@@ -39,7 +39,7 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 64],
@@ -196,7 +196,7 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "pause_read_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,

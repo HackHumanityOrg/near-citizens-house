@@ -32,7 +32,7 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
             .args_json(json!({
                 "nullifier": format!("pagination_cap_nullifier_{}", i),
                 "near_account_id": user.id(),
-                "attestation_id": format!("{}", (i % 3) + 1),
+                "attestation_id": (i % 3) + 1,
                 "signature_data": {
                     "account_id": user.id(),
                     "signature": signature,

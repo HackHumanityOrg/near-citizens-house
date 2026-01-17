@@ -161,7 +161,7 @@ fn test_store_verification_when_paused() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),

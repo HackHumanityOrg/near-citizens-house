@@ -57,7 +57,7 @@ fn test_happy_path_store_verification() {
         contract.store_verification(
             "test_nullifier".to_string(),
             user.clone(),
-            "1".to_string(),
+            1,
             sig_data,
             test_self_proof(),
             "test_user_context_data".to_string(),
@@ -84,7 +84,7 @@ fn test_happy_path_store_verification() {
             "Event nullifier should match input"
         );
         assert_eq!(
-            event.attestation_id, "1",
+            event.attestation_id, 1,
             "Event attestation_id should match input"
         );
 
@@ -125,7 +125,7 @@ fn test_verification_timestamp_matches_block_time() {
         contract.store_verification(
             "timestamp_nullifier".to_string(),
             user.clone(),
-            "1".to_string(),
+            1,
             sig_data,
             test_self_proof(),
             "ctx".to_string(),
@@ -162,7 +162,7 @@ fn test_nullifier_reuse_rejected() {
         contract.store_verification(
             "shared_nullifier".to_string(),
             user_a,
-            "1".to_string(),
+            1,
             sig_a,
             test_self_proof(),
             "ctx".to_string(),
@@ -179,7 +179,7 @@ fn test_nullifier_reuse_rejected() {
                 contract.store_verification(
                     "shared_nullifier".to_string(),
                     user_b,
-                    "1".to_string(),
+                    1,
                     sig_b,
                     test_self_proof(),
                     "ctx".to_string(),
@@ -216,7 +216,7 @@ fn test_double_verification_rejected() {
         contract.store_verification(
             "n1".to_string(),
             user.clone(),
-            "1".to_string(),
+            1,
             sig_one,
             test_self_proof(),
             "ctx".to_string(),
@@ -230,7 +230,7 @@ fn test_double_verification_rejected() {
                 contract.store_verification(
                     "n2".to_string(),
                     user.clone(),
-                    "1".to_string(),
+                    1,
                     sig_two,
                     test_self_proof(),
                     "ctx".to_string(),

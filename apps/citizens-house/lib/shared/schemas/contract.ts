@@ -97,7 +97,7 @@ export const contractVerificationSchema = z
   .transform((data) => ({
     nullifier: data.nullifier,
     nearAccountId: data.near_account_id,
-    attestationId: Number(data.attestation_id) as AttestationId,
+    attestationId: data.attestation_id,
     verifiedAt: Math.floor(data.verified_at / 1_000_000), // Convert nanoseconds to milliseconds
     selfProof: {
       proof: data.self_proof.proof,
@@ -122,7 +122,7 @@ export const contractVerificationSummarySchema = z
   .transform((data) => ({
     nullifier: data.nullifier,
     nearAccountId: data.near_account_id,
-    attestationId: Number(data.attestation_id) as AttestationId,
+    attestationId: data.attestation_id,
     verifiedAt: Math.floor(data.verified_at / 1_000_000), // Convert nanoseconds to milliseconds
   }))
 

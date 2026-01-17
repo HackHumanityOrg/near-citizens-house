@@ -13,7 +13,7 @@ use verified_accounts::interface::*;
 fn test_verification_summary_json_missing_nullifier_fails() {
     // JSON without required "nullifier" field should fail deserialization
     let json =
-        r#"{"near_account_id":"test.near","user_id":"u","attestation_id":"1","verified_at":0}"#;
+        r#"{"near_account_id":"test.near","user_id":"u","attestation_id":1,"verified_at":0}"#;
     let result: Result<VerificationSummary, _> = near_sdk::serde_json::from_str(json);
     assert!(
         result.is_err(),

@@ -23,7 +23,7 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 64],
@@ -65,7 +65,7 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 32], // Invalid: should be 64 bytes
@@ -108,7 +108,7 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(), // Trying to verify this account
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": different_user.id(), // But signature is for different account
                 "signature": vec![0u8; 64],
@@ -151,7 +151,7 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 64],

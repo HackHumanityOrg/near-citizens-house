@@ -173,7 +173,7 @@ test.describe("Complete Verification E2E Flow", () => {
     // Create verification request with real NEAR signature
     const verificationBody = createVerificationRequest(testAccount, signingMessage, sessionId)
     const expectedAttestationLabel = getAttestationTypeName(verificationBody.attestationId)
-    const expectedAttestationId = String(verificationBody.attestationId)
+    const expectedAttestationId = verificationBody.attestationId
 
     // Call the verification API directly
     // 120s timeout needed because:

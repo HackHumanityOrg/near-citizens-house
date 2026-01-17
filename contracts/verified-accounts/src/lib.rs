@@ -31,7 +31,6 @@ pub use interface::{
 
 /// Maximum length for string inputs
 const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 78 decimal digits
-const MAX_ATTESTATION_ID_LEN: usize = 1; // Self.xyz uses "1", "2", "3"
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
 const MAX_PUBLIC_SIGNALS_COUNT: usize = 21; // Passport proofs have 21 signals
 const MAX_PROOF_COMPONENT_LEN: usize = 80; // BN254 field elements ~77 decimal digits
@@ -78,7 +77,7 @@ pub struct Nep413Payload {
 pub struct VerificationStoredEvent {
     pub near_account_id: String,
     pub nullifier: String,
-    pub attestation_id: String,
+    pub attestation_id: u8,
 }
 
 /// Event emitted when contract is paused
@@ -311,7 +310,7 @@ impl VersionedContract {
         &mut self,
         nullifier: String,
         near_account_id: AccountId,
-        attestation_id: String,
+        attestation_id: u8,
         signature_data: NearSignatureData,
         self_proof: SelfProofData,
         user_context_data: String,
@@ -334,12 +333,7 @@ impl VersionedContract {
             MAX_NULLIFIER_LEN
         );
         assert!(
-            attestation_id.len() <= MAX_ATTESTATION_ID_LEN,
-            "Attestation ID exceeds maximum length of {}",
-            MAX_ATTESTATION_ID_LEN
-        );
-        assert!(
-            attestation_id == "1" || attestation_id == "2" || attestation_id == "3",
+            attestation_id == 1 || attestation_id == 2 || attestation_id == 3,
             "Attestation ID must be one of: 1, 2, 3"
         );
         assert!(
@@ -428,7 +422,7 @@ impl VersionedContract {
         let verification = Verification {
             nullifier: nullifier.clone(),
             near_account_id: near_account_id.clone(),
-            attestation_id: attestation_id.clone(),
+            attestation_id,
             verified_at: env::block_timestamp(),
             self_proof,
             user_context_data,

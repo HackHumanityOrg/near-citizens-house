@@ -33,7 +33,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "replay_test_nullifier_1",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature.clone(),
@@ -65,7 +65,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "replay_test_nullifier_2", // Different nullifier - trying to bypass nullifier check
             "near_account_id": user.id(),           // Same account
-            "attestation_id": "2",
+            "attestation_id": 2,
             "signature_data": {
                 "account_id": user.id(),            // Same account
                 "signature": signature.clone(),     // SAME signature!
@@ -247,7 +247,7 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "low_balance_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,

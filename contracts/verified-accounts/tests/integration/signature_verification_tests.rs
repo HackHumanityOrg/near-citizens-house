@@ -24,7 +24,7 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 64], // Invalid signature (all zeros)
@@ -76,7 +76,7 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "valid_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -157,7 +157,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "duplicate_test_nullifier",
             "near_account_id": user1.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user1.id(),
                 "signature": signature1,
@@ -188,7 +188,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "duplicate_test_nullifier", // Same nullifier!
             "near_account_id": user2.id(),
-            "attestation_id": "2",
+            "attestation_id": 2,
             "signature_data": {
                 "account_id": user2.id(),
                 "signature": signature2,
@@ -243,7 +243,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "first_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature1,
@@ -274,7 +274,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "second_nullifier", // Different nullifier
             "near_account_id": user.id(),    // Same account!
-            "attestation_id": "2",
+            "attestation_id": 2,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature2,
@@ -328,7 +328,7 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "data_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -363,7 +363,7 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
         // Verify the returned data
         assert_eq!(
             account_data.get("attestation_id"),
-            Some(&serde_json::json!("1"))
+            Some(&serde_json::json!(1))
         );
         assert_eq!(
             account_data.get("user_context_data"),
@@ -407,7 +407,7 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
             .args_json(json!({
                 "nullifier": format!("pagination_nullifier_{}", i),
                 "near_account_id": user.id(),
-                "attestation_id": format!("{}", i + 1),
+                "attestation_id": (i + 1),
                 "signature_data": {
                     "account_id": user.id(),
                     "signature": signature,
@@ -488,14 +488,14 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
     let (signature2, public_key2) =
         generate_nep413_signature(&user2, challenge, &nonce2, &recipient);
 
-    // First verification with attestation_id "1"
+    // First verification with attestation_id 1
     let first_result = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "nullifier": "attestation_test_nullifier_1",
             "near_account_id": user1.id(),
-            "attestation_id": "1",  // Same attestation_id
+            "attestation_id": 1,  // Same attestation_id
             "signature_data": {
                 "account_id": user1.id(),
                 "signature": signature1,
@@ -526,7 +526,7 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
         .args_json(json!({
             "nullifier": "attestation_test_nullifier_2",  // Different nullifier
             "near_account_id": user2.id(),                 // Different account
-            "attestation_id": "1",                         // Same attestation_id!
+            "attestation_id": 1,                         // Same attestation_id!
             "signature_data": {
                 "account_id": user2.id(),
                 "signature": signature2,

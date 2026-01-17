@@ -28,7 +28,7 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 64],
@@ -155,7 +155,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 64],
@@ -187,7 +187,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": vec![0u8; 64],

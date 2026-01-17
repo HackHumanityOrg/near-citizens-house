@@ -115,7 +115,7 @@ pub struct VerificationSummary {
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
     /// Attestation ID from the identity provider
-    pub attestation_id: String,
+    pub attestation_id: u8,
     /// Unix timestamp (nanoseconds) when verification was recorded
     pub verified_at: u64,
 }
@@ -135,7 +135,7 @@ pub struct VerificationV1 {
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
     /// Attestation ID from the identity provider
-    pub attestation_id: String,
+    pub attestation_id: u8,
     /// Unix timestamp (nanoseconds) when verification was recorded
     pub verified_at: u64,
     /// Self.xyz ZK proof data (for re-verification)
@@ -156,7 +156,7 @@ impl From<&VerificationV1> for VerificationSummary {
         Self {
             nullifier: v.nullifier.clone(),
             near_account_id: v.near_account_id.clone(),
-            attestation_id: v.attestation_id.clone(),
+            attestation_id: v.attestation_id,
             verified_at: v.verified_at,
         }
     }

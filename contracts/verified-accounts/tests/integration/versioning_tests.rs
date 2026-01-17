@@ -42,7 +42,7 @@ pub const WASM_V2_PATH: &str = "./tests/fixtures/v2/verified_accounts.wasm";
 pub struct VerificationSummary {
     pub nullifier: String,
     pub near_account_id: AccountId,
-    pub attestation_id: String,
+    pub attestation_id: u8,
     pub verified_at: u64,
 }
 
@@ -113,7 +113,7 @@ async fn store_verification(
         .args_json(json!({
             "nullifier": nullifier,
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -159,7 +159,7 @@ async fn store_verification_v2(
         .args_json(json!({
             "nullifier": nullifier,
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -416,7 +416,7 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "protected_nullifier",
             "near_account_id": user2.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user2.id(),
                 "signature": signature,
@@ -489,7 +489,7 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "sig_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature.clone(),
@@ -516,7 +516,7 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "different_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,

@@ -44,7 +44,7 @@ fn test_account_id_mismatch() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user, // But we're trying to verify accounts(2)
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -91,7 +91,7 @@ fn test_recipient_mismatch() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user, // But we're trying to verify accounts(2)
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -206,7 +206,7 @@ fn test_nullifier_too_long() {
                 contract.store_verification(
                     too_long_nullifier,
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -251,7 +251,7 @@ fn test_nullifier_empty() {
                 contract.store_verification(
                     "".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -267,10 +267,10 @@ fn test_nullifier_empty() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "attestation-id")]
-#[allure_description("Verifies that store_verification rejects attestation_id strings exceeding 1 character maximum length.")]
+#[allure_description("Verifies that store_verification rejects unsupported attestation_id values.")]
 #[allure_test]
 #[test]
-fn test_attestation_id_too_long() {
+fn test_attestation_id_invalid_value_rejected() {
     let (mut contract, user) = step("Initialize contract", || {
         let backend = accounts(1);
         let user = accounts(2);
@@ -280,7 +280,7 @@ fn test_attestation_id_too_long() {
         (contract, user)
     });
 
-    step("Attempt verification with 2-char attestation_id", || {
+    step("Attempt verification with invalid attestation_id", || {
         assert_panic_with(
             || {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
@@ -293,18 +293,18 @@ fn test_attestation_id_too_long() {
                     recipient: accounts(0),
                 };
 
-                let too_long_attestation_id = "xx".to_string();
+                let invalid_attestation_id = 9;
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    too_long_attestation_id,
+                    invalid_attestation_id,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },
-            "Attestation ID exceeds maximum length of 1",
+            "Attestation ID must be one of: 1, 2, 3",
         );
     });
 }
@@ -314,10 +314,10 @@ fn test_attestation_id_too_long() {
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
 #[allure_tags("unit", "validation", "attestation-id")]
-#[allure_description("Verifies that store_verification rejects unsupported attestation_id values.")]
+#[allure_description("Verifies that store_verification rejects unsupported attestation_id values (alternate path).")]
 #[allure_test]
 #[test]
-fn test_attestation_id_invalid_value() {
+fn test_attestation_id_invalid_value_secondary() {
     let (mut contract, user) = step("Initialize contract", || {
         let backend = accounts(1);
         let user = accounts(2);
@@ -340,7 +340,7 @@ fn test_attestation_id_invalid_value() {
                     recipient: accounts(0),
                 };
 
-                let invalid_attestation_id = "9".to_string();
+                let invalid_attestation_id = 9;
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
@@ -394,7 +394,7 @@ fn test_user_context_data_too_long() {
                     contract.store_verification(
                         "test_nullifier".to_string(),
                         user,
-                        "1".to_string(),
+                        1,
                         sig_data,
                         test_self_proof(),
                         too_long_user_context,
@@ -430,7 +430,7 @@ fn test_nullifier_max_length_allowed() {
         contract.store_verification(
             "n".repeat(80),
             user.clone(),
-            "1".to_string(),
+            1,
             sig_data,
             test_self_proof(),
             "ctx".to_string(),
@@ -466,7 +466,7 @@ fn test_attestation_id_single_char_allowed() {
         contract.store_verification(
             "nullifier_attestation".to_string(),
             user.clone(),
-            "2".to_string(),
+            2,
             sig_data,
             test_self_proof(),
             "ctx".to_string(),
@@ -505,7 +505,7 @@ fn test_user_context_data_max_length_allowed() {
             contract.store_verification(
                 "nullifier_context".to_string(),
                 user.clone(),
-                "1".to_string(),
+                1,
                 sig_data,
                 test_self_proof(),
                 context_data,
@@ -515,7 +515,7 @@ fn test_user_context_data_max_length_allowed() {
 
     step("Verify account data is stored correctly", || {
         let verification = contract.get_verification(user.clone()).unwrap();
-        assert_eq!(verification.attestation_id, "1");
+        assert_eq!(verification.attestation_id, 1);
         assert_eq!(verification.near_account_id, user);
         assert_eq!(verification.nullifier, "nullifier_context");
         assert_eq!(contract.get_verified_count(), 1);

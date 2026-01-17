@@ -44,7 +44,7 @@ fn test_invalid_signature() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -89,7 +89,7 @@ fn test_invalid_nonce_length() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -134,7 +134,7 @@ fn test_invalid_signature_length() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -179,7 +179,7 @@ fn test_nonce_too_long() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -224,7 +224,7 @@ fn test_signature_too_long() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -270,7 +270,7 @@ fn test_signature_from_different_key_rejected() {
                     contract.store_verification(
                         "nullifier_wrong_key".to_string(),
                         user.clone(),
-                        "1".to_string(),
+                        1,
                         sig_data,
                         test_self_proof(),
                         "ctx".to_string(),
@@ -311,7 +311,7 @@ fn test_signature_wrong_nonce_rejected() {
                 contract.store_verification(
                     "nullifier_wrong_nonce".to_string(),
                     user.clone(),
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),
@@ -354,7 +354,7 @@ fn test_signature_wrong_recipient_rejected() {
                 contract.store_verification(
                     "nullifier_wrong_recipient".to_string(),
                     user.clone(),
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),
@@ -396,7 +396,7 @@ fn test_signature_wrong_challenge_rejected() {
                 contract.store_verification(
                     "nullifier_wrong_challenge".to_string(),
                     user.clone(),
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),
@@ -436,7 +436,7 @@ fn test_invalid_signature_contents() {
                 contract.store_verification(
                     "tampered".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),

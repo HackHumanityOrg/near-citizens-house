@@ -17,7 +17,7 @@ import { z } from "zod"
  */
 export const SIZE_LIMITS = {
   NULLIFIER: 80, // MAX_NULLIFIER_LEN - uint256 max = 77 decimal digits
-  ATTESTATION_ID: 1, // MAX_ATTESTATION_ID_LEN - Self.xyz uses "1", "2", "3"
+  ATTESTATION_ID: 1, // Self.xyz uses 1, 2, 3
   USER_CONTEXT_DATA: 4096, // MAX_USER_CONTEXT_DATA_LEN
   PROOF_COMPONENT: 80, // MAX_PROOF_COMPONENT_LEN - BN254 field elements ~77 decimal digits
   MAX_BATCH_SIZE: 100, // MAX_BATCH_SIZE - Maximum accounts per batch query

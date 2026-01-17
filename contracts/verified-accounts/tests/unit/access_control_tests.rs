@@ -37,7 +37,7 @@ fn test_unauthorized_write() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     accounts(2),
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
