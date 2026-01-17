@@ -335,8 +335,8 @@ export async function POST(request: NextRequest) {
       recipient,
     }
 
-    // Ensure backend wallet is configured for on-chain storage.
-    // verificationDb can run in read-only mode for pages, but this endpoint must be able to write.
+    // Defense-in-depth: verify backend wallet is configured before attempting storage.
+    // The verificationDb singleton also validates this, but we check early for a clearer error.
     if (!NEAR_CONFIG.backendAccountId || !NEAR_CONFIG.backendPrivateKey) {
       return respondWithError({
         code: "INTERNAL_ERROR",

@@ -346,161 +346,34 @@ export class NearContractDatabase implements IVerificationDatabase {
     const page = pagination?.page ?? 0
     const pageSize = pagination?.pageSize ?? 50
 
-    try {
-      const total = (await this.provider!.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
+    const total = (await this.provider!.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
 
-      if (total === 0) {
-        return { accounts: [], total }
-      }
-
-      const safePage = Math.max(0, page)
-      const remaining = Math.max(total - safePage * pageSize, 0)
-
-      if (remaining === 0) {
-        return { accounts: [], total }
-      }
-
-      const limit = Math.min(pageSize, remaining, 100)
-      const fromIndex = Math.max(total - (safePage + 1) * pageSize, 0)
-
-      const accounts = await this.provider!.callFunction<ContractVerification[]>(
-        this.contractId,
-        "list_verifications",
-        {
-          from_index: fromIndex,
-          limit,
-        },
-      )
-
-      // Use safeParse to filter out invalid entries instead of failing the entire list
-      const verifications = (accounts ?? [])
-        .map((item) => contractVerificationSchema.safeParse(item))
-        .filter((r): r is z.SafeParseSuccess<TransformedVerification> => r.success)
-        .map((r) => r.data)
-
-      return { accounts: verifications.reverse(), total }
-    } catch {
-      return { accounts: [], total: 0 }
+    if (total === 0) {
+      return { accounts: [], total }
     }
-  }
-}
 
-export class NearContractReadOnlyDatabase implements IVerificationDatabase {
-  private provider: Provider
-  private contractId: string
+    const safePage = Math.max(0, page)
+    const remaining = Math.max(total - safePage * pageSize, 0)
 
-  constructor(contractId: string) {
-    this.contractId = contractId
-    this.provider = createRpcProvider()
-  }
+    if (remaining === 0) {
+      return { accounts: [], total }
+    }
 
-  async isVerified(nearAccountId: NearAccountId): Promise<boolean> {
-    const result = await this.provider.callFunction<boolean>(this.contractId, "is_verified", {
-      account_id: nearAccountId,
+    const limit = Math.min(pageSize, remaining, 100)
+    const fromIndex = Math.max(total - (safePage + 1) * pageSize, 0)
+
+    const accounts = await this.provider!.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
+      from_index: fromIndex,
+      limit,
     })
-    return result ?? false
-  }
 
-  async storeVerification(_data: VerificationDataWithSignature): Promise<void> {
-    throw new Error(
-      "verificationDb.storeVerification() is not available without NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY configured.",
-    )
-  }
+    // Use safeParse to filter out invalid entries instead of failing the entire list
+    const verifications = (accounts ?? [])
+      .map((item) => contractVerificationSchema.safeParse(item))
+      .filter((r): r is z.SafeParseSuccess<TransformedVerification> => r.success)
+      .map((r) => r.data)
 
-  async getVerification(nearAccountId: NearAccountId): Promise<VerificationSummary | null> {
-    try {
-      const result = await this.provider.callFunction<ContractVerificationSummary>(
-        this.contractId,
-        "get_verification",
-        {
-          account_id: nearAccountId,
-        },
-      )
-
-      if (!result) {
-        return null
-      }
-
-      return contractVerificationSummarySchema.parse(result)
-    } catch {
-      return null
-    }
-  }
-
-  async getFullVerification(nearAccountId: NearAccountId): Promise<Verification | null> {
-    try {
-      const result = await this.provider.callFunction<ContractVerification>(this.contractId, "get_full_verification", {
-        account_id: nearAccountId,
-      })
-
-      if (!result) {
-        return null
-      }
-
-      return contractVerificationSchema.parse(result)
-    } catch {
-      return null
-    }
-  }
-
-  async listVerifications(fromIndex: number = 0, limit: number = 50): Promise<PaginatedVerifications> {
-    try {
-      const [total, accounts] = await Promise.all([
-        this.provider.callFunction<number>(this.contractId, "get_verified_count", {}),
-        this.provider.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
-          from_index: fromIndex,
-          limit: Math.min(limit, 100),
-        }),
-      ])
-
-      // Use safeParse to filter out invalid entries instead of failing the entire list
-      const verifications = (accounts ?? [])
-        .map((item) => contractVerificationSchema.safeParse(item))
-        .filter((r): r is z.SafeParseSuccess<TransformedVerification> => r.success)
-        .map((r) => r.data)
-
-      return { accounts: verifications, total: total ?? 0 }
-    } catch {
-      return { accounts: [], total: 0 }
-    }
-  }
-
-  async listVerificationsNewestFirst(pagination?: Pagination): Promise<PaginatedVerifications> {
-    const page = pagination?.page ?? 0
-    const pageSize = pagination?.pageSize ?? 50
-
-    try {
-      const total = (await this.provider.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
-
-      if (total === 0) {
-        return { accounts: [], total }
-      }
-
-      const safePage = Math.max(0, page)
-      const remaining = Math.max(total - safePage * pageSize, 0)
-
-      if (remaining === 0) {
-        return { accounts: [], total }
-      }
-
-      const limit = Math.min(pageSize, remaining, 100)
-      const fromIndex = Math.max(total - (safePage + 1) * pageSize, 0)
-
-      const accounts = await this.provider.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
-        from_index: fromIndex,
-        limit,
-      })
-
-      // Use safeParse to filter out invalid entries instead of failing the entire list
-      const verifications = (accounts ?? [])
-        .map((item) => contractVerificationSchema.safeParse(item))
-        .filter((r): r is z.SafeParseSuccess<TransformedVerification> => r.success)
-        .map((r) => r.data)
-
-      return { accounts: verifications.reverse(), total }
-    } catch {
-      return { accounts: [], total: 0 }
-    }
+    return { accounts: verifications.reverse(), total }
   }
 }
 
@@ -510,22 +383,20 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
 
 let dbInstance: IVerificationDatabase | null = null
 
-function createVerificationContract(): IVerificationDatabase {
+function createVerificationContract(): NearContractDatabase {
   const { verificationContractId, backendAccountId, backendPrivateKey } = NEAR_CONFIG
 
-  if (!verificationContractId) {
+  if (!verificationContractId || !backendAccountId || !backendPrivateKey) {
     throw new Error(
       "Missing required NEAR configuration. Please set:\n" +
         "- NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT (contract account address)\n" +
+        "- NEAR_ACCOUNT_ID (backend account ID)\n" +
+        "- NEAR_PRIVATE_KEY (backend private key)\n" +
         "See DEVELOPER.md for setup instructions.",
     )
   }
 
-  if (backendAccountId && backendPrivateKey) {
-    return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId)
-  }
-
-  return new NearContractReadOnlyDatabase(verificationContractId)
+  return new NearContractDatabase(backendAccountId, backendPrivateKey, verificationContractId)
 }
 
 // Lazy singleton - only initialize when first accessed (not during build)
