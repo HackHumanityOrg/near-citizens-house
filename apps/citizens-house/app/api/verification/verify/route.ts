@@ -4,6 +4,7 @@ import {
   getSigningMessage,
   getSigningRecipient,
   verifyNearSignature,
+  getAttestationTypeName,
   type NearAccountId,
   type NearSignatureData,
   type VerificationDataWithSignature,
@@ -14,6 +15,7 @@ import { getVerifier } from "@/lib/providers/self-provider"
 import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
+import { trackServerEvent } from "@/lib/analytics-server"
 import {
   verifyRequestSchema,
   createVerificationError,
@@ -82,6 +84,7 @@ async function hasFullAccessKey(accountId: NearAccountId, publicKey: string): Pr
 export async function POST(request: NextRequest) {
   let sessionId: string | undefined
   let accountId: NearAccountId | undefined
+  let optimisticAccountId: NearAccountId | undefined
 
   const respondWithError = async ({
     code,
@@ -96,6 +99,16 @@ export async function POST(request: NextRequest) {
     attestationId?: AttestationId
   }) => {
     const errorResponse = createVerificationError(code, details)
+
+    // Track rejection event - distinctId priority: accountId > optimisticAccountId > sessionId > anonymous
+    const distinctId = accountId || optimisticAccountId || sessionId || "anonymous"
+    await trackServerEvent(distinctId, {
+      domain: "verification",
+      action: "rejected",
+      accountId: accountId || optimisticAccountId,
+      reason: errorResponse.reason,
+      errorCode: code,
+    })
 
     if (sessionId) {
       try {
@@ -129,6 +142,25 @@ export async function POST(request: NextRequest) {
     }
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
+
+    // Optimistically try to extract accountId from userContextData for early tracking
+    // This data will be validated properly later, but we want it for analytics
+    try {
+      const parsed = JSON.parse(userContextData)
+      if (parsed && typeof parsed.accountId === "string") {
+        optimisticAccountId = parsed.accountId as NearAccountId
+      }
+    } catch {
+      // Failed to parse, will use "anonymous" for tracking
+    }
+
+    // Track proof submission attempt with optimistic accountId if available
+    await trackServerEvent(optimisticAccountId || "anonymous", {
+      domain: "verification",
+      action: "proof_submitted",
+      accountId: optimisticAccountId,
+      sessionId: "pending",
+    })
 
     let rawSdkResponse: unknown
 
@@ -171,6 +203,9 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
+
+    // We don't have accountId yet at this point, but we need it for proof_validated
+    // We'll track proof_validated after parsing userDefinedData (see below)
 
     const nullifier = selfVerificationResult.discloseOutput.nullifier
 
@@ -218,6 +253,13 @@ export async function POST(request: NextRequest) {
 
     const data = userDataResult.data
     accountId = data.accountId
+
+    // Track proof validation success (ZK proof passed, accountId now known)
+    await trackServerEvent(accountId, {
+      domain: "verification",
+      action: "proof_validated",
+      accountId,
+    })
 
     // Nonce is now base64 encoded throughout the system
     const nonce = data.nonce
@@ -401,6 +443,14 @@ export async function POST(request: NextRequest) {
         selfProofData,
         userContextData: fullUserContextData,
       } satisfies VerificationDataWithSignature)
+
+      // Track successful on-chain storage
+      await trackServerEvent(nearSignature.accountId, {
+        domain: "verification",
+        action: "stored_onchain",
+        accountId: nearSignature.accountId,
+        attestationType: getAttestationTypeName(attestationId),
+      })
 
       // Revalidate the verifications cache so new verification appears immediately
       // Next.js 16 requires a cacheLife profile as second argument

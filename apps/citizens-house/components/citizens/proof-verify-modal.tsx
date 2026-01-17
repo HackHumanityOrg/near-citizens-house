@@ -3,6 +3,7 @@
 import { useCallback } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@near-citizens/ui"
 import { getAttestationTypeName } from "@/lib"
+import { trackEvent } from "@/lib/analytics"
 import { Download, ExternalLink } from "lucide-react"
 import type { ZkProof } from "@/lib"
 import type { AttestationId, NearAccountId } from "@/lib/schemas"
@@ -39,21 +40,63 @@ interface ZkProofVerifyModalProps {
 }
 
 export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModalProps) {
-  const downloadJson = useCallback((content: object, filename: string) => {
-    const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, [])
+  const downloadJson = useCallback(
+    (content: object, filename: string, fileType: "proof" | "public_signals") => {
+      const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      if (data) {
+        trackEvent({
+          domain: "citizens",
+          action: "file_downloaded",
+          viewedAccountId: data.nearAccountId,
+          fileType,
+        })
+      }
+    },
+    [data],
+  )
+
+  const handleVkeyDownload = useCallback(() => {
+    if (data) {
+      trackEvent({
+        domain: "citizens",
+        action: "file_downloaded",
+        viewedAccountId: data.nearAccountId,
+        fileType: "verification_key",
+      })
+    }
+  }, [data])
 
   const openSnarkjs = useCallback(() => {
+    if (data) {
+      trackEvent({
+        domain: "citizens",
+        action: "external_verifier_opened",
+        viewedAccountId: data.nearAccountId,
+        verifier: "snarkjs_docs",
+      })
+    }
     window.open("https://github.com/iden3/snarkjs", "_blank")
-  }, [])
+  }, [data])
+
+  const openSelfDocs = useCallback(() => {
+    if (data) {
+      trackEvent({
+        domain: "citizens",
+        action: "external_verifier_opened",
+        viewedAccountId: data.nearAccountId,
+        verifier: "self_docs",
+      })
+    }
+    window.open("https://docs.self.xyz", "_blank")
+  }, [data])
 
   if (!data) return null
 
@@ -108,20 +151,24 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
 
           {/* Download Buttons */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <Button variant="citizens-primary" size="citizens-xl" onClick={() => downloadJson(proofJson, "proof.json")}>
+            <Button
+              variant="citizens-primary"
+              size="citizens-xl"
+              onClick={() => downloadJson(proofJson, "proof.json", "proof")}
+            >
               <Download className="h-4 w-4" />
               proof.json
             </Button>
             <Button
               variant="citizens-primary"
               size="citizens-xl"
-              onClick={() => downloadJson(publicJson, "public.json")}
+              onClick={() => downloadJson(publicJson, "public.json", "public_signals")}
             >
               <Download className="h-4 w-4" />
               public.json
             </Button>
             <Button variant="citizens-primary" size="citizens-xl" asChild>
-              <a href={`/${vkeyFile}`} download={vkeyFile}>
+              <a href={`/${vkeyFile}`} download={vkeyFile} onClick={handleVkeyDownload}>
                 <Download className="h-4 w-4" />
                 {vkeyFile}
               </a>
@@ -136,12 +183,7 @@ export function ProofVerifyModal({ open, onOpenChange, data }: ZkProofVerifyModa
               <ExternalLink className="h-4 w-4" />
               snarkjs
             </Button>
-            <Button
-              variant="citizens-outline"
-              size="citizens-xl"
-              className="flex-1"
-              onClick={() => window.open("https://docs.self.xyz", "_blank")}
-            >
+            <Button variant="citizens-outline" size="citizens-xl" className="flex-1" onClick={openSelfDocs}>
               <ExternalLink className="h-4 w-4" />
               Self.xyz Docs
             </Button>

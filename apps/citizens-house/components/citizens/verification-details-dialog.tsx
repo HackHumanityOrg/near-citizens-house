@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@near-citizens/ui"
 import { getAttestationTypeName } from "@/lib"
+import { trackEvent } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
 import { ProofVerifyModal } from "./proof-verify-modal"
@@ -22,10 +23,20 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
   if (!data) return null
 
   const handleOpenSignatureModal = () => {
+    trackEvent({
+      domain: "citizens",
+      action: "signature_verify_opened",
+      viewedAccountId: data.account.nearAccountId,
+    })
     setShowSignatureModal(true)
   }
 
   const handleOpenZkProofModal = () => {
+    trackEvent({
+      domain: "citizens",
+      action: "proof_verify_opened",
+      viewedAccountId: data.account.nearAccountId,
+    })
     setShowZkProofModal(true)
   }
 
@@ -98,6 +109,7 @@ export function VerificationDetailsDialog({ data, open, onOpenChange }: Props) {
                 ...proofData.nearSignatureVerification,
                 challenge: proofData.signature.challenge,
                 recipient: proofData.signature.recipient,
+                accountId: account.nearAccountId,
               }
             : null
         }

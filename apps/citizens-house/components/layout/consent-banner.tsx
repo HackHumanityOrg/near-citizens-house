@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePostHog } from "posthog-js/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { trackEvent } from "@/lib/analytics"
 
 const CONSENT_STORAGE_KEY = "posthog_consent"
 const CONSENT_RESET_EVENT = "posthog-consent-reset"
@@ -33,10 +34,22 @@ export function ConsentBanner() {
   const handleAccept = () => {
     window.localStorage.setItem(CONSENT_STORAGE_KEY, "granted")
     posthog?.opt_in_capturing()
+    // Track after opt-in so the event is captured
+    trackEvent({
+      domain: "consent",
+      action: "response",
+      granted: true,
+    })
     setIsVisible(false)
   }
 
   const handleReject = () => {
+    // Track before opt-out so the event is captured
+    trackEvent({
+      domain: "consent",
+      action: "response",
+      granted: false,
+    })
     window.localStorage.setItem(CONSENT_STORAGE_KEY, "denied")
     posthog?.opt_out_capturing()
     setIsVisible(false)

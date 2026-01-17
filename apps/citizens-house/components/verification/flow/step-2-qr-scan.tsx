@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, getUniversalLink, type NearSignatureData, type AttestationId } from "@/lib"
+import { trackEvent } from "@/lib/analytics"
 import { statusResponseSchema } from "@/lib/schemas"
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
@@ -120,7 +121,24 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
     }
   }, [sessionId, nearSignature.accountId])
 
+  // Track qr_displayed when QR code is rendered (desktop only)
+  useEffect(() => {
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches
+    if (isDesktop && selfAppDesktop) {
+      trackEvent({
+        domain: "verification",
+        action: "qr_displayed",
+        sessionId,
+      })
+    }
+  }, [selfAppDesktop, sessionId])
+
   const handleOpenSelfApp = () => {
+    trackEvent({
+      domain: "verification",
+      action: "deeplink_opened",
+      sessionId,
+    })
     window.open(deeplink, "_blank")
   }
 
@@ -133,6 +151,13 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
   const confirmBackendStatus = async () => {
     const maxPolls = 60 // 2 minutes at 2s interval
     const pollIntervalMs = 2000
+
+    // Track polling started
+    trackEvent({
+      domain: "verification",
+      action: "polling_started",
+      sessionId,
+    })
 
     for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
       try {
@@ -181,6 +206,13 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
     }
 
+    // Track polling timeout
+    trackEvent({
+      domain: "verification",
+      action: "polling_timeout",
+      sessionId,
+      pollCount: maxPolls,
+    })
     finalizeWithError("Verification timed out. Please try again.", "TIMEOUT")
   }
 

@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 import { useNearWallet, CONSTANTS, statusResponseSchema, type NearSignatureData, type AttestationId } from "@/lib"
+import { trackEvent } from "@/lib/analytics"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
@@ -108,6 +109,20 @@ function VerificationStartContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
+  const hasTrackedFlowStarted = useRef(false)
+
+  // Track flow_started event once on component mount
+  useEffect(() => {
+    if (hasTrackedFlowStarted.current) return
+    hasTrackedFlowStarted.current = true
+
+    const isMobile = window.matchMedia("(max-width: 767px)").matches
+    trackEvent({
+      domain: "verification",
+      action: "flow_started",
+      platform: isMobile ? "mobile" : "desktop",
+    })
+  }, [])
 
   useEffect(() => {
     if (!isConnected) {

@@ -1,8 +1,21 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { Button } from "@near-citizens/ui"
+import { trackEvent } from "@/lib/analytics"
 import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/schemas/errors"
+
+type ErrorStage = "wallet_connect" | "message_sign" | "qr_scan" | "polling" | "unknown"
+
+function determineErrorStage(errorCode?: string): ErrorStage {
+  if (!errorCode) return "unknown"
+  const code = errorCode.toUpperCase()
+  if (code.includes("WALLET") || code.includes("CONNECT")) return "wallet_connect"
+  if (code.includes("SIGN") || code.includes("SIGNATURE")) return "message_sign"
+  if (code.includes("QR") || code.includes("SCAN")) return "qr_scan"
+  if (code.includes("TIMEOUT") || code.includes("POLL") || code.includes("EXPIRED")) return "polling"
+  return "unknown"
+}
 
 interface ErrorModalProps {
   isOpen: boolean
@@ -13,19 +26,51 @@ interface ErrorModalProps {
 }
 
 export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }: ErrorModalProps) {
+  const hasTrackedErrorShown = useRef(false)
+  const lastErrorCode = useRef<string | undefined>(undefined)
+
+  // Track error_shown when modal opens
+  useEffect(() => {
+    if (!isOpen) {
+      hasTrackedErrorShown.current = false
+      lastErrorCode.current = undefined
+      return
+    }
+
+    // Only track if we haven't tracked this error yet
+    if (hasTrackedErrorShown.current && lastErrorCode.current === errorCode) return
+    hasTrackedErrorShown.current = true
+    lastErrorCode.current = errorCode
+
+    trackEvent({
+      domain: "verification",
+      action: "error_shown",
+      errorCode: errorCode || "unknown",
+      stage: determineErrorStage(errorCode),
+    })
+  }, [isOpen, errorCode])
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && onClose) {
+        // Track abandonment only for retryable errors
+        if (!isNonRetryableError(errorCode)) {
+          trackEvent({
+            domain: "verification",
+            action: "error_abandoned",
+            errorCode: errorCode || "unknown",
+          })
+        }
         onClose()
       }
     }
 
     document.addEventListener("keydown", handleEscape)
     return () => document.removeEventListener("keydown", handleEscape)
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, errorCode])
 
   if (!isOpen) return null
 
@@ -35,12 +80,24 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
   // Default fallback message for the modal context
   const defaultFallback = "There was an error during the verification process. Please re-sign message and try again."
 
+  const handleBackdropClose = () => {
+    // Track abandonment only for retryable errors (user chose to dismiss instead of retry)
+    if (!isNonRetryable) {
+      trackEvent({
+        domain: "verification",
+        action: "error_abandoned",
+        errorCode: errorCode || "unknown",
+      })
+    }
+    onClose()
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" data-testid="error-modal">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-[rgba(0,0,0,0.4)] backdrop-blur-[6px]"
-        onClick={onClose}
+        onClick={handleBackdropClose}
         aria-hidden="true"
         data-testid="error-modal-backdrop"
       />
@@ -90,7 +147,14 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
             </Button>
           ) : (
             <Button
-              onClick={onRetry}
+              onClick={() => {
+                trackEvent({
+                  domain: "verification",
+                  action: "error_retry_clicked",
+                  errorCode: errorCode || "unknown",
+                })
+                onRetry()
+              }}
               variant="citizens-primary"
               size="citizens-3xl"
               data-testid="error-retry-button"
