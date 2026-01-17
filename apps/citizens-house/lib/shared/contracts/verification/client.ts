@@ -22,8 +22,8 @@ import {
   type ContractSignatureInput,
   type VerificationDataWithSignature,
 } from "../../schemas/contract"
-import { type Verification, type VerificationSummary } from "../../schemas/zk-proof"
 import type { NearAccountId } from "../../schemas/near"
+import type { Verification, VerificationSummary } from "../../schemas/selfxyz"
 import type { Pagination } from "../../schemas/core"
 import type { IVerificationDatabase, PaginatedVerifications } from "./verification-contract"
 import { NEAR_CONFIG } from "../../config"

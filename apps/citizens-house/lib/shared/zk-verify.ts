@@ -10,9 +10,8 @@
  * the SDK's business logic validation.
  */
 import { ethers } from "ethers"
-import type { SelfProofData } from "./schemas/zk-proof"
-import type { AttestationId } from "./schemas/core"
 import { SELF_CONFIG, CELO_CONFIG } from "./config"
+import type { SelfProofData, AttestationId } from "./schemas/selfxyz"
 
 export type { SelfProofData as StoredProofData }
 

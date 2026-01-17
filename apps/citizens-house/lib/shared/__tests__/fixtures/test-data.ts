@@ -5,8 +5,8 @@
  * For real integration tests, use actual Self.xyz mock passport data.
  */
 
-import type { SelfProofData } from "../../schemas/zk-proof"
 import type { NearAccountId } from "../../schemas/near"
+import type { SelfProofData } from "../../schemas/selfxyz"
 
 // ============================================================================
 // ZK Proof Test Data
