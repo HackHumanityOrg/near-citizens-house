@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { NearConnector } from "@hot-labs/near-connect"
+import posthog from "posthog-js"
 import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from "@hot-labs/near-connect"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
@@ -83,17 +84,30 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         // Connection/disconnection events
         connector.on("wallet:signIn", (payload) => {
           const rawAccountId = payload?.accounts?.[0]?.accountId
-          setAccountId(validateAccountId(rawAccountId))
+          const validatedAccountId = validateAccountId(rawAccountId)
+          setAccountId(validatedAccountId)
+
+          // Identify user in PostHog when wallet connects
+          if (validatedAccountId) {
+            posthog.identify(validatedAccountId)
+          }
         })
         connector.on("wallet:signOut", () => {
           setAccountId(null)
+          posthog.reset()
         })
 
         // Try existing session
         try {
           const connected = await connector.getConnectedWallet()
           const rawAccountId = connected?.accounts?.[0]?.accountId
-          setAccountId(validateAccountId(rawAccountId))
+          const validatedAccountId = validateAccountId(rawAccountId)
+          setAccountId(validatedAccountId)
+
+          // Identify existing session user
+          if (validatedAccountId) {
+            posthog.identify(validatedAccountId)
+          }
         } catch {
           // No previous session
         }
@@ -169,6 +183,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     if (!nearConnector) return
     await nearConnector.disconnect()
     setAccountId(null)
+    posthog.reset()
   }, [nearConnector])
 
   const signMessage = useCallback(
