@@ -7,7 +7,7 @@
 
 import { KeyPair } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
-import { computeNep413Hash, getSigningRecipient, type NearAccountId } from "@near-citizens/shared"
+import { computeNep413Hash, getSigningRecipient, type AttestationId, type NearAccountId } from "@near-citizens/shared"
 import { randomBytes } from "crypto"
 
 interface TestAccount {
@@ -15,8 +15,6 @@ interface TestAccount {
   publicKey: string
   privateKey: string // ed25519:... format
 }
-
-type AttestationId = 1 | 2 | 3
 
 const ATTESTATION_IDS: AttestationId[] = [1, 2, 3]
 

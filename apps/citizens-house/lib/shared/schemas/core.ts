@@ -7,6 +7,20 @@
 import { z } from "zod"
 
 // ============================================================================
+// Attestation ID Schema
+// ============================================================================
+
+/**
+ * Attestation ID schema - numeric only (1, 2, 3).
+ * Use z.infer<typeof attestationIdSchema> for the type.
+ */
+export const attestationIdSchema = z
+  .union([z.literal(1), z.literal(2), z.literal(3)])
+  .describe("Attestation ID (1, 2, or 3)")
+
+export type AttestationId = z.infer<typeof attestationIdSchema>
+
+// ============================================================================
 // Size Constraints
 // MUST match contracts/verified-accounts/src/lib.rs lines 34-42
 // ============================================================================
@@ -30,7 +44,7 @@ export const SIZE_LIMITS = {
  * - Attestation 2 (Passport + Nationality): 21 signals
  * - Attestation 3 (Name): 19 signals
  */
-export const PUBLIC_SIGNALS_COUNT: Record<1 | 2 | 3, number> = {
+export const PUBLIC_SIGNALS_COUNT: Record<AttestationId, number> = {
   1: 21,
   2: 21,
   3: 19,
@@ -41,32 +55,6 @@ export const PUBLIC_SIGNALS_COUNT: Record<1 | 2 | 3, number> = {
  * Used when attestation ID is unknown or for maximum bounds checking.
  */
 export const MAX_PUBLIC_SIGNALS_COUNT = 21
-
-// ============================================================================
-// Attestation ID Schema
-// ============================================================================
-
-/**
- * Valid attestation ID values (numeric only).
- */
-const validAttestationIds = [1, 2, 3] as const
-
-/**
- * Attestation ID schema - numeric only (1, 2, 3).
- * Use z.infer<typeof attestationIdSchema> for the type.
- */
-export const attestationIdSchema = z
-  .union([z.literal(1), z.literal(2), z.literal(3)])
-  .describe("Attestation ID (1, 2, or 3)")
-
-export type AttestationId = z.infer<typeof attestationIdSchema>
-
-/**
- * Check if a value is a valid attestation ID.
- */
-export function isValidAttestationId(value: unknown): value is AttestationId {
-  return typeof value === "number" && validAttestationIds.includes(value as 1 | 2 | 3)
-}
 
 // ============================================================================
 // Pagination Schema

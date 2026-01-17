@@ -61,7 +61,7 @@ class MockSelfBackendVerifier {
 }
 
 // Attestation types: 1=Passport, 2=Biometric ID Card (National ID), 3=Aadhaar
-const AllowedAttestationIds = new Map<1 | 2 | 3, boolean>([
+const AllowedAttestationIds = new Map<AttestationId, boolean>([
   [1, true], // Passport
   [2, true], // Biometric ID Card (National ID)
   [3, true], // Aadhaar
