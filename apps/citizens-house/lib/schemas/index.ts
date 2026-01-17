@@ -2,7 +2,7 @@
  * Central Schema Hub
  *
  * All Zod schemas consolidated in one location.
- * Import from '@/lib/shared/schemas' or specific modules for tree-shaking.
+ * Import from '@/lib/schemas' or specific modules for tree-shaking.
  */
 
 export * from "./selfxyz"

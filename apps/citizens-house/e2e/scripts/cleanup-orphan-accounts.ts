@@ -30,7 +30,7 @@ import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import { JsonRpcProvider } from "@near-js/providers"
 import * as fs from "fs"
-import { nearAccountIdSchema, type NearAccountId } from "@near-citizens/shared"
+import { nearAccountIdSchema, type NearAccountId } from "@/lib"
 
 // RPC Configuration (same as near-account-manager.ts)
 function getFastNearUrl(): string {

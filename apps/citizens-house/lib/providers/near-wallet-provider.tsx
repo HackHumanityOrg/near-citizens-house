@@ -5,8 +5,8 @@ import { NearConnector } from "@hot-labs/near-connect"
 import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from "@hot-labs/near-connect"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
-import { NEAR_CONFIG, CONSTANTS, getSigningRecipient } from "./config"
-import { nearAccountIdSchema, type NearAccountId, type NearSignatureData } from "./schemas/near"
+import { NEAR_CONFIG, CONSTANTS, getSigningRecipient } from "../config"
+import { nearAccountIdSchema, type NearAccountId, type NearSignatureData } from "../schemas/near"
 
 /**
  * Validate and convert an account ID string from external SDK to NearAccountId.

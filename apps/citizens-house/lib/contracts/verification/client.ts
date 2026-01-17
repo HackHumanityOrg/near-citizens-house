@@ -27,8 +27,8 @@ import type { Verification, VerificationSummary } from "../../schemas/selfxyz"
 import type { Pagination } from "../../schemas/core"
 import type { IVerificationDatabase, PaginatedVerifications } from "./verification-contract"
 import { NEAR_CONFIG } from "../../config"
-import { createRpcProvider } from "../../rpc"
-import { backendKeyPool, setBackendKeyPoolRedis } from "./backend-key-pool"
+import { createRpcProvider } from "../../providers/rpc-provider"
+import { backendKeyPool, setBackendKeyPoolRedis } from "../../backend-key-pool"
 
 // Re-export for app initialization
 export { setBackendKeyPoolRedis }

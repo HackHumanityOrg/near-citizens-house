@@ -15,7 +15,7 @@ import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import type { FullConfig } from "@playwright/test"
 import { deriveWorkerKey } from "./helpers/deterministic-keys"
-import type { NearAccountId } from "@near-citizens/shared"
+import type { NearAccountId } from "@/lib"
 
 // FastNEAR RPC configuration
 function getFastNearUrl(): string {

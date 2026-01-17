@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@near-citizens/ui"
-import { NEAR_CONFIG, getAttestationTypeName } from "@near-citizens/shared"
+import { NEAR_CONFIG, getAttestationTypeName } from "@/lib"
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
 import type { VerificationWithStatus } from "@/app/citizens/actions"

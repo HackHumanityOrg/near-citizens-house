@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { USERJOT_CONFIG } from "./config"
+import { USERJOT_CONFIG } from "../config"
 
 // Declare UserJot types for TypeScript
 declare global {

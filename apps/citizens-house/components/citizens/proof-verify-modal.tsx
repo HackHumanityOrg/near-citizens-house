@@ -2,10 +2,10 @@
 
 import { useCallback } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@near-citizens/ui"
-import { getAttestationTypeName } from "@near-citizens/shared"
+import { getAttestationTypeName } from "@/lib"
 import { Download, ExternalLink } from "lucide-react"
-import type { ZkProof } from "@near-citizens/shared"
-import type { AttestationId, NearAccountId } from "@/lib/shared/schemas"
+import type { ZkProof } from "@/lib"
+import type { AttestationId, NearAccountId } from "@/lib/schemas"
 
 /**
  * Get the verification key filename based on attestation type.

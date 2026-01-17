@@ -10,8 +10,8 @@ import {
   type NearAccountId,
   type NearSignatureData,
   type VerificationDataWithSignature,
-} from "@near-citizens/shared"
-import { setBackendKeyPoolRedis, verificationDb } from "@near-citizens/shared/contracts/verification/client"
+} from "@/lib"
+import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
 import {
@@ -22,7 +22,7 @@ import {
   parseUserDefinedDataRaw,
   type VerifyResponse,
   type AttestationId,
-} from "@/lib/shared/schemas"
+} from "@/lib/schemas"
 
 // Initialize Redis for backend key pool (for concurrent transaction support)
 // This is lazy - the actual connection happens on first use

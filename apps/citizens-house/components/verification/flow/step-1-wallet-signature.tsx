@@ -2,7 +2,7 @@
 
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "../icons/star-pattern"
-import type { NearAccountId } from "@near-citizens/shared"
+import type { NearAccountId } from "@/lib"
 
 interface Step1WalletSignatureProps {
   accountId: NearAccountId | null

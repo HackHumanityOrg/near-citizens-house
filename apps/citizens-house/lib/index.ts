@@ -5,20 +5,18 @@ export * from "./config"
 export * from "./schemas"
 
 // RPC Provider
-export * from "./rpc"
+export * from "./providers/rpc-provider"
 
 // Contracts (database interface only; schemas in ./schemas/)
 export * from "./contracts/verification/verification-contract"
 
-// NEAR integration
-export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"
-
-// UserJot feedback widget
-export { UserJotWidget, identifyUserJotUser } from "./userjot-provider"
+// Providers
+export { NearWalletProvider, useNearWallet } from "./providers/near-wallet-provider"
+export { UserJotWidget, identifyUserJotUser } from "./providers/userjot-provider"
+export * from "./providers/self-provider"
 
 // Verification utilities
 export * from "./verification"
-export * from "./self-verifier"
 export * from "./zk-verify"
 
 // Self.xyz deep link utilities

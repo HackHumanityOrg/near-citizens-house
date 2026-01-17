@@ -4,9 +4,9 @@
 import "server-only"
 
 import { getRedisClient } from "./redis"
-import { parseSession, type Session, type SessionStatus } from "./shared/schemas/session"
-import type { NearAccountId } from "./shared/schemas/near"
-import type { AttestationId } from "./shared/schemas/selfxyz"
+import { parseSession, type Session, type SessionStatus } from "./schemas/session"
+import type { NearAccountId } from "./schemas/near"
+import type { AttestationId } from "./schemas/selfxyz"
 
 // Session expiration time (5 minutes)
 const SESSION_TTL_SECONDS = 5 * 60

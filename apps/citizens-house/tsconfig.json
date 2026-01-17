@@ -6,9 +6,7 @@
     "paths": {
       "@/*": ["./*"],
       "@near-citizens/ui": ["./components/ui/index.ts"],
-      "@near-citizens/ui/*": ["./components/ui/*"],
-      "@near-citizens/shared": ["./lib/shared/index.ts"],
-      "@near-citizens/shared/*": ["./lib/shared/*"]
+      "@near-citizens/ui/*": ["./components/ui/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],

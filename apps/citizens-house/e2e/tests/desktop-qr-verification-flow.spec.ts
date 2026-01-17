@@ -1,6 +1,6 @@
 /* eslint-disable no-empty-pattern */
 import { test, expect } from "../fixtures/dynamic-wallet.fixture"
-import { getAttestationTypeName, type NearAccountId } from "@near-citizens/shared"
+import { getAttestationTypeName, type NearAccountId } from "@/lib"
 import { createVerificationRequest } from "../helpers/near-signing"
 import { setupSelfWebSocketMock } from "../helpers/self-websocket-mock"
 

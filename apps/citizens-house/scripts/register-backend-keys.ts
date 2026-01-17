@@ -18,9 +18,9 @@ import { Account } from "@near-js/accounts"
 import { KeyPair } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import type { Signer } from "@near-js/signers"
-import { NEAR_CONFIG } from "../lib/shared/config"
-import { createRpcProvider } from "../lib/shared/rpc"
-import { backendKeyPool } from "../lib/shared/contracts/verification/backend-key-pool"
+import { NEAR_CONFIG } from "../lib/config"
+import { createRpcProvider } from "../lib/providers/rpc-provider"
+import { backendKeyPool } from "../lib/backend-key-pool"
 
 async function main(): Promise<void> {
   const { backendAccountId, backendPrivateKey, networkId } = NEAR_CONFIG

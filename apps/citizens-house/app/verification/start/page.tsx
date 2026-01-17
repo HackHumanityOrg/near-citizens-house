@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
-import { useNearWallet, CONSTANTS, type NearSignatureData, type AttestationId } from "@near-citizens/shared"
+import { useNearWallet, CONSTANTS, type NearSignatureData, type AttestationId } from "@/lib"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"

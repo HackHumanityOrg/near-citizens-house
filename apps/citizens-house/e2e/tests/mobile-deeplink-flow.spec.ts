@@ -1,6 +1,6 @@
 /* eslint-disable no-empty-pattern */
 import { devices } from "@playwright/test"
-import { getAttestationTypeName, type NearAccountId } from "@near-citizens/shared"
+import { getAttestationTypeName, type NearAccountId } from "@/lib"
 import { test, expect } from "../fixtures/dynamic-wallet.fixture"
 import { createVerificationRequest } from "../helpers/near-signing"
 

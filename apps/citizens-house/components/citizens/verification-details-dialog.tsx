@@ -2,12 +2,12 @@
 
 import { useState } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@near-citizens/ui"
-import { getAttestationTypeName } from "@near-citizens/shared"
+import { getAttestationTypeName } from "@/lib"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
 import { ProofVerifyModal } from "./proof-verify-modal"
 import type { VerificationWithStatus } from "@/app/citizens/actions"
-import type { AttestationId, NearAccountId } from "@/lib/shared/schemas"
+import type { AttestationId, NearAccountId } from "@/lib/schemas"
 
 interface Props {
   data: VerificationWithStatus | null

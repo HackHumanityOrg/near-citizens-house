@@ -1,6 +1,6 @@
 /* eslint-disable no-empty-pattern, react-hooks/rules-of-hooks */
 import { test as base, Page, BrowserContext, expect } from "@playwright/test"
-import type { NearAccountId } from "@near-citizens/shared"
+import type { NearAccountId } from "@/lib"
 import { NearAccountManager } from "../helpers/near-account-manager"
 import { setupMeteorWalletWithAccount, approveConnection, approveSignature } from "../helpers/meteor-wallet-setup"
 

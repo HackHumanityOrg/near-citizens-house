@@ -1,7 +1,7 @@
 import { DefaultConfigStore, SelfBackendVerifier } from "@selfxyz/core"
 import { Buffer } from "buffer"
-import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "./config"
-import type { AttestationId } from "./schemas/selfxyz"
+import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "../config"
+import type { AttestationId } from "../schemas/selfxyz"
 
 // ==============================================================================
 // E2E TESTING: MOCK VERIFIER

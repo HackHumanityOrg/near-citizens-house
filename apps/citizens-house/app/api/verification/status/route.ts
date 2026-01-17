@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
+import { verificationDb } from "@/lib/contracts/verification/client"
 import { getSession, updateSession } from "@/lib/session-store"
-import { nearAccountIdSchema, isValidSessionId } from "@/lib/shared/schemas"
+import { nearAccountIdSchema, isValidSessionId } from "@/lib/schemas"
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("sessionId")

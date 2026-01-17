@@ -7,7 +7,7 @@
 
 import { KeyPair } from "@near-js/crypto"
 import type { KeyPairString } from "@near-js/crypto"
-import { computeNep413Hash, getSigningRecipient, type AttestationId, type NearAccountId } from "@near-citizens/shared"
+import { computeNep413Hash, getSigningRecipient, type AttestationId, type NearAccountId } from "@/lib"
 import { randomBytes } from "crypto"
 
 interface TestAccount {

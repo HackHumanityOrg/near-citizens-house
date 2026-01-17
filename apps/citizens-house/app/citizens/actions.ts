@@ -12,9 +12,9 @@ import {
   type NearAccountId,
   type Verification,
   type ProofData,
-} from "@near-citizens/shared"
-import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
-import { paginationSchema, type Pagination } from "@/lib/shared/schemas/core"
+} from "@/lib"
+import { verificationDb } from "@/lib/contracts/verification/client"
+import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 
 export type VerificationResult = {
   zkValid: boolean

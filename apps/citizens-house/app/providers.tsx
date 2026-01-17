@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { SWRConfig } from "swr"
-import { NearWalletProvider } from "@near-citizens/shared"
+import { NearWalletProvider } from "@/lib"
 import { ErrorBoundary } from "@near-citizens/ui"
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider } from "posthog-js/react"

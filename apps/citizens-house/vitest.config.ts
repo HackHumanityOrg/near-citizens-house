@@ -23,7 +23,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./"),
-      "@near-citizens/shared": path.resolve(__dirname, "./lib/shared"),
       "@near-citizens/ui": path.resolve(__dirname, "./components/ui"),
     },
   },

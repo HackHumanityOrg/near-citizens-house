@@ -3,10 +3,10 @@
 import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
-import { SELF_CONFIG, getUniversalLink, type NearSignatureData, type AttestationId } from "@near-citizens/shared"
+import { SELF_CONFIG, getUniversalLink, type NearSignatureData, type AttestationId } from "@/lib"
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getErrorMessage } from "@/lib/shared/schemas/errors"
+import { getErrorMessage } from "@/lib/schemas/errors"
 import { StarPattern } from "../icons/star-pattern"
 
 type SelfApp = ReturnType<SelfAppBuilder["build"]>

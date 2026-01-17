@@ -2,7 +2,7 @@
  * Verification Contract Types
  *
  * Database interface for the verified-accounts smart contract.
- * All schemas are defined in lib/shared/schemas/.
+ * All schemas are defined in lib/schemas/.
  */
 import type { VerificationDataWithSignature } from "../../schemas/verification-contract"
 import type { NearAccountId } from "../../schemas/near"

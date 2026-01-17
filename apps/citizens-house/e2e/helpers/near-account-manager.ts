@@ -6,7 +6,7 @@ import { JsonRpcProvider } from "@near-js/providers"
 import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import { deriveWorkerKey, getRunIdTag } from "./deterministic-keys"
-import type { NearAccountId } from "@near-citizens/shared"
+import type { NearAccountId } from "@/lib"
 
 // ============================================================================
 // RPC Configuration for E2E Tests

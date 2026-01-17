@@ -1,5 +1,5 @@
 /**
- * Test Data Fixtures for @near-citizens/shared tests
+ * Test Data Fixtures for @/lib tests
  *
  * Contains synthetic test data for unit tests.
  * For real integration tests, use actual Self.xyz mock passport data.

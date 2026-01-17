@@ -23,8 +23,8 @@ import { KeyPairEd25519 } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import { Account } from "@near-js/accounts"
 import type { Signer } from "@near-js/signers"
-import { NEAR_CONFIG } from "../../config"
-import { createRpcProvider } from "../../rpc"
+import { NEAR_CONFIG } from "./config"
+import { createRpcProvider } from "./providers/rpc-provider"
 
 const POOL_SIZE = 10 // Support 10 concurrent transactions
 const REDIS_KEY = "backend-key-pool:index"

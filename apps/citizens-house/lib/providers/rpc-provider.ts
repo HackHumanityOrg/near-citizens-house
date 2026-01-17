@@ -6,7 +6,7 @@
  */
 import { JsonRpcProvider } from "@near-js/providers"
 import type { Provider } from "@near-js/providers"
-import { NEAR_CONFIG } from "./config"
+import { NEAR_CONFIG } from "../config"
 
 // ============================================================================
 // RPC Configuration
