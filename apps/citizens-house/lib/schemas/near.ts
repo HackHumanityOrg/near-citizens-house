@@ -87,3 +87,29 @@ export const parsedSignatureDataSchema = nearSignatureDataSchema
   })
 
 export type ParsedSignatureData = z.infer<typeof parsedSignatureDataSchema>
+
+// NEAR RPC Response Validation Schemas
+// Runtime validation for external RPC boundary
+
+const nearAccessKeyPermissionSchema = z.union([
+  z.literal("FullAccess"),
+  z.object({ FullAccess: z.unknown() }).strict(),
+  z
+    .object({
+      FunctionCall: z.object({
+        allowance: z.string().nullable().optional(),
+        receiver_id: z.string(),
+        method_names: z.array(z.string()),
+      }),
+    })
+    .strict(),
+])
+
+export const nearAccessKeyResponseSchema = z.object({
+  nonce: z.number(),
+  permission: nearAccessKeyPermissionSchema,
+  block_height: z.number().optional(),
+  block_hash: z.string().optional(),
+})
+
+export type NearAccessKeyPermission = z.infer<typeof nearAccessKeyPermissionSchema>

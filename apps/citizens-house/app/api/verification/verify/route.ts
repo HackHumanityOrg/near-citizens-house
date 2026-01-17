@@ -20,8 +20,11 @@ import {
   mapContractErrorToCode,
   userDefinedDataSchema,
   parseUserDefinedDataRaw,
+  selfVerificationResultSchema,
+  nearAccessKeyResponseSchema,
   type VerifyResponse,
   type AttestationId,
+  type NearAccessKeyPermission,
 } from "@/lib/schemas"
 
 // Initialize Redis for backend key pool (for concurrent transaction support)
@@ -42,12 +45,12 @@ const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
 // Allows for minor time differences between client and server
 const CLOCK_SKEW_MS = 10 * 1000
 
-function isFullAccessPermission(permission: unknown): boolean {
+function isFullAccessPermission(permission: NearAccessKeyPermission): boolean {
   if (permission === "FullAccess") {
     return true
   }
 
-  if (permission && typeof permission === "object" && "FullAccess" in permission) {
+  if (typeof permission === "object" && "FullAccess" in permission) {
     return true
   }
 
@@ -58,14 +61,19 @@ async function hasFullAccessKey(accountId: NearAccountId, publicKey: string): Pr
   const provider = getRpcProvider()
 
   try {
-    const accessKey = (await provider.query({
+    const rawResponse = await provider.query({
       request_type: "view_access_key",
       finality: "final",
       account_id: accountId,
       public_key: publicKey,
-    })) as { permission?: unknown }
+    })
 
-    return isFullAccessPermission(accessKey.permission)
+    const parseResult = nearAccessKeyResponseSchema.safeParse(rawResponse)
+    if (!parseResult.success) {
+      return false
+    }
+
+    return isFullAccessPermission(parseResult.data.permission)
   } catch {
     return false
   }
@@ -122,11 +130,11 @@ export async function POST(request: NextRequest) {
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
 
-    let selfVerificationResult
+    let rawSdkResponse: unknown
 
     try {
       const verifier = getVerifier()
-      selfVerificationResult = await verifier.verify(attestationId, proof, publicSignals, userContextData)
+      rawSdkResponse = await verifier.verify(attestationId, proof, publicSignals, userContextData)
     } catch (error) {
       return respondWithError({
         code: "VERIFICATION_FAILED",
@@ -137,21 +145,23 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    sessionId = selfVerificationResult.userData?.userIdentifier
-
-    const validity = selfVerificationResult.isValidDetails || {}
-    const isValid = validity.isValid
-
-    // Type guards: ensure SDK returned expected boolean fields
-    if (typeof isValid !== "boolean") {
+    // Validate SDK response structure at external boundary
+    const sdkParseResult = selfVerificationResultSchema.safeParse(rawSdkResponse)
+    if (!sdkParseResult.success) {
+      const issues = sdkParseResult.error.issues.map((i) => i.path.join(".")).join(", ")
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 502,
-        details: "Invalid verifier response structure",
+        details: `Invalid verifier response structure: ${issues}`,
         stage: "self_verify_response",
         attestationId,
       })
     }
+
+    const selfVerificationResult = sdkParseResult.data
+    sessionId = selfVerificationResult.userData.userIdentifier
+
+    const isValid = selfVerificationResult.isValidDetails.isValid
 
     if (!isValid) {
       return respondWithError({
@@ -162,21 +172,12 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const nullifier = selfVerificationResult.discloseOutput?.nullifier
-
-    if (!nullifier) {
-      return respondWithError({
-        code: "NULLIFIER_MISSING",
-        status: 400,
-        stage: "nullifier_check",
-        attestationId,
-      })
-    }
+    const nullifier = selfVerificationResult.discloseOutput.nullifier
 
     // Parse NEAR signature from userDefinedData
     // QR code contains signature data without challenge/recipient (to reduce size)
     // Backend reconstructs these from known values
-    const userDefinedDataRaw = selfVerificationResult.userData?.userDefinedData
+    const userDefinedDataRaw = selfVerificationResult.userData.userDefinedData
     const jsonString = parseUserDefinedDataRaw(userDefinedDataRaw)
 
     if (!jsonString) {
@@ -437,7 +438,7 @@ export async function POST(request: NextRequest) {
         result: true,
         attestationId,
         userData: {
-          userId: selfVerificationResult.userData?.userIdentifier || "unknown",
+          userId: selfVerificationResult.userData.userIdentifier,
           nearAccountId: nearSignature.accountId,
           nearSignature: nearSignature.signature,
         },

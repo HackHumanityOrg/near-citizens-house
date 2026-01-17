@@ -148,6 +148,35 @@ export interface SelfVerificationResult {
   userData: SelfUserData
 }
 
+// Self.xyz SDK Response Validation Schemas
+// Runtime validation for external SDK boundary
+
+const selfIsValidDetailsSchema = z.object({
+  isValid: z.boolean(),
+  isMinimumAgeValid: z.boolean().optional(),
+  isOfacValid: z.boolean().optional(),
+})
+
+const selfDiscloseOutputSchema = z
+  .object({
+    nullifier: z.string().min(1),
+    nationality: z.string().optional(),
+  })
+  .passthrough()
+
+const selfUserDataSchema = z.object({
+  userIdentifier: z.string(),
+  userDefinedData: z.union([z.string(), z.array(z.number()), z.record(z.number())]),
+})
+
+export const selfVerificationResultSchema = z.object({
+  attestationId: attestationIdSchema,
+  isValidDetails: selfIsValidDetailsSchema,
+  forbiddenCountriesList: z.array(z.string()).optional().default([]),
+  discloseOutput: selfDiscloseOutputSchema,
+  userData: selfUserDataSchema,
+})
+
 // Verification Record Schemas (combine Self.xyz + NEAR data)
 
 export const verificationDataSchema = z.object({
