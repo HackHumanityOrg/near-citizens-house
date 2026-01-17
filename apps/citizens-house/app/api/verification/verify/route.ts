@@ -7,6 +7,7 @@ import {
   getVerifier,
   getRpcProvider,
   verifyNearSignature,
+  type NearAccountId,
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
@@ -53,7 +54,7 @@ function isFullAccessPermission(permission: unknown): boolean {
   return false
 }
 
-async function hasFullAccessKey(accountId: string, publicKey: string): Promise<boolean> {
+async function hasFullAccessKey(accountId: NearAccountId, publicKey: string): Promise<boolean> {
   const provider = getRpcProvider()
 
   try {
@@ -72,7 +73,7 @@ async function hasFullAccessKey(accountId: string, publicKey: string): Promise<b
 
 export async function POST(request: NextRequest) {
   let sessionId: string | undefined
-  let accountId: string | undefined
+  let accountId: NearAccountId | undefined
 
   const respondWithError = async ({
     code,

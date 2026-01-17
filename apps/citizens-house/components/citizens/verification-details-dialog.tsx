@@ -156,7 +156,7 @@ interface ProofDataType {
   }
   publicSignals: string[]
   signature: {
-    accountId: string
+    accountId: NearAccountId
     publicKey: string
     signature: string
     nonce: string

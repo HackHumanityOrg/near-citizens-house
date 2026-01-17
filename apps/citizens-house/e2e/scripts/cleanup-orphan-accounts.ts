@@ -30,6 +30,7 @@ import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import { JsonRpcProvider } from "@near-js/providers"
 import * as fs from "fs"
+import { nearAccountIdSchema, type NearAccountId } from "@near-citizens/shared"
 
 // RPC Configuration (same as near-account-manager.ts)
 function getFastNearUrl(): string {
@@ -51,7 +52,7 @@ function createRpcProvider() {
   return new JsonRpcProvider({ url: fastNearUrl, headers: getFastNearHeaders() })
 }
 
-async function checkAccountExists(accountId: string): Promise<boolean> {
+async function checkAccountExists(accountId: NearAccountId): Promise<boolean> {
   try {
     const rpcUrl = getFastNearUrl()
     const response = await fetch(rpcUrl, {
@@ -75,7 +76,7 @@ async function checkAccountExists(accountId: string): Promise<boolean> {
   }
 }
 
-async function getAccountBalance(accountId: string): Promise<string> {
+async function getAccountBalance(accountId: NearAccountId): Promise<string> {
   try {
     const rpcUrl = getFastNearUrl()
     const response = await fetch(rpcUrl, {
@@ -130,8 +131,10 @@ async function main() {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
 
-  // Filter to E2E test accounts for this parent
-  const e2eAccounts = allAccounts.filter((id) => id.startsWith("e2e") && id.endsWith(`.${parentAccountId}`))
+  // Filter to E2E test accounts for this parent and validate as NearAccountId
+  const e2eAccounts = allAccounts
+    .filter((id) => id.startsWith("e2e") && id.endsWith(`.${parentAccountId}`))
+    .filter((id): id is NearAccountId => nearAccountIdSchema.safeParse(id).success)
 
   console.log(`Cleanup orphan E2E accounts`)
   console.log(`  Parent: ${parentAccountId}`)

@@ -6,7 +6,17 @@ import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS, getSigningRecipient } from "./config"
-import type { NearSignatureData } from "./schemas/near"
+import { nearAccountIdSchema, type NearAccountId, type NearSignatureData } from "./schemas/near"
+
+/**
+ * Validate and convert an account ID string from external SDK to NearAccountId.
+ * Returns null if the account ID is invalid.
+ */
+function validateAccountId(accountId: string | undefined | null): NearAccountId | null {
+  if (!accountId) return null
+  const result = nearAccountIdSchema.safeParse(accountId)
+  return result.success ? result.data : null
+}
 
 type SignAndSendTransactionsParams = {
   transactions: Array<SignAndSendTransactionParams & { signerId?: string }>
@@ -19,7 +29,7 @@ type NearWalletWithTransactions = NearWalletBase & {
 }
 
 interface NearWalletContextType {
-  accountId: string | null
+  accountId: NearAccountId | null
   isConnected: boolean
   connect: () => Promise<void>
   disconnect: () => Promise<void>
@@ -32,7 +42,7 @@ const NearWalletContext = createContext<NearWalletContextType | null>(null)
 
 export function NearWalletProvider({ children }: { children: ReactNode }) {
   const [nearConnector, setNearConnector] = useState<NearConnector | null>(null)
-  const [accountId, setAccountId] = useState<string | null>(null)
+  const [accountId, setAccountId] = useState<NearAccountId | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -71,8 +81,8 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
         // Connection/disconnection events
         connector.on("wallet:signIn", (payload) => {
-          const nextAccountId = payload?.accounts?.[0]?.accountId
-          setAccountId(nextAccountId || null)
+          const rawAccountId = payload?.accounts?.[0]?.accountId
+          setAccountId(validateAccountId(rawAccountId))
         })
         connector.on("wallet:signOut", () => {
           setAccountId(null)
@@ -81,8 +91,8 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         // Try existing session
         try {
           const connected = await connector.getConnectedWallet()
-          const nextAccountId = connected?.accounts?.[0]?.accountId
-          setAccountId(nextAccountId || null)
+          const rawAccountId = connected?.accounts?.[0]?.accountId
+          setAccountId(validateAccountId(rawAccountId))
         } catch {
           // No previous session
         }

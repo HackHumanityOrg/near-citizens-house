@@ -6,6 +6,7 @@
  */
 
 import type { SelfProofData } from "../../schemas/zk-proof"
+import type { NearAccountId } from "../../schemas/near"
 
 // ============================================================================
 // ZK Proof Test Data
@@ -129,7 +130,7 @@ export const testAccountIds = {
  * Create a valid user context JSON object
  * @param nonce - base64 encoded 32-byte nonce
  */
-export function createUserContext(accountId: string, signature: string, publicKey: string, nonce: string) {
+export function createUserContext(accountId: NearAccountId, signature: string, publicKey: string, nonce: string) {
   return {
     accountId,
     signature,

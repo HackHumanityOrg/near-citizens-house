@@ -9,6 +9,7 @@ import {
   getSigningMessage,
   getSigningRecipient,
   nearAccountIdSchema,
+  type NearAccountId,
   type Verification,
   type ProofData,
 } from "@near-citizens/shared"
@@ -160,8 +161,8 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
  * Server action to check if a NEAR account is already verified.
  * Used by the UI to skip verification steps for already-verified accounts.
  */
-export async function checkIsVerified(nearAccountId: string): Promise<boolean> {
-  // Validate account ID format
+export async function checkIsVerified(nearAccountId: NearAccountId): Promise<boolean> {
+  // Runtime validation for security (server actions can receive arbitrary input)
   const parsed = nearAccountIdSchema.safeParse(nearAccountId)
   if (!parsed.success) {
     return false

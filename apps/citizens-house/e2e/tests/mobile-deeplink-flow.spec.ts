@@ -1,6 +1,6 @@
 /* eslint-disable no-empty-pattern */
 import { devices } from "@playwright/test"
-import { getAttestationTypeName } from "@near-citizens/shared"
+import { getAttestationTypeName, type NearAccountId } from "@near-citizens/shared"
 import { test, expect } from "../fixtures/dynamic-wallet.fixture"
 import { createVerificationRequest } from "../helpers/near-signing"
 
@@ -12,7 +12,7 @@ test.use({ ...devices["iPhone 14"] })
 
 async function assertVerificationInCitizensList(
   page: import("@playwright/test").Page,
-  accountId: string,
+  accountId: NearAccountId,
   attestationLabel: string,
 ) {
   await page.goto("/citizens")

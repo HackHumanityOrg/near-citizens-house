@@ -15,6 +15,7 @@ import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import type { FullConfig } from "@playwright/test"
 import { deriveWorkerKey } from "./helpers/deterministic-keys"
+import type { NearAccountId } from "@near-citizens/shared"
 
 // FastNEAR RPC configuration
 function getFastNearUrl(): string {
@@ -35,7 +36,7 @@ function createRpcProvider(rpcUrl: string): Provider {
   return new JsonRpcProvider({ url: rpcUrl, headers: getFastNearHeaders() })
 }
 
-async function keyExistsOnChain(rpcUrl: string, accountId: string, publicKeyStr: string): Promise<boolean> {
+async function keyExistsOnChain(rpcUrl: string, accountId: NearAccountId, publicKeyStr: string): Promise<boolean> {
   try {
     const headers = {
       "Content-Type": "application/json",

@@ -7,6 +7,7 @@
 
 import { z } from "zod"
 import type { VerificationConfig } from "@selfxyz/core"
+import type { NearAccountId } from "./schemas/near"
 
 // ==============================================================================
 // ENVIRONMENT VALIDATION
@@ -73,7 +74,7 @@ export const NEAR_CONFIG = {
     return this.networkId === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io"
   },
   get explorerAccountUrl() {
-    return (accountId: string) => `${this.explorerUrl}/address/${accountId}`
+    return (accountId: NearAccountId) => `${this.explorerUrl}/address/${accountId}`
   },
 }
 

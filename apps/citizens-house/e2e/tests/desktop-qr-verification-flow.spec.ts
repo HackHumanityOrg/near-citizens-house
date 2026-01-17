@@ -1,6 +1,6 @@
 /* eslint-disable no-empty-pattern */
 import { test, expect } from "../fixtures/dynamic-wallet.fixture"
-import { getAttestationTypeName } from "@near-citizens/shared"
+import { getAttestationTypeName, type NearAccountId } from "@near-citizens/shared"
 import { createVerificationRequest } from "../helpers/near-signing"
 import { setupSelfWebSocketMock } from "../helpers/self-websocket-mock"
 
@@ -36,7 +36,7 @@ import { setupSelfWebSocketMock } from "../helpers/self-websocket-mock"
  */
 async function assertVerificationInCitizensList(
   page: import("@playwright/test").Page,
-  accountId: string,
+  accountId: NearAccountId,
   attestationLabel: string,
 ) {
   await page.goto("/citizens")

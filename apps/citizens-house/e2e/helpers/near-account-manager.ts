@@ -6,6 +6,7 @@ import { JsonRpcProvider } from "@near-js/providers"
 import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import { deriveWorkerKey, getRunIdTag } from "./deterministic-keys"
+import type { NearAccountId } from "@near-citizens/shared"
 
 // ============================================================================
 // RPC Configuration for E2E Tests
@@ -37,7 +38,7 @@ function createRpcProvider(rpcUrl: string): Provider {
 }
 
 interface TestAccount {
-  accountId: string
+  accountId: NearAccountId
   publicKey: string
   privateKey: string // ed25519:... format
 }
@@ -301,7 +302,7 @@ export class NearAccountManager {
    * Deletes a test subaccount and returns remaining balance to parent.
    * Tries the random test key first, falls back to parent key if that fails.
    */
-  async deleteTestAccount(accountId: string): Promise<void> {
+  async deleteTestAccount(accountId: NearAccountId): Promise<void> {
     const account = this.createdAccounts.find((a) => a.accountId === accountId)
     if (!account) {
       return
