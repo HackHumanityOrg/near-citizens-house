@@ -29,13 +29,13 @@ fn test_update_backend_wallet() {
         assert_eq!(contract.get_backend_wallet(), backend);
     });
 
-    let backend_str = step("Update backend wallet", || {
-        let backend_str = backend.to_string();
+    let backend_account = step("Update backend wallet", || {
+        let backend_account = backend.clone();
         let mut context = get_context(backend);
         context.attached_deposit(NearToken::from_yoctonear(1));
         testing_env!(context.build());
         contract.update_backend_wallet(new_backend.clone());
-        backend_str
+        backend_account
     });
 
     step("Verify new backend wallet and event", || {
@@ -44,8 +44,8 @@ fn test_update_backend_wallet() {
         let logs = get_logs();
         let event: BackendWalletUpdatedEvent = parse_event(&logs, "backend_wallet_updated")
             .expect("backend_wallet_updated event not found");
-        assert_eq!(event.old_wallet, backend_str);
-        assert_eq!(event.new_wallet, new_backend.to_string());
+        assert_eq!(event.old_wallet, backend_account);
+        assert_eq!(event.new_wallet, new_backend);
     });
 }
 

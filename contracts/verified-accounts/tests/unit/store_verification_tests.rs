@@ -76,7 +76,7 @@ fn test_happy_path_store_verification() {
         // Validate event data matches inputs
         assert_eq!(
             event.near_account_id,
-            user.to_string(),
+            user,
             "Event near_account_id should match stored account"
         );
         assert_eq!(

@@ -75,7 +75,7 @@ pub struct Nep413Payload {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct VerificationStoredEvent {
-    pub near_account_id: String,
+    pub near_account_id: AccountId,
     pub nullifier: String,
     pub attestation_id: u8,
 }
@@ -84,22 +84,22 @@ pub struct VerificationStoredEvent {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractPausedEvent {
-    pub by: String,
+    pub by: AccountId,
 }
 
 /// Event emitted when contract is unpaused
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractUnpausedEvent {
-    pub by: String,
+    pub by: AccountId,
 }
 
 /// Event emitted when backend wallet is updated
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BackendWalletUpdatedEvent {
-    pub old_wallet: String,
-    pub new_wallet: String,
+    pub old_wallet: AccountId,
+    pub new_wallet: AccountId,
 }
 
 /// Helper to emit JSON events in NEAR standard format
@@ -253,8 +253,8 @@ impl VersionedContract {
         emit_event(
             "backend_wallet_updated",
             &BackendWalletUpdatedEvent {
-                old_wallet: old_wallet.to_string(),
-                new_wallet: new_backend_wallet.to_string(),
+                old_wallet,
+                new_wallet: new_backend_wallet,
             },
         );
     }
@@ -277,7 +277,7 @@ impl VersionedContract {
         emit_event(
             "contract_paused",
             &ContractPausedEvent {
-                by: caller.to_string(),
+                by: caller,
             },
         );
     }
@@ -299,7 +299,7 @@ impl VersionedContract {
         emit_event(
             "contract_unpaused",
             &ContractUnpausedEvent {
-                by: caller.to_string(),
+                by: caller,
             },
         );
     }
@@ -438,7 +438,7 @@ impl VersionedContract {
         emit_event(
             "verification_stored",
             &VerificationStoredEvent {
-                near_account_id: near_account_id.to_string(),
+                near_account_id,
                 nullifier,
                 attestation_id,
             },

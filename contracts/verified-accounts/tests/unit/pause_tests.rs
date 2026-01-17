@@ -43,7 +43,7 @@ fn test_pause_unpause() {
         let logs = get_logs();
         let pause_event: ContractPausedEvent =
             parse_event(&logs, "contract_paused").expect("contract_paused event not found");
-        assert_eq!(pause_event.by, backend.to_string());
+        assert_eq!(pause_event.by, backend);
     });
 
     step("Unpause contract and verify event", || {
@@ -56,7 +56,7 @@ fn test_pause_unpause() {
         let logs = get_logs();
         let unpause_event: ContractUnpausedEvent =
             parse_event(&logs, "contract_unpaused").expect("contract_unpaused event not found");
-        assert_eq!(unpause_event.by, backend.to_string());
+        assert_eq!(unpause_event.by, backend);
     });
 }
 
