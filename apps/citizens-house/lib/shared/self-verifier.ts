@@ -1,6 +1,7 @@
 import { DefaultConfigStore, SelfBackendVerifier } from "@selfxyz/core"
 import { Buffer } from "buffer"
 import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "./config"
+import type { AttestationId } from "./schemas/core"
 
 // ==============================================================================
 // E2E TESTING: MOCK VERIFIER
@@ -25,7 +26,7 @@ if (USE_MOCK_VERIFIER && process.env.NODE_ENV === "production" && !E2E_TESTING) 
  * NEAR signature verification still happens in the route handler.
  */
 class MockSelfBackendVerifier {
-  async verify(attestationId: number, _proof: unknown, _publicSignals: string[], userContextData: string) {
+  async verify(attestationId: AttestationId, _proof: unknown, _publicSignals: string[], userContextData: string) {
     // Try to extract sessionId from userContextData for proper tracking
     let sessionId = `e2e-session-${Date.now()}`
     try {

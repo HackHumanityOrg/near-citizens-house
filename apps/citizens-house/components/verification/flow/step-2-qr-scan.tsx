@@ -4,10 +4,10 @@ import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { Buffer } from "buffer"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
-import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-citizens/shared"
+import { SELF_CONFIG, getUniversalLink, type NearSignatureData, type AttestationId } from "@near-citizens/shared"
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getErrorMessage } from "@/lib/verification-errors"
+import { getErrorMessage } from "@/lib/shared/schemas/errors"
 import { StarPattern } from "../icons/star-pattern"
 
 type SelfApp = ReturnType<SelfAppBuilder["build"]>
@@ -41,7 +41,7 @@ const SelfQRcodeWrapper = dynamic<SelfQRcodeProps>(
 interface Step2QrScanProps {
   nearSignature: NearSignatureData
   sessionId: string
-  onSuccess: (attestationId?: string | number) => void
+  onSuccess: (attestationId?: AttestationId) => void
   onError: (error: string, code?: string) => void
 }
 

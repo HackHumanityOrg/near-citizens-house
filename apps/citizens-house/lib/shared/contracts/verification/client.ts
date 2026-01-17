@@ -20,11 +20,12 @@ import {
   type ContractVerificationSummary,
   type ContractSelfProofInput,
   type ContractSignatureInput,
-  type IVerificationDatabase,
   type VerificationDataWithSignature,
-  type Verification,
-  type VerificationSummary,
-} from "./types"
+} from "../../schemas/contract"
+import { type Verification, type VerificationSummary } from "../../schemas/zk-proof"
+import type { NearAccountId } from "../../schemas/near"
+import type { Pagination } from "../../schemas/core"
+import type { IVerificationDatabase, PaginatedVerifications } from "./verification-contract"
 import { NEAR_CONFIG } from "../../config"
 import { createRpcProvider } from "../../rpc"
 import { backendKeyPool, setBackendKeyPoolRedis } from "./backend-key-pool"
@@ -32,7 +33,13 @@ import { backendKeyPool, setBackendKeyPoolRedis } from "./backend-key-pool"
 // Re-export for app initialization
 export { setBackendKeyPoolRedis }
 
-export type { IVerificationDatabase, VerificationDataWithSignature, Verification, VerificationSummary }
+export type {
+  IVerificationDatabase,
+  PaginatedVerifications,
+  VerificationDataWithSignature,
+  Verification,
+  VerificationSummary,
+}
 
 export class NearContractDatabase implements IVerificationDatabase {
   private account: Account | null = null
@@ -118,7 +125,7 @@ export class NearContractDatabase implements IVerificationDatabase {
    * Poll for verification confirmation with exponential backoff
    * Uses network-aware timing (mainnet needs longer delays)
    */
-  private async pollForVerification(nearAccountId: string): Promise<boolean> {
+  private async pollForVerification(nearAccountId: NearAccountId): Promise<boolean> {
     // Network-aware polling configuration
     // Mainnet blocks take longer to finalize (~2-3s), testnet is faster (~1s)
     const isMainnet = this.isMainnet()
@@ -157,14 +164,14 @@ export class NearContractDatabase implements IVerificationDatabase {
   /**
    * Internal isVerified without timeout (used by polling which handles its own timeouts)
    */
-  private async isVerifiedInternal(nearAccountId: string): Promise<boolean> {
+  private async isVerifiedInternal(nearAccountId: NearAccountId): Promise<boolean> {
     const result = await this.provider!.callFunction<boolean>(this.contractId, "is_verified", {
       account_id: nearAccountId,
     })
     return result ?? false
   }
 
-  async isVerified(nearAccountId: string): Promise<boolean> {
+  async isVerified(nearAccountId: NearAccountId): Promise<boolean> {
     await this.ensureInitialized()
 
     // Add timeout to prevent hanging on slow RPC
@@ -259,7 +266,7 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  async getVerification(nearAccountId: string): Promise<VerificationSummary | null> {
+  async getVerification(nearAccountId: NearAccountId): Promise<VerificationSummary | null> {
     await this.ensureInitialized()
 
     try {
@@ -284,7 +291,7 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  async getFullVerification(nearAccountId: string): Promise<Verification | null> {
+  async getFullVerification(nearAccountId: NearAccountId): Promise<Verification | null> {
     await this.ensureInitialized()
 
     try {
@@ -306,10 +313,7 @@ export class NearContractDatabase implements IVerificationDatabase {
   }
 
   // Get paginated verifications
-  async listVerifications(
-    fromIndex: number = 0,
-    limit: number = 50,
-  ): Promise<{ accounts: Verification[]; total: number }> {
+  async listVerifications(fromIndex: number = 0, limit: number = 50): Promise<PaginatedVerifications> {
     await this.ensureInitialized()
 
     try {
@@ -331,11 +335,11 @@ export class NearContractDatabase implements IVerificationDatabase {
   }
 
   // Get paginated verifications ordered by newest first
-  async listVerificationsNewestFirst(
-    page: number = 0,
-    pageSize: number = 50,
-  ): Promise<{ accounts: Verification[]; total: number }> {
+  async listVerificationsNewestFirst(pagination?: Pagination): Promise<PaginatedVerifications> {
     await this.ensureInitialized()
+
+    const page = pagination?.page ?? 0
+    const pageSize = pagination?.pageSize ?? 50
 
     try {
       const total = (await this.provider!.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
@@ -381,7 +385,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
     this.provider = createRpcProvider()
   }
 
-  async isVerified(nearAccountId: string): Promise<boolean> {
+  async isVerified(nearAccountId: NearAccountId): Promise<boolean> {
     const result = await this.provider.callFunction<boolean>(this.contractId, "is_verified", {
       account_id: nearAccountId,
     })
@@ -394,7 +398,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
     )
   }
 
-  async getVerification(nearAccountId: string): Promise<VerificationSummary | null> {
+  async getVerification(nearAccountId: NearAccountId): Promise<VerificationSummary | null> {
     try {
       const result = await this.provider.callFunction<ContractVerificationSummary>(
         this.contractId,
@@ -414,7 +418,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
     }
   }
 
-  async getFullVerification(nearAccountId: string): Promise<Verification | null> {
+  async getFullVerification(nearAccountId: NearAccountId): Promise<Verification | null> {
     try {
       const result = await this.provider.callFunction<ContractVerification>(this.contractId, "get_full_verification", {
         account_id: nearAccountId,
@@ -430,10 +434,7 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
     }
   }
 
-  async listVerifications(
-    fromIndex: number = 0,
-    limit: number = 50,
-  ): Promise<{ accounts: Verification[]; total: number }> {
+  async listVerifications(fromIndex: number = 0, limit: number = 50): Promise<PaginatedVerifications> {
     try {
       const [total, accounts] = await Promise.all([
         this.provider.callFunction<number>(this.contractId, "get_verified_count", {}),
@@ -451,10 +452,10 @@ export class NearContractReadOnlyDatabase implements IVerificationDatabase {
     }
   }
 
-  async listVerificationsNewestFirst(
-    page: number = 0,
-    pageSize: number = 50,
-  ): Promise<{ accounts: Verification[]; total: number }> {
+  async listVerificationsNewestFirst(pagination?: Pagination): Promise<PaginatedVerifications> {
+    const page = pagination?.page ?? 0
+    const pageSize = pagination?.pageSize ?? 50
+
     try {
       const total = (await this.provider.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
 

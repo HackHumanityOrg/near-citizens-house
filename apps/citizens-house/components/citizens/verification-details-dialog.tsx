@@ -7,6 +7,7 @@ import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
 import { ProofVerifyModal } from "./proof-verify-modal"
 import type { VerificationWithStatus } from "@/app/citizens/actions"
+import type { AttestationId, NearAccountId } from "@/lib/shared/schemas"
 
 interface Props {
   data: VerificationWithStatus | null
@@ -129,9 +130,9 @@ interface VerificationResult {
 }
 
 interface AccountData {
-  nearAccountId: string
+  nearAccountId: NearAccountId
   nullifier: string
-  attestationId: string
+  attestationId: AttestationId
   verifiedAt: number
   selfProof: {
     proof: {
@@ -146,7 +147,7 @@ interface AccountData {
 
 interface ProofDataType {
   nullifier: string
-  attestationId: string
+  attestationId: AttestationId
   verifiedAt: number
   zkProof: {
     a: [string, string]

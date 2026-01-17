@@ -4,17 +4,9 @@
 import "server-only"
 
 import { getRedisClient } from "./redis"
-
-type SessionStatus = "pending" | "success" | "error"
-
-interface Session {
-  status: SessionStatus
-  accountId?: string
-  attestationId?: string
-  error?: string
-  errorCode?: string
-  timestamp: number
-}
+import { parseSession, type Session, type SessionStatus } from "./shared/schemas/session"
+import type { AttestationId } from "./shared/schemas/core"
+import type { NearAccountId } from "./shared/schemas/near"
 
 // Session expiration time (5 minutes)
 const SESSION_TTL_SECONDS = 5 * 60
@@ -40,19 +32,26 @@ export async function getSession(sessionId: string): Promise<Session | null> {
   const client = await getRedisClient()
   const data = await client.get(getSessionKey(sessionId))
   if (!data) return null
-  return JSON.parse(data) as Session
+  return parseSession(data)
 }
 
 export async function updateSession(
   sessionId: string,
-  update: { status: SessionStatus; accountId?: string; attestationId?: string; error?: string; errorCode?: string },
+  update: {
+    status: SessionStatus
+    accountId?: NearAccountId
+    attestationId?: AttestationId
+    error?: string
+    errorCode?: string
+  },
 ): Promise<void> {
   const client = await getRedisClient()
   const key = getSessionKey(sessionId)
-  const existing = await client.get(key)
+  const existingData = await client.get(key)
+  const existingSession = existingData ? parseSession(existingData) : null
 
-  const session: Session = existing
-    ? { ...JSON.parse(existing), ...update, timestamp: Date.now() }
+  const session: Session = existingSession
+    ? { ...existingSession, ...update, timestamp: Date.now() }
     : {
         status: update.status,
         accountId: update.accountId,
@@ -72,12 +71,12 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await client.del(getSessionKey(sessionId))
 }
 
-function getNonceKey(accountId: string, nonceBase64: string): string {
+function getNonceKey(accountId: NearAccountId, nonceBase64: string): string {
   return `self-nonce:${accountId}:${nonceBase64}`
 }
 
 export async function reserveSignatureNonce(
-  accountId: string,
+  accountId: NearAccountId,
   nonceBase64: string,
   ttlSeconds: number = NONCE_TTL_SECONDS,
 ): Promise<boolean> {

@@ -1,14 +1,14 @@
 // Configuration
 export * from "./config"
 
-// Validation
-export * from "./validation"
+// Schemas (central hub for all Zod schemas)
+export * from "./schemas"
 
 // RPC Provider
 export * from "./rpc"
 
-// Contracts (types only; client exported via subpath)
-export * from "./contracts/verification/types"
+// Contracts (database interface only; schemas in ./schemas/)
+export * from "./contracts/verification/verification-contract"
 
 // NEAR integration
 export { NearWalletProvider, useNearWallet } from "./near-wallet-provider"

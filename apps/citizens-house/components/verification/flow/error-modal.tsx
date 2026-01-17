@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { Button } from "@near-citizens/ui"
-import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
+import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/shared/schemas/errors"
 
 interface ErrorModalProps {
   isOpen: boolean

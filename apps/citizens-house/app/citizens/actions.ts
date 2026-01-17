@@ -1,6 +1,5 @@
 "use server"
 
-import { z } from "zod"
 import { unstable_cache } from "next/cache"
 import {
   verifyStoredProofWithDetails,
@@ -14,11 +13,7 @@ import {
   type ProofData,
 } from "@near-citizens/shared"
 import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
-
-const paginationSchema = z.object({
-  page: z.number().int().min(0).max(100000),
-  pageSize: z.number().int().min(1).max(100),
-})
+import { paginationSchema, type Pagination } from "@/lib/shared/schemas/core"
 
 export type VerificationResult = {
   zkValid: boolean
@@ -41,9 +36,9 @@ export type GetVerificationsResult = {
  * Core data fetching logic - separated for caching.
  * Fetches accounts from NEAR contract and verifies each one.
  */
-async function fetchAndVerifyVerifications(page: number, pageSize: number): Promise<GetVerificationsResult> {
+async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
   // Get paginated accounts from NEAR contract (newest first)
-  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(page, pageSize)
+  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(pagination)
 
   // Verify each account in parallel
   const verifiedAccounts = await Promise.all(
@@ -58,7 +53,7 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
               proof: account.selfProof.proof,
               publicSignals: account.selfProof.publicSignals,
             },
-            Number(account.attestationId),
+            account.attestationId,
           )
         } catch (error) {
           // Graceful degradation: RPC failed but account is verified by contract
@@ -158,7 +153,7 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
     return { accounts: [], total: 0 }
   }
 
-  return getCachedVerifications(params.data.page, params.data.pageSize)
+  return getCachedVerifications(params.data)
 }
 
 /**

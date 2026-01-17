@@ -730,7 +730,7 @@ describe("Near Citizens House", () => {
         // Sample account data
         const sampleAccount: BuildProofAccount = {
           nullifier: "12345678901234567890",
-          attestationId: "1",
+          attestationId: 1,
           verifiedAt: Date.now(),
           selfProof: {
             proof: {

@@ -17,7 +17,7 @@ import {
   ethImplicitAccountSchema,
   isValidNearAccountId,
   getNearAccountType,
-} from "../validation/near-account"
+} from "../schemas/near"
 
 // Use nested describes to create Allure suite hierarchy:
 // parentSuite > suite > subSuite (matching Rust pattern)

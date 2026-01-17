@@ -8,34 +8,33 @@ import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
 import { getSigningMessage, getSigningRecipient } from "./config"
-import type { ParsedSignatureData, ProofData, Nep413Payload, AttestationIdString } from "./contracts/verification"
-
-export type { ParsedSignatureData, ProofData, Nep413Payload }
+import type { ParsedSignatureData } from "./schemas/near"
+import type { AttestationId } from "./schemas/core"
+import type { ProofData } from "./schemas/contract"
 
 /**
  * Attestation type names for display purposes.
  * Self.xyz supports 3 document types: Passport (1), Biometric ID Card (2), Aadhaar (3)
  */
-export const ATTESTATION_TYPE_NAMES: Record<string, string> = {
-  "1": "Passport",
-  "2": "Biometric ID Card",
-  "3": "Aadhaar",
+export const ATTESTATION_TYPE_NAMES: Record<AttestationId, string> = {
+  1: "Passport",
+  2: "Biometric ID Card",
+  3: "Aadhaar",
 }
 
 /**
  * Get human-readable attestation type name.
  * Returns "Unknown" for unrecognized attestation IDs.
  */
-export function getAttestationTypeName(attestationId: string | number): string {
-  const id = String(attestationId)
-  return ATTESTATION_TYPE_NAMES[id] || `Unknown (${id})`
+export function getAttestationTypeName(attestationId: AttestationId): string {
+  return ATTESTATION_TYPE_NAMES[attestationId] ?? `Unknown (${attestationId})`
 }
 
 /**
  * NEP-413 payload schema for Borsh binary serialization.
  *
  * Note: This is a Borsh schema (not Zod) required by the `borsh` library's serialize() function.
- * For type validation and TypeScript types, see `nep413PayloadSchema` in contracts/verification/types.ts.
+ * For type validation and TypeScript types, see `nep413PayloadSchema` in schemas/near.ts.
  * The two schemas define the same structure but serve different purposes:
  * - Borsh schema: Binary serialization for cryptographic operations
  * - Zod schema: Runtime validation and TypeScript type inference
@@ -213,7 +212,7 @@ export function verifyNearSignature(
 export function buildProofData(
   account: {
     nullifier: string
-    attestationId: AttestationIdString
+    attestationId: AttestationId
     verifiedAt: number
     selfProof: {
       proof: {

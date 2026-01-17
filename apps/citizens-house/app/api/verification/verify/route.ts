@@ -7,16 +7,21 @@ import {
   getVerifier,
   getRpcProvider,
   verifyNearSignature,
-  verifyRequestSchema,
-  attestationIdStringSchema,
-  createVerificationError,
-  type SelfVerificationResult,
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@near-citizens/shared"
 import { setBackendKeyPoolRedis, verificationDb } from "@near-citizens/shared/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
+import {
+  verifyRequestSchema,
+  createVerificationError,
+  mapContractErrorToCode,
+  userDefinedDataSchema,
+  parseUserDefinedDataRaw,
+  type VerifyResponse,
+  type AttestationId,
+} from "@/lib/shared/schemas"
 
 // Initialize Redis for backend key pool (for concurrent transaction support)
 // This is lazy - the actual connection happens on first use
@@ -36,44 +41,6 @@ const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
 // Allows for minor time differences between client and server
 const CLOCK_SKEW_MS = 10 * 1000
 
-/**
- * Parse userDefinedData to extract signature JSON.
- * The QR code contains signature data without challenge/recipient (to reduce size).
- * Backend reconstructs these from config values.
- */
-function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
-  if (!userDefinedDataRaw) return null
-
-  let jsonString = ""
-
-  if (typeof userDefinedDataRaw === "string") {
-    if (userDefinedDataRaw.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(userDefinedDataRaw)) {
-      jsonString = Buffer.from(userDefinedDataRaw, "hex").toString("utf8")
-    } else {
-      jsonString = userDefinedDataRaw
-    }
-  } else if (Array.isArray(userDefinedDataRaw)) {
-    jsonString = new TextDecoder().decode(new Uint8Array(userDefinedDataRaw))
-  } else if (typeof userDefinedDataRaw === "object" && userDefinedDataRaw !== null) {
-    const values = Object.values(userDefinedDataRaw)
-    if (values.every((v) => typeof v === "number")) {
-      jsonString = new TextDecoder().decode(new Uint8Array(values as number[]))
-    }
-  }
-
-  if (!jsonString) return null
-
-  jsonString = jsonString.replace(/\0/g, "")
-
-  const firstBrace = jsonString.indexOf("{")
-  const lastBrace = jsonString.lastIndexOf("}")
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    return jsonString.substring(firstBrace, lastBrace + 1)
-  }
-
-  return jsonString
-}
-
 function isFullAccessPermission(permission: unknown): boolean {
   if (permission === "FullAccess") {
     return true
@@ -84,42 +51,6 @@ function isFullAccessPermission(permission: unknown): boolean {
   }
 
   return false
-}
-
-function mapStorageErrorToCode(errorMessage: string): Parameters<typeof createVerificationError>[0] {
-  const message = errorMessage.toLowerCase()
-
-  if (message.includes("nullifier already used") || message.includes("already registered")) {
-    return "DUPLICATE_PASSPORT"
-  }
-
-  if (message.includes("near account already verified")) {
-    return "ACCOUNT_ALREADY_VERIFIED"
-  }
-
-  if (message.includes("contract is paused")) {
-    return "CONTRACT_PAUSED"
-  }
-
-  if (
-    message.includes("invalid near signature") ||
-    message.includes("signature account id") ||
-    message.includes("signature recipient")
-  ) {
-    return "NEAR_SIGNATURE_INVALID"
-  }
-
-  if (
-    message.includes("attestation id") ||
-    message.includes("nullifier") ||
-    message.includes("public signals") ||
-    message.includes("proof component") ||
-    message.includes("user context data")
-  ) {
-    return "VERIFICATION_FAILED"
-  }
-
-  return "STORAGE_FAILED"
 }
 
 async function hasFullAccessKey(accountId: string, publicKey: string): Promise<boolean> {
@@ -153,7 +84,7 @@ export async function POST(request: NextRequest) {
     status: number
     details?: string
     stage: string
-    attestationId?: number | string
+    attestationId?: AttestationId
   }) => {
     const errorResponse = createVerificationError(code, details)
 
@@ -162,7 +93,7 @@ export async function POST(request: NextRequest) {
         await updateSession(sessionId, {
           status: "error",
           accountId,
-          attestationId: attestationId?.toString(),
+          attestationId,
           error: errorResponse.reason,
           errorCode: code,
         })
@@ -171,7 +102,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(errorResponse satisfies SelfVerificationResult, { status })
+    return NextResponse.json(errorResponse satisfies VerifyResponse, { status })
   }
 
   try {
@@ -189,7 +120,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
-    const attestationIdString = attestationIdStringSchema.parse(attestationId.toString())
 
     let selfVerificationResult
 
@@ -246,7 +176,7 @@ export async function POST(request: NextRequest) {
     // QR code contains signature data without challenge/recipient (to reduce size)
     // Backend reconstructs these from known values
     const userDefinedDataRaw = selfVerificationResult.userData?.userDefinedData
-    const jsonString = parseUserDefinedData(userDefinedDataRaw)
+    const jsonString = parseUserDefinedDataRaw(userDefinedDataRaw)
 
     if (!jsonString) {
       return respondWithError({
@@ -258,9 +188,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    let data: Record<string, unknown>
+    let rawData: unknown
     try {
-      data = JSON.parse(jsonString)
+      rawData = JSON.parse(jsonString)
     } catch {
       return respondWithError({
         code: "NEAR_SIGNATURE_MISSING",
@@ -271,24 +201,30 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    accountId = typeof data.accountId === "string" ? data.accountId : undefined
-
-    if (!data.accountId || !data.signature || !data.publicKey || !data.nonce) {
-      const missingFields = ["accountId", "signature", "publicKey", "nonce"].filter((f) => !data[f]).join(", ")
+    // Validate user defined data with schema
+    const userDataResult = userDefinedDataSchema.safeParse(rawData)
+    if (!userDataResult.success) {
+      const issues = userDataResult.error.issues.map((i) => i.path.join(".")).join(", ")
       return respondWithError({
         code: "NEAR_SIGNATURE_MISSING",
         status: 400,
-        details: `Missing NEP-413 fields: ${missingFields}`,
+        details: `Invalid NEP-413 fields: ${issues}`,
         stage: "signature_parse",
         attestationId,
       })
     }
 
-    let nonce = data.nonce
-    if (typeof nonce === "string") {
-      nonce = Array.from(Buffer.from(nonce, "base64"))
+    const data = userDataResult.data
+    accountId = data.accountId
+
+    // Convert nonce to array format if needed
+    let nonce: number[]
+    if (typeof data.nonce === "string") {
+      nonce = Array.from(Buffer.from(data.nonce, "base64"))
+    } else {
+      nonce = data.nonce
     }
-    if (!Array.isArray(nonce) || nonce.length !== 32) {
+    if (nonce.length !== 32) {
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -299,7 +235,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate signature timestamp freshness
-    const signatureTimestamp = typeof data.timestamp === "number" ? data.timestamp : 0
+    const signatureTimestamp = data.timestamp ?? 0
     const now = Date.now()
     const signatureAge = now - signatureTimestamp
 
@@ -351,13 +287,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const signatureCheck = verifyNearSignature(
-      expectedChallenge,
-      data.signature as string,
-      data.publicKey as string,
-      nonce as number[],
-      recipient,
-    )
+    const signatureCheck = verifyNearSignature(expectedChallenge, data.signature, data.publicKey, nonce, recipient)
 
     if (!signatureCheck.valid) {
       return respondWithError({
@@ -369,7 +299,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const isFullAccess = await hasFullAccessKey(data.accountId as string, data.publicKey as string)
+    const isFullAccess = await hasFullAccessKey(data.accountId, data.publicKey)
     if (!isFullAccess) {
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
@@ -380,11 +310,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const nonceBase64 = Buffer.from(nonce as number[]).toString("base64")
+    const nonceBase64 = Buffer.from(nonce).toString("base64")
     // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations
     const remainingValidityMs = MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS - signatureAge
     const nonceTtlSeconds = Math.max(60, Math.ceil(remainingValidityMs / 1000)) // Min 60s to handle processing time
-    const nonceReserved = await reserveSignatureNonce(data.accountId as string, nonceBase64, nonceTtlSeconds)
+    const nonceReserved = await reserveSignatureNonce(data.accountId, nonceBase64, nonceTtlSeconds)
 
     if (!nonceReserved) {
       return respondWithError({
@@ -397,12 +327,12 @@ export async function POST(request: NextRequest) {
     }
 
     const nearSignature: NearSignatureData = {
-      accountId: data.accountId as string,
-      signature: data.signature as string,
-      publicKey: data.publicKey as string,
+      accountId: data.accountId,
+      signature: data.signature,
+      publicKey: data.publicKey,
       challenge: expectedChallenge,
       timestamp: signatureTimestamp,
-      nonce: nonce as number[],
+      nonce,
       recipient,
     }
 
@@ -425,7 +355,7 @@ export async function POST(request: NextRequest) {
         await updateSession(sessionId, {
           status: "pending",
           accountId: nearSignature.accountId,
-          attestationId: attestationIdString,
+          attestationId,
         })
       } catch {
         // Failed to update session, continue with verification
@@ -467,7 +397,7 @@ export async function POST(request: NextRequest) {
       await verificationDb.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
-        attestationId: attestationIdString,
+        attestationId,
         signatureData: nearSignature,
         selfProofData,
         userContextData: fullUserContextData,
@@ -484,7 +414,7 @@ export async function POST(request: NextRequest) {
           await updateSession(sessionId, {
             status: "success",
             accountId: nearSignature.accountId,
-            attestationId: attestationIdString,
+            attestationId,
           })
         } catch {
           // Failed to update session, but verification succeeded
@@ -492,7 +422,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : ""
-      const errCode = mapStorageErrorToCode(errorMsg)
+      const errCode = mapContractErrorToCode(errorMsg)
 
       return respondWithError({
         code: errCode,
@@ -514,7 +444,7 @@ export async function POST(request: NextRequest) {
           nearSignature: nearSignature.signature,
         },
         discloseOutput: selfVerificationResult.discloseOutput,
-      } satisfies SelfVerificationResult,
+      } satisfies VerifyResponse,
       { status: 200 },
     )
   } catch (error) {

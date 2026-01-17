@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
-import { useNearWallet, CONSTANTS, type NearSignatureData } from "@near-citizens/shared"
+import { useNearWallet, CONSTANTS, type NearSignatureData, type AttestationId } from "@near-citizens/shared"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
@@ -101,7 +101,7 @@ function VerificationStartContent() {
   // State management
   const [currentStep, setCurrentStep] = useState<VerificationProgressStep>(VerificationProgressStep.NotConnected)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
-  const [attestationId, setAttestationId] = useState<string | number | null>(null)
+  const [attestationId, setAttestationId] = useState<AttestationId | null>(null)
   const [sessionId] = useState<string>(() => crypto.randomUUID())
   const [isSigning, setIsSigning] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
@@ -227,7 +227,7 @@ function VerificationStartContent() {
   }
 
   // Handle verification success
-  const handleVerificationSuccess = (verifiedAttestationId?: string | number) => {
+  const handleVerificationSuccess = (verifiedAttestationId?: AttestationId) => {
     setErrorMessage(null)
     setAttestationId(verifiedAttestationId ?? null)
     setCurrentStep(VerificationProgressStep.VerificationComplete)

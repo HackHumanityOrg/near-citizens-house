@@ -10,7 +10,8 @@
  * the SDK's business logic validation.
  */
 import { ethers } from "ethers"
-import type { SelfProofData } from "./contracts/verification"
+import type { SelfProofData } from "./schemas/zk-proof"
+import type { AttestationId } from "./schemas/core"
 import { SELF_CONFIG, CELO_CONFIG } from "./config"
 
 export type { SelfProofData as StoredProofData }
@@ -81,7 +82,7 @@ function getCeloProvider(): ethers.JsonRpcProvider {
 /**
  * Get the verifier contract address from the hub
  */
-async function getVerifierAddress(attestationId: number): Promise<string> {
+async function getVerifierAddress(attestationId: AttestationId): Promise<string> {
   const cached = cachedVerifierAddresses.get(attestationId)
   if (cached) {
     return cached
@@ -112,7 +113,10 @@ async function getVerifierAddress(attestationId: number): Promise<string> {
  * @param attestationId - The attestation type (1=Passport, 2=Biometric ID Card, 3=Aadhaar)
  * @returns true if the proof is mathematically valid, false otherwise
  */
-export async function verifyStoredProof(storedProof: SelfProofData, attestationId: number = 1): Promise<boolean> {
+export async function verifyStoredProof(
+  storedProof: SelfProofData,
+  attestationId: AttestationId = 1,
+): Promise<boolean> {
   const verifierAddress = await getVerifierAddress(attestationId)
 
   // Get the correct signal count for this attestation type
@@ -149,7 +153,7 @@ export async function verifyStoredProof(storedProof: SelfProofData, attestationI
  */
 export async function verifyStoredProofWithDetails(
   storedProof: SelfProofData,
-  attestationId: number = 1,
+  attestationId: AttestationId = 1,
 ): Promise<{
   isValid: boolean
   publicSignalsCount: number

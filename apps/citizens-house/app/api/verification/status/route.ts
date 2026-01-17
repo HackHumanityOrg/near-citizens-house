@@ -1,13 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { nearAccountIdSchema } from "@near-citizens/shared"
 import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
 import { getSession, updateSession } from "@/lib/session-store"
-
-const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function isValidSessionId(sessionId: string): boolean {
-  return UUID_V4_REGEX.test(sessionId)
-}
+import { nearAccountIdSchema, isValidSessionId } from "@/lib/shared/schemas"
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("sessionId")

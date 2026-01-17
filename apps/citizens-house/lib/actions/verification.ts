@@ -1,6 +1,7 @@
 "use server"
 
 import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
+import { nearAccountIdSchema } from "@near-citizens/shared"
 
 /**
  * Check if a NEAR account is verified
@@ -11,12 +12,14 @@ import { verificationDb } from "@near-citizens/shared/contracts/verification/cli
  * @returns true if the account is verified, false otherwise
  */
 export async function checkVerificationStatus(accountId: string): Promise<boolean> {
-  if (!accountId) {
+  // Validate account ID format
+  const parsed = nearAccountIdSchema.safeParse(accountId)
+  if (!parsed.success) {
     return false
   }
 
   try {
-    return await verificationDb.isVerified(accountId)
+    return await verificationDb.isVerified(parsed.data)
   } catch {
     return false
   }

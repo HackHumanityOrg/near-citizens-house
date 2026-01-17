@@ -5,21 +5,20 @@ import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescrip
 import { getAttestationTypeName } from "@near-citizens/shared"
 import { Download, ExternalLink } from "lucide-react"
 import type { ZkProof } from "@near-citizens/shared"
+import type { AttestationId, NearAccountId } from "@/lib/shared/schemas"
 
 /**
  * Get the verification key filename based on attestation type.
  * Different attestation types use different circuits with different verification keys.
  */
-function getVkeyFilename(attestationId: string): string {
+function getVkeyFilename(attestationId: AttestationId): string {
   switch (attestationId) {
-    case "1":
+    case 1:
       return "vkey-passport.json"
-    case "2":
+    case 2:
       return "vkey-national-id.json"
-    case "3":
+    case 3:
       return "vkey-aadhaar.json"
-    default:
-      return "vkey-passport.json"
   }
 }
 
@@ -28,9 +27,9 @@ interface ZkProofData {
   proof: ZkProof
   publicSignals: string[]
   nullifier: string
-  attestationId: string
+  attestationId: AttestationId
   verifiedAt: number
-  nearAccountId: string
+  nearAccountId: NearAccountId
 }
 
 interface ZkProofVerifyModalProps {

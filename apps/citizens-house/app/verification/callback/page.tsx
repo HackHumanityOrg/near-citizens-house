@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
+import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/shared/schemas/errors"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 type VerificationStatus = "checking" | "success" | "error" | "expired"
