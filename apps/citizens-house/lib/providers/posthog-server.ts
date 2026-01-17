@@ -14,7 +14,7 @@ import { env } from "../schemas/env"
  * Uses the direct PostHog host (not the proxy) since server-side requests
  * don't need ad-blocker bypass and this avoids unnecessary latency.
  *
- * IMPORTANT: Always call `await client.shutdown()` after use to flush events.
+ * Use `captureImmediate()` for guaranteed delivery in serverless environments.
  */
 export function createPostHogServerClient(): PostHog | null {
   const apiKey = env.NEXT_PUBLIC_POSTHOG_KEY

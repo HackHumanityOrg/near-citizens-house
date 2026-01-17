@@ -34,11 +34,9 @@ export async function trackServerEvent<T extends AnalyticsEvent>(distinctId: str
   const { domain, action, ...properties } = event
   const eventName = `${domain}:${action}`
 
-  client.capture({
+  await client.captureImmediate({
     distinctId,
     event: eventName,
     properties,
   })
-
-  await client.shutdown()
 }
