@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
-import { useNearWallet, CONSTANTS, type NearSignatureData, type AttestationId } from "@/lib"
+import { useNearWallet, CONSTANTS, statusResponseSchema, type NearSignatureData, type AttestationId } from "@/lib"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
@@ -163,7 +163,11 @@ function VerificationStartContent() {
           const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionIdParam)}`)
           if (response.ok) {
             const data = await response.json()
-            setAttestationId(data.attestationId ?? null)
+            // Validate response shape for defense-in-depth
+            const parsed = statusResponseSchema.safeParse(data)
+            if (parsed.success && parsed.data.status === "success") {
+              setAttestationId(parsed.data.attestationId ?? null)
+            }
           }
         } catch {
           // Failed to fetch attestation status, continue without it

@@ -6,6 +6,7 @@ import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS, getSigningRecipient } from "../config"
+import { env } from "../schemas/env"
 import { nearAccountIdSchema, type NearAccountId, type NearSignatureData } from "../schemas/near"
 
 /**
@@ -53,7 +54,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
         // Initialize WalletConnect SignClient if projectId is provided
         // This enables wallets that use WalletConnect protocol (e.g., MyNearWallet, Unity Wallet)
-        const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+        const projectId = env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
         let walletConnectClient
         if (projectId) {
           // Dynamically import WalletConnect to avoid bundling if not used

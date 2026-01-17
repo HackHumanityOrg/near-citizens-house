@@ -1,5 +1,10 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+// Validate environment at build time (fail-fast on misconfiguration)
+// @see https://env.t3.gg/docs/nextjs
+import "./lib/schemas/env"
+
+import type { NextConfig } from "next"
+
+const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },

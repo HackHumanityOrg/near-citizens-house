@@ -1,58 +1,19 @@
-// ==============================================================================
-// CENTRALIZED ENVIRONMENT CONFIGURATION
-// ==============================================================================
-// All environment variables should be accessed through this file.
-// Do NOT use process.env directly elsewhere in the codebase.
-// ==============================================================================
-
-import { z } from "zod"
+/**
+ * Application Configuration
+ *
+ * Derived configuration values from validated environment variables.
+ * All env vars are accessed via the T3 Env schema in ./schemas/env.ts
+ */
 import type { VerificationConfig } from "@selfxyz/core"
+import { env } from "./schemas/env"
 import type { NearAccountId } from "./schemas/near"
 
-// ==============================================================================
-// ENVIRONMENT VALIDATION
-// ==============================================================================
-// Validates environment variables at startup for faster feedback on misconfigurations.
-// Server-side variables are optional (not available on client).
-// ==============================================================================
-
-const envSchema = z.object({
-  // Required for all environments (client & server)
-  NEXT_PUBLIC_NEAR_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
-
-  // Server-side RPC configuration
-  FASTNEAR_API_KEY: z.string().optional(), // FastNEAR API key for RPC header
-
-  // Self.xyz network (independent from NEAR network)
-  NEXT_PUBLIC_SELF_NETWORK: z.enum(["testnet", "mainnet"]).optional(),
-
-  // Contract addresses (required for functionality, but may be empty during setup)
-  NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: z.string().optional(),
-
-  // Server-side only (not available on client)
-  NEAR_ACCOUNT_ID: z.string().optional(),
-  NEAR_PRIVATE_KEY: z.string().optional(),
-
-  // Redis for session storage (server-side only)
-  REDIS_URL: z.string().optional(),
-
-  // Celo RPC URL for ZK proof verification (server-side only)
-  CELO_RPC_URL: z.string().optional(),
-
-  // E2E Testing: Skip Self.xyz ZK proof verification (server-side only)
-  // WARNING: Must NEVER be "true" in production
-  SKIP_ZK_VERIFICATION: z.string().optional(),
-})
-
-// Validate environment at module load time
-envSchema.safeParse(process.env)
-
 // NEAR Network Configuration
-const networkId = (process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet") as "testnet" | "mainnet"
+const networkId = env.NEXT_PUBLIC_NEAR_NETWORK
 
 // Self.xyz Network Configuration (independent from NEAR network)
 // This allows using NEAR testnet with Self.xyz mainnet for real passport verification
-const selfNetworkId = (process.env.NEXT_PUBLIC_SELF_NETWORK || "mainnet") as "testnet" | "mainnet"
+const selfNetworkId = env.NEXT_PUBLIC_SELF_NETWORK
 
 // FastNEAR RPC URL
 const getFastNearUrl = () =>
@@ -63,12 +24,12 @@ export const NEAR_CONFIG = {
   // FastNEAR RPC URL
   rpcUrl: getFastNearUrl(),
   // FastNEAR API key (X-API-Key header)
-  rpcApiKey: process.env.FASTNEAR_API_KEY || "",
+  rpcApiKey: env.FASTNEAR_API_KEY ?? "",
   // Contract addresses
-  verificationContractId: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT || "",
+  verificationContractId: env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,
   // Backend wallet credentials (server-side only)
-  backendAccountId: process.env.NEAR_ACCOUNT_ID || "",
-  backendPrivateKey: process.env.NEAR_PRIVATE_KEY || "",
+  backendAccountId: env.NEAR_ACCOUNT_ID ?? "",
+  backendPrivateKey: env.NEAR_PRIVATE_KEY ?? "",
   // Explorer URLs
   get explorerUrl() {
     return this.networkId === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io"
@@ -79,7 +40,7 @@ export const NEAR_CONFIG = {
 }
 
 // App URL (single app after merge of verification and governance)
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://citizenshouse.org"
+export const APP_URL = env.NEXT_PUBLIC_APP_URL ?? "https://citizenshouse.org"
 
 // Self.xyz Configuration
 // Verification rules are enforced by the backend verifier and contracts.
@@ -127,12 +88,12 @@ const defaultCeloRpcUrl =
 
 export const CELO_CONFIG = {
   // Single RPC URL (can be overridden via env var)
-  rpcUrl: process.env.CELO_RPC_URL || defaultCeloRpcUrl,
+  rpcUrl: env.CELO_RPC_URL ?? defaultCeloRpcUrl,
 }
 
 // UserJot Configuration (Feedback Widget)
 export const USERJOT_CONFIG = {
-  projectId: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID || "",
+  projectId: env.NEXT_PUBLIC_USERJOT_PROJECT_ID ?? "",
   get enabled() {
     return !!this.projectId
   },

@@ -1,6 +1,7 @@
 import { DefaultConfigStore, SelfBackendVerifier } from "@selfxyz/core"
 import { Buffer } from "buffer"
 import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "../config"
+import { shouldSkipZkVerification, isE2ETesting } from "../schemas/env"
 import type { AttestationId } from "../schemas/selfxyz"
 
 // ==============================================================================
@@ -11,12 +12,10 @@ import type { AttestationId } from "../schemas/selfxyz"
 // verification and contract storage, without requiring real passport data.
 // ==============================================================================
 
-const SKIP_ZK_VERIFICATION = process.env.SKIP_ZK_VERIFICATION === "true"
-const E2E_TESTING = process.env.E2E_TESTING === "true"
-const USE_MOCK_VERIFIER = SKIP_ZK_VERIFICATION || E2E_TESTING
+const USE_MOCK_VERIFIER = shouldSkipZkVerification() || isE2ETesting()
 
 // Safety check: Never allow mock mode in production (unless explicitly running E2E tests)
-if (USE_MOCK_VERIFIER && process.env.NODE_ENV === "production" && !E2E_TESTING) {
+if (USE_MOCK_VERIFIER && process.env.NODE_ENV === "production" && !isE2ETesting()) {
   throw new Error("CRITICAL: SKIP_ZK_VERIFICATION cannot be enabled in production")
 }
 

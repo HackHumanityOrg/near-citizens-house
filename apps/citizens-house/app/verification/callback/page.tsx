@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/schemas/errors"
+import { getErrorTitle, getErrorMessage, isNonRetryableError, statusResponseSchema } from "@/lib/schemas"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 type VerificationStatus = "checking" | "success" | "error" | "expired"
@@ -86,14 +86,22 @@ function VerifyCallbackContent() {
           return false
         }
 
-        const data = await response.json()
+        const rawData = await response.json()
 
         // Check mounted again before updating state
         if (!isMounted) return false
 
+        // Validate response shape for defense-in-depth
+        const parsed = statusResponseSchema.safeParse(rawData)
+        if (!parsed.success) {
+          // Invalid response structure - keep polling
+          return false
+        }
+        const data = parsed.data
+
         if (data.status === "success") {
           setStatus("success")
-          setAccountId(data.accountId)
+          setAccountId(data.accountId ?? null)
           // Clean up localStorage (wrapped in try/catch for restricted environments)
           try {
             localStorage.removeItem(`self-session-${sessionId}`)
@@ -105,12 +113,12 @@ function VerifyCallbackContent() {
           setStatus("error")
           // Use errorCode if available, fall back to error field for backwards compatibility
           const code = data.errorCode || data.error
-          setErrorCode(code)
+          setErrorCode(code ?? null)
           setErrorMessage(getErrorMessage(code))
           return true
         } else if (data.status === "expired") {
           setStatus("expired")
-          setErrorMessage("Session expired. Please try again.")
+          setErrorMessage(data.error ?? "Session expired. Please try again.")
           return true
         }
         // Still pending

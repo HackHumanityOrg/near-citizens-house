@@ -6,6 +6,7 @@ import { NearWalletProvider } from "@/lib"
 import { ErrorBoundary } from "@near-citizens/ui"
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider } from "posthog-js/react"
+import { env } from "@/lib/schemas/env"
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -34,8 +35,8 @@ export function Providers({ children }: ProvidersProps) {
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+    if (typeof window !== "undefined" && env.NEXT_PUBLIC_POSTHOG_KEY) {
+      posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
         api_host: "/ingest",
         ui_host: "https://us.posthog.com",
         // Use latest config defaults (enables strictMinimumDuration and content_ignorelist for rageclicks)

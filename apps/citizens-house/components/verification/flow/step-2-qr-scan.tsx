@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, getUniversalLink, type NearSignatureData, type AttestationId } from "@/lib"
+import { statusResponseSchema } from "@/lib/schemas"
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getErrorMessage } from "@/lib/schemas/errors"
@@ -140,7 +141,16 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
         )
 
         if (response.ok) {
-          const data = await response.json()
+          const json = await response.json()
+          const parsed = statusResponseSchema.safeParse(json)
+
+          // If validation fails, continue polling (invalid response = retry)
+          if (!parsed.success) {
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+            continue
+          }
+
+          const data = parsed.data
 
           if (data.status === "success") {
             confirmationInProgressRef.current = false

@@ -4,7 +4,7 @@
 import "server-only"
 
 import { getRedisClient } from "./redis"
-import { parseSession, type Session, type SessionStatus } from "./schemas/session"
+import { parseSession, sessionSchema, type Session, type SessionStatus } from "./schemas/session"
 import type { NearAccountId } from "./schemas/near"
 import type { AttestationId } from "./schemas/selfxyz"
 
@@ -23,7 +23,9 @@ export async function createSession(sessionId: string): Promise<void> {
     status: "pending",
     timestamp: Date.now(),
   }
-  await client.set(getSessionKey(sessionId), JSON.stringify(session), {
+  // Validate session structure before writing (defense-in-depth for writes)
+  const validated = sessionSchema.parse(session)
+  await client.set(getSessionKey(sessionId), JSON.stringify(validated), {
     EX: SESSION_TTL_SECONDS,
   })
 }
@@ -61,7 +63,9 @@ export async function updateSession(
         timestamp: Date.now(),
       }
 
-  await client.set(key, JSON.stringify(session), {
+  // Validate session structure before writing (defense-in-depth for writes)
+  const validated = sessionSchema.parse(session)
+  await client.set(key, JSON.stringify(validated), {
     EX: SESSION_TTL_SECONDS,
   })
 }

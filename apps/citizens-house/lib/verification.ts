@@ -8,7 +8,7 @@ import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
 import { getSigningMessage, getSigningRecipient } from "./config"
-import type { ParsedSignatureData } from "./schemas/near"
+import { parsedSignatureDataSchema, type ParsedSignatureData } from "./schemas/near"
 import type { ProofData } from "./schemas/verification-contract"
 import type { AttestationId } from "./schemas/selfxyz"
 
@@ -135,21 +135,13 @@ export function parseUserContextData(userContextDataRaw: string): ParsedSignatur
 
     const data = JSON.parse(jsonString)
 
-    if (!data.accountId || !data.signature || !data.publicKey || !data.nonce) {
+    // Validate using Zod schema instead of manual checks
+    const result = parsedSignatureDataSchema.safeParse(data)
+    if (!result.success) {
       return null
     }
 
-    // Nonce should already be base64 string; this is the canonical format
-    const nonce: string = data.nonce
-
-    return {
-      accountId: data.accountId,
-      signature: data.signature,
-      publicKey: data.publicKey,
-      nonce,
-      challenge: typeof data.challenge === "string" ? data.challenge : undefined,
-      recipient: typeof data.recipient === "string" ? data.recipient : undefined,
-    }
+    return result.data
   } catch {
     return null
   }
