@@ -88,33 +88,3 @@ export const env = createEnv({
    */
   emptyStringAsUndefined: true,
 })
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Check if backend wallet is configured for contract writes.
- * Call this before attempting write operations.
- */
-export function isBackendWalletConfigured(): boolean {
-  return Boolean(env.NEAR_ACCOUNT_ID && env.NEAR_PRIVATE_KEY)
-}
-
-/**
- * Check if ZK verification should be skipped (E2E testing only).
- * WARNING: This should NEVER return true in production.
- */
-export function shouldSkipZkVerification(): boolean {
-  if (process.env.NODE_ENV === "production") {
-    return false
-  }
-  return env.SKIP_ZK_VERIFICATION === "true"
-}
-
-/**
- * Check if running in E2E testing mode.
- */
-export function isE2ETesting(): boolean {
-  return env.E2E_TESTING === "true"
-}

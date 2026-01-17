@@ -1,7 +1,15 @@
+/**
+ * Self.xyz Backend Verifier Provider (Server-only)
+ *
+ * This module provides the Self.xyz verifier for passport ZK proof verification.
+ * It's server-only because it uses server-side environment variables for E2E testing flags.
+ */
+import "server-only"
+
 import { DefaultConfigStore, SelfBackendVerifier } from "@selfxyz/core"
 import { Buffer } from "buffer"
 import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "../config"
-import { shouldSkipZkVerification, isE2ETesting } from "../schemas/env"
+import { shouldSkipZkVerification, isE2ETesting } from "../config.server"
 import type { AttestationId } from "../schemas/selfxyz"
 
 // ==============================================================================

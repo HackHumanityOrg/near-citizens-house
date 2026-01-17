@@ -8,9 +8,15 @@
  * proofs with currentDateIndex older than this window. This module
  * calls the on-chain verifier contract on Celo directly, skipping
  * the SDK's business logic validation.
+ *
+ * NOTE: This module is server-only because it uses CELO_CONFIG which
+ * contains server-side environment variables.
  */
+import "server-only"
+
 import { ethers } from "ethers"
-import { SELF_CONFIG, CELO_CONFIG } from "./config"
+import { SELF_CONFIG } from "./config"
+import { CELO_CONFIG } from "./config.server"
 import type { SelfProofData, AttestationId } from "./schemas/selfxyz"
 
 export type { SelfProofData as StoredProofData }

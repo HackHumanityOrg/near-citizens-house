@@ -23,13 +23,8 @@ export const NEAR_CONFIG = {
   networkId,
   // FastNEAR RPC URL
   rpcUrl: getFastNearUrl(),
-  // FastNEAR API key (X-API-Key header)
-  rpcApiKey: env.FASTNEAR_API_KEY ?? "",
   // Contract addresses
   verificationContractId: env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,
-  // Backend wallet credentials (server-side only)
-  backendAccountId: env.NEAR_ACCOUNT_ID ?? "",
-  backendPrivateKey: env.NEAR_PRIVATE_KEY ?? "",
   // Explorer URLs
   get explorerUrl() {
     return this.networkId === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io"
@@ -79,16 +74,6 @@ export const SELF_CONFIG = {
   // Frontend disclosure config (verification rules + disclosure requests)
   // Verification rules must match SELF_VERIFICATION_CONFIG on the backend
   disclosures: DISCLOSURE_CONFIG,
-}
-
-// Celo RPC Configuration (for ZK proof verification)
-// Default public Celo RPC URLs
-const defaultCeloRpcUrl =
-  selfNetworkId === "mainnet" ? "https://forno.celo.org" : "https://alfajores-forno.celo-testnet.org"
-
-export const CELO_CONFIG = {
-  // Single RPC URL (can be overridden via env var)
-  rpcUrl: env.CELO_RPC_URL ?? defaultCeloRpcUrl,
 }
 
 // UserJot Configuration (Feedback Widget)

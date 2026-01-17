@@ -28,7 +28,7 @@ import type { NearAccountId } from "../../schemas/near"
 import type { Verification, VerificationSummary } from "../../schemas/selfxyz"
 import type { Pagination } from "../../schemas/core"
 import type { IVerificationDatabase, PaginatedVerifications } from "./verification-contract"
-import { NEAR_CONFIG } from "../../config"
+import { NEAR_SERVER_CONFIG } from "../../config.server"
 import { createRpcProvider } from "../../providers/rpc-provider"
 import { backendKeyPool, setBackendKeyPoolRedis } from "../../backend-key-pool"
 
@@ -384,7 +384,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 let dbInstance: IVerificationDatabase | null = null
 
 function createVerificationContract(): NearContractDatabase {
-  const { verificationContractId, backendAccountId, backendPrivateKey } = NEAR_CONFIG
+  const { verificationContractId, backendAccountId, backendPrivateKey } = NEAR_SERVER_CONFIG
 
   if (!verificationContractId || !backendAccountId || !backendPrivateKey) {
     throw new Error(

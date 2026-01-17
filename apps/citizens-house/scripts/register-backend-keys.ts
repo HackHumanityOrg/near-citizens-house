@@ -12,18 +12,16 @@
  *   - NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY set in environment
  *   - Backend wallet must have enough NEAR for gas (~0.1 NEAR per key)
  */
-import "server-only"
-
 import { Account } from "@near-js/accounts"
 import { KeyPair } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import type { Signer } from "@near-js/signers"
-import { NEAR_CONFIG } from "../lib/config"
+import { NEAR_SERVER_CONFIG } from "../lib/config.server"
 import { createRpcProvider } from "../lib/providers/rpc-provider"
 import { backendKeyPool } from "../lib/backend-key-pool"
 
 async function main(): Promise<void> {
-  const { backendAccountId, backendPrivateKey, networkId } = NEAR_CONFIG
+  const { backendAccountId, backendPrivateKey, networkId } = NEAR_SERVER_CONFIG
 
   if (!backendAccountId || !backendPrivateKey) {
     console.error("Error: NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY environment variables are required")

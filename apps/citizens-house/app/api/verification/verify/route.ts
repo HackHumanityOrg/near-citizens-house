@@ -1,16 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import {
-  NEAR_CONFIG,
   getSigningMessage,
   getSigningRecipient,
-  getVerifier,
-  getRpcProvider,
   verifyNearSignature,
   type NearAccountId,
   type NearSignatureData,
   type VerificationDataWithSignature,
 } from "@/lib"
+import { getRpcProvider } from "@/lib/providers/rpc-provider"
+import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
+import { getVerifier } from "@/lib/providers/self-provider"
 import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
@@ -337,7 +337,7 @@ export async function POST(request: NextRequest) {
 
     // Defense-in-depth: verify backend wallet is configured before attempting storage.
     // The verificationDb singleton also validates this, but we check early for a clearer error.
-    if (!NEAR_CONFIG.backendAccountId || !NEAR_CONFIG.backendPrivateKey) {
+    if (!NEAR_SERVER_CONFIG.backendAccountId || !NEAR_SERVER_CONFIG.backendPrivateKey) {
       return respondWithError({
         code: "INTERNAL_ERROR",
         status: 500,

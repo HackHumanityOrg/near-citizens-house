@@ -2,7 +2,6 @@
 
 import { unstable_cache } from "next/cache"
 import {
-  verifyStoredProofWithDetails,
   parseUserContextData,
   verifyNearSignature,
   buildProofData,
@@ -13,6 +12,7 @@ import {
   type Verification,
   type ProofData,
 } from "@/lib"
+import { verifyStoredProofWithDetails } from "@/lib/zk-verify"
 import { verificationDb } from "@/lib/contracts/verification/client"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 

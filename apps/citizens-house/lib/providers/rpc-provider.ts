@@ -1,12 +1,16 @@
 /**
- * NEAR RPC Provider Configuration
+ * NEAR RPC Provider Configuration (Server-only)
  *
  * Uses FastNEAR as the single RPC endpoint.
  * Optional API key is sent via X-API-Key header.
+ *
+ * NOTE: This module is server-only because it uses the RPC API key.
  */
+import "server-only"
+
 import { JsonRpcProvider } from "@near-js/providers"
 import type { Provider } from "@near-js/providers"
-import { NEAR_CONFIG } from "../config"
+import { NEAR_SERVER_CONFIG } from "../config.server"
 
 // ============================================================================
 // RPC Configuration
@@ -26,8 +30,8 @@ export const RPC_RETRY_OPTIONS = {
  */
 function getFastNearHeaders(): Record<string, string> {
   const headers: Record<string, string> = {}
-  if (NEAR_CONFIG.rpcApiKey) {
-    headers["X-API-Key"] = NEAR_CONFIG.rpcApiKey
+  if (NEAR_SERVER_CONFIG.rpcApiKey) {
+    headers["X-API-Key"] = NEAR_SERVER_CONFIG.rpcApiKey
   }
   return headers
 }
@@ -40,7 +44,7 @@ function getFastNearHeaders(): Record<string, string> {
  * Create a JsonRpcProvider backed by FastNEAR.
  */
 export function createRpcProvider(): Provider {
-  const rpcUrl = NEAR_CONFIG.rpcUrl
+  const rpcUrl = NEAR_SERVER_CONFIG.rpcUrl
   const headers = getFastNearHeaders()
   return new JsonRpcProvider({ url: rpcUrl, headers }, RPC_RETRY_OPTIONS)
 }

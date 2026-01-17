@@ -23,7 +23,7 @@ import { KeyPairEd25519 } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import { Account } from "@near-js/accounts"
 import type { Signer } from "@near-js/signers"
-import { NEAR_CONFIG } from "./config"
+import { NEAR_SERVER_CONFIG } from "./config.server"
 import { createRpcProvider } from "./providers/rpc-provider"
 
 const POOL_SIZE = 10 // Support 10 concurrent transactions
@@ -54,7 +54,7 @@ class BackendKeyPool {
   private contractId: string
 
   constructor() {
-    this.contractId = NEAR_CONFIG.verificationContractId
+    this.contractId = NEAR_SERVER_CONFIG.verificationContractId
   }
 
   /**
@@ -64,7 +64,7 @@ class BackendKeyPool {
   private deriveKeys(): void {
     if (this.keys.length > 0) return
 
-    const masterKey = NEAR_CONFIG.backendPrivateKey
+    const masterKey = NEAR_SERVER_CONFIG.backendPrivateKey
     if (!masterKey) throw new Error("NEAR_PRIVATE_KEY not configured")
 
     for (let i = 0; i < POOL_SIZE; i++) {
@@ -117,7 +117,7 @@ class BackendKeyPool {
 
     // Account constructor types don't match the actual implementation
     // The provider and signer interfaces are compatible at runtime
-    const account = new Account(NEAR_CONFIG.backendAccountId, provider, signer as unknown as Signer)
+    const account = new Account(NEAR_SERVER_CONFIG.backendAccountId, provider, signer as unknown as Signer)
 
     return { account, keyIndex }
   }
