@@ -1,6 +1,7 @@
 //! Signature verification tests for verified-accounts contract
 
-use crate::helpers::{generate_nep413_signature, init, test_self_proof};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
@@ -18,6 +19,10 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
     let user = worker.dev_create_account().await?;
 
     // This should fail because the signature doesn't match the message
+    // Use base64 encoding for binary fields (matches contract's Base64VecU8)
+    let invalid_signature_base64 = BASE64.encode([0u8; 64]);
+    let zero_nonce_base64 = BASE64.encode([0u8; 32]);
+
     let result = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
@@ -27,10 +32,10 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
             "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 64], // Invalid signature (all zeros)
+                "signature": invalid_signature_base64, // Invalid signature (all zeros)
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": zero_nonce_base64,
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
@@ -82,7 +87,7 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -163,7 +168,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
                 "signature": signature1,
                 "public_key": public_key1,
                 "challenge": challenge,
-                "nonce": nonce1.to_vec(),
+                "nonce": nonce_to_base64(&nonce1),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -194,7 +199,7 @@ async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
                 "signature": signature2,
                 "public_key": public_key2,
                 "challenge": challenge,
-                "nonce": nonce2.to_vec(),
+                "nonce": nonce_to_base64(&nonce2),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -249,7 +254,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
                 "signature": signature1,
                 "public_key": public_key1,
                 "challenge": challenge,
-                "nonce": nonce1.to_vec(),
+                "nonce": nonce_to_base64(&nonce1),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -280,7 +285,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
                 "signature": signature2,
                 "public_key": public_key2,
                 "challenge": challenge,
-                "nonce": nonce2.to_vec(),
+                "nonce": nonce_to_base64(&nonce2),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -334,7 +339,7 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -413,7 +418,7 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
                     "signature": signature,
                     "public_key": public_key,
                     "challenge": challenge,
-                    "nonce": nonce.to_vec(),
+                    "nonce": nonce_to_base64(&nonce),
                     "recipient": recipient
                 },
                 "self_proof": test_self_proof(),
@@ -501,7 +506,7 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
                 "signature": signature1,
                 "public_key": public_key1,
                 "challenge": challenge,
-                "nonce": nonce1.to_vec(),
+                "nonce": nonce_to_base64(&nonce1),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -532,7 +537,7 @@ async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<(
                 "signature": signature2,
                 "public_key": public_key2,
                 "challenge": challenge,
-                "nonce": nonce2.to_vec(),
+                "nonce": nonce_to_base64(&nonce2),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),

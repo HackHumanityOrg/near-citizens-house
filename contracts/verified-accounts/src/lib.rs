@@ -19,6 +19,7 @@
 use near_sdk::assert_one_yocto;
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupSet, UnorderedMap};
+use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
 
@@ -54,10 +55,10 @@ pub enum StorageKey {
 #[borsh(crate = "near_sdk::borsh")]
 pub struct NearSignatureData {
     pub account_id: AccountId,
-    pub signature: Vec<u8>,
+    pub signature: Base64VecU8,
     pub public_key: PublicKey,
     pub challenge: String,
-    pub nonce: Vec<u8>,
+    pub nonce: Base64VecU8,
     pub recipient: AccountId,
 }
 
@@ -452,11 +453,15 @@ impl VersionedContract {
     /// This function verifies cryptographic signature validity only. It does NOT
     /// verify that the public key is a valid access key for the claimed account.
     fn verify_near_signature(sig_data: &NearSignatureData) {
+        // Access the inner Vec<u8> from Base64VecU8
+        let nonce = &sig_data.nonce.0;
+        let signature = &sig_data.signature.0;
+
         // Validate nonce length
-        assert_eq!(sig_data.nonce.len(), 32, "Nonce must be exactly 32 bytes");
+        assert_eq!(nonce.len(), 32, "Nonce must be exactly 32 bytes");
 
         // Validate signature length
-        assert_eq!(sig_data.signature.len(), 64, "Signature must be 64 bytes");
+        assert_eq!(signature.len(), 64, "Signature must be 64 bytes");
 
         // Step 1: Serialize the NEP-413 prefix tag
         let tag: u32 = 2147484061;
@@ -464,7 +469,7 @@ impl VersionedContract {
 
         // Step 2: Create and serialize the NEP-413 payload
         let mut nonce_array = [0u8; 32];
-        nonce_array.copy_from_slice(&sig_data.nonce);
+        nonce_array.copy_from_slice(nonce);
 
         let payload = Nep413Payload {
             message: sig_data.challenge.clone(),
@@ -481,7 +486,7 @@ impl VersionedContract {
                     "Failed to serialize NEP-413 payload: {:?}. Message: {}, Nonce len: {}, Recipient: {}",
                     e,
                     sig_data.challenge,
-                    sig_data.nonce.len(),
+                    nonce.len(),
                     sig_data.recipient
                 ));
             }
@@ -510,7 +515,7 @@ impl VersionedContract {
 
         // Step 6: Convert to fixed-size arrays for ed25519_verify
         let mut sig_array = [0u8; 64];
-        sig_array.copy_from_slice(&sig_data.signature);
+        sig_array.copy_from_slice(signature);
 
         let mut pk_array = [0u8; 32];
         pk_array.copy_from_slice(public_key_bytes);

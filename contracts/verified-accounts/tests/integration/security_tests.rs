@@ -2,7 +2,7 @@
 //!
 //! Tests for replay attempt rejection, batch size limits, and storage economics.
 
-use crate::helpers::{generate_nep413_signature, init, test_self_proof, WASM_PATH};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof, WASM_PATH};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
@@ -39,7 +39,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
                 "signature": signature.clone(),
                 "public_key": public_key.clone(),
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -71,7 +71,7 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
                 "signature": signature.clone(),     // SAME signature!
                 "public_key": public_key.clone(),   // Same public key
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -253,7 +253,7 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),

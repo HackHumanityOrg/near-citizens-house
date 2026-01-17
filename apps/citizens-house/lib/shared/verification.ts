@@ -57,19 +57,22 @@ const Nep413BorshSchema = {
  *   - payload = { message, nonce, recipient, callbackUrl: null }
  *
  * @param message - The challenge message that was signed
- * @param nonce - The 32-byte nonce as an array of numbers
+ * @param nonce - The 32-byte nonce as base64 string
  * @param recipient - The recipient account ID
  * @returns The SHA-256 hash as a hex string
  */
-export function computeNep413Hash(message: string, nonce: number[], recipient: string): string {
+export function computeNep413Hash(message: string, nonce: string, recipient: string): string {
   // NEP-413 tag (2^31 + 413)
   const tag = 2147484061
   const tagBuffer = Buffer.alloc(4)
   tagBuffer.writeUInt32LE(tag)
 
+  // Decode base64 nonce to bytes
+  const nonceBytes = Buffer.from(nonce, "base64")
+
   const payload = {
     message,
-    nonce: new Uint8Array(nonce),
+    nonce: new Uint8Array(nonceBytes),
     recipient,
     callbackUrl: null,
   }
@@ -99,6 +102,7 @@ export function extractEd25519PublicKeyHex(nearPublicKey: string): string {
 /**
  * Parse userContextData to extract signature data.
  * Handles both hex-encoded and plain JSON formats.
+ * Returns base64 encoded nonce for consistent handling.
  */
 export function parseUserContextData(userContextDataRaw: string): ParsedSignatureData | null {
   try {
@@ -135,10 +139,8 @@ export function parseUserContextData(userContextDataRaw: string): ParsedSignatur
       return null
     }
 
-    let nonce = data.nonce
-    if (typeof nonce === "string") {
-      nonce = Array.from(Buffer.from(nonce, "base64"))
-    }
+    // Nonce should already be base64 string; this is the canonical format
+    const nonce: string = data.nonce
 
     return {
       accountId: data.accountId,
@@ -156,12 +158,18 @@ export function parseUserContextData(userContextDataRaw: string): ParsedSignatur
 /**
  * Verify NEAR signature using NEP-413 standard.
  * Matches the contract implementation.
+ *
+ * @param challenge - The message that was signed
+ * @param signature - base64 encoded signature
+ * @param publicKeyStr - ed25519:BASE58 format public key
+ * @param nonce - base64 encoded 32-byte nonce
+ * @param recipient - The recipient account ID
  */
 export function verifyNearSignature(
   challenge: string,
   signature: string,
   publicKeyStr: string,
-  nonce: number[],
+  nonce: string,
   recipient: string,
 ): { valid: boolean; error?: string } {
   try {
@@ -170,10 +178,13 @@ export function verifyNearSignature(
     const tagBuffer = Buffer.alloc(4)
     tagBuffer.writeUInt32LE(tag)
 
-    // Step 2: Create NEP-413 payload
+    // Step 2: Decode base64 nonce to bytes
+    const nonceBytes = Buffer.from(nonce, "base64")
+
+    // Step 3: Create NEP-413 payload
     const payload = {
       message: challenge,
-      nonce: new Uint8Array(nonce),
+      nonce: new Uint8Array(nonceBytes),
       recipient,
       callbackUrl: null,
     }
@@ -181,19 +192,19 @@ export function verifyNearSignature(
     // Borsh serialize the payload
     const payloadBytes = serialize(Nep413BorshSchema, payload)
 
-    // Step 3: Concatenate tag + payload
+    // Step 4: Concatenate tag + payload
     const fullMessage = Buffer.concat([tagBuffer, Buffer.from(payloadBytes)])
 
-    // Step 4: SHA-256 hash the message
+    // Step 5: SHA-256 hash the message
     const messageHash = createHash("sha256").update(fullMessage).digest()
 
-    // Step 5: Parse public key using @near-js/crypto
+    // Step 6: Parse public key using @near-js/crypto
     const publicKey = PublicKey.fromString(publicKeyStr)
 
-    // Step 6: Decode signature from base64
+    // Step 7: Decode signature from base64
     const signatureBytes = Buffer.from(signature, "base64")
 
-    // Step 7: Verify with @near-js/crypto PublicKey.verify()
+    // Step 8: Verify with @near-js/crypto PublicKey.verify()
     const isValid = publicKey.verify(messageHash, signatureBytes)
 
     if (!isValid) {
@@ -243,7 +254,7 @@ export function buildProofData(
       accountId: sigData.accountId,
       publicKey: sigData.publicKey,
       signature: sigData.signature,
-      nonce: Buffer.from(sigData.nonce).toString("base64"),
+      nonce: sigData.nonce, // already base64 encoded
       challenge,
       recipient,
     },

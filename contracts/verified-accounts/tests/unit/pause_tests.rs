@@ -151,10 +151,10 @@ fn test_store_verification_when_paused() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 

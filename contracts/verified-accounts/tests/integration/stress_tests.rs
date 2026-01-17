@@ -3,7 +3,7 @@
 //! Exercises bulk writes and batch reads under load.
 //! Configure via env vars: STRESS_TOTAL (default 1000), STRESS_BATCH_TOTAL (default 1000)
 
-use crate::helpers::{generate_nep413_signature, init, test_self_proof};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, Contract};
@@ -42,6 +42,9 @@ async fn store_verification(
     let (signature, public_key) =
         generate_nep413_signature(user, CHALLENGE_MESSAGE, &nonce, &recipient);
 
+    // Use base64 encoding for nonce and signature (matches contract's Base64VecU8)
+    let nonce_base64 = nonce_to_base64(&nonce);
+
     let result = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
@@ -55,7 +58,7 @@ async fn store_verification(
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": CHALLENGE_MESSAGE,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_base64,
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),

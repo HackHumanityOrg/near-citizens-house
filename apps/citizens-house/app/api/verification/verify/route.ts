@@ -217,18 +217,15 @@ export async function POST(request: NextRequest) {
     const data = userDataResult.data
     accountId = data.accountId
 
-    // Convert nonce to array format if needed
-    let nonce: number[]
-    if (typeof data.nonce === "string") {
-      nonce = Array.from(Buffer.from(data.nonce, "base64"))
-    } else {
-      nonce = data.nonce
-    }
-    if (nonce.length !== 32) {
+    // Nonce is now base64 encoded throughout the system
+    const nonce = data.nonce
+    // Validate nonce is valid base64 and has correct length (32 bytes = ~44 base64 chars)
+    const nonceBytes = Buffer.from(nonce, "base64")
+    if (nonceBytes.length !== 32) {
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
-        details: "Invalid nonce: expected 32-byte array",
+        details: `Invalid nonce: expected 32 bytes, got ${nonceBytes.length}`,
         stage: "signature_parse",
         attestationId,
       })
@@ -310,11 +307,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const nonceBase64 = Buffer.from(nonce).toString("base64")
+    // Nonce is already base64 encoded; use directly for deduplication
     // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations
     const remainingValidityMs = MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS - signatureAge
     const nonceTtlSeconds = Math.max(60, Math.ceil(remainingValidityMs / 1000)) // Min 60s to handle processing time
-    const nonceReserved = await reserveSignatureNonce(data.accountId, nonceBase64, nonceTtlSeconds)
+    const nonceReserved = await reserveSignatureNonce(data.accountId, nonce, nonceTtlSeconds)
 
     if (!nonceReserved) {
       return respondWithError({
@@ -332,7 +329,7 @@ export async function POST(request: NextRequest) {
       publicKey: data.publicKey,
       challenge: expectedChallenge,
       timestamp: signatureTimestamp,
-      nonce,
+      nonce, // base64 encoded
       recipient,
     }
 
@@ -387,7 +384,7 @@ export async function POST(request: NextRequest) {
         accountId: data.accountId,
         publicKey: data.publicKey,
         signature: data.signature,
-        nonce: nonceBase64,
+        nonce, // already base64 encoded
         timestamp: signatureTimestamp,
       })
 

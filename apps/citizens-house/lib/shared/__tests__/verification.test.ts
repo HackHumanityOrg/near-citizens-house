@@ -23,11 +23,13 @@ import {
 const testKeyPair = KeyPair.fromRandom("ed25519")
 const testPublicKey = testKeyPair.getPublicKey().toString() // "ed25519:BASE58..."
 
-// Standard 32-byte nonce (all zeros for predictable tests)
-const standardNonce = Array(32).fill(0) as number[]
+// Standard 32-byte nonce (all zeros for predictable tests) - base64 encoded
+const standardNonceBytes = Buffer.alloc(32, 0)
+const standardNonce = standardNonceBytes.toString("base64")
 
-// Random nonce for variety tests
-const randomNonce = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256))
+// Random nonce for variety tests - base64 encoded
+const randomNonceBytes = Buffer.from(Array.from({ length: 32 }, () => Math.floor(Math.random() * 256)))
+const randomNonce = randomNonceBytes.toString("base64")
 
 // Test account IDs
 const testAccountId = "test.testnet"
@@ -38,7 +40,7 @@ const validUserContextJson = {
   accountId: testAccountId,
   signature: "test-signature-base64",
   publicKey: testPublicKey,
-  nonce: Buffer.from(standardNonce).toString("base64"),
+  nonce: standardNonce, // already base64
   challenge: "Identify myself",
   recipient: testRecipient,
 }
@@ -78,8 +80,8 @@ describe("Near Citizens House", () => {
           it("should produce different hash for different nonces", async () => {
             await allure.severity("critical")
 
-            const nonce1 = Array(32).fill(0)
-            const nonce2 = Array(32).fill(1)
+            const nonce1 = Buffer.alloc(32, 0).toString("base64")
+            const nonce2 = Buffer.alloc(32, 1).toString("base64")
 
             const hash1 = computeNep413Hash("Identify myself", nonce1, testRecipient)
             const hash2 = computeNep413Hash("Identify myself", nonce2, testRecipient)
@@ -169,8 +171,8 @@ describe("Near Citizens House", () => {
           it("should require exactly 32-byte nonce", async () => {
             await allure.severity("critical")
 
-            // 32 bytes - exact boundary
-            const nonce32 = Array(32).fill(42)
+            // 32 bytes - exact boundary (base64 encoded)
+            const nonce32 = Buffer.alloc(32, 42).toString("base64")
             const hash = computeNep413Hash("Test", nonce32, testRecipient)
             expect(hash).toHaveLength(64)
           })
@@ -178,8 +180,8 @@ describe("Near Citizens House", () => {
           it("should throw for short nonce (31 bytes)", async () => {
             await allure.severity("critical")
 
-            // 31 bytes - one byte short
-            const shortNonce = Array(31).fill(42)
+            // 31 bytes - one byte short (base64 encoded)
+            const shortNonce = Buffer.alloc(31, 42).toString("base64")
             // Borsh serialization enforces exactly 32 bytes for the nonce field
             expect(() => computeNep413Hash("Test", shortNonce, testRecipient)).toThrow(/length/i)
           })
@@ -187,8 +189,8 @@ describe("Near Citizens House", () => {
           it("should throw for long nonce (33 bytes)", async () => {
             await allure.severity("critical")
 
-            // 33 bytes - one byte extra
-            const longNonce = Array(33).fill(42)
+            // 33 bytes - one byte extra (base64 encoded)
+            const longNonce = Buffer.alloc(33, 42).toString("base64")
             // Borsh serialization enforces exactly 32 bytes for the nonce field
             expect(() => computeNep413Hash("Test", longNonce, testRecipient)).toThrow(/length/i)
           })
@@ -196,7 +198,7 @@ describe("Near Citizens House", () => {
           it("should handle nonce with all 0xFF values (max byte)", async () => {
             await allure.severity("normal")
 
-            const maxNonce = Array(32).fill(255)
+            const maxNonce = Buffer.alloc(32, 255).toString("base64")
             const hash = computeNep413Hash("Test", maxNonce, testRecipient)
 
             expect(hash).toBeDefined()
@@ -206,7 +208,7 @@ describe("Near Citizens House", () => {
           it("should handle nonce with mixed byte values", async () => {
             await allure.severity("minor")
 
-            const mixedNonce = Array.from({ length: 32 }, (_, i) => i % 256)
+            const mixedNonce = Buffer.from(Array.from({ length: 32 }, (_, i) => i % 256)).toString("base64")
             const hash = computeNep413Hash("Test", mixedNonce, testRecipient)
 
             expect(hash).toBeDefined()
@@ -357,27 +359,25 @@ describe("Near Citizens House", () => {
         })
 
         describe("Positive Tests", () => {
-          it("should convert base64 nonce to array", async () => {
+          it("should return base64 nonce as-is", async () => {
             await allure.severity("normal")
 
             const result = parseUserContextData(validUserContextHex)
 
             expect(result?.nonce).toBeDefined()
-            expect(Array.isArray(result?.nonce)).toBe(true)
-            expect(result?.nonce).toHaveLength(32)
+            expect(typeof result?.nonce).toBe("string")
+            // Should be valid base64 that decodes to 32 bytes
+            const decoded = Buffer.from(result?.nonce ?? "", "base64")
+            expect(decoded).toHaveLength(32)
           })
 
-          it("should preserve array nonce format", async () => {
+          it("should preserve base64 nonce format", async () => {
             await allure.severity("normal")
 
-            const contextWithArrayNonce = {
-              ...validUserContextJson,
-              nonce: standardNonce,
-            }
-            const hex = Buffer.from(JSON.stringify(contextWithArrayNonce)).toString("hex")
+            const hex = Buffer.from(JSON.stringify(validUserContextJson)).toString("hex")
             const result = parseUserContextData(hex)
 
-            expect(result?.nonce).toEqual(standardNonce)
+            expect(result?.nonce).toBe(standardNonce)
           })
         })
 
@@ -497,8 +497,8 @@ describe("Near Citizens House", () => {
       // ============================================================================
 
       describe("verifyNearSignature", () => {
-        // Helper to create valid signature
-        async function createValidSignature(message: string, nonce: number[], recipient: string, keyPair: KeyPair) {
+        // Helper to create valid signature (nonce is base64 encoded)
+        async function createValidSignature(message: string, nonce: string, recipient: string, keyPair: KeyPair) {
           const hash = computeNep413Hash(message, nonce, recipient)
           const hashBuffer = Buffer.from(hash, "hex")
           const signature = keyPair.sign(hashBuffer)
@@ -595,7 +595,7 @@ describe("Near Citizens House", () => {
             const challenge = "Identify myself"
             const signature = await createValidSignature(challenge, standardNonce, testRecipient, testKeyPair)
 
-            const wrongNonce = Array(32).fill(99)
+            const wrongNonce = Buffer.alloc(32, 99).toString("base64")
             const result = verifyNearSignature(challenge, signature, testPublicKey, wrongNonce, testRecipient)
 
             expect(result.valid).toBe(false)
@@ -750,7 +750,7 @@ describe("Near Citizens House", () => {
           accountId: testAccountId,
           signature: "test-sig-base64",
           publicKey: testPublicKey,
-          nonce: standardNonce,
+          nonce: standardNonce, // base64 encoded
           challenge: "Identify myself",
           recipient: testRecipient,
         }
@@ -791,12 +791,13 @@ describe("Near Citizens House", () => {
             expect(result?.signature.recipient).toBe(sampleSigData.recipient)
           })
 
-          it("should convert nonce to base64", async () => {
+          it("should preserve base64 nonce", async () => {
             await allure.severity("normal")
 
             const result = buildProofData(sampleAccount, sampleSigData)
 
             expect(result?.signature.nonce).toBeDefined()
+            expect(result?.signature.nonce).toBe(standardNonce)
             // Verify it's valid base64
             const decoded = Buffer.from(result?.signature.nonce ?? "", "base64")
             expect(decoded).toHaveLength(32)

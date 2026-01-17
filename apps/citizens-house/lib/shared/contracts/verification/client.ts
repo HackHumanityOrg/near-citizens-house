@@ -200,15 +200,14 @@ export class NearContractDatabase implements IVerificationDatabase {
       // Extract NEAR signature data and Self proof from verification data
       const { signatureData, selfProofData, userContextData, ...verificationData } = data
 
-      // Convert signature data to contract format
-      // Use .map(Number) to ensure arrays contain actual numbers, not strings
-      // (string arrays can occur due to JSON serialization edge cases)
+      // Contract now uses Base64VecU8 for binary fields, so we can pass base64 strings directly
+      // No need for type conversions - consistent base64 format across all boundaries
       const nearSigData: ContractSignatureInput = {
         account_id: signatureData.accountId,
-        signature: Array.from(Buffer.from(signatureData.signature, "base64")).map(Number),
+        signature: signatureData.signature, // already base64 encoded
         public_key: signatureData.publicKey,
         challenge: signatureData.challenge,
-        nonce: signatureData.nonce.map(Number),
+        nonce: signatureData.nonce, // already base64 encoded
         recipient: signatureData.recipient,
       }
 

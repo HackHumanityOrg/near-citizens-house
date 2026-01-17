@@ -69,13 +69,14 @@ export interface ContractSelfProofInput {
 
 /**
  * Contract input format for NEAR signature data (snake_case, matches Rust struct).
+ * Uses base64 strings for binary fields (signature, nonce) to match Rust's Base64VecU8.
  */
 export interface ContractSignatureInput {
   account_id: NearAccountId
-  signature: number[] // Vec<u8> in Rust
+  signature: string // base64 encoded (Base64VecU8 in Rust)
   public_key: string
   challenge: string
-  nonce: number[] // Vec<u8> - 32 bytes
+  nonce: string // base64 encoded (Base64VecU8 in Rust)
   recipient: string
 }
 

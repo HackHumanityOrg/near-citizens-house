@@ -24,7 +24,7 @@
 //! cargo test --features integration-tests --test integration versioning
 //! ```
 
-use crate::helpers::{generate_nep413_signature, test_self_proof};
+use crate::helpers::{generate_nep413_signature, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, AccountId, Contract, Worker};
@@ -119,7 +119,7 @@ async fn store_verification(
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -165,7 +165,7 @@ async fn store_verification_v2(
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -422,7 +422,7 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -495,7 +495,7 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
                 "signature": signature.clone(),
                 "public_key": public_key.clone(),
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -522,7 +522,7 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),

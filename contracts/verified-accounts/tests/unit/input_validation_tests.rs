@@ -34,10 +34,10 @@ fn test_account_id_mismatch() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: different_user, // Mismatch: signature is for accounts(3)
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
@@ -81,10 +81,10 @@ fn test_recipient_mismatch() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: different_recipient, // Mismatch: recipient is accounts(3)
                 };
 
@@ -194,10 +194,10 @@ fn test_nullifier_too_long() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
@@ -241,10 +241,10 @@ fn test_nullifier_empty() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
@@ -286,10 +286,10 @@ fn test_attestation_id_invalid_value_rejected() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
@@ -333,10 +333,10 @@ fn test_attestation_id_invalid_value_secondary() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
@@ -382,10 +382,10 @@ fn test_user_context_data_too_long() {
                     let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                     let sig_data = NearSignatureData {
                         account_id: user.clone(),
-                        signature: vec![0; 64],
+                        signature: vec![0; 64].into(),
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
-                        nonce: vec![0; 32],
+                        nonce: vec![0; 32].into(),
                         recipient: accounts(0),
                     };
 

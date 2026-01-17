@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { Buffer } from "buffer"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
 import { SELF_CONFIG, getUniversalLink, type NearSignatureData, type AttestationId } from "@near-citizens/shared"
 import { Loader2, Info, Ban, Check } from "lucide-react"
@@ -53,12 +52,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
 
   // Build SelfApp for QR code (desktop)
   const selfAppDesktop = useMemo(() => {
-    const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
+    // nonce is already base64 encoded
     const userDefinedData = JSON.stringify({
       accountId: nearSignature.accountId,
       publicKey: nearSignature.publicKey,
       signature: nearSignature.signature,
-      nonce: nonceBase64,
+      nonce: nearSignature.nonce,
       timestamp: nearSignature.timestamp,
     })
 
@@ -78,12 +77,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
 
   // Build SelfApp for deeplink (mobile)
   const selfAppMobile = useMemo(() => {
-    const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
+    // nonce is already base64 encoded
     const userDefinedData = JSON.stringify({
       accountId: nearSignature.accountId,
       publicKey: nearSignature.publicKey,
       signature: nearSignature.signature,
-      nonce: nonceBase64,
+      nonce: nearSignature.nonce,
       timestamp: nearSignature.timestamp,
     })
 

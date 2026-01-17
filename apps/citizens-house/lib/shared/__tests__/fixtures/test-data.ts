@@ -5,7 +5,7 @@
  * For real integration tests, use actual Self.xyz mock passport data.
  */
 
-import type { SelfProofData } from "../../contracts/verification"
+import type { SelfProofData } from "../../schemas/zk-proof"
 
 // ============================================================================
 // ZK Proof Test Data
@@ -90,24 +90,24 @@ export const emptySignalsProof: SelfProofData = {
 // ============================================================================
 
 /**
- * Standard 32-byte nonce filled with zeros
+ * Standard 32-byte nonce filled with zeros (base64 encoded)
  */
-export const zeroNonce = Array(32).fill(0) as number[]
+export const zeroNonce = Buffer.alloc(32, 0).toString("base64")
 
 /**
- * Random nonce for variety tests
+ * Random nonce for variety tests (base64 encoded)
  */
-export const randomNonce = Array.from({ length: 32 }, (_, i) => (i * 7 + 13) % 256) as number[]
+export const randomNonce = Buffer.from(Array.from({ length: 32 }, (_, i) => (i * 7 + 13) % 256)).toString("base64")
 
 /**
- * Max value nonce (all 0xFF)
+ * Max value nonce (all 0xFF) (base64 encoded)
  */
-export const maxNonce = Array(32).fill(255) as number[]
+export const maxNonce = Buffer.alloc(32, 255).toString("base64")
 
 /**
- * Sequential nonce (0, 1, 2, ..., 31)
+ * Sequential nonce (0, 1, 2, ..., 31) (base64 encoded)
  */
-export const sequentialNonce = Array.from({ length: 32 }, (_, i) => i) as number[]
+export const sequentialNonce = Buffer.from(Array.from({ length: 32 }, (_, i) => i)).toString("base64")
 
 // ============================================================================
 // Account Test Data
@@ -127,13 +127,14 @@ export const testAccountIds = {
 
 /**
  * Create a valid user context JSON object
+ * @param nonce - base64 encoded 32-byte nonce
  */
-export function createUserContext(accountId: string, signature: string, publicKey: string, nonce: number[]) {
+export function createUserContext(accountId: string, signature: string, publicKey: string, nonce: string) {
   return {
     accountId,
     signature,
     publicKey,
-    nonce: Buffer.from(nonce).toString("base64"),
+    nonce, // already base64 encoded
   }
 }
 

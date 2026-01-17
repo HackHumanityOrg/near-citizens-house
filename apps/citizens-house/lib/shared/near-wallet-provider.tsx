@@ -192,7 +192,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           publicKey: signedMessage.publicKey,
           challenge: messageToSign, // Keep for interface compatibility
           timestamp: Date.now(), // Keep for interface compatibility
-          nonce: Array.from(nonce), // Required for NEP-413 verification
+          nonce: nonce.toString("base64"), // base64 encoded for consistent handling
           recipient, // Required for NEP-413 verification
         }
       } catch (error) {

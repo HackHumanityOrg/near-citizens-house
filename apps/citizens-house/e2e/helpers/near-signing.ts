@@ -50,10 +50,11 @@ export function signNep413Message(account: TestAccount, message: string, recipie
 
   // Generate random 32-byte nonce
   const nonce = randomBytes(32)
-  const nonceArray = Array.from(nonce)
+  const nonceBase64 = nonce.toString("base64")
 
   const recipientId = recipient ?? getSigningRecipient()
-  const messageHashHex = computeNep413Hash(message, nonceArray, recipientId)
+  // computeNep413Hash now expects base64 encoded nonce
+  const messageHashHex = computeNep413Hash(message, nonceBase64, recipientId)
   const messageHash = Buffer.from(messageHashHex, "hex")
 
   // Sign the hash
@@ -63,7 +64,7 @@ export function signNep413Message(account: TestAccount, message: string, recipie
     accountId: account.accountId,
     publicKey: account.publicKey,
     signature: Buffer.from(signature.signature).toString("base64"),
-    nonce: nonce.toString("base64"),
+    nonce: nonceBase64,
     timestamp: Date.now(),
   }
 }

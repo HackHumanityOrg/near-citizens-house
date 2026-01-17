@@ -1,6 +1,7 @@
 //! Shared test helpers for verified-accounts unit tests
 
 use near_crypto::{InMemorySigner, KeyType, SecretKey, Signer};
+use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::de::DeserializeOwned;
 use near_sdk::serde::Deserialize;
 use near_sdk::{env, test_utils::accounts, test_utils::VMContextBuilder, AccountId};
@@ -66,10 +67,10 @@ pub fn create_test_sig_data(user: AccountId) -> verified_accounts::NearSignature
     let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
     verified_accounts::NearSignatureData {
         account_id: user.clone(),
-        signature: vec![0; 64],
+        signature: Base64VecU8::from(vec![0; 64]),
         public_key: public_key_str.parse().unwrap(),
         challenge: "Identify myself".to_string(),
-        nonce: vec![0; 32],
+        nonce: Base64VecU8::from(vec![0; 32]),
         recipient: env::current_account_id(),
     }
 }
@@ -135,10 +136,10 @@ pub fn create_valid_signature(
     let public_key_str = signer.public_key().to_string();
     NearSignatureData {
         account_id: signer_id.clone(),
-        signature: signature_bytes,
+        signature: Base64VecU8::from(signature_bytes),
         public_key: public_key_str.parse().unwrap(),
         challenge: challenge.to_string(),
-        nonce: nonce.to_vec(),
+        nonce: Base64VecU8::from(nonce.to_vec()),
         recipient: recipient.clone(),
     }
 }

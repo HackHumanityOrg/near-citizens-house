@@ -3748,6 +3748,7 @@ dependencies = [
  "allure-core",
  "allure-rs",
  "anyhow",
+ "base64 0.22.1",
  "borsh",
  "futures",
  "near-crypto 0.34.1",

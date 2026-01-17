@@ -104,10 +104,11 @@ export function getNearAccountType(value: string): "named" | "implicit" | "eth-i
 /**
  * NEP-413 payload structure for NEAR message signing.
  * Used for validation and type inference; Borsh schema is used for serialization.
+ * Nonce is base64 encoded for consistency across all boundaries.
  */
 export const nep413PayloadSchema = z.object({
   message: z.string(),
-  nonce: z.instanceof(Uint8Array).or(z.array(z.number()).length(32)), // 32-byte nonce
+  nonce: z.string(), // base64 encoded 32-byte nonce
   recipient: z.string(),
   callbackUrl: z.string().nullable().optional(),
 })
@@ -117,14 +118,15 @@ export type Nep413Payload = z.infer<typeof nep413PayloadSchema>
 /**
  * NEAR wallet signature data (NEP-413).
  * Full signature data including challenge, timestamp, and recipient.
+ * All binary fields (signature, nonce) are base64 encoded strings.
  */
 export const nearSignatureDataSchema = z.object({
   accountId: nearAccountIdSchema,
-  signature: z.string(),
-  publicKey: z.string(),
+  signature: z.string(), // base64 encoded 64-byte signature
+  publicKey: z.string(), // ed25519:BASE58 format
   challenge: z.string(),
   timestamp: z.number(),
-  nonce: z.array(z.number()).length(32), // NEP-413 nonce (32 bytes)
+  nonce: z.string(), // base64 encoded 32-byte nonce
   recipient: z.string(), // NEP-413 recipient
 })
 
@@ -157,15 +159,13 @@ export type ParsedSignatureData = z.infer<typeof parsedSignatureDataSchema>
 /**
  * Schema for the NEAR signature data embedded in Self.xyz userDefinedData.
  * This is the JSON structure inside the hex-encoded userContextData.
+ * Nonce is base64 encoded for consistent handling.
  */
 export const userDefinedDataSchema = z.object({
   accountId: nearAccountIdSchema,
-  signature: z.string(),
-  publicKey: z.string(),
-  nonce: z.union([
-    z.string(), // Base64 encoded
-    z.array(z.number()).length(32), // Raw byte array
-  ]),
+  signature: z.string(), // base64 encoded
+  publicKey: z.string(), // ed25519:BASE58 format
+  nonce: z.string(), // base64 encoded 32-byte nonce
   timestamp: z.number().optional(),
 })
 
