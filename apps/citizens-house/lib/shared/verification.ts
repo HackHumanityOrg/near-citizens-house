@@ -9,7 +9,7 @@ import { createHash } from "crypto"
 import bs58 from "bs58"
 import { getSigningMessage, getSigningRecipient } from "./config"
 import type { ParsedSignatureData } from "./schemas/near"
-import type { ProofData } from "./schemas/contract"
+import type { ProofData } from "./schemas/verification-contract"
 import type { AttestationId } from "./schemas/selfxyz"
 
 /**

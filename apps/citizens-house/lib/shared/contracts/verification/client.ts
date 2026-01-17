@@ -21,7 +21,7 @@ import {
   type ContractSelfProofInput,
   type ContractSignatureInput,
   type VerificationDataWithSignature,
-} from "../../schemas/contract"
+} from "../../schemas/verification-contract"
 import type { NearAccountId } from "../../schemas/near"
 import type { Verification, VerificationSummary } from "../../schemas/selfxyz"
 import type { Pagination } from "../../schemas/core"

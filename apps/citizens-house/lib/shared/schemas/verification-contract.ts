@@ -1,5 +1,12 @@
 /**
- * Contract Schemas - NEAR smart contract input/output formats with snake_case transforms.
+ * Verification Contract Schemas - NEAR smart contract I/O types with snake_case ↔ camelCase transforms.
+ *
+ * This file handles the boundary between TypeScript (camelCase) and the NEAR contract (snake_case):
+ * - `contractVerificationSchema` - Parses contract output (snake_case) to app format (camelCase)
+ * - `ContractSelfProofInput`, `ContractSignatureInput` - Contract input types (snake_case)
+ * - `VerificationDataWithSignature`, `ProofData` - Extended types for storage and display
+ *
+ * For Self.xyz SDK types and app-facing verification records, see `selfxyz.ts`.
  */
 import { z } from "zod"
 import { SIZE_LIMITS } from "./core"

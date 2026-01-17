@@ -5,15 +5,8 @@
  * Based on @selfxyz/core SDK.
  */
 import { z } from "zod"
+import { SIZE_LIMITS } from "./core"
 import { nearAccountIdSchema } from "./near"
-
-/** Size limits for Self.xyz proof data. Must match the Rust contract constants. */
-export const SELF_SIZE_LIMITS = {
-  NULLIFIER: 80,
-  ATTESTATION_ID: 1,
-  USER_CONTEXT_DATA: 4096,
-  PROOF_COMPONENT: 80,
-} as const
 
 export const ATTESTATION_ID = {
   PASSPORT: 1,
@@ -36,7 +29,7 @@ export const PUBLIC_SIGNALS_COUNT: Record<AttestationId, number> = {
 
 export const MAX_PUBLIC_SIGNALS_COUNT = 21
 
-export const proofComponentSchema = z.string().max(SELF_SIZE_LIMITS.PROOF_COMPONENT)
+export const proofComponentSchema = z.string().max(SIZE_LIMITS.PROOF_COMPONENT)
 
 /** Groth16 ZK proof structure (a, b, c points). */
 export const zkProofSchema = z.object({
@@ -72,12 +65,12 @@ export const verifyRequestSchema = z.object({
   attestationId: attestationIdSchema,
   proof: zkProofSchema,
   publicSignals: publicSignalsSchema,
-  userContextData: z.string().max(SELF_SIZE_LIMITS.USER_CONTEXT_DATA),
+  userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA),
 })
 
 export type VerifyRequest = z.infer<typeof verifyRequestSchema>
 
-export const nullifierSchema = z.string().max(SELF_SIZE_LIMITS.NULLIFIER)
+export const nullifierSchema = z.string().max(SIZE_LIMITS.NULLIFIER)
 
 export type Nullifier = z.infer<typeof nullifierSchema>
 
@@ -126,43 +119,34 @@ export function parseUserDefinedDataRaw(userDefinedDataRaw: unknown): string | n
   return jsonString
 }
 
-// SDK Response Types
+// SDK Response Types (plain interfaces, not runtime-validated)
 
-export const selfIsValidDetailsSchema = z.object({
-  isValid: z.boolean(),
-  isMinimumAgeValid: z.boolean(),
-  isOfacValid: z.boolean(),
-})
+export interface SelfIsValidDetails {
+  isValid: boolean
+  isMinimumAgeValid: boolean
+  isOfacValid: boolean
+}
 
-export type SelfIsValidDetails = z.infer<typeof selfIsValidDetailsSchema>
+export interface SelfDiscloseOutput {
+  nullifier: string
+  nationality?: string
+  minimumAge?: string
+  gender?: string
+  [key: string]: unknown
+}
 
-export const selfDiscloseOutputSchema = z
-  .object({
-    nullifier: z.string(),
-    nationality: z.string().optional(),
-    minimumAge: z.string().optional(),
-    gender: z.string().optional(),
-  })
-  .passthrough()
+export interface SelfUserData {
+  userIdentifier: string
+  userDefinedData: string
+}
 
-export type SelfDiscloseOutput = z.infer<typeof selfDiscloseOutputSchema>
-
-export const selfUserDataSchema = z.object({
-  userIdentifier: z.string(),
-  userDefinedData: z.string(),
-})
-
-export type SelfUserData = z.infer<typeof selfUserDataSchema>
-
-export const selfVerificationResultSchema = z.object({
-  attestationId: attestationIdSchema,
-  isValidDetails: selfIsValidDetailsSchema,
-  forbiddenCountriesList: z.array(z.string()),
-  discloseOutput: selfDiscloseOutputSchema,
-  userData: selfUserDataSchema,
-})
-
-export type SelfVerificationResult = z.infer<typeof selfVerificationResultSchema>
+export interface SelfVerificationResult {
+  attestationId: AttestationId
+  isValidDetails: SelfIsValidDetails
+  forbiddenCountriesList: string[]
+  discloseOutput: SelfDiscloseOutput
+  userData: SelfUserData
+}
 
 // Verification Record Schemas (combine Self.xyz + NEAR data)
 
@@ -189,7 +173,7 @@ export const verificationSchema = z.object({
   attestationId: attestationIdSchema,
   verifiedAt: z.number(),
   selfProof: selfProofDataSchema,
-  userContextData: z.string().max(SELF_SIZE_LIMITS.USER_CONTEXT_DATA),
+  userContextData: z.string().max(SIZE_LIMITS.USER_CONTEXT_DATA),
 })
 
 export type Verification = z.output<typeof verificationSchema>

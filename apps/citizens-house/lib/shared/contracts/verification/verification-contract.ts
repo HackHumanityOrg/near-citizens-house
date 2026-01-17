@@ -4,7 +4,7 @@
  * Database interface for the verified-accounts smart contract.
  * All schemas are defined in lib/shared/schemas/.
  */
-import type { VerificationDataWithSignature } from "../../schemas/contract"
+import type { VerificationDataWithSignature } from "../../schemas/verification-contract"
 import type { NearAccountId } from "../../schemas/near"
 import type { VerificationSummary, Verification } from "../../schemas/selfxyz"
 import type { Pagination } from "../../schemas/core"
