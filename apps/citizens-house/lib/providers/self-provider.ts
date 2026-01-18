@@ -10,6 +10,7 @@ import { DefaultConfigStore, SelfBackendVerifier } from "@selfxyz/core"
 import { Buffer } from "buffer"
 import { SELF_CONFIG, SELF_VERIFICATION_CONFIG } from "../config"
 import { shouldSkipZkVerification, isE2ETesting } from "../config.server"
+import { logger } from "../logger"
 import type { AttestationId } from "../schemas/selfxyz"
 
 // ==============================================================================
@@ -75,10 +76,18 @@ const AllowedAttestationIds = new Map<AttestationId, boolean>([
 ])
 
 let selfBackendVerifier: SelfBackendVerifier | MockSelfBackendVerifier | null = null
+let mockModeWarningLogged = false
 
 export function getVerifier(): SelfBackendVerifier | MockSelfBackendVerifier {
   if (!selfBackendVerifier) {
     if (USE_MOCK_VERIFIER) {
+      // Log mock mode warning on first init
+      if (!mockModeWarningLogged) {
+        mockModeWarningLogged = true
+        logger.warn("self_verifier_mock_mode", {
+          reason: shouldSkipZkVerification() ? "SKIP_ZK_VERIFICATION" : "E2E_TESTING",
+        })
+      }
       // Use mock verifier for E2E testing
       selfBackendVerifier = new MockSelfBackendVerifier()
     } else {

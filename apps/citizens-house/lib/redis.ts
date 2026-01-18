@@ -13,6 +13,7 @@ import "server-only"
 
 import { createClient } from "redis"
 import { env } from "./schemas/env"
+import { logger } from "./logger"
 
 // Type for the Redis client returned by createClient
 type RedisClient = ReturnType<typeof createClient>
@@ -38,8 +39,16 @@ export async function getRedisClient(): Promise<RedisClient> {
 
       try {
         await client.connect()
+        // Log connection established (redact credentials)
+        logger.info("redis_connection_established", {
+          url: env.REDIS_URL.replace(/\/\/.*@/, "//***@"),
+        })
         return client
       } catch (err) {
+        // Log connection failure
+        logger.error("redis_connection_failed", {
+          error: err instanceof Error ? err.message : "Unknown error",
+        })
         // Reset the promise so subsequent calls can retry
         connectionPromise = null
         throw err

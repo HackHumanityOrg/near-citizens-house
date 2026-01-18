@@ -17,6 +17,14 @@ import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
 import { trackServerEvent } from "@/lib/analytics-server"
 import {
+  createVerifyContext,
+  extractDistinctId,
+  extractPlatform,
+  type VerifyContext,
+  type ErrorStage,
+} from "@/lib/logger"
+import { isNonRetryableError } from "@/lib/schemas/errors"
+import {
   verifyRequestSchema,
   createVerificationError,
   mapContractErrorToCode,
@@ -59,8 +67,23 @@ function isFullAccessPermission(permission: NearAccessKeyPermission): boolean {
   return false
 }
 
-async function hasFullAccessKey(accountId: NearAccountId, publicKey: string): Promise<boolean> {
+/**
+ * Categorize error code to outcome type for logging
+ */
+function categorizeOutcome(
+  code: string,
+  stage: ErrorStage,
+): "validation_error" | "signature_error" | "proof_error" | "storage_error" | "internal_error" {
+  if (stage === "request_validation") return "validation_error"
+  if (stage === "signature_parse" || stage === "signature_validate") return "signature_error"
+  if (stage === "self_verify" || stage === "self_verify_response") return "proof_error"
+  if (stage === "storage") return "storage_error"
+  return "internal_error"
+}
+
+async function hasFullAccessKey(accountId: NearAccountId, publicKey: string, ctx?: VerifyContext): Promise<boolean> {
   const provider = getRpcProvider()
+  ctx?.set("externalCalls.nearRpcCalled", true)
 
   try {
     const rawResponse = await provider.query({
@@ -72,16 +95,28 @@ async function hasFullAccessKey(accountId: NearAccountId, publicKey: string): Pr
 
     const parseResult = nearAccessKeyResponseSchema.safeParse(rawResponse)
     if (!parseResult.success) {
+      ctx?.set("externalCalls.nearRpcSuccess", false)
       return false
     }
 
+    ctx?.set("externalCalls.nearRpcSuccess", true)
     return isFullAccessPermission(parseResult.data.permission)
   } catch {
+    ctx?.set("externalCalls.nearRpcSuccess", false)
     return false
   }
 }
 
 export async function POST(request: NextRequest) {
+  // Initialize RequestContext for wide event logging
+  const ctx = createVerifyContext()
+  ctx.setMany({
+    route: "/api/verification/verify",
+    method: "POST",
+    distinctId: extractDistinctId(request),
+    platform: extractPlatform(request.headers.get("user-agent")),
+  })
+
   let sessionId: string | undefined
   let accountId: NearAccountId | undefined
   let optimisticAccountId: NearAccountId | undefined
@@ -90,15 +125,25 @@ export async function POST(request: NextRequest) {
     code,
     status,
     details,
+    stage,
     attestationId,
   }: {
     code: Parameters<typeof createVerificationError>[0]
     status: number
     details?: string
-    stage: string
+    stage: ErrorStage
     attestationId?: AttestationId
   }) => {
     const errorResponse = createVerificationError(code, details)
+
+    // Set error context for logging
+    ctx.set("outcome", categorizeOutcome(code, stage))
+    ctx.set("statusCode", status)
+    ctx.set("error.code", code)
+    ctx.set("error.message", errorResponse.reason)
+    ctx.set("error.isRetryable", !isNonRetryableError(code))
+    ctx.set("error.stage", stage)
+    ctx.emit("error")
 
     // Track rejection event - distinctId priority: accountId > optimisticAccountId > sessionId > anonymous
     const distinctId = accountId || optimisticAccountId || sessionId || "anonymous"
@@ -128,11 +173,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    ctx.startTimer("parseBody")
     const body = await request.json()
+    ctx.endTimer("parseBody")
 
     const parseResult = verifyRequestSchema.safeParse(body)
     if (!parseResult.success) {
       const missingFields = parseResult.error.issues.map((i) => i.path.join(".")).join(", ")
+      ctx.set("stageReached.parsed", false)
       return respondWithError({
         code: "MISSING_FIELDS",
         status: 400,
@@ -141,7 +189,15 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    ctx.set("stageReached.parsed", true)
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
+
+    // Set request context fields
+    ctx.set("attestationId", attestationId)
+    ctx.set("attestationType", getAttestationTypeName(attestationId))
+    ctx.set("hasProof", !!proof)
+    ctx.set("hasPublicSignals", !!publicSignals)
+    ctx.set("hasUserContextData", !!userContextData)
 
     // Optimistically try to extract accountId from userContextData for early tracking
     // This data will be validated properly later, but we want it for analytics
@@ -149,6 +205,7 @@ export async function POST(request: NextRequest) {
       const parsed = JSON.parse(userContextData)
       if (parsed && typeof parsed.accountId === "string") {
         optimisticAccountId = parsed.accountId as NearAccountId
+        ctx.set("nearAccountId", optimisticAccountId)
       }
     } catch {
       // Failed to parse, will use "anonymous" for tracking
@@ -164,10 +221,15 @@ export async function POST(request: NextRequest) {
 
     let rawSdkResponse: unknown
 
+    ctx.startTimer("selfxyzVerify")
+    ctx.set("externalCalls.selfxyzCalled", true)
     try {
       const verifier = getVerifier()
       rawSdkResponse = await verifier.verify(attestationId, proof, publicSignals, userContextData)
+      ctx.set("externalCalls.selfxyzSuccess", true)
     } catch (error) {
+      ctx.endTimer("selfxyzVerify")
+      ctx.set("externalCalls.selfxyzSuccess", false)
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 400,
@@ -176,11 +238,13 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
+    ctx.endTimer("selfxyzVerify")
 
     // Validate SDK response structure at external boundary
     const sdkParseResult = selfVerificationResultSchema.safeParse(rawSdkResponse)
     if (!sdkParseResult.success) {
       const issues = sdkParseResult.error.issues.map((i) => i.path.join(".")).join(", ")
+      ctx.set("stageReached.proofValidated", false)
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 502,
@@ -192,17 +256,26 @@ export async function POST(request: NextRequest) {
 
     const selfVerificationResult = sdkParseResult.data
     sessionId = selfVerificationResult.userData.userIdentifier
+    ctx.set("sessionId", sessionId)
+
+    // Extract nationality if available
+    if (selfVerificationResult.discloseOutput.nationality) {
+      ctx.set("nationality", selfVerificationResult.discloseOutput.nationality)
+    }
 
     const isValid = selfVerificationResult.isValidDetails.isValid
 
     if (!isValid) {
+      ctx.set("stageReached.proofValidated", false)
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 400,
-        stage: "self_verification",
+        stage: "self_verify",
         attestationId,
       })
     }
+
+    ctx.set("stageReached.proofValidated", true)
 
     // We don't have accountId yet at this point, but we need it for proof_validated
     // We'll track proof_validated after parsing userDefinedData (see below)
@@ -253,6 +326,8 @@ export async function POST(request: NextRequest) {
 
     const data = userDataResult.data
     accountId = data.accountId
+    ctx.set("nearAccountId", accountId)
+    ctx.set("signaturePresent", !!data.signature)
 
     // Track proof validation success (ZK proof passed, accountId now known)
     await trackServerEvent(accountId, {
@@ -275,12 +350,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    ctx.startTimer("signatureValidation")
+
     // Validate signature timestamp freshness
     const signatureTimestamp = data.timestamp ?? 0
     const now = Date.now()
     const signatureAge = now - signatureTimestamp
+    ctx.set("signatureTimestampAge", Math.round(signatureAge / 1000))
 
     if (signatureTimestamp === 0) {
+      ctx.endTimer("signatureValidation")
+      ctx.set("stageReached.signatureValidated", false)
       return respondWithError({
         code: "SIGNATURE_TIMESTAMP_INVALID",
         status: 400,
@@ -292,6 +372,8 @@ export async function POST(request: NextRequest) {
 
     // Allow clock skew in both directions
     if (signatureAge > MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS) {
+      ctx.endTimer("signatureValidation")
+      ctx.set("stageReached.signatureValidated", false)
       return respondWithError({
         code: "SIGNATURE_EXPIRED",
         status: 400,
@@ -303,6 +385,8 @@ export async function POST(request: NextRequest) {
 
     // Allow future timestamps within clock skew tolerance
     if (signatureAge < -CLOCK_SKEW_MS) {
+      ctx.endTimer("signatureValidation")
+      ctx.set("stageReached.signatureValidated", false)
       return respondWithError({
         code: "SIGNATURE_TIMESTAMP_INVALID",
         status: 400,
@@ -319,6 +403,8 @@ export async function POST(request: NextRequest) {
     try {
       recipient = getSigningRecipient()
     } catch {
+      ctx.endTimer("signatureValidation")
+      ctx.set("stageReached.signatureValidated", false)
       return respondWithError({
         code: "INTERNAL_ERROR",
         status: 500,
@@ -331,6 +417,8 @@ export async function POST(request: NextRequest) {
     const signatureCheck = verifyNearSignature(expectedChallenge, data.signature, data.publicKey, nonce, recipient)
 
     if (!signatureCheck.valid) {
+      ctx.endTimer("signatureValidation")
+      ctx.set("stageReached.signatureValidated", false)
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -340,8 +428,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const isFullAccess = await hasFullAccessKey(data.accountId, data.publicKey)
+    const isFullAccess = await hasFullAccessKey(data.accountId, data.publicKey, ctx)
     if (!isFullAccess) {
+      ctx.endTimer("signatureValidation")
+      ctx.set("stageReached.signatureValidated", false)
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -351,13 +441,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    ctx.endTimer("signatureValidation")
+    ctx.set("stageReached.signatureValidated", true)
+
     // Nonce is already base64 encoded; use directly for deduplication
     // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations
     const remainingValidityMs = MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS - signatureAge
     const nonceTtlSeconds = Math.max(60, Math.ceil(remainingValidityMs / 1000)) // Min 60s to handle processing time
+
+    ctx.startTimer("nonceReservation")
+    ctx.set("externalCalls.redisCalled", true)
     const nonceReserved = await reserveSignatureNonce(data.accountId, nonce, nonceTtlSeconds)
+    ctx.endTimer("nonceReservation")
 
     if (!nonceReserved) {
+      ctx.set("externalCalls.redisSuccess", true) // Redis worked, just a duplicate
+      ctx.set("stageReached.nonceReserved", false)
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -366,6 +465,9 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
+
+    ctx.set("externalCalls.redisSuccess", true)
+    ctx.set("stageReached.nonceReserved", true)
 
     const nearSignature: NearSignatureData = {
       accountId: data.accountId,
@@ -406,6 +508,11 @@ export async function POST(request: NextRequest) {
     // Note: NEAR signature verification is performed by the smart contract (single source of truth)
     // The contract implements full NEP-413 verification with ed25519_verify
 
+    ctx.startTimer("contractStorage")
+    ctx.set("externalCalls.contractCalled", true)
+    ctx.set("contract.contractId", NEAR_SERVER_CONFIG.verificationContractId)
+    ctx.set("contract.methodCalled", "store_verification")
+
     try {
       // Convert proof to string format for on-chain storage
       const selfProofData = {
@@ -444,6 +551,10 @@ export async function POST(request: NextRequest) {
         userContextData: fullUserContextData,
       } satisfies VerificationDataWithSignature)
 
+      ctx.endTimer("contractStorage")
+      ctx.set("externalCalls.contractSuccess", true)
+      ctx.set("stageReached.storedOnChain", true)
+
       // Track successful on-chain storage
       await trackServerEvent(nearSignature.accountId, {
         domain: "verification",
@@ -459,6 +570,7 @@ export async function POST(request: NextRequest) {
       // Update session status for deep link callback
       // The userId from Self.xyz is used as the sessionId in our deep link flow
       if (sessionId) {
+        ctx.startTimer("sessionUpdate")
         try {
           await updateSession(sessionId, {
             status: "success",
@@ -468,8 +580,12 @@ export async function POST(request: NextRequest) {
         } catch {
           // Failed to update session, but verification succeeded
         }
+        ctx.endTimer("sessionUpdate")
       }
     } catch (error) {
+      ctx.endTimer("contractStorage")
+      ctx.set("externalCalls.contractSuccess", false)
+      ctx.set("stageReached.storedOnChain", false)
       const errorMsg = error instanceof Error ? error.message : ""
       const errCode = mapContractErrorToCode(errorMsg)
 
@@ -481,6 +597,11 @@ export async function POST(request: NextRequest) {
         attestationId,
       })
     }
+
+    // Log successful verification
+    ctx.set("outcome", "success")
+    ctx.set("statusCode", 200)
+    ctx.emit("info")
 
     return NextResponse.json(
       {
@@ -497,6 +618,8 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     )
   } catch (error) {
+    // Catch any unexpected errors that weren't handled above
+    ctx.set("stageReached.parsed", ctx.get("stageReached.parsed") ?? false)
     return respondWithError({
       code: "INTERNAL_ERROR",
       status: 500,
