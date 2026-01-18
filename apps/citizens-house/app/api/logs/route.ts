@@ -12,7 +12,7 @@ import { z } from "zod"
 const browserLogPayloadSchema = z.object({
   level: z.string(),
   messages: z.array(z.unknown()),
-  bindings: z.array(z.record(z.unknown())).optional(),
+  bindings: z.array(z.record(z.string(), z.unknown())).optional(),
   ts: z.number(),
   distinctId: z.string().optional(),
   url: z.string().optional(),

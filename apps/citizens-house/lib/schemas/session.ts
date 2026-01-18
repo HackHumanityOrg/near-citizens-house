@@ -20,7 +20,7 @@ export const sessionSchema = z.object({
 
 export type Session = z.infer<typeof sessionSchema>
 
-export const sessionIdSchema = z.string().uuid("Invalid session ID format")
+export const sessionIdSchema = z.uuid({ message: "Invalid session ID format" })
 
 export type SessionId = z.infer<typeof sessionIdSchema>
 

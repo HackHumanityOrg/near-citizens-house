@@ -17,6 +17,7 @@
  */
 import "server-only"
 import pino from "pino"
+import { z } from "zod"
 import {
   logEventSchema,
   serializeError,
@@ -133,7 +134,7 @@ function log<D extends LogDomain, A extends LogActionForDomain<D>>(
   if (isDev) {
     const result = logEventSchema.safeParse(event)
     if (!result.success) {
-      pinoLogger.error({ validationError: result.error.format() }, "Invalid log event")
+      pinoLogger.error({ validationError: z.treeifyError(result.error) }, "Invalid log event")
       throw new Error(`Invalid log event: ${result.error.message}`)
     }
   }

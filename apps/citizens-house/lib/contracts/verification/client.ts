@@ -13,7 +13,6 @@ import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
 import { KeyPair } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
-import { z } from "zod"
 import {
   contractVerificationSchema,
   contractVerificationSummarySchema,
@@ -24,6 +23,7 @@ import {
   type VerificationDataWithSignature,
   type TransformedVerification,
 } from "../../schemas/verification-contract"
+
 import type { NearAccountId } from "../../schemas/near"
 import type { Verification, VerificationSummary } from "../../schemas/selfxyz"
 import type { Pagination } from "../../schemas/core"
@@ -330,7 +330,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       // Use safeParse to filter out invalid entries instead of failing the entire list
       const verifications = (accounts ?? [])
         .map((item) => contractVerificationSchema.safeParse(item))
-        .filter((r): r is z.SafeParseSuccess<TransformedVerification> => r.success)
+        .filter((r): r is { success: true; data: TransformedVerification } => r.success)
         .map((r) => r.data)
 
       return { accounts: verifications, total: total ?? 0 }
@@ -370,7 +370,7 @@ export class NearContractDatabase implements IVerificationDatabase {
     // Use safeParse to filter out invalid entries instead of failing the entire list
     const verifications = (accounts ?? [])
       .map((item) => contractVerificationSchema.safeParse(item))
-      .filter((r): r is z.SafeParseSuccess<TransformedVerification> => r.success)
+      .filter((r): r is { success: true; data: TransformedVerification } => r.success)
       .map((r) => r.data)
 
     return { accounts: verifications.reverse(), total }

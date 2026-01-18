@@ -157,22 +157,20 @@ const selfIsValidDetailsSchema = z.object({
   isOfacValid: z.boolean().optional(),
 })
 
-const selfDiscloseOutputSchema = z
-  .object({
-    nullifier: z.string().min(1),
-    nationality: z.string().optional(),
-  })
-  .passthrough()
+const selfDiscloseOutputSchema = z.looseObject({
+  nullifier: z.string().min(1),
+  nationality: z.string().optional(),
+})
 
 const selfUserDataSchema = z.object({
   userIdentifier: z.string(),
-  userDefinedData: z.union([z.string(), z.array(z.number()), z.record(z.number())]),
+  userDefinedData: z.union([z.string(), z.array(z.number()), z.record(z.string(), z.number())]),
 })
 
 export const selfVerificationResultSchema = z.object({
   attestationId: attestationIdSchema,
   isValidDetails: selfIsValidDetailsSchema,
-  forbiddenCountriesList: z.array(z.string()).optional().default([]),
+  forbiddenCountriesList: z.array(z.string()).default([]),
   discloseOutput: selfDiscloseOutputSchema,
   userData: selfUserDataSchema,
 })

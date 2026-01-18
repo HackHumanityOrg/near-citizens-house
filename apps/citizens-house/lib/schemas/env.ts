@@ -24,7 +24,7 @@ export const env = createEnv({
     REDIS_URL: z.string().min(1, "Redis URL is required for session storage"),
 
     // Celo RPC URL for ZK proof verification (optional - has default)
-    CELO_RPC_URL: z.string().url().optional(),
+    CELO_RPC_URL: z.url().optional(),
 
     // E2E Testing flags - WARNING: Must NEVER be "true" in production
     SKIP_ZK_VERIFICATION: z.string().optional(),
@@ -47,7 +47,7 @@ export const env = createEnv({
     NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: z.string().min(1, "Verification contract ID is required"),
 
     // App URL
-    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_APP_URL: z.url().optional(),
 
     // UserJot (optional feedback widget)
     NEXT_PUBLIC_USERJOT_PROJECT_ID: z.string().optional(),

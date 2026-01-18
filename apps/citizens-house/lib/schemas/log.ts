@@ -61,7 +61,7 @@ const logEventBase = {
   message: z.string(),
   // Auto-populated by logger (optional in schema)
   timestamp: z.number().optional(),
-  requestId: z.string().uuid().optional(),
+  requestId: z.uuid().optional(),
   traceId: z.string().optional(),
   spanId: z.string().optional(),
   distinctId: z.string().optional(),
