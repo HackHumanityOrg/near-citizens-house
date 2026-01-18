@@ -83,7 +83,7 @@ function categorizeOutcome(
 
 async function hasFullAccessKey(accountId: NearAccountId, publicKey: string, ctx?: VerifyContext): Promise<boolean> {
   const provider = getRpcProvider()
-  ctx?.set("externalCalls.nearRpcCalled", true)
+  ctx?.setNested("externalCalls.nearRpcCalled", true)
 
   try {
     const rawResponse = await provider.query({
@@ -95,14 +95,14 @@ async function hasFullAccessKey(accountId: NearAccountId, publicKey: string, ctx
 
     const parseResult = nearAccessKeyResponseSchema.safeParse(rawResponse)
     if (!parseResult.success) {
-      ctx?.set("externalCalls.nearRpcSuccess", false)
+      ctx?.setNested("externalCalls.nearRpcSuccess", false)
       return false
     }
 
-    ctx?.set("externalCalls.nearRpcSuccess", true)
+    ctx?.setNested("externalCalls.nearRpcSuccess", true)
     return isFullAccessPermission(parseResult.data.permission)
   } catch {
-    ctx?.set("externalCalls.nearRpcSuccess", false)
+    ctx?.setNested("externalCalls.nearRpcSuccess", false)
     return false
   }
 }
@@ -139,10 +139,10 @@ export async function POST(request: NextRequest) {
     // Set error context for logging
     ctx.set("outcome", categorizeOutcome(code, stage))
     ctx.set("statusCode", status)
-    ctx.set("error.code", code)
-    ctx.set("error.message", errorResponse.reason)
-    ctx.set("error.isRetryable", !isNonRetryableError(code))
-    ctx.set("error.stage", stage)
+    ctx.setNested("error.code", code)
+    ctx.setNested("error.message", errorResponse.reason)
+    ctx.setNested("error.isRetryable", !isNonRetryableError(code))
+    ctx.setNested("error.stage", stage)
     ctx.emit("error")
 
     // Track rejection event - distinctId priority: accountId > optimisticAccountId > sessionId > anonymous
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
     const parseResult = verifyRequestSchema.safeParse(body)
     if (!parseResult.success) {
       const missingFields = parseResult.error.issues.map((i) => i.path.join(".")).join(", ")
-      ctx.set("stageReached.parsed", false)
+      ctx.setNested("stageReached.parsed", false)
       return respondWithError({
         code: "MISSING_FIELDS",
         status: 400,
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    ctx.set("stageReached.parsed", true)
+    ctx.setNested("stageReached.parsed", true)
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
 
     // Set request context fields
@@ -222,14 +222,14 @@ export async function POST(request: NextRequest) {
     let rawSdkResponse: unknown
 
     ctx.startTimer("selfxyzVerify")
-    ctx.set("externalCalls.selfxyzCalled", true)
+    ctx.setNested("externalCalls.selfxyzCalled", true)
     try {
       const verifier = getVerifier()
       rawSdkResponse = await verifier.verify(attestationId, proof, publicSignals, userContextData)
-      ctx.set("externalCalls.selfxyzSuccess", true)
+      ctx.setNested("externalCalls.selfxyzSuccess", true)
     } catch (error) {
       ctx.endTimer("selfxyzVerify")
-      ctx.set("externalCalls.selfxyzSuccess", false)
+      ctx.setNested("externalCalls.selfxyzSuccess", false)
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 400,
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
     const sdkParseResult = selfVerificationResultSchema.safeParse(rawSdkResponse)
     if (!sdkParseResult.success) {
       const issues = sdkParseResult.error.issues.map((i) => i.path.join(".")).join(", ")
-      ctx.set("stageReached.proofValidated", false)
+      ctx.setNested("stageReached.proofValidated", false)
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 502,
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
     const isValid = selfVerificationResult.isValidDetails.isValid
 
     if (!isValid) {
-      ctx.set("stageReached.proofValidated", false)
+      ctx.setNested("stageReached.proofValidated", false)
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 400,
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    ctx.set("stageReached.proofValidated", true)
+    ctx.setNested("stageReached.proofValidated", true)
 
     // We don't have accountId yet at this point, but we need it for proof_validated
     // We'll track proof_validated after parsing userDefinedData (see below)
@@ -360,7 +360,7 @@ export async function POST(request: NextRequest) {
 
     if (signatureTimestamp === 0) {
       ctx.endTimer("signatureValidation")
-      ctx.set("stageReached.signatureValidated", false)
+      ctx.setNested("stageReached.signatureValidated", false)
       return respondWithError({
         code: "SIGNATURE_TIMESTAMP_INVALID",
         status: 400,
@@ -373,7 +373,7 @@ export async function POST(request: NextRequest) {
     // Allow clock skew in both directions
     if (signatureAge > MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS) {
       ctx.endTimer("signatureValidation")
-      ctx.set("stageReached.signatureValidated", false)
+      ctx.setNested("stageReached.signatureValidated", false)
       return respondWithError({
         code: "SIGNATURE_EXPIRED",
         status: 400,
@@ -386,7 +386,7 @@ export async function POST(request: NextRequest) {
     // Allow future timestamps within clock skew tolerance
     if (signatureAge < -CLOCK_SKEW_MS) {
       ctx.endTimer("signatureValidation")
-      ctx.set("stageReached.signatureValidated", false)
+      ctx.setNested("stageReached.signatureValidated", false)
       return respondWithError({
         code: "SIGNATURE_TIMESTAMP_INVALID",
         status: 400,
@@ -404,7 +404,7 @@ export async function POST(request: NextRequest) {
       recipient = getSigningRecipient()
     } catch {
       ctx.endTimer("signatureValidation")
-      ctx.set("stageReached.signatureValidated", false)
+      ctx.setNested("stageReached.signatureValidated", false)
       return respondWithError({
         code: "INTERNAL_ERROR",
         status: 500,
@@ -418,7 +418,7 @@ export async function POST(request: NextRequest) {
 
     if (!signatureCheck.valid) {
       ctx.endTimer("signatureValidation")
-      ctx.set("stageReached.signatureValidated", false)
+      ctx.setNested("stageReached.signatureValidated", false)
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
     const isFullAccess = await hasFullAccessKey(data.accountId, data.publicKey, ctx)
     if (!isFullAccess) {
       ctx.endTimer("signatureValidation")
-      ctx.set("stageReached.signatureValidated", false)
+      ctx.setNested("stageReached.signatureValidated", false)
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -442,7 +442,7 @@ export async function POST(request: NextRequest) {
     }
 
     ctx.endTimer("signatureValidation")
-    ctx.set("stageReached.signatureValidated", true)
+    ctx.setNested("stageReached.signatureValidated", true)
 
     // Nonce is already base64 encoded; use directly for deduplication
     // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations
@@ -450,13 +450,13 @@ export async function POST(request: NextRequest) {
     const nonceTtlSeconds = Math.max(60, Math.ceil(remainingValidityMs / 1000)) // Min 60s to handle processing time
 
     ctx.startTimer("nonceReservation")
-    ctx.set("externalCalls.redisCalled", true)
+    ctx.setNested("externalCalls.redisCalled", true)
     const nonceReserved = await reserveSignatureNonce(data.accountId, nonce, nonceTtlSeconds)
     ctx.endTimer("nonceReservation")
 
     if (!nonceReserved) {
-      ctx.set("externalCalls.redisSuccess", true) // Redis worked, just a duplicate
-      ctx.set("stageReached.nonceReserved", false)
+      ctx.setNested("externalCalls.redisSuccess", true) // Redis worked, just a duplicate
+      ctx.setNested("stageReached.nonceReserved", false)
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -466,8 +466,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    ctx.set("externalCalls.redisSuccess", true)
-    ctx.set("stageReached.nonceReserved", true)
+    ctx.setNested("externalCalls.redisSuccess", true)
+    ctx.setNested("stageReached.nonceReserved", true)
 
     const nearSignature: NearSignatureData = {
       accountId: data.accountId,
@@ -509,9 +509,9 @@ export async function POST(request: NextRequest) {
     // The contract implements full NEP-413 verification with ed25519_verify
 
     ctx.startTimer("contractStorage")
-    ctx.set("externalCalls.contractCalled", true)
-    ctx.set("contract.contractId", NEAR_SERVER_CONFIG.verificationContractId)
-    ctx.set("contract.methodCalled", "store_verification")
+    ctx.setNested("externalCalls.contractCalled", true)
+    ctx.setNested("contract.contractId", NEAR_SERVER_CONFIG.verificationContractId)
+    ctx.setNested("contract.methodCalled", "store_verification")
 
     try {
       // Convert proof to string format for on-chain storage
@@ -552,8 +552,8 @@ export async function POST(request: NextRequest) {
       } satisfies VerificationDataWithSignature)
 
       ctx.endTimer("contractStorage")
-      ctx.set("externalCalls.contractSuccess", true)
-      ctx.set("stageReached.storedOnChain", true)
+      ctx.setNested("externalCalls.contractSuccess", true)
+      ctx.setNested("stageReached.storedOnChain", true)
 
       // Track successful on-chain storage
       await trackServerEvent(nearSignature.accountId, {
@@ -584,8 +584,8 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       ctx.endTimer("contractStorage")
-      ctx.set("externalCalls.contractSuccess", false)
-      ctx.set("stageReached.storedOnChain", false)
+      ctx.setNested("externalCalls.contractSuccess", false)
+      ctx.setNested("stageReached.storedOnChain", false)
       const errorMsg = error instanceof Error ? error.message : ""
       const errCode = mapContractErrorToCode(errorMsg)
 
@@ -619,7 +619,7 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     // Catch any unexpected errors that weren't handled above
-    ctx.set("stageReached.parsed", ctx.get("stageReached.parsed") ?? false)
+    ctx.setNested("stageReached.parsed", ctx.getNested("stageReached.parsed") ?? false)
     return respondWithError({
       code: "INTERNAL_ERROR",
       status: 500,

@@ -115,7 +115,7 @@ class BackendKeyPool {
     ctx?.startTimer("keyPoolSelection")
     const keyIndex = await this.getNextKeyIndex()
     ctx?.endTimer("keyPoolSelection")
-    ctx?.set("keyPool.index", keyIndex)
+    ctx?.setNested("keyPool.index", keyIndex)
 
     const keyPair = this.keys[keyIndex]
     const signer = new KeyPairSigner(keyPair)

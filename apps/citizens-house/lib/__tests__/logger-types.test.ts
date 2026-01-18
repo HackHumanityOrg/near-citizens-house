@@ -1,6 +1,6 @@
 /**
  * Type-level tests for logger RequestContext.
- * These tests verify compile-time type safety for field paths, timer names, and value types.
+ * These tests verify compile-time type safety for field names, timer names, and value types.
  */
 import { describe, it, expect } from "vitest"
 import {
@@ -25,18 +25,18 @@ describe("Logger RequestContext Type Safety", () => {
       expect(true).toBe(true)
     })
 
-    it("accepts valid nested paths", () => {
+    it("accepts valid nested paths via setNested", () => {
       const ctx = createVerifyContext()
-      ctx.set("stageReached.parsed", true)
-      ctx.set("stageReached.signatureValidated", true)
-      ctx.set("stageReached.storedOnChain", false)
-      ctx.set("externalCalls.selfxyzCalled", true)
-      ctx.set("externalCalls.selfxyzSuccess", true)
-      ctx.set("error.code", "VALIDATION_ERROR")
-      ctx.set("error.message", "Invalid signature")
-      ctx.set("error.stage", "signature_validate")
-      ctx.set("contract.contractId", "verify.near")
-      ctx.set("keyPool.index", 0)
+      ctx.setNested("stageReached.parsed", true)
+      ctx.setNested("stageReached.signatureValidated", true)
+      ctx.setNested("stageReached.storedOnChain", false)
+      ctx.setNested("externalCalls.selfxyzCalled", true)
+      ctx.setNested("externalCalls.selfxyzSuccess", true)
+      ctx.setNested("error.code", "VALIDATION_ERROR")
+      ctx.setNested("error.message", "Invalid signature")
+      ctx.setNested("error.stage", "signature_validate")
+      ctx.setNested("contract.contractId", "verify.near")
+      ctx.setNested("keyPool.index", 0)
       expect(true).toBe(true)
     })
 
@@ -63,30 +63,13 @@ describe("Logger RequestContext Type Safety", () => {
       ctx.set("outcome", "internal_error")
       expect(true).toBe(true)
     })
-
-    it("accepts valid error stage values", () => {
-      const ctx = createVerifyContext()
-      ctx.set("error.stage", "request_validation")
-      ctx.set("error.stage", "self_verify")
-      ctx.set("error.stage", "signature_parse")
-      ctx.set("error.stage", "signature_validate")
-      ctx.set("error.stage", "storage")
-      expect(true).toBe(true)
-    })
   })
 
   describe("VerifyContext - invalid operations cause type errors", () => {
-    it("rejects invalid field paths", () => {
+    it("rejects invalid field names", () => {
       const ctx = createVerifyContext()
-      // @ts-expect-error - invalidField is not a valid path
+      // @ts-expect-error - invalidField is not a valid key on VerifyRequestEvent
       ctx.set("invalidField", "value")
-      expect(true).toBe(true)
-    })
-
-    it("rejects invalid nested paths", () => {
-      const ctx = createVerifyContext()
-      // @ts-expect-error - stageReached.invalid is not a valid path
-      ctx.set("stageReached.invalid", true)
       expect(true).toBe(true)
     })
 
@@ -108,13 +91,6 @@ describe("Logger RequestContext Type Safety", () => {
       const ctx = createVerifyContext()
       // @ts-expect-error - invalid_outcome is not a valid Outcome
       ctx.set("outcome", "invalid_outcome")
-      expect(true).toBe(true)
-    })
-
-    it("rejects invalid error stage values", () => {
-      const ctx = createVerifyContext()
-      // @ts-expect-error - invalid_stage is not a valid ErrorStage
-      ctx.set("error.stage", "invalid_stage")
       expect(true).toBe(true)
     })
 
@@ -148,13 +124,20 @@ describe("Logger RequestContext Type Safety", () => {
       ctx.endTimer("contractFallback")
       expect(true).toBe(true)
     })
+
+    it("accepts nested paths via setNested", () => {
+      const ctx = createStatusContext()
+      ctx.setNested("error.code", "NOT_FOUND")
+      ctx.setNested("error.message", "Session not found")
+      expect(true).toBe(true)
+    })
   })
 
   describe("StatusContext - invalid operations cause type errors", () => {
     it("rejects VerifyContext-specific fields", () => {
       const ctx = createStatusContext()
-      // @ts-expect-error - stageReached.parsed is a VerifyPaths, not StatusPaths
-      ctx.set("stageReached.parsed", true)
+      // @ts-expect-error - stageReached is a VerifyRequestEvent field, not StatusRequestEvent
+      ctx.set("stageReached", { parsed: true })
       expect(true).toBe(true)
     })
 
@@ -215,7 +198,7 @@ describe("Logger RequestContext Type Safety", () => {
   describe("CheckIsVerifiedContext - invalid operations cause type errors", () => {
     it("rejects fields from other event types", () => {
       const ctx = createCheckIsVerifiedContext()
-      // @ts-expect-error - sessionFound is a StatusPaths field
+      // @ts-expect-error - sessionFound is a StatusRequestEvent field
       ctx.set("sessionFound", true)
       expect(true).toBe(true)
     })
@@ -238,6 +221,39 @@ describe("Logger RequestContext Type Safety", () => {
         outcome: "success",
       })
       expect(true).toBe(true)
+    })
+
+    it("rejects invalid fields in setMany", () => {
+      const ctx = createVerifyContext()
+      ctx.setMany({
+        route: "/api/verification/verify",
+        method: "POST",
+        // @ts-expect-error - invalidField is not a valid key
+        invalidField: "value",
+      })
+      expect(true).toBe(true)
+    })
+  })
+
+  describe("get - type safety", () => {
+    it("returns correctly typed values", () => {
+      const ctx = createVerifyContext()
+      ctx.set("outcome", "success")
+      ctx.set("statusCode", 200)
+      ctx.set("hasProof", true)
+
+      const outcome = ctx.get("outcome")
+      const statusCode = ctx.get("statusCode")
+      const hasProof = ctx.get("hasProof")
+
+      // These type assertions verify the return types are correct
+      const _outcome: typeof outcome = "success" as const
+      const _statusCode: typeof statusCode = 200
+      const _hasProof: typeof hasProof = true
+
+      expect(_outcome).toBeDefined()
+      expect(_statusCode).toBeDefined()
+      expect(_hasProof).toBeDefined()
     })
   })
 })

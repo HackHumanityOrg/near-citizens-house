@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
   const accountIdParam = request.nextUrl.searchParams.get("accountId")
 
   ctx.set("sessionId", sessionId)
-  ctx.set("nearAccountId", accountIdParam)
+  ctx.set("nearAccountId", accountIdParam ?? undefined)
 
   if (!sessionId) {
     ctx.set("outcome", "validation_error")
     ctx.set("statusCode", 400)
-    ctx.set("error.message", "Missing sessionId parameter")
+    ctx.setNested("error.message", "Missing sessionId parameter")
     ctx.emit("warn")
     return NextResponse.json({ status: "error", error: "Missing sessionId parameter" }, { status: 400 })
   }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   if (!isValidSessionId(sessionId)) {
     ctx.set("outcome", "validation_error")
     ctx.set("statusCode", 400)
-    ctx.set("error.message", "Invalid sessionId format")
+    ctx.setNested("error.message", "Invalid sessionId format")
     ctx.emit("warn")
     return NextResponse.json({ status: "error", error: "Invalid sessionId format" }, { status: 400 })
   }
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
   } catch {
     ctx.set("outcome", "error")
     ctx.set("statusCode", 500)
-    ctx.set("error.message", "Failed to fetch session status")
+    ctx.setNested("error.message", "Failed to fetch session status")
     ctx.emit("error")
     return NextResponse.json({ status: "error", error: "Failed to fetch session status" }, { status: 500 })
   }

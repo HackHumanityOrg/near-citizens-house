@@ -7,7 +7,9 @@
  * Usage:
  * ```typescript
  * const ctx = createVerifyContext()
- * ctx.setMany({ route: "/api/verify", method: "POST" })
+ * ctx.set("route", "/api/verification/verify")
+ * ctx.set("method", "POST")
+ * ctx.setNested("error.code", "VALIDATION_ERROR")
  * ctx.startTimer("selfxyzVerify")
  * // ... perform verification
  * ctx.endTimer("selfxyzVerify")
@@ -17,8 +19,9 @@
  *
  * Type Safety:
  * - Each factory function returns a context typed for its event
- * - Invalid keys, values, or timer names are compile-time errors
- * - Use createVerifyContext(), createStatusContext(), etc.
+ * - Top-level fields have full type safety via keyof E
+ * - Nested paths use setNested() for dot-notation access
+ * - Timer names are compile-time validated
  */
 
 import { logger } from "./server"
@@ -30,19 +33,19 @@ import type {
   StatusRequestEvent,
   GetVerificationsEvent,
   CheckIsVerifiedEvent,
+  EventTimers,
 } from "./types"
-import type { EventPaths, EventTimers, PathValue } from "./paths"
 
 /**
  * Strongly-typed RequestContext for wide event logging.
  *
  * Generic over the event type E to provide compile-time safety for:
- * - Field paths (set/get)
+ * - Top-level field names and values (set)
+ * - Nested paths (setNested)
  * - Timer names (startTimer/endTimer)
- * - Field value types
  */
 export class RequestContext<E extends WideEvent> {
-  private data: Record<string, unknown> = {}
+  private data: Partial<E> = {}
   private timers: Map<string, number> = new Map()
   private readonly startTime: number
   readonly requestId: string
@@ -50,57 +53,62 @@ export class RequestContext<E extends WideEvent> {
   constructor() {
     this.startTime = performance.now()
     this.requestId = crypto.randomUUID()
-    this.data.requestId = this.requestId
+    ;(this.data as Record<string, unknown>).requestId = this.requestId
   }
 
   /**
-   * Set a single field on the event
+   * Set a top-level field on the event
    *
-   * Supports nested paths using dot notation:
-   * - ctx.set("error.code", "INVALID") sets event.error.code = "INVALID"
-   * - ctx.set("outcome", "success") sets event.outcome = "success"
+   * Type-safe: only valid top-level keys and value types are accepted.
    *
-   * Type-safe: only valid paths for this event type are accepted.
+   * @example
+   * ctx.set("outcome", "success")
+   * ctx.set("statusCode", 200)
    */
-  set<P extends EventPaths<E>>(key: P, value: PathValue<E, P>): this {
-    const keyStr = key as string
-    if (keyStr.includes(".")) {
-      setNestedProperty(this.data, keyStr, value)
-    } else {
-      this.data[keyStr] = value
-    }
+  set<K extends keyof E>(key: K, value: E[K]): this {
+    this.data[key] = value
     return this
   }
 
   /**
-   * Set multiple fields at once
+   * Set a nested field using dot notation
    *
-   * Useful for setting initial context:
+   * Use this for nested paths like "error.code", "stageReached.parsed", etc.
+   *
+   * @example
+   * ctx.setNested("error.code", "VALIDATION_ERROR")
+   * ctx.setNested("stageReached.parsed", true)
+   */
+  setNested(path: string, value: unknown): this {
+    setNestedProperty(this.data as Record<string, unknown>, path, value)
+    return this
+  }
+
+  /**
+   * Set multiple top-level fields at once
+   *
+   * @example
    * ctx.setMany({ route: "/api/verify", method: "POST", distinctId })
    */
-  setMany(values: Partial<Record<EventPaths<E>, unknown>>): this {
+  setMany(values: Partial<E>): this {
     for (const [key, value] of Object.entries(values)) {
-      const keyStr = key as string
-      if (keyStr.includes(".")) {
-        setNestedProperty(this.data, keyStr, value)
-      } else {
-        this.data[keyStr] = value
-      }
+      ;(this.data as Record<string, unknown>)[key] = value
     }
     return this
   }
 
   /**
-   * Get a field value (supports nested paths)
-   *
-   * Type-safe: only valid paths for this event type are accepted.
+   * Get a top-level field value
    */
-  get<P extends EventPaths<E>>(key: P): PathValue<E, P> | undefined {
-    const keyStr = key as string
-    if (keyStr.includes(".")) {
-      return getNestedProperty(this.data, keyStr) as PathValue<E, P> | undefined
-    }
-    return this.data[keyStr] as PathValue<E, P> | undefined
+  get<K extends keyof E>(key: K): E[K] | undefined {
+    return this.data[key]
+  }
+
+  /**
+   * Get a nested field value using dot notation
+   */
+  getNested(path: string): unknown {
+    return getNestedProperty(this.data as Record<string, unknown>, path)
   }
 
   /**
@@ -125,7 +133,7 @@ export class RequestContext<E extends WideEvent> {
     const startTime = this.timers.get(name as string)
     if (startTime !== undefined) {
       const duration = Math.round(performance.now() - startTime)
-      setNestedProperty(this.data, `timings.${name as string}`, duration)
+      setNestedProperty(this.data as Record<string, unknown>, `timings.${name as string}`, duration)
       this.timers.delete(name as string)
     }
   }
@@ -140,13 +148,13 @@ export class RequestContext<E extends WideEvent> {
     try {
       // Add total timing
       const totalMs = Math.round(performance.now() - this.startTime)
-      setNestedProperty(this.data, "timings.total", totalMs)
+      setNestedProperty(this.data as Record<string, unknown>, "timings.total", totalMs)
 
       // Add timestamp
-      this.data.timestamp = Date.now()
+      ;(this.data as Record<string, unknown>).timestamp = Date.now()
 
       // Build the log attributes, flattening nested objects for PostHog
-      const attributes = this.flattenForLogging(this.data)
+      const attributes = this.flattenForLogging(this.data as Record<string, unknown>)
 
       // Log via the server logger (console + PostHog)
       logger[level]("request_complete", attributes)
