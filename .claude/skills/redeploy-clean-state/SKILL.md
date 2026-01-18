@@ -196,3 +196,83 @@ The NEAR CLI config at `~/Library/Application Support/near-cli/config.toml` has 
 - [ ] Contract initialized with correct backend wallet
 - [ ] `get_verified_count` returns 0
 - [ ] `get_backend_wallet` returns correct address
+
+---
+
+## Last Resort: NEAR Clear State Tool
+
+**IMPORTANT**: Only use this approach when the standard clean method fails due to incompatible data structures (e.g., "Cannot deserialize value with Borsh" errors). This happens when the on-chain contract state was created with a different version of the contract code.
+
+**Requires explicit user confirmation before proceeding.**
+
+Reference: https://docs.near.org/tools/clear-state
+
+### When to Use
+
+- The `clean` method fails with Borsh deserialization errors
+- The on-chain state has incompatible data structures from an older contract version
+- Standard state cleanup approaches don't work
+
+### Step 1: Clone the Clear State Tool
+
+```bash
+cd /tmp && rm -rf near-clear-state
+git clone https://github.com/near-examples/near-clear-state.git
+cd near-clear-state && npm install
+```
+
+### Step 2: Deploy the Cleanup Contract
+
+The tool includes a pre-built `state_cleanup.wasm` that can remove storage keys without deserializing them:
+
+```bash
+near contract deploy <CONTRACT_ACCOUNT> \
+  use-file /tmp/near-clear-state/contractWasm/state_cleanup.wasm \
+  without-init-call \
+  network-config <NETWORK>-fastnear sign-with-keychain send
+```
+
+### Step 3: Get All Storage Keys
+
+Run the tool to list all storage keys (it will fail to sign but will print the keys):
+
+```bash
+cd /tmp/near-clear-state
+node index.js clear-state --account <CONTRACT_ACCOUNT> --network <NETWORK>
+```
+
+The output will show base64-encoded storage keys like:
+```
+[
+  "AWkJAAAAYWltbC5uZWFy",
+  "U1RBVEU=",
+  ...
+]
+```
+
+### Step 4: Call Clean with the Keys
+
+Call the cleanup contract's `clean` method with all the keys:
+
+```bash
+near contract call-function as-transaction <CONTRACT_ACCOUNT> clean \
+  json-args '{"keys": ["<KEY1>", "<KEY2>", ..., "U1RBVEU="]}' \
+  prepaid-gas '300.0 Tgas' attached-deposit '0 NEAR' \
+  sign-as <CONTRACT_ACCOUNT> \
+  network-config <NETWORK>-fastnear sign-with-keychain send
+```
+
+**Note**: Include all keys from Step 3, including `"U1RBVEU="` which is the base64-encoded `STATE` key.
+
+### Step 5: Verify State is Empty
+
+```bash
+near contract view-storage <CONTRACT_ACCOUNT> all as-text \
+  network-config <NETWORK>-fastnear now
+```
+
+Should show empty state.
+
+### Step 6: Continue with Standard Steps
+
+Once state is cleared, continue from **Step 6** (Delete the Contract Account) in the standard process above.
