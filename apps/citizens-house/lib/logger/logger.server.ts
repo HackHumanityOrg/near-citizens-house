@@ -26,6 +26,7 @@ import {
   type LogEventForAction,
 } from "@/lib/schemas/log"
 import { getRequestContext } from "./context"
+import { env } from "@/lib/schemas/env"
 
 const isDev = process.env.NODE_ENV === "development"
 
@@ -54,15 +55,23 @@ function buildTransportConfig(): pino.TransportMultiOptions {
     })
   }
 
-  // Add OTEL transport if endpoint is configured
-  const otelEndpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-  if (otelEndpoint) {
+  // Add PostHog OTEL transport when PostHog is configured
+  if (env.NEXT_PUBLIC_POSTHOG_KEY) {
     targets.push({
       target: "pino-opentelemetry-transport",
       options: {
         resourceAttributes: {
           "service.name": "citizens-house",
-          "deployment.environment": process.env.NEXT_PUBLIC_NEAR_NETWORK ?? "unknown",
+          "deployment.environment": env.NEXT_PUBLIC_NEAR_NETWORK ?? "unknown",
+        },
+        logRecordProcessorOptions: {
+          exporterOptions: {
+            protocol: "http/protobuf",
+            protobufExporterOptions: {
+              url: "https://us.i.posthog.com/i/v1/logs",
+              headers: { Authorization: `Bearer ${env.NEXT_PUBLIC_POSTHOG_KEY}` },
+            },
+          },
         },
       },
       level: "debug",
@@ -85,7 +94,7 @@ const transport = pino.transport(buildTransportConfig())
 
 const pinoLogger = pino(
   {
-    level: process.env.LOG_LEVEL ?? "info",
+    level: "info",
   },
   transport,
 )

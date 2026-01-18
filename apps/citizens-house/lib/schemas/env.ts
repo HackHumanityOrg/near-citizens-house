@@ -29,9 +29,6 @@ export const env = createEnv({
     // E2E Testing flags - WARNING: Must NEVER be "true" in production
     SKIP_ZK_VERIFICATION: z.string().optional(),
     E2E_TESTING: z.string().optional(),
-
-    // Logging configuration
-    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
   },
 
   /**
@@ -75,7 +72,6 @@ export const env = createEnv({
     CELO_RPC_URL: process.env.CELO_RPC_URL,
     SKIP_ZK_VERIFICATION: process.env.SKIP_ZK_VERIFICATION,
     E2E_TESTING: process.env.E2E_TESTING,
-    LOG_LEVEL: process.env.LOG_LEVEL,
     // Client variables
     NEXT_PUBLIC_NEAR_NETWORK: process.env.NEXT_PUBLIC_NEAR_NETWORK,
     NEXT_PUBLIC_SELF_NETWORK: process.env.NEXT_PUBLIC_SELF_NETWORK,
