@@ -343,7 +343,7 @@ redis://default:PASSWORD@host:port
 
 ### Option A: One-Click Deploy (Recommended)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,FASTNEAR_API_KEY,CELO_RPC_URL,NEXT_PUBLIC_POSTHOG_KEY,POSTHOG_PERSONAL_API_KEY,POSTHOG_ENV_ID,NEXT_PUBLIC_USERJOT_PROJECT_ID,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,REDIS_URL&envDefaults=%7B%22NEXT_PUBLIC_NEAR_NETWORK%22%3A%22mainnet%22%2C%22NEXT_PUBLIC_SELF_NETWORK%22%3A%22mainnet%22%2C%22CELO_RPC_URL%22%3A%22https%3A//forno.celo.org%22%2C%22NEXT_PUBLIC_APP_URL%22%3A%22https%3A//your-app.vercel.app%22%7D&envDescription=Production%20deployment.%20Re-add%20NEAR_PRIVATE_KEY%20as%20Sensitive%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,FASTNEAR_API_KEY,CELO_RPC_URL,NEXT_PUBLIC_POSTHOG_KEY,POSTHOG_PERSONAL_API_KEY,POSTHOG_PROJECT_ID,NEXT_PUBLIC_USERJOT_PROJECT_ID,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,REDIS_URL&envDefaults=%7B%22NEXT_PUBLIC_NEAR_NETWORK%22%3A%22mainnet%22%2C%22NEXT_PUBLIC_SELF_NETWORK%22%3A%22mainnet%22%2C%22CELO_RPC_URL%22%3A%22https%3A//forno.celo.org%22%2C%22NEXT_PUBLIC_APP_URL%22%3A%22https%3A//your-app.vercel.app%22%7D&envDescription=Production%20deployment.%20Re-add%20NEAR_PRIVATE_KEY%20as%20Sensitive%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs)
 
 1. Connect GitHub and create the repository
 2. Add Redis Cloud store (required). Confirm it populates `REDIS_URL` or copy it manually.
@@ -385,7 +385,7 @@ redis://default:PASSWORD@host:port
 | `CELO_RPC_URL`                           | `https://forno.celo.org`                      | mainnet default (override if needed)               |
 | `NEXT_PUBLIC_POSTHOG_KEY`                | `phc_...`                                     | PostHog project key                                |
 | `POSTHOG_PERSONAL_API_KEY`               | `phx_...`                                     | PostHog source maps (optional)                     |
-| `POSTHOG_ENV_ID`                         | `01234567-89ab-cdef-...`                      | PostHog project ID (optional)                      |
+| `POSTHOG_PROJECT_ID`                         | `01234567-89ab-cdef-...`                      | PostHog project ID (optional)                      |
 | `NEXT_PUBLIC_USERJOT_PROJECT_ID`         | `userjot_project_id`                          | UserJot feedback widget                            |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`   | `walletconnect_project_id`                    | WalletConnect support (MyNearWallet, Unity Wallet) |
 

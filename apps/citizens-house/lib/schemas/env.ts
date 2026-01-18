@@ -34,7 +34,7 @@ export const env = createEnv({
     // Personal API Key: https://app.posthog.com/settings/user-api-keys
     POSTHOG_PERSONAL_API_KEY: z.string().optional(),
     // Environment ID: https://app.posthog.com/settings/environment#variables
-    POSTHOG_ENV_ID: z.string().optional(),
+    POSTHOG_PROJECT_ID: z.string().optional(),
   },
 
   /**
@@ -79,7 +79,7 @@ export const env = createEnv({
     SKIP_ZK_VERIFICATION: process.env.SKIP_ZK_VERIFICATION,
     E2E_TESTING: process.env.E2E_TESTING,
     POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
-    POSTHOG_ENV_ID: process.env.POSTHOG_ENV_ID,
+    POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
     // Client variables
     NEXT_PUBLIC_NEAR_NETWORK: process.env.NEXT_PUBLIC_NEAR_NETWORK,
     NEXT_PUBLIC_SELF_NETWORK: process.env.NEXT_PUBLIC_SELF_NETWORK,
