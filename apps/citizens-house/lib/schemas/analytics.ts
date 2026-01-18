@@ -20,11 +20,133 @@ import { nearAccountIdSchema } from "./near"
 
 const verificationEventBase = { domain: z.literal("verification") } as const
 
+const platformSchema = z.enum(["desktop", "mobile"])
+
 const verificationFlowStartedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("flow_started"),
-    platform: z.enum(["desktop", "mobile"]),
+    platform: platformSchema,
+  })
+  .strict()
+
+// Landing page CTA tracking
+const verificationCtaClickedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("cta_clicked"),
+    platform: platformSchema,
+    isConnected: z.boolean(),
+  })
+  .strict()
+
+// Wallet connection lifecycle
+const verificationWalletConnectStartedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("wallet_connect_started"),
+    platform: platformSchema,
+  })
+  .strict()
+
+const verificationWalletConnectFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("wallet_connect_failed"),
+    platform: platformSchema,
+    errorMessage: z.string(),
+  })
+  .strict()
+
+// Message signing lifecycle
+const verificationSignStartedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sign_started"),
+    platform: platformSchema,
+    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationSignCompletedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sign_completed"),
+    platform: platformSchema,
+    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationSignFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sign_failed"),
+    platform: platformSchema,
+    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
+    errorMessage: z.string(),
+    wasUserRejection: z.boolean(),
+  })
+  .strict()
+
+// Already verified detection
+const verificationAlreadyVerifiedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("already_verified"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+// Mobile callback flow
+const verificationCallbackLoadedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("callback_loaded"),
+    sessionId: z.string(),
+    hasAccountId: z.boolean(),
+    source: z.enum(["url_param", "local_storage", "none"]),
+  })
+  .strict()
+
+const verificationCallbackPollingStartedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("callback_polling_started"),
+    sessionId: z.string(),
+  })
+  .strict()
+
+const verificationCallbackResultEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("callback_result"),
+    sessionId: z.string(),
+    status: z.enum(["success", "error", "expired", "timeout"]),
+    pollCount: z.number(),
+  })
+  .strict()
+
+// Success page
+const verificationSuccessDisplayedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("success_displayed"),
+    platform: platformSchema,
+    sessionId: z.string().optional(),
+    accountId: nearAccountIdSchema,
+    attestationType: z.string().optional(),
+  })
+  .strict()
+
+const verificationSuccessDisconnectClickedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("success_disconnect_clicked"),
+    accountId: nearAccountIdSchema,
   })
   .strict()
 
@@ -128,12 +250,31 @@ const verificationRejectedEventSchema = z
 
 /** All verification events - discriminated by action */
 const verificationEventSchema = z.discriminatedUnion("action", [
-  // Client-side events
+  // Client-side events - flow lifecycle
   verificationFlowStartedEventSchema,
+  verificationCtaClickedEventSchema,
+  // Client-side events - wallet connection
+  verificationWalletConnectStartedEventSchema,
+  verificationWalletConnectFailedEventSchema,
+  // Client-side events - message signing
+  verificationSignStartedEventSchema,
+  verificationSignCompletedEventSchema,
+  verificationSignFailedEventSchema,
+  // Client-side events - already verified
+  verificationAlreadyVerifiedEventSchema,
+  // Client-side events - QR/polling
   verificationQrDisplayedEventSchema,
   verificationDeeplinkOpenedEventSchema,
   verificationPollingStartedEventSchema,
   verificationPollingTimeoutEventSchema,
+  // Client-side events - mobile callback
+  verificationCallbackLoadedEventSchema,
+  verificationCallbackPollingStartedEventSchema,
+  verificationCallbackResultEventSchema,
+  // Client-side events - success
+  verificationSuccessDisplayedEventSchema,
+  verificationSuccessDisconnectClickedEventSchema,
+  // Client-side events - errors
   verificationErrorShownEventSchema,
   verificationErrorRetryClickedEventSchema,
   verificationErrorAbandonedEventSchema,

@@ -1,29 +1,47 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Check, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getAttestationTypeName, type AttestationId, type NearAccountId } from "@/lib"
+import { trackEvent, getPlatform } from "@/lib/analytics"
 import { StarPattern } from "../icons/star-pattern"
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform } from "framer-motion"
 
 interface Step3SuccessProps {
   accountId: NearAccountId
   attestationId?: AttestationId | null
+  sessionId?: string
   onDisconnect?: () => void
 }
 
 type AnimationPhase = "initial" | "labelsOut" | "merging" | "checkmark" | "complete"
 
-export function Step3Success({ accountId, attestationId, onDisconnect }: Step3SuccessProps) {
+export function Step3Success({ accountId, attestationId, sessionId, onDisconnect }: Step3SuccessProps) {
   const shouldReduceMotion = useReducedMotion()
   const attestationLabel = attestationId ? getAttestationTypeName(attestationId) : "Identity Document"
   const [phase, setPhase] = useState<AnimationPhase>(shouldReduceMotion ? "complete" : "initial")
+  const hasTrackedDisplay = useRef(false)
 
   // Motion value for checkmark path - prevents flash by linking opacity to pathLength
   const pathLength = useMotionValue(0)
   // Opacity fades in quickly once pathLength starts (prevents initial flash)
   const checkmarkOpacity = useTransform(pathLength, [0, 0.05, 0.15], [0, 0, 1])
+
+  // Track success_displayed on mount
+  useEffect(() => {
+    if (hasTrackedDisplay.current) return
+    hasTrackedDisplay.current = true
+
+    trackEvent({
+      domain: "verification",
+      action: "success_displayed",
+      platform: getPlatform(),
+      sessionId,
+      accountId,
+      attestationType: attestationId ? getAttestationTypeName(attestationId) : undefined,
+    })
+  }, [accountId, attestationId, sessionId])
 
   useEffect(() => {
     if (shouldReduceMotion) {
@@ -39,6 +57,15 @@ export function Step3Success({ accountId, attestationId, onDisconnect }: Step3Su
 
     return () => timers.forEach(clearTimeout)
   }, [shouldReduceMotion])
+
+  const handleDisconnect = () => {
+    trackEvent({
+      domain: "verification",
+      action: "success_disconnect_clicked",
+      accountId,
+    })
+    onDisconnect?.()
+  }
 
   const showMerging = phase === "merging" || phase === "checkmark" || phase === "complete"
   const showFinalCircle = phase === "checkmark" || phase === "complete"
@@ -353,7 +380,7 @@ export function Step3Success({ accountId, attestationId, onDisconnect }: Step3Su
               {/* Disconnect Wallet button */}
               {onDisconnect && (
                 <Button
-                  onClick={onDisconnect}
+                  onClick={handleDisconnect}
                   variant="outline"
                   className="h-[48px] px-[24px] py-[14px] border-black dark:border-white text-[#040404] dark:text-white font-medium rounded-[4px]"
                   data-testid="disconnect-wallet-button-success"

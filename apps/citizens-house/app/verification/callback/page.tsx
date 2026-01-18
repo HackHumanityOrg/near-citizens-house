@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getErrorTitle, getErrorMessage, isNonRetryableError, statusResponseSchema } from "@/lib/schemas"
+import { trackEvent } from "@/lib/analytics"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 type VerificationStatus = "checking" | "success" | "error" | "expired"
@@ -18,12 +19,50 @@ function VerifyCallbackContent() {
   const [accountId, setAccountId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<string | null>(null)
+  const hasTrackedCallbackLoaded = useRef(false)
+  const hasTrackedPollingStarted = useRef(false)
+  const finalPollCount = useRef(0)
 
   useEffect(() => {
     if (!sessionId) {
       setStatus("error")
       setErrorMessage("Invalid callback URL - missing session ID")
       return
+    }
+
+    // Track callback_loaded event once
+    if (!hasTrackedCallbackLoaded.current) {
+      hasTrackedCallbackLoaded.current = true
+
+      // Determine account ID source
+      let source: "url_param" | "local_storage" | "none" = "none"
+      let hasAccountIdValue = false
+
+      if (accountIdFromUrl) {
+        source = "url_param"
+        hasAccountIdValue = true
+      } else {
+        try {
+          const storedSession = localStorage.getItem(`self-session-${sessionId}`)
+          if (storedSession) {
+            const parsed = JSON.parse(storedSession) as { accountId?: unknown }
+            if (typeof parsed.accountId === "string") {
+              source = "local_storage"
+              hasAccountIdValue = true
+            }
+          }
+        } catch {
+          // Ignore storage errors
+        }
+      }
+
+      trackEvent({
+        domain: "verification",
+        action: "callback_loaded",
+        sessionId,
+        hasAccountId: hasAccountIdValue,
+        source,
+      })
     }
 
     // Track mounted state, abort controller, and timeout for cleanup
@@ -100,6 +139,15 @@ function VerifyCallbackContent() {
         const data = parsed.data
 
         if (data.status === "success") {
+          // Track success result
+          trackEvent({
+            domain: "verification",
+            action: "callback_result",
+            sessionId: sessionId!,
+            status: "success",
+            pollCount: finalPollCount.current,
+          })
+
           setStatus("success")
           setAccountId(data.accountId ?? null)
           // Clean up localStorage (wrapped in try/catch for restricted environments)
@@ -110,6 +158,15 @@ function VerifyCallbackContent() {
           }
           return true
         } else if (data.status === "error") {
+          // Track error result
+          trackEvent({
+            domain: "verification",
+            action: "callback_result",
+            sessionId: sessionId!,
+            status: "error",
+            pollCount: finalPollCount.current,
+          })
+
           setStatus("error")
           // Use errorCode if available, fall back to error field for backwards compatibility
           const code = data.errorCode || data.error
@@ -117,6 +174,15 @@ function VerifyCallbackContent() {
           setErrorMessage(getErrorMessage(code))
           return true
         } else if (data.status === "expired") {
+          // Track expired result
+          trackEvent({
+            domain: "verification",
+            action: "callback_result",
+            sessionId: sessionId!,
+            status: "expired",
+            pollCount: finalPollCount.current,
+          })
+
           setStatus("expired")
           setErrorMessage(data.error ?? "Session expired. Please try again.")
           return true
@@ -140,12 +206,31 @@ function VerifyCallbackContent() {
     const poll = async () => {
       if (!isMounted) return
 
+      // Track polling_started on first poll
+      if (!hasTrackedPollingStarted.current) {
+        hasTrackedPollingStarted.current = true
+        trackEvent({
+          domain: "verification",
+          action: "callback_polling_started",
+          sessionId: sessionId!,
+        })
+      }
+
       const done = await checkVerificationStatus()
+      finalPollCount.current = pollCount
       if (!isMounted || done) return
 
       pollCount++
       if (pollCount >= maxPolls) {
         if (isMounted) {
+          // Track timeout result
+          trackEvent({
+            domain: "verification",
+            action: "callback_result",
+            sessionId: sessionId!,
+            status: "timeout",
+            pollCount: finalPollCount.current,
+          })
           setStatus("expired")
           setErrorMessage("Verification timed out. Please try again.")
         }

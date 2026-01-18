@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef } from "react"
 import { useNearWallet } from "@/lib"
+import { trackEvent, getPlatform } from "@/lib/analytics"
 import { Button, cn } from "@near-citizens/ui"
 
 type VerificationCtaButtonProps = {
@@ -48,6 +49,13 @@ export function VerificationCtaButton({
   }, [isLoading, isConnected])
 
   const handleConnect = async () => {
+    trackEvent({
+      domain: "verification",
+      action: "cta_clicked",
+      platform: getPlatform(),
+      isConnected: false,
+    })
+
     didRequestConnect.current = true
     try {
       await connect()
@@ -55,6 +63,15 @@ export function VerificationCtaButton({
       didRequestConnect.current = false
       throw error
     }
+  }
+
+  const handleConnectedClick = () => {
+    trackEvent({
+      domain: "verification",
+      action: "cta_clicked",
+      platform: getPlatform(),
+      isConnected: true,
+    })
   }
 
   const content = (
@@ -92,7 +109,9 @@ export function VerificationCtaButton({
           className,
         )}
       >
-        <Link href="/verification/start">{content}</Link>
+        <Link href="/verification/start" onClick={handleConnectedClick}>
+          {content}
+        </Link>
       </Button>
     )
   }
