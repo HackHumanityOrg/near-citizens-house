@@ -18,7 +18,7 @@
  */
 import "server-only"
 
-import { createPostHogServerClient } from "./providers/posthog-server"
+import { getPostHogServer } from "./providers/posthog-server"
 import type { AnalyticsEvent } from "./schemas/analytics"
 
 /**
@@ -28,7 +28,7 @@ import type { AnalyticsEvent } from "./schemas/analytics"
  * @param event - Strongly-typed analytics event
  */
 export async function trackServerEvent<T extends AnalyticsEvent>(distinctId: string, event: T): Promise<void> {
-  const client = createPostHogServerClient()
+  const client = getPostHogServer()
   if (!client) return
 
   const { domain, action, ...properties } = event

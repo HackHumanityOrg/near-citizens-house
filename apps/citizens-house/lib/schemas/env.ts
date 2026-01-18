@@ -29,6 +29,12 @@ export const env = createEnv({
     // E2E Testing flags - WARNING: Must NEVER be "true" in production
     SKIP_ZK_VERIFICATION: z.string().optional(),
     E2E_TESTING: z.string().optional(),
+
+    // PostHog source maps upload (optional - for error tracking with readable stack traces)
+    // Personal API Key: https://app.posthog.com/settings/user-api-keys
+    POSTHOG_PERSONAL_API_KEY: z.string().optional(),
+    // Environment ID: https://app.posthog.com/settings/environment#variables
+    POSTHOG_ENV_ID: z.string().optional(),
   },
 
   /**
@@ -72,6 +78,8 @@ export const env = createEnv({
     CELO_RPC_URL: process.env.CELO_RPC_URL,
     SKIP_ZK_VERIFICATION: process.env.SKIP_ZK_VERIFICATION,
     E2E_TESTING: process.env.E2E_TESTING,
+    POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
+    POSTHOG_ENV_ID: process.env.POSTHOG_ENV_ID,
     // Client variables
     NEXT_PUBLIC_NEAR_NETWORK: process.env.NEXT_PUBLIC_NEAR_NETWORK,
     NEXT_PUBLIC_SELF_NETWORK: process.env.NEXT_PUBLIC_SELF_NETWORK,

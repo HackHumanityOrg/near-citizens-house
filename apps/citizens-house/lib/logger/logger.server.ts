@@ -18,6 +18,7 @@
 import "server-only"
 import pino from "pino"
 import { z } from "zod"
+import { trace } from "@opentelemetry/api"
 import {
   logEventSchema,
   serializeError,
@@ -95,7 +96,7 @@ const transport = pino.transport(buildTransportConfig())
 
 const pinoLogger = pino(
   {
-    level: "info",
+    level: "debug", // Match transport config levels
   },
   transport,
 )
@@ -116,6 +117,10 @@ function log<D extends LogDomain, A extends LogActionForDomain<D>>(
 ): void {
   const ctx = getRequestContext()
 
+  // Extract trace context from active OTEL span
+  const span = trace.getActiveSpan()
+  const spanContext = span?.spanContext()
+
   const event = {
     level,
     domain,
@@ -125,8 +130,9 @@ function log<D extends LogDomain, A extends LogActionForDomain<D>>(
     ...data,
     // Auto-populated context
     ...(ctx?.requestId && { requestId: ctx.requestId }),
-    ...(ctx?.traceId && { traceId: ctx.traceId }),
-    ...(ctx?.spanId && { spanId: ctx.spanId }),
+    // Use OTEL span context if available, fallback to request context
+    ...(spanContext?.traceId ? { traceId: spanContext.traceId } : ctx?.traceId && { traceId: ctx.traceId }),
+    ...(spanContext?.spanId ? { spanId: spanContext.spanId } : ctx?.spanId && { spanId: ctx.spanId }),
     ...(ctx?.distinctId && { distinctId: ctx.distinctId }),
   }
 
