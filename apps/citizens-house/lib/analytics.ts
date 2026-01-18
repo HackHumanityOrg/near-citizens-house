@@ -20,13 +20,7 @@
 import posthog from "posthog-js"
 import type { AnalyticsEvent } from "./schemas/analytics"
 
-export type { AnalyticsEvent, VerificationEvent, CitizensEvent, ConsentEvent, EventDomain } from "./schemas/analytics"
-export {
-  analyticsEventSchema,
-  verificationEventSchema,
-  citizensEventSchema,
-  consentEventSchema,
-} from "./schemas/analytics"
+export type { AnalyticsEvent } from "./schemas/analytics"
 
 /**
  * Track a strongly-typed analytics event.
@@ -45,4 +39,31 @@ export function trackEvent<T extends AnalyticsEvent>(event: T): void {
  */
 export function isAnalyticsEnabled(): boolean {
   return typeof window !== "undefined" && posthog.__loaded && !posthog.has_opted_out_capturing()
+}
+
+/**
+ * Capture an error with typed analytics and PostHog exception tracking.
+ *
+ * Sends both a typed analytics event and PostHog's native exception capture
+ * for full stack trace visibility.
+ *
+ * @param error - The error to capture
+ * @param context - Error context including stage and optional component stack
+ */
+export function captureError(
+  error: Error,
+  context: { stage: "client_render" | "global_error"; componentStack?: string },
+): void {
+  trackEvent({
+    domain: "errors",
+    action: "exception_captured",
+    errorName: error.name,
+    errorMessage: error.message,
+    errorStack: error.stack,
+    stage: context.stage,
+    componentStack: context.componentStack,
+  })
+
+  // Also send to PostHog's exception tracking for stack traces
+  posthog.captureException(error)
 }

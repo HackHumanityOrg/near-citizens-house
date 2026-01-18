@@ -20,7 +20,7 @@ import { nearAccountIdSchema } from "./near"
 
 const verificationEventBase = { domain: z.literal("verification") } as const
 
-export const verificationFlowStartedEventSchema = z
+const verificationFlowStartedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("flow_started"),
@@ -28,7 +28,7 @@ export const verificationFlowStartedEventSchema = z
   })
   .strict()
 
-export const verificationQrDisplayedEventSchema = z
+const verificationQrDisplayedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("qr_displayed"),
@@ -36,7 +36,7 @@ export const verificationQrDisplayedEventSchema = z
   })
   .strict()
 
-export const verificationDeeplinkOpenedEventSchema = z
+const verificationDeeplinkOpenedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("deeplink_opened"),
@@ -44,7 +44,7 @@ export const verificationDeeplinkOpenedEventSchema = z
   })
   .strict()
 
-export const verificationPollingStartedEventSchema = z
+const verificationPollingStartedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("polling_started"),
@@ -52,7 +52,7 @@ export const verificationPollingStartedEventSchema = z
   })
   .strict()
 
-export const verificationPollingTimeoutEventSchema = z
+const verificationPollingTimeoutEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("polling_timeout"),
@@ -61,7 +61,7 @@ export const verificationPollingTimeoutEventSchema = z
   })
   .strict()
 
-export const verificationErrorShownEventSchema = z
+const verificationErrorShownEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("error_shown"),
@@ -70,7 +70,7 @@ export const verificationErrorShownEventSchema = z
   })
   .strict()
 
-export const verificationErrorRetryClickedEventSchema = z
+const verificationErrorRetryClickedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("error_retry_clicked"),
@@ -78,7 +78,7 @@ export const verificationErrorRetryClickedEventSchema = z
   })
   .strict()
 
-export const verificationErrorAbandonedEventSchema = z
+const verificationErrorAbandonedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("error_abandoned"),
@@ -90,7 +90,7 @@ export const verificationErrorAbandonedEventSchema = z
 // Domain: Verification (Server-Side)
 // =============================================================================
 
-export const verificationProofSubmittedEventSchema = z
+const verificationProofSubmittedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("proof_submitted"),
@@ -99,7 +99,7 @@ export const verificationProofSubmittedEventSchema = z
   })
   .strict()
 
-export const verificationProofValidatedEventSchema = z
+const verificationProofValidatedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("proof_validated"),
@@ -107,7 +107,7 @@ export const verificationProofValidatedEventSchema = z
   })
   .strict()
 
-export const verificationStoredOnchainEventSchema = z
+const verificationStoredOnchainEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("stored_onchain"),
@@ -116,7 +116,7 @@ export const verificationStoredOnchainEventSchema = z
   })
   .strict()
 
-export const verificationRejectedEventSchema = z
+const verificationRejectedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("rejected"),
@@ -127,7 +127,7 @@ export const verificationRejectedEventSchema = z
   .strict()
 
 /** All verification events - discriminated by action */
-export const verificationEventSchema = z.discriminatedUnion("action", [
+const verificationEventSchema = z.discriminatedUnion("action", [
   // Client-side events
   verificationFlowStartedEventSchema,
   verificationQrDisplayedEventSchema,
@@ -150,7 +150,7 @@ export const verificationEventSchema = z.discriminatedUnion("action", [
 
 const citizensEventBase = { domain: z.literal("citizens") } as const
 
-export const citizensDetailsViewedEventSchema = z
+const citizensDetailsViewedEventSchema = z
   .object({
     ...citizensEventBase,
     action: z.literal("details_viewed"),
@@ -158,7 +158,7 @@ export const citizensDetailsViewedEventSchema = z
   })
   .strict()
 
-export const citizensSignatureVerifyOpenedEventSchema = z
+const citizensSignatureVerifyOpenedEventSchema = z
   .object({
     ...citizensEventBase,
     action: z.literal("signature_verify_opened"),
@@ -166,7 +166,7 @@ export const citizensSignatureVerifyOpenedEventSchema = z
   })
   .strict()
 
-export const citizensProofVerifyOpenedEventSchema = z
+const citizensProofVerifyOpenedEventSchema = z
   .object({
     ...citizensEventBase,
     action: z.literal("proof_verify_opened"),
@@ -174,7 +174,7 @@ export const citizensProofVerifyOpenedEventSchema = z
   })
   .strict()
 
-export const citizensCopiedToClipboardEventSchema = z
+const citizensCopiedToClipboardEventSchema = z
   .object({
     ...citizensEventBase,
     action: z.literal("copied_to_clipboard"),
@@ -183,7 +183,7 @@ export const citizensCopiedToClipboardEventSchema = z
   })
   .strict()
 
-export const citizensFileDownloadedEventSchema = z
+const citizensFileDownloadedEventSchema = z
   .object({
     ...citizensEventBase,
     action: z.literal("file_downloaded"),
@@ -192,7 +192,7 @@ export const citizensFileDownloadedEventSchema = z
   })
   .strict()
 
-export const citizensExternalVerifierOpenedEventSchema = z
+const citizensExternalVerifierOpenedEventSchema = z
   .object({
     ...citizensEventBase,
     action: z.literal("external_verifier_opened"),
@@ -202,7 +202,7 @@ export const citizensExternalVerifierOpenedEventSchema = z
   .strict()
 
 /** All citizens events - discriminated by action */
-export const citizensEventSchema = z.discriminatedUnion("action", [
+const citizensEventSchema = z.discriminatedUnion("action", [
   citizensDetailsViewedEventSchema,
   citizensSignatureVerifyOpenedEventSchema,
   citizensProofVerifyOpenedEventSchema,
@@ -217,7 +217,7 @@ export const citizensEventSchema = z.discriminatedUnion("action", [
 
 const consentEventBase = { domain: z.literal("consent") } as const
 
-export const consentResponseEventSchema = z
+const consentResponseEventSchema = z
   .object({
     ...consentEventBase,
     action: z.literal("response"),
@@ -226,7 +226,28 @@ export const consentResponseEventSchema = z
   .strict()
 
 /** All consent events - discriminated by action */
-export const consentEventSchema = z.discriminatedUnion("action", [consentResponseEventSchema])
+const consentEventSchema = z.discriminatedUnion("action", [consentResponseEventSchema])
+
+// =============================================================================
+// Domain: Errors
+// =============================================================================
+
+const errorsEventBase = { domain: z.literal("errors") } as const
+
+const errorExceptionCapturedEventSchema = z
+  .object({
+    ...errorsEventBase,
+    action: z.literal("exception_captured"),
+    errorName: z.string(),
+    errorMessage: z.string(),
+    errorStack: z.string().optional(),
+    stage: z.enum(["client_render", "global_error", "server_handler", "api_route"]),
+    componentStack: z.string().optional(),
+  })
+  .strict()
+
+/** All errors events - discriminated by action */
+const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCapturedEventSchema])
 
 // =============================================================================
 // Combined Schema
@@ -239,40 +260,15 @@ export const consentEventSchema = z.discriminatedUnion("action", [consentRespons
  * a discriminated union on "action". Type safety is preserved through
  * the domain literal on each event schema.
  */
-export const analyticsEventSchema = z.union([verificationEventSchema, citizensEventSchema, consentEventSchema])
+const analyticsEventSchema = z.union([
+  verificationEventSchema,
+  citizensEventSchema,
+  consentEventSchema,
+  errorsEventSchema,
+])
 
 // =============================================================================
 // Type Exports
 // =============================================================================
 
 export type AnalyticsEvent = z.infer<typeof analyticsEventSchema>
-export type VerificationEvent = z.infer<typeof verificationEventSchema>
-export type CitizensEvent = z.infer<typeof citizensEventSchema>
-export type ConsentEvent = z.infer<typeof consentEventSchema>
-
-// Individual event types (for type narrowing)
-export type VerificationFlowStartedEvent = z.infer<typeof verificationFlowStartedEventSchema>
-export type VerificationQrDisplayedEvent = z.infer<typeof verificationQrDisplayedEventSchema>
-export type VerificationDeeplinkOpenedEvent = z.infer<typeof verificationDeeplinkOpenedEventSchema>
-export type VerificationPollingStartedEvent = z.infer<typeof verificationPollingStartedEventSchema>
-export type VerificationPollingTimeoutEvent = z.infer<typeof verificationPollingTimeoutEventSchema>
-export type VerificationErrorShownEvent = z.infer<typeof verificationErrorShownEventSchema>
-export type VerificationErrorRetryClickedEvent = z.infer<typeof verificationErrorRetryClickedEventSchema>
-export type VerificationErrorAbandonedEvent = z.infer<typeof verificationErrorAbandonedEventSchema>
-export type VerificationProofSubmittedEvent = z.infer<typeof verificationProofSubmittedEventSchema>
-export type VerificationProofValidatedEvent = z.infer<typeof verificationProofValidatedEventSchema>
-export type VerificationStoredOnchainEvent = z.infer<typeof verificationStoredOnchainEventSchema>
-export type VerificationRejectedEvent = z.infer<typeof verificationRejectedEventSchema>
-export type CitizensDetailsViewedEvent = z.infer<typeof citizensDetailsViewedEventSchema>
-export type CitizensSignatureVerifyOpenedEvent = z.infer<typeof citizensSignatureVerifyOpenedEventSchema>
-export type CitizensProofVerifyOpenedEvent = z.infer<typeof citizensProofVerifyOpenedEventSchema>
-export type CitizensCopiedToClipboardEvent = z.infer<typeof citizensCopiedToClipboardEventSchema>
-export type CitizensFileDownloadedEvent = z.infer<typeof citizensFileDownloadedEventSchema>
-export type CitizensExternalVerifierOpenedEvent = z.infer<typeof citizensExternalVerifierOpenedEventSchema>
-export type ConsentResponseEvent = z.infer<typeof consentResponseEventSchema>
-
-// Helper types
-export type EventDomain = AnalyticsEvent["domain"]
-export type VerificationAction = VerificationEvent["action"]
-export type CitizensAction = CitizensEvent["action"]
-export type ConsentAction = ConsentEvent["action"]

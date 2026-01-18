@@ -28,9 +28,7 @@ export const onRequestError = async (
 ) => {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Dynamic import to avoid loading server-only module in edge runtime
-    const { getPostHogServer } = await import("@/lib/providers/posthog-server")
-    const posthog = getPostHogServer()
-    if (!posthog) return
+    const { captureServerError } = await import("@/lib/analytics-server")
 
     let distinctId: string | null = null
     let sessionId: string | null = null
@@ -68,8 +66,9 @@ export const onRequestError = async (
       distinctId = request.headers.get("X-POSTHOG-DISTINCT-ID")
     }
 
-    await posthog.captureException(err, distinctId || undefined, {
-      $session_id: sessionId || undefined,
+    await captureServerError(err, distinctId || undefined, {
+      stage: "server_handler",
+      sessionId: sessionId || undefined,
     })
   }
 }

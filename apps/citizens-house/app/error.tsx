@@ -11,16 +11,14 @@
 
 import { useEffect } from "react"
 import Link from "next/link"
-import { usePostHog } from "posthog-js/react"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
+import { captureError } from "@/lib/analytics"
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  const posthog = usePostHog()
-
   useEffect(() => {
-    posthog?.captureException(error)
-  }, [error, posthog])
+    captureError(error, { stage: "client_render" })
+  }, [error])
 
   return (
     <div className="bg-white dark:bg-[#181921]">
