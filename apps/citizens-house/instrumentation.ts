@@ -7,8 +7,10 @@
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
 
+import { initializePostHogLogs } from "@/lib/logger/posthog-logs"
+
 export async function register() {
-  // Server-side initialization (if needed in the future)
+  initializePostHogLogs()
 }
 
 /**
