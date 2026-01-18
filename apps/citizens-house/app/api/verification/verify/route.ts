@@ -201,11 +201,15 @@ export async function POST(request: NextRequest) {
 
     // Optimistically try to extract accountId from userContextData for early tracking
     // This data will be validated properly later, but we want it for analytics
+    // Note: userContextData is hex-encoded JSON, so we use parseUserDefinedDataRaw to decode it
     try {
-      const parsed = JSON.parse(userContextData)
-      if (parsed && typeof parsed.accountId === "string") {
-        optimisticAccountId = parsed.accountId as NearAccountId
-        ctx.set("nearAccountId", optimisticAccountId)
+      const jsonString = parseUserDefinedDataRaw(userContextData)
+      if (jsonString) {
+        const parsed = JSON.parse(jsonString)
+        if (parsed && typeof parsed.accountId === "string") {
+          optimisticAccountId = parsed.accountId as NearAccountId
+          ctx.set("nearAccountId", optimisticAccountId)
+        }
       }
     } catch {
       // Failed to parse, will use "anonymous" for tracking
