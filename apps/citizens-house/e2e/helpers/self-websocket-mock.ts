@@ -51,7 +51,6 @@ export async function setupSelfWebSocketMock(
   // Intercept Self.xyz WebSocket connections
   await page.routeWebSocket(/websocket\.self\.xyz/, async (ws) => {
     wsRoute = ws
-    connectionReady = false
     connectedNamespace = "/"
 
     // Step 1: Send Engine.IO OPEN packet
