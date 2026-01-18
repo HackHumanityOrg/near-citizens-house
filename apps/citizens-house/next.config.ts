@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ["@selfxyz/core", "pino", "thread-stream", "pino-pretty"],
+  serverExternalPackages: ["@selfxyz/core"],
   // Empty turbopack config to allow turbopack to work
   turbopack: {},
   webpack: (config) => {

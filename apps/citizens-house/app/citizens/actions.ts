@@ -156,10 +156,9 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
 
   try {
     return await getCachedVerifications(params.data)
-  } catch (error) {
+  } catch {
     // RPC failed - return empty without caching
     // Next request will retry immediately instead of waiting 60s
-    console.error("[citizens] Failed to fetch verifications from RPC:", error)
     return { accounts: [], total: 0 }
   }
 }
