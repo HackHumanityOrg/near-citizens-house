@@ -6,7 +6,7 @@ import type { ActionDefinition } from "./schemas"
  * This allows us to have a single funnel step that works for both platforms.
  */
 export const selfAppInitiatedAction: ActionDefinition = {
-  name: "Self App Initiated",
+  name: "verification:qr_displayed or verification:deeplink_opened",
   description: "User initiated verification in Self app (QR scan on desktop or deeplink on mobile)",
   steps: [{ event: "verification:qr_displayed" }, { event: "verification:deeplink_opened" }],
   tags: ["verification"],

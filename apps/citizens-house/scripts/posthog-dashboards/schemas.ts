@@ -137,10 +137,14 @@ export const FilterSchema = z.object({
 })
 
 // Insight definition
+// Supports both legacy filters format and newer query format
+// Use query format for funnels with Actions (OR logic between events)
 export const InsightDefinitionSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
-  filters: FilterSchema,
+  // Legacy filters format - optional if query is provided
+  filters: FilterSchema.optional(),
+  // Newer query format - use for funnels with Actions
   query: z.record(z.string(), z.unknown()).optional(),
 })
 

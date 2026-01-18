@@ -144,6 +144,10 @@ function resolveActionIds(dashboard: DashboardDefinition, actionMap: Map<string,
     tiles: dashboard.tiles.map((tile) => {
       if (tile.type !== "insight") return tile
 
+      // Skip if using query format (action IDs are hardcoded)
+      // or if filters is not defined
+      if (!tile.insight.filters) return tile
+
       const events = tile.insight.filters.events
       if (!events) return tile
 

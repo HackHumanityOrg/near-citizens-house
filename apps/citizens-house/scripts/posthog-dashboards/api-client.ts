@@ -342,13 +342,21 @@ export class PostHogApiClient {
   }
 
   /**
-   * Create an insight with filters (legacy approach)
+   * Create an insight from definition
+   * Supports both legacy filters format and newer query format
+   * Use query format for funnels with Actions (OR logic between events)
    */
   async createInsightWithFilters(insight: InsightDefinition, dashboardId?: number): Promise<InsightResponse> {
     const payload: Record<string, unknown> = {
       name: insight.name,
       description: insight.description,
-      filters: insight.filters,
+    }
+
+    // Use query format if provided, otherwise use filters
+    if (insight.query) {
+      payload.query = insight.query
+    } else if (insight.filters) {
+      payload.filters = insight.filters
     }
 
     if (dashboardId) {
