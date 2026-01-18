@@ -561,6 +561,7 @@ export async function POST(request: NextRequest) {
         action: "stored_onchain",
         accountId: nearSignature.accountId,
         attestationType: getAttestationTypeName(attestationId),
+        nationality: selfVerificationResult.discloseOutput.nationality,
       })
 
       // Revalidate the verifications cache so new verification appears immediately

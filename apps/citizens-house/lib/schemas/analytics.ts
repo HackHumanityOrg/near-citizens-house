@@ -235,6 +235,7 @@ const verificationStoredOnchainEventSchema = z
     action: z.literal("stored_onchain"),
     accountId: nearAccountIdSchema,
     attestationType: z.string(),
+    nationality: z.string().optional(),
   })
   .strict()
 
