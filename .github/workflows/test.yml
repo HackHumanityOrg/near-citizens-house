@@ -18,12 +18,37 @@ env:
   # Enable ZK verification tests (makes real Celo RPC calls)
   ENABLE_NETWORK_TESTS: "true"
 
+# =============================================================================
+# RUNNER & CACHING CONFIGURATION
+# =============================================================================
+# This workflow is portable and works on both self-hosted and GitHub-hosted runners.
+#
+# Runner Configuration:
+#   Set the RUNS_ON repository variable to switch runners:
+#   - "self-hosted" for self-hosted runners (default)
+#   - "ubuntu-latest" for GitHub-hosted runners
+#   - "blacksmith-4vcpu-ubuntu-2404" for Blacksmith runners
+#
+# Caching Strategy:
+#   - pnpm: Uses tespkg/actions-cache with local MinIO S3 cache on self-hosted,
+#           automatically falls back to GitHub cache on GitHub-hosted runners
+#   - Rust: Uses Swatinem/rust-cache (works on all runner types via GitHub cache)
+#
+# To switch to GitHub-hosted runners:
+#   1. Set RUNS_ON variable to "ubuntu-latest"
+#   2. Caching will automatically use GitHub cache (no MinIO needed)
+# =============================================================================
+
 jobs:
   # Build WASM contracts (shared by integration tests)
   build:
     name: Build Contracts
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNS_ON || 'self-hosted' }}
     steps:
+      # Fix permissions from previous runs (Allure action creates root-owned files)
+      - name: Fix workspace permissions
+        run: sudo chown -R $(id -u):$(id -g) ${{ github.workspace }} 2>/dev/null || true
+
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -34,23 +59,6 @@ jobs:
           toolchain: 1.86.0
           targets: wasm32-unknown-unknown
 
-      # Persistent cargo caching via stickydisk (22x faster than actions/cache)
-      # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
-      - name: Mount Cargo Registry Cache
-        if: ${{ env.ACT != 'true' }}
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-registry
-          path: ~/.cargo/registry
-
-      - name: Mount Cargo Git Cache
-        if: ${{ env.ACT != 'true' }}
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-git
-          path: ~/.cargo/git
-
-      # Smart Rust caching for target directories
       - name: Cache Rust dependencies
         if: ${{ env.ACT != 'true' }}
         uses: Swatinem/rust-cache@v2
@@ -96,11 +104,15 @@ jobs:
   # Run all Rust unit tests in parallel
   unit-tests-rust:
     name: Rust Unit Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNS_ON || 'self-hosted' }}
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts.outputs.failed }}
     steps:
+      # Fix permissions from previous runs (Allure action creates root-owned files)
+      - name: Fix workspace permissions
+        run: sudo chown -R $(id -u):$(id -g) ${{ github.workspace }} 2>/dev/null || true
+
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -112,23 +124,6 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy
 
-      # Persistent cargo caching via stickydisk (22x faster than actions/cache)
-      # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
-      - name: Mount Cargo Registry Cache
-        if: ${{ env.ACT != 'true' }}
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-registry
-          path: ~/.cargo/registry
-
-      - name: Mount Cargo Git Cache
-        if: ${{ env.ACT != 'true' }}
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-git
-          path: ~/.cargo/git
-
-      # Smart Rust caching for target directories
       - name: Cache Rust dependencies
         if: ${{ env.ACT != 'true' }}
         uses: Swatinem/rust-cache@v2
@@ -179,11 +174,15 @@ jobs:
   # Run TypeScript tests in parallel
   unit-tests-typescript:
     name: TypeScript Unit Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNS_ON || 'self-hosted' }}
     outputs:
       passed: ${{ steps.test_typescript.outputs.passed }}
       failed: ${{ steps.test_typescript.outputs.failed }}
     steps:
+      # Fix permissions from previous runs (Allure action creates root-owned files)
+      - name: Fix workspace permissions
+        run: sudo chown -R $(id -u):$(id -g) ${{ github.workspace }} 2>/dev/null || true
+
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -198,8 +197,18 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Cache pnpm dependencies
-        uses: actions/cache@v4
+        uses: tespkg/actions-cache@v1
         with:
+          # S3 configuration for self-hosted runners (MinIO)
+          endpoint: localhost
+          port: 9000
+          insecure: true
+          accessKey: ${{ secrets.MINIO_ACCESS_KEY }}
+          secretKey: ${{ secrets.MINIO_SECRET_KEY }}
+          bucket: github-actions-cache
+          # Fallback to GitHub cache when S3 is unavailable (e.g., on GitHub-hosted runners)
+          use-fallback: true
+          # Standard cache configuration
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
@@ -234,13 +243,17 @@ jobs:
   # Run integration tests (requires built WASM contracts)
   integration-tests:
     name: Integration Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNS_ON || 'self-hosted' }}
     needs: build
     if: ${{ github.actor != 'nektos/act' }}
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts_integration.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts_integration.outputs.failed }}
     steps:
+      # Fix permissions from previous runs (Allure action creates root-owned files)
+      - name: Fix workspace permissions
+        run: sudo chown -R $(id -u):$(id -g) ${{ github.workspace }} 2>/dev/null || true
+
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -251,23 +264,6 @@ jobs:
           toolchain: 1.86.0
           targets: wasm32-unknown-unknown
 
-      # Persistent cargo caching via stickydisk (22x faster than actions/cache)
-      # Note: Only cache registry/git, not bin (Rust toolchain needs to install there)
-      - name: Mount Cargo Registry Cache
-        if: ${{ env.ACT != 'true' }}
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-registry
-          path: ~/.cargo/registry
-
-      - name: Mount Cargo Git Cache
-        if: ${{ env.ACT != 'true' }}
-        uses: useblacksmith/stickydisk@v1
-        with:
-          key: ${{ github.repository }}-cargo-git
-          path: ~/.cargo/git
-
-      # Smart Rust caching for target directories
       - name: Cache Rust dependencies
         if: ${{ env.ACT != 'true' }}
         uses: Swatinem/rust-cache@v2
@@ -331,10 +327,14 @@ jobs:
   # Collect results and publish Allure report
   report:
     name: Publish Report
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNS_ON || 'self-hosted' }}
     needs: [unit-tests-rust, unit-tests-typescript, integration-tests]
     if: ${{ github.actor != 'nektos/act' && always() }}
     steps:
+      # Fix permissions from previous runs (Allure action creates root-owned files)
+      - name: Fix workspace permissions
+        run: sudo chown -R $(id -u):$(id -g) ${{ github.workspace }} 2>/dev/null || true
+
       - uses: actions/checkout@v4
 
       - name: Download all allure results
@@ -423,10 +423,10 @@ jobs:
           keep_reports: 20
 
       - name: Clean up allure-history
-        run: sudo rm -rf allure-history/.git
+        run: rm -rf allure-history/.git || sudo rm -rf allure-history/.git
 
       - name: Add badge to gh-pages
-        run: sudo cp badge/test-results.json allure-history/
+        run: cp badge/test-results.json allure-history/ || sudo cp badge/test-results.json allure-history/
 
       - name: Publish to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -434,3 +434,9 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
+
+      # IMPORTANT: Fix permissions after Allure action (runs as root, creates root-owned files)
+      # This prevents "permission denied" errors on subsequent workflow runs
+      - name: Fix workspace permissions
+        if: always()
+        run: sudo chown -R $(id -u):$(id -g) ${{ github.workspace }} || true

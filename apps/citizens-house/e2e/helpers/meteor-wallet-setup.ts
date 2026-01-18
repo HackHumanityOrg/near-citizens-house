@@ -1,8 +1,5 @@
 import { Page, expect } from "@playwright/test"
 import { randomBytes } from "crypto"
-import { logger, LogScope, Op } from "../../lib/logger"
-
-const logContext = { scope: LogScope.E2E, operation: Op.E2E.METEOR_WALLET }
 
 interface SetupOptions {
   privateKey: string // ed25519:... format for the NEAR account to import
@@ -154,10 +151,6 @@ export async function setupMeteorWalletWithAccount(
  * @param meteorPage - The Playwright Page for the Meteor wallet tab
  */
 export async function approveConnection(meteorPage: Page): Promise<void> {
-  logger.info("Meteor: Closing promotional modals", {
-    ...logContext,
-  })
-
   // Close promotional modals - look for Close button (not Cancel!)
   // Promotional modals have "Close" button, connection screen has "Cancel" + "Connect"
   for (let i = 0; i < 5; i++) {
@@ -169,19 +162,12 @@ export async function approveConnection(meteorPage: Page): Promise<void> {
     const [hasCancelBtn, hasConnectBtn] = await Promise.all([cancelBtn.isVisible(), connectBtnCheck.isVisible()])
 
     if (hasCancelBtn && hasConnectBtn) {
-      logger.info("Meteor: Connect Request screen detected", {
-        ...logContext,
-      })
       break
     }
 
     // Look for Close button (promotional modal)
     const closeBtn = meteorPage.getByRole("button", { name: "Close" }).first()
     if (await closeBtn.isVisible()) {
-      logger.debug("Meteor: Closing promotional modal", {
-        ...logContext,
-        modal_index: i + 1,
-      })
       // Use JavaScript click since button may be outside viewport in some modal states
       await closeBtn.evaluate((el) => (el as HTMLButtonElement).click())
       // Wait for the modal to close before checking again
@@ -199,31 +185,17 @@ export async function approveConnection(meteorPage: Page): Promise<void> {
     .catch(() => {})
 
   // Find and click the Connect button
-  logger.info("Meteor: Looking for Connect approval button", {
-    ...logContext,
-  })
   const connectBtn = meteorPage.getByRole("button", { name: "Connect" }).last()
   // Use web-first assertion to wait for button visibility
   await expect(connectBtn).toBeVisible({ timeout: 10000 })
-  logger.info("Meteor: Clicking Connect button to approve connection", {
-    ...logContext,
-  })
   // Use JavaScript click since other elements may intercept pointer events
   await connectBtn.evaluate((el) => (el as HTMLButtonElement).click())
 
   // Wait for the Meteor page to close automatically
-  logger.info("Meteor: Waiting for wallet tab to close automatically", {
-    ...logContext,
-  })
   try {
     await meteorPage.waitForEvent("close", { timeout: 15000 })
-    logger.info("Meteor: Connection completed - page closed", {
-      ...logContext,
-    })
   } catch {
-    logger.warn("Meteor: Page did not close automatically", {
-      ...logContext,
-    })
+    // Page did not close automatically
   }
 }
 
@@ -244,18 +216,11 @@ export async function approveSignature(meteorPage: Page, options: SignatureOptio
   // Wait for page to load
   await meteorPage.waitForLoadState("domcontentloaded")
 
-  logger.info("Meteor: Waiting for signature screen", {
-    ...logContext,
-  })
-
   // Check if unlock screen is showing (wallet needs password)
   // Use waitFor with a try/catch to detect unlock screen
   const unlockBtn = meteorPage.getByRole("button", { name: /unlock/i })
   try {
     await unlockBtn.waitFor({ state: "visible", timeout: 5000 })
-    logger.info("Meteor: Unlock screen detected, entering password", {
-      ...logContext,
-    })
 
     // Enter password
     const passwordInput = meteorPage.getByPlaceholder(/enter password/i)
@@ -267,14 +232,8 @@ export async function approveSignature(meteorPage: Page, options: SignatureOptio
 
     // Wait for unlock to complete
     await unlockBtn.waitFor({ state: "hidden", timeout: 10000 })
-    logger.info("Meteor: Wallet unlocked", {
-      ...logContext,
-    })
   } catch {
     // No unlock screen, proceed to signature approval
-    logger.info("Meteor: No unlock screen, proceeding to signature approval", {
-      ...logContext,
-    })
   }
 
   // Close promotional modals (same pattern as approveConnection)
@@ -283,19 +242,12 @@ export async function approveSignature(meteorPage: Page, options: SignatureOptio
     // Note: isVisible() returns immediately (timeout param is deprecated/ignored)
     const approveBtn = meteorPage.getByRole("button", { name: /approve|sign|confirm/i })
     if (await approveBtn.isVisible()) {
-      logger.info("Meteor: Signature approval screen detected", {
-        ...logContext,
-      })
       break
     }
 
     // Look for Close button (promotional modal)
     const closeBtn = meteorPage.getByRole("button", { name: "Close" }).first()
     if (await closeBtn.isVisible()) {
-      logger.debug("Meteor: Closing promotional modal", {
-        ...logContext,
-        modal_index: i + 1,
-      })
       await closeBtn.evaluate((el) => (el as HTMLButtonElement).click())
       await closeBtn.waitFor({ state: "hidden", timeout: 2000 }).catch(() => {})
     } else {
@@ -311,29 +263,15 @@ export async function approveSignature(meteorPage: Page, options: SignatureOptio
     .catch(() => {})
 
   // Find and click the Approve/Sign button
-  logger.info("Meteor: Looking for signature approval button", {
-    ...logContext,
-  })
   const approveBtn = meteorPage.getByRole("button", { name: /approve|sign|confirm/i }).last()
   // Use web-first assertion to wait for button visibility
   await expect(approveBtn).toBeVisible({ timeout: 10000 })
-  logger.info("Meteor: Clicking signature approval button", {
-    ...logContext,
-  })
   await approveBtn.evaluate((el) => (el as HTMLButtonElement).click())
 
   // Wait for the Meteor page to close automatically
-  logger.info("Meteor: Waiting for signature popup to close", {
-    ...logContext,
-  })
   try {
     await meteorPage.waitForEvent("close", { timeout: 15000 })
-    logger.info("Meteor: Signature approved - page closed", {
-      ...logContext,
-    })
   } catch {
-    logger.warn("Meteor: Page did not close automatically after signing", {
-      ...logContext,
-    })
+    // Page did not close automatically after signing
   }
 }

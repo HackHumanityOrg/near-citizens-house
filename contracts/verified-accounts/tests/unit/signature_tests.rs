@@ -34,17 +34,17 @@ fn test_invalid_signature() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -79,17 +79,17 @@ fn test_invalid_nonce_length() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
-                    nonce: vec![0; 16],
+                    nonce: vec![0; 16].into(),
                     recipient: accounts(0),
                 };
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -124,17 +124,17 @@ fn test_invalid_signature_length() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 32],
+                    signature: vec![0; 32].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -169,17 +169,17 @@ fn test_nonce_too_long() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
-                    nonce: vec![0; 33],
+                    nonce: vec![0; 33].into(),
                     recipient: accounts(0),
                 };
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -214,17 +214,17 @@ fn test_signature_too_long() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 65],
+                    signature: vec![0; 65].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "test".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),
@@ -270,7 +270,7 @@ fn test_signature_from_different_key_rejected() {
                     contract.store_verification(
                         "nullifier_wrong_key".to_string(),
                         user.clone(),
-                        "1".to_string(),
+                        1,
                         sig_data,
                         test_self_proof(),
                         "ctx".to_string(),
@@ -304,14 +304,14 @@ fn test_signature_wrong_nonce_rejected() {
         let signer = create_signer(&user);
         let mut sig_data =
             create_valid_signature(&signer, &user, "Identify myself", &[10; 32], &accounts(0));
-        sig_data.nonce = vec![42u8; 32];
+        sig_data.nonce = vec![42u8; 32].into();
 
         assert_panic_with(
             || {
                 contract.store_verification(
                     "nullifier_wrong_nonce".to_string(),
                     user.clone(),
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),
@@ -354,7 +354,7 @@ fn test_signature_wrong_recipient_rejected() {
                 contract.store_verification(
                     "nullifier_wrong_recipient".to_string(),
                     user.clone(),
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),
@@ -396,7 +396,7 @@ fn test_signature_wrong_challenge_rejected() {
                 contract.store_verification(
                     "nullifier_wrong_challenge".to_string(),
                     user.clone(),
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),
@@ -429,14 +429,14 @@ fn test_invalid_signature_contents() {
         let signer = create_signer(&user);
         let mut sig_data =
             create_valid_signature(&signer, &user, "Identify myself", &[7; 32], &accounts(0));
-        sig_data.signature[0] ^= 0xFF;
+        sig_data.signature.0[0] ^= 0xFF;
 
         assert_panic_with(
             || {
                 contract.store_verification(
                     "tampered".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "ctx".to_string(),

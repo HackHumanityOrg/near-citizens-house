@@ -1,6 +1,6 @@
 //! Pagination tests for verified-accounts contract
 
-use crate::helpers::{generate_nep413_signature, init, test_self_proof};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
@@ -26,19 +26,22 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
         let (signature, public_key) =
             generate_nep413_signature(&user, challenge, &nonce, &recipient);
 
+        // Use base64 encoding for nonce (matches contract's Base64VecU8)
+        let nonce_base64 = nonce_to_base64(&nonce);
+
         backend
             .call(contract.id(), "store_verification")
             .deposit(NearToken::from_yoctonear(1))
             .args_json(json!({
                 "nullifier": format!("pagination_cap_nullifier_{}", i),
                 "near_account_id": user.id(),
-                "attestation_id": format!("{}", (i % 3) + 1),
+                "attestation_id": (i % 3) + 1,
                 "signature_data": {
                     "account_id": user.id(),
                     "signature": signature,
                     "public_key": public_key,
                     "challenge": challenge,
-                    "nonce": nonce.to_vec(),
+                    "nonce": nonce_base64,
                     "recipient": recipient
                 },
                 "self_proof": test_self_proof(),

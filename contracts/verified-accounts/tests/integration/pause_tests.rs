@@ -1,7 +1,8 @@
 //! Pause functionality tests for verified-accounts contract
 
-use crate::helpers::{generate_nep413_signature, init, test_self_proof};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
@@ -39,13 +40,13 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 64],
+                "signature": BASE64.encode([0u8; 64]),
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
@@ -196,13 +197,13 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "pause_read_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),

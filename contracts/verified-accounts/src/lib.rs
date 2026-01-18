@@ -19,6 +19,7 @@
 use near_sdk::assert_one_yocto;
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupSet, UnorderedMap};
+use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
 
@@ -31,7 +32,6 @@ pub use interface::{
 
 /// Maximum length for string inputs
 const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 78 decimal digits
-const MAX_ATTESTATION_ID_LEN: usize = 1; // Self.xyz uses "1", "2", "3"
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
 const MAX_PUBLIC_SIGNALS_COUNT: usize = 21; // Passport proofs have 21 signals
 const MAX_PROOF_COMPONENT_LEN: usize = 80; // BN254 field elements ~77 decimal digits
@@ -55,10 +55,10 @@ pub enum StorageKey {
 #[borsh(crate = "near_sdk::borsh")]
 pub struct NearSignatureData {
     pub account_id: AccountId,
-    pub signature: Vec<u8>,
+    pub signature: Base64VecU8,
     pub public_key: PublicKey,
     pub challenge: String,
-    pub nonce: Vec<u8>,
+    pub nonce: Base64VecU8,
     pub recipient: AccountId,
 }
 
@@ -76,31 +76,31 @@ pub struct Nep413Payload {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct VerificationStoredEvent {
-    pub near_account_id: String,
+    pub near_account_id: AccountId,
     pub nullifier: String,
-    pub attestation_id: String,
+    pub attestation_id: u8,
 }
 
 /// Event emitted when contract is paused
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractPausedEvent {
-    pub by: String,
+    pub by: AccountId,
 }
 
 /// Event emitted when contract is unpaused
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ContractUnpausedEvent {
-    pub by: String,
+    pub by: AccountId,
 }
 
 /// Event emitted when backend wallet is updated
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BackendWalletUpdatedEvent {
-    pub old_wallet: String,
-    pub new_wallet: String,
+    pub old_wallet: AccountId,
+    pub new_wallet: AccountId,
 }
 
 /// Helper to emit JSON events in NEAR standard format
@@ -254,8 +254,8 @@ impl VersionedContract {
         emit_event(
             "backend_wallet_updated",
             &BackendWalletUpdatedEvent {
-                old_wallet: old_wallet.to_string(),
-                new_wallet: new_backend_wallet.to_string(),
+                old_wallet,
+                new_wallet: new_backend_wallet,
             },
         );
     }
@@ -278,7 +278,7 @@ impl VersionedContract {
         emit_event(
             "contract_paused",
             &ContractPausedEvent {
-                by: caller.to_string(),
+                by: caller,
             },
         );
     }
@@ -300,7 +300,7 @@ impl VersionedContract {
         emit_event(
             "contract_unpaused",
             &ContractUnpausedEvent {
-                by: caller.to_string(),
+                by: caller,
             },
         );
     }
@@ -311,7 +311,7 @@ impl VersionedContract {
         &mut self,
         nullifier: String,
         near_account_id: AccountId,
-        attestation_id: String,
+        attestation_id: u8,
         signature_data: NearSignatureData,
         self_proof: SelfProofData,
         user_context_data: String,
@@ -334,12 +334,7 @@ impl VersionedContract {
             MAX_NULLIFIER_LEN
         );
         assert!(
-            attestation_id.len() <= MAX_ATTESTATION_ID_LEN,
-            "Attestation ID exceeds maximum length of {}",
-            MAX_ATTESTATION_ID_LEN
-        );
-        assert!(
-            attestation_id == "1" || attestation_id == "2" || attestation_id == "3",
+            attestation_id == 1 || attestation_id == 2 || attestation_id == 3,
             "Attestation ID must be one of: 1, 2, 3"
         );
         assert!(
@@ -428,7 +423,7 @@ impl VersionedContract {
         let verification = Verification {
             nullifier: nullifier.clone(),
             near_account_id: near_account_id.clone(),
-            attestation_id: attestation_id.clone(),
+            attestation_id,
             verified_at: env::block_timestamp(),
             self_proof,
             user_context_data,
@@ -444,7 +439,7 @@ impl VersionedContract {
         emit_event(
             "verification_stored",
             &VerificationStoredEvent {
-                near_account_id: near_account_id.to_string(),
+                near_account_id,
                 nullifier,
                 attestation_id,
             },
@@ -458,11 +453,15 @@ impl VersionedContract {
     /// This function verifies cryptographic signature validity only. It does NOT
     /// verify that the public key is a valid access key for the claimed account.
     fn verify_near_signature(sig_data: &NearSignatureData) {
+        // Access the inner Vec<u8> from Base64VecU8
+        let nonce = &sig_data.nonce.0;
+        let signature = &sig_data.signature.0;
+
         // Validate nonce length
-        assert_eq!(sig_data.nonce.len(), 32, "Nonce must be exactly 32 bytes");
+        assert_eq!(nonce.len(), 32, "Nonce must be exactly 32 bytes");
 
         // Validate signature length
-        assert_eq!(sig_data.signature.len(), 64, "Signature must be 64 bytes");
+        assert_eq!(signature.len(), 64, "Signature must be 64 bytes");
 
         // Step 1: Serialize the NEP-413 prefix tag
         let tag: u32 = 2147484061;
@@ -470,7 +469,7 @@ impl VersionedContract {
 
         // Step 2: Create and serialize the NEP-413 payload
         let mut nonce_array = [0u8; 32];
-        nonce_array.copy_from_slice(&sig_data.nonce);
+        nonce_array.copy_from_slice(nonce);
 
         let payload = Nep413Payload {
             message: sig_data.challenge.clone(),
@@ -487,7 +486,7 @@ impl VersionedContract {
                     "Failed to serialize NEP-413 payload: {:?}. Message: {}, Nonce len: {}, Recipient: {}",
                     e,
                     sig_data.challenge,
-                    sig_data.nonce.len(),
+                    nonce.len(),
                     sig_data.recipient
                 ));
             }
@@ -516,7 +515,7 @@ impl VersionedContract {
 
         // Step 6: Convert to fixed-size arrays for ed25519_verify
         let mut sig_array = [0u8; 64];
-        sig_array.copy_from_slice(&sig_data.signature);
+        sig_array.copy_from_slice(signature);
 
         let mut pk_array = [0u8; 32];
         pk_array.copy_from_slice(public_key_bytes);

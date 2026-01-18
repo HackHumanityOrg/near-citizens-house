@@ -43,7 +43,7 @@ fn test_pause_unpause() {
         let logs = get_logs();
         let pause_event: ContractPausedEvent =
             parse_event(&logs, "contract_paused").expect("contract_paused event not found");
-        assert_eq!(pause_event.by, backend.to_string());
+        assert_eq!(pause_event.by, backend);
     });
 
     step("Unpause contract and verify event", || {
@@ -56,7 +56,7 @@ fn test_pause_unpause() {
         let logs = get_logs();
         let unpause_event: ContractUnpausedEvent =
             parse_event(&logs, "contract_unpaused").expect("contract_unpaused event not found");
-        assert_eq!(unpause_event.by, backend.to_string());
+        assert_eq!(unpause_event.by, backend);
     });
 }
 
@@ -151,17 +151,17 @@ fn test_store_verification_when_paused() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     test_self_proof(),
                     "test_user_context_data".to_string(),

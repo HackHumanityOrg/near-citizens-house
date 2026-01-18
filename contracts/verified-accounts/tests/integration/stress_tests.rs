@@ -3,7 +3,7 @@
 //! Exercises bulk writes and batch reads under load.
 //! Configure via env vars: STRESS_TOTAL (default 1000), STRESS_BATCH_TOTAL (default 1000)
 
-use crate::helpers::{generate_nep413_signature, init, test_self_proof};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, Contract};
@@ -34,12 +34,16 @@ async fn store_verification(
     contract: &Contract,
     user: &Account,
     nullifier: &str,
-    attestation_id: &str,
+    attestation_id: u8,
     nonce: [u8; 32],
 ) -> anyhow::Result<()> {
+
     let recipient = contract.id().to_string();
     let (signature, public_key) =
         generate_nep413_signature(user, CHALLENGE_MESSAGE, &nonce, &recipient);
+
+    // Use base64 encoding for nonce and signature (matches contract's Base64VecU8)
+    let nonce_base64 = nonce_to_base64(&nonce);
 
     let result = backend
         .call(contract.id(), "store_verification")
@@ -54,7 +58,7 @@ async fn store_verification(
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": CHALLENGE_MESSAGE,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_base64,
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -94,7 +98,7 @@ async fn test_stress_bulk_verifications_and_pagination() -> anyhow::Result<()> {
         let user = worker.dev_create_account().await?;
         let nullifier = format!("stress_nullifier_{:05}", i);
         let nonce = nonce_from_index(i);
-        store_verification(&backend, &contract, &user, &nullifier, "1", nonce).await?;
+        store_verification(&backend, &contract, &user, &nullifier, 1, nonce).await?;
         users.push(user);
 
         let done = i + 1;
@@ -155,8 +159,8 @@ async fn test_stress_batch_reads_at_max_limit() -> anyhow::Result<()> {
     for i in 0..total {
         let user = worker.dev_create_account().await?;
         let nullifier = format!("batch_nullifier_{:05}", i);
-        let nonce = nonce_from_index(i);
-        store_verification(&backend, &contract, &user, &nullifier, "1", nonce).await?;
+        let nonce = nonce_from_index(i + 10_000);
+        store_verification(&backend, &contract, &user, &nullifier, 1, nonce).await?;
         account_ids.push(user.id().clone());
 
         let done = i + 1;

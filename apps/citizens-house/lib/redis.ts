@@ -12,7 +12,7 @@
 import "server-only"
 
 import { createClient } from "redis"
-import { logger, LogScope, Op } from "./logger"
+import { env } from "./schemas/env"
 
 // Type for the Redis client returned by createClient
 type RedisClient = ReturnType<typeof createClient>
@@ -31,28 +31,13 @@ let connectionPromise: Promise<RedisClient> | null = null
 export async function getRedisClient(): Promise<RedisClient> {
   if (!connectionPromise) {
     connectionPromise = (async () => {
-      const redisUrl = process.env.REDIS_URL
-      if (!redisUrl) {
-        throw new Error("REDIS_URL environment variable is not set")
-      }
-
+      // REDIS_URL is validated by T3 Env at build time
       const client = createClient({
-        url: redisUrl,
+        url: env.REDIS_URL,
       })
-      client.on("error", (err) =>
-        logger.error("Redis client error", {
-          scope: LogScope.REDIS,
-          operation: Op.REDIS.CONNECT,
-          error_message: err instanceof Error ? err.message : String(err),
-        }),
-      )
 
       try {
         await client.connect()
-        logger.info("Redis connected successfully", {
-          scope: LogScope.REDIS,
-          operation: Op.REDIS.CONNECT,
-        })
         return client
       } catch (err) {
         // Reset the promise so subsequent calls can retry

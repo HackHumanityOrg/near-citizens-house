@@ -1,13 +1,11 @@
 /* eslint-disable no-empty-pattern, react-hooks/rules-of-hooks */
 import { test as base, Page, BrowserContext, expect } from "@playwright/test"
+import type { NearAccountId } from "@/lib"
 import { NearAccountManager } from "../helpers/near-account-manager"
 import { setupMeteorWalletWithAccount, approveConnection, approveSignature } from "../helpers/meteor-wallet-setup"
-import { logger, LogScope, Op } from "../../lib/logger"
-
-const logContext = { scope: LogScope.E2E, operation: Op.E2E.DYNAMIC_WALLET_FIXTURE }
 
 interface TestAccount {
-  accountId: string
+  accountId: NearAccountId
   publicKey: string
   privateKey: string
 }
@@ -41,24 +39,12 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
   accountManager: [
     async ({}, use, workerInfo) => {
       const manager = new NearAccountManager(workerInfo.parallelIndex)
-      logger.info("Account manager initialized", {
-        ...logContext,
-        worker_index: workerInfo.parallelIndex,
-      })
 
       await use(manager)
 
       // Worker-level cleanup: runs after ALL tests in this worker complete
       // This is the safety net - catches any accounts not deleted by individual tests
-      logger.info("Worker cleanup: deleting remaining accounts", {
-        ...logContext,
-        worker_index: workerInfo.parallelIndex,
-      })
       await manager.cleanupAll()
-      logger.info("Worker cleanup complete", {
-        ...logContext,
-        worker_index: workerInfo.parallelIndex,
-      })
     },
     { scope: "worker" },
   ],
@@ -72,41 +58,17 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
   // Create a fresh NEAR subaccount for each test
   // Each worker has its own deterministically-derived access key on the parent account,
   // eliminating nonce collisions. See: https://docs.near.org/protocol/access-keys
-  testAccount: async ({ accountManager }, use, testInfo) => {
-    const workerIndex = testInfo.parallelIndex
-
+  testAccount: async ({ accountManager }, use) => {
     const account = await accountManager.createTestAccount()
-    logger.info("Created test account", {
-      ...logContext,
-      worker_index: workerIndex,
-      account_id: account.accountId,
-    })
 
     await use(account)
 
     // Per-test cleanup: delete the subaccount after test
     // If this fails, the worker-level cleanup will catch it
     try {
-      logger.info("Deleting test account", {
-        ...logContext,
-        worker_index: workerIndex,
-        account_id: account.accountId,
-      })
       await accountManager.deleteTestAccount(account.accountId)
-      logger.info("Deleted test account successfully", {
-        ...logContext,
-        worker_index: workerIndex,
-        account_id: account.accountId,
-      })
-    } catch (error) {
-      logger.warn("Per-test cleanup failed; will retry in worker cleanup", {
-        ...logContext,
-        worker_index: workerIndex,
-        account_id: account.accountId,
-        error_message: error instanceof Error ? error.message : String(error),
-        error_type: error instanceof Error ? error.name : undefined,
-        error_stack: error instanceof Error ? error.stack : undefined,
-      })
+    } catch {
+      // Per-test cleanup failed; will retry in worker cleanup
       // Don't throw - let the worker-level cleanup handle it
     }
   },
@@ -138,11 +100,6 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
       const meteorPage = await meteorPagePromise
       await meteorPage.waitForLoadState("domcontentloaded")
 
-      logger.info("Meteor wallet opened", {
-        ...logContext,
-        url: meteorPage.url(),
-      })
-
       // Create fresh Meteor wallet and import the test account
       const { password } = await setupMeteorWalletWithAccount(meteorPage, {
         privateKey: account.privateKey,
@@ -150,9 +107,6 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
 
       // Store password for later use in signing
       walletSession.password = password
-      logger.info("Meteor wallet created with dynamic password", {
-        ...logContext,
-      })
 
       // Approve connection to the app (handles page close internally)
       await approveConnection(meteorPage)
@@ -162,15 +116,6 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
 
       // Use web-first assertion for connected state
       await expect(page.getByTestId("connected-wallet-display")).toBeVisible({ timeout: 10000 })
-
-      logger.info("Connected to app with account", {
-        ...logContext,
-        account_id: account.accountId,
-      })
-      logger.info("Redirected to verification start", {
-        ...logContext,
-        url: page.url(),
-      })
     }
 
     await use(connect)
@@ -189,26 +134,17 @@ export const test = base.extend<DynamicWalletFixtures, { accountManager: NearAcc
       // Capture Meteor signature popup
       const signaturePage = await signaturePagePromise
       await signaturePage.waitForLoadState("domcontentloaded")
-      logger.info("Meteor signature popup opened", {
-        ...logContext,
-        url: signaturePage.url(),
-      })
 
       // Approve signature (pass password for unlock screen)
       await approveSignature(signaturePage, { password: walletSession.password })
 
       // Wait for popup to close
       await signaturePage.waitForEvent("close", { timeout: 15000 }).catch(() => {
-        logger.warn("Signature popup did not close, may have redirected", {
-          ...logContext,
-        })
+        // Signature popup did not close, may have redirected
       })
 
       // Use web-first assertion for Step 2 appearance - this confirms signing succeeded
       await expect(page.getByTestId("step2-section")).toBeVisible({ timeout: 15000 })
-      logger.info("Message signed successfully, Step 2 visible", {
-        ...logContext,
-      })
     }
 
     await use(sign)

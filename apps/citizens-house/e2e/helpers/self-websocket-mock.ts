@@ -19,9 +19,6 @@
  */
 
 import type { Page, WebSocketRoute } from "@playwright/test"
-import { logger, LogScope, Op } from "../../lib/logger"
-
-const logContext = { scope: LogScope.E2E, operation: Op.E2E.SELF_WEBSOCKET_MOCK }
 
 interface WebSocketMockOptions {
   /** Delay before sending proof_verified after triggerSuccess is called (ms) */
@@ -49,7 +46,6 @@ export async function setupSelfWebSocketMock(
 
   let wsRoute: WebSocketRoute | null = null
   let successTriggered = false
-  let connectionReady = false
   let connectedNamespace = "/" // Track which namespace the client connected to
 
   // Intercept Self.xyz WebSocket connections
@@ -57,25 +53,14 @@ export async function setupSelfWebSocketMock(
     wsRoute = ws
     connectionReady = false
     connectedNamespace = "/"
-    logger.info("Self.xyz WebSocket intercepted", {
-      ...logContext,
-    })
 
     // Step 1: Send Engine.IO OPEN packet
     const sessionId = `mock-sid-${Date.now()}`
     ws.send(`0{"sid":"${sessionId}","pingInterval":25000,"pingTimeout":20000,"upgrades":[]}`)
-    logger.debug("WebSocket sent Engine.IO OPEN", {
-      ...logContext,
-      session_id: sessionId,
-    })
 
     // Handle incoming messages
     ws.onMessage((message) => {
       const msgStr = typeof message === "string" ? message : message.toString()
-      logger.debug("WebSocket message received", {
-        ...logContext,
-        payload: msgStr,
-      })
 
       // Socket.IO CONNECT handling
       // Default namespace: "40" or "40{...}"
@@ -83,12 +68,7 @@ export async function setupSelfWebSocketMock(
       if (msgStr === "40" || msgStr.startsWith("40{")) {
         // Default namespace
         ws.send("40")
-        connectionReady = true
         connectedNamespace = "/"
-        logger.debug("WebSocket sent Socket.IO CONNECT confirmation", {
-          ...logContext,
-          namespace: "/",
-        })
       } else if (msgStr.startsWith("40/")) {
         // Named namespace - extract namespace and respond with sid
         // Server must respond with: 40/namespace,{"sid":"..."}
@@ -97,29 +77,13 @@ export async function setupSelfWebSocketMock(
           const namespace = namespaceMatch[1] // e.g., "/websocket"
           const socketSid = `mock-socket-${Date.now()}`
           ws.send(`40${namespace},{"sid":"${socketSid}"}`)
-          connectionReady = true
           connectedNamespace = namespace
-          logger.debug("WebSocket sent Socket.IO CONNECT confirmation", {
-            ...logContext,
-            namespace,
-            socket_sid: socketSid,
-          })
         }
       }
 
       // Respond to Engine.IO ping (2) with pong (3)
       if (msgStr === "2") {
         ws.send("3")
-        logger.debug("WebSocket sent pong", {
-          ...logContext,
-        })
-      }
-
-      // Handle self_app event (SDK sends this after mobile_connected)
-      if (msgStr.includes('"self_app"')) {
-        logger.debug("WebSocket received self_app event", {
-          ...logContext,
-        })
       }
     })
   })
@@ -137,28 +101,13 @@ export async function setupSelfWebSocketMock(
 
   const triggerSuccess = () => {
     if (successTriggered) {
-      logger.warn("WebSocket success already triggered", {
-        ...logContext,
-      })
       return
     }
     if (!wsRoute) {
-      logger.error("No WebSocket route available for mock", {
-        ...logContext,
-      })
       return
-    }
-    if (!connectionReady) {
-      logger.warn("WebSocket connection not ready, triggering anyway", {
-        ...logContext,
-      })
     }
 
     successTriggered = true
-    logger.info("Triggering verification success sequence", {
-      ...logContext,
-      namespace: connectedNamespace,
-    })
 
     // Simulate the verification flow with delays
     // Socket.IO EVENT format depends on namespace
@@ -166,30 +115,18 @@ export async function setupSelfWebSocketMock(
       if (!wsRoute) return
       const msg = formatEvent("mobile_status", { status: "mobile_connected" })
       wsRoute.send(msg)
-      logger.debug("WebSocket sent mobile_connected", {
-        ...logContext,
-        status: "mobile_connected",
-      })
     }, 100)
 
     setTimeout(() => {
       if (!wsRoute) return
       const msg = formatEvent("mobile_status", { status: "proof_generation_started" })
       wsRoute.send(msg)
-      logger.debug("WebSocket sent proof_generation_started", {
-        ...logContext,
-        status: "proof_generation_started",
-      })
     }, 200)
 
     setTimeout(() => {
       if (!wsRoute) return
       const msg = formatEvent("mobile_status", { status: "proof_generated" })
       wsRoute.send(msg)
-      logger.debug("WebSocket sent proof_generated", {
-        ...logContext,
-        status: "proof_generated",
-      })
     }, 300)
 
     setTimeout(() => {
@@ -197,10 +134,6 @@ export async function setupSelfWebSocketMock(
       // This triggers onSuccess in the SelfQRcode component!
       const msg = formatEvent("mobile_status", { status: "proof_verified" })
       wsRoute.send(msg)
-      logger.debug("WebSocket sent proof_verified", {
-        ...logContext,
-        status: "proof_verified",
-      })
     }, successDelay)
   }
 

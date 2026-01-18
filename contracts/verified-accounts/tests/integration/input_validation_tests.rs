@@ -1,7 +1,8 @@
 //! Input validation tests for verified-accounts contract
 
-use crate::helpers::{init, test_self_proof};
+use crate::helpers::{init, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
@@ -23,13 +24,13 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 64],
+                "signature": BASE64.encode([0u8; 64]),
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 16], // Invalid: should be 32 bytes
+                "nonce": BASE64.encode([0u8; 16]), // Invalid: should be 32 bytes
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
@@ -65,13 +66,13 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 32], // Invalid: should be 64 bytes
+                "signature": BASE64.encode([0u8; 32]), // Invalid: should be 64 bytes
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
@@ -108,13 +109,13 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(), // Trying to verify this account
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": different_user.id(), // But signature is for different account
-                "signature": vec![0u8; 64],
+                "signature": BASE64.encode([0u8; 64]),
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
@@ -151,13 +152,13 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 64],
+                "signature": BASE64.encode([0u8; 64]),
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": different_recipient.id() // Recipient mismatch
             },
             "self_proof": test_self_proof(),

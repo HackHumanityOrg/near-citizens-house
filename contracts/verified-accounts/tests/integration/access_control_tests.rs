@@ -1,7 +1,8 @@
 //! Access control tests for verified-accounts contract
 
-use crate::helpers::{init, test_self_proof};
+use crate::helpers::{init, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use near_workspaces::types::NearToken;
 use near_workspaces::AccountId;
 use serde_json::json;
@@ -28,13 +29,13 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 64],
+                "signature": BASE64.encode([0u8; 64]),
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
@@ -155,13 +156,13 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 64],
+                "signature": BASE64.encode([0u8; 64]),
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),
@@ -187,13 +188,13 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
-                "signature": vec![0u8; 64],
+                "signature": BASE64.encode([0u8; 64]),
                 "public_key": "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847",
                 "challenge": "Identify myself",
-                "nonce": vec![0u8; 32],
+                "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
             "self_proof": test_self_proof(),

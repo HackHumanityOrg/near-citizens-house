@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { CookieSettingsLink } from "@/components/layout/cookie-settings-link"
 
 export function Footer() {
   return (
@@ -41,8 +40,6 @@ export function Footer() {
             >
               Privacy Policy
             </Link>
-            <span className="text-[14px] leading-[1.2] text-[#040404] dark:text-white tracking-[0.14px]">•</span>
-            <CookieSettingsLink />
             <span className="text-[14px] leading-[1.2] text-[#040404] dark:text-white tracking-[0.14px]">•</span>
             <a
               href="https://hackhumanity.com"
@@ -120,7 +117,6 @@ export function Footer() {
           >
             Privacy Policy
           </Link>
-          <CookieSettingsLink className="text-right" />
           <a
             href="https://hackhumanity.com"
             target="_blank"

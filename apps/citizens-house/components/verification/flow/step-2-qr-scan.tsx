@@ -2,15 +2,13 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { Buffer } from "buffer"
 import { SelfAppBuilder } from "@selfxyz/qrcode"
-import { SELF_CONFIG, getUniversalLink, type NearSignatureData } from "@near-citizens/shared"
+import { SELF_CONFIG, getUniversalLink, type NearSignatureData, type AttestationId } from "@/lib"
+import { trackEvent } from "@/lib/analytics"
+import { statusResponseSchema } from "@/lib/schemas"
 import { Loader2, Info, Ban, Check } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { useAnalytics } from "@/lib/analytics"
-import { clientLogger } from "@/lib/logger-client"
-import { LogScope, Op } from "@/lib/logging"
-import { getErrorMessage } from "@/lib/verification-errors"
+import { getErrorMessage } from "@/lib/schemas/errors"
 import { StarPattern } from "../icons/star-pattern"
 
 type SelfApp = ReturnType<SelfAppBuilder["build"]>
@@ -44,52 +42,24 @@ const SelfQRcodeWrapper = dynamic<SelfQRcodeProps>(
 interface Step2QrScanProps {
   nearSignature: NearSignatureData
   sessionId: string
-  onSuccess: (attestationId?: string | number) => void
+  onSuccess: (attestationId?: AttestationId) => void
   onError: (error: string, code?: string) => void
 }
 
 export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: Step2QrScanProps) {
-  const analytics = useAnalytics()
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "scanning" | "verifying" | "success" | "error">(
     "idle",
   )
-  const trackedStartRef = useRef(false)
-  const trackedQrDisplayRef = useRef(false)
   const confirmationInProgressRef = useRef(false)
-
-  const logContext = useMemo(
-    () => ({
-      scope: LogScope.VERIFICATION,
-      component: "verification.step2",
-      account_id: nearSignature.accountId,
-      session_id: sessionId,
-    }),
-    [nearSignature.accountId, sessionId],
-  )
-
-  // Track verification started and QR code displayed
-  useEffect(() => {
-    if (!trackedStartRef.current) {
-      const method = window.innerWidth < 768 ? "deeplink" : "qr"
-      analytics.trackVerificationStarted(nearSignature.accountId, method)
-      trackedStartRef.current = true
-    }
-
-    if (!trackedQrDisplayRef.current) {
-      const method = window.innerWidth < 768 ? "deeplink" : "qr"
-      analytics.trackQrCodeDisplayed(nearSignature.accountId, method)
-      trackedQrDisplayRef.current = true
-    }
-  }, [nearSignature.accountId, analytics])
 
   // Build SelfApp for QR code (desktop)
   const selfAppDesktop = useMemo(() => {
-    const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
+    // nonce is already base64 encoded
     const userDefinedData = JSON.stringify({
       accountId: nearSignature.accountId,
       publicKey: nearSignature.publicKey,
       signature: nearSignature.signature,
-      nonce: nonceBase64,
+      nonce: nearSignature.nonce,
       timestamp: nearSignature.timestamp,
     })
 
@@ -109,12 +79,12 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
 
   // Build SelfApp for deeplink (mobile)
   const selfAppMobile = useMemo(() => {
-    const nonceBase64 = Buffer.from(nearSignature.nonce).toString("base64")
+    // nonce is already base64 encoded
     const userDefinedData = JSON.stringify({
       accountId: nearSignature.accountId,
       publicKey: nearSignature.publicKey,
       signature: nearSignature.signature,
-      nonce: nonceBase64,
+      nonce: nearSignature.nonce,
       timestamp: nearSignature.timestamp,
     })
 
@@ -151,20 +121,29 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
     }
   }, [sessionId, nearSignature.accountId])
 
+  // Track qr_displayed when QR code is rendered (desktop only)
+  useEffect(() => {
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches
+    if (isDesktop && selfAppDesktop) {
+      trackEvent({
+        domain: "verification",
+        action: "qr_displayed",
+        sessionId,
+      })
+    }
+  }, [selfAppDesktop, sessionId])
+
   const handleOpenSelfApp = () => {
-    analytics.trackDeeplinkOpened(nearSignature.accountId)
+    trackEvent({
+      domain: "verification",
+      action: "deeplink_opened",
+      sessionId,
+    })
     window.open(deeplink, "_blank")
   }
 
   const finalizeWithError = (message: string, code?: string) => {
     confirmationInProgressRef.current = false
-    clientLogger.warn("Verification QR flow failed", {
-      ...logContext,
-      operation: Op.VERIFICATION.STEP2_FINALIZE,
-      error_code: code || "VERIFICATION_FAILED",
-      error_message: message,
-    })
-    analytics.trackVerificationFailed(nearSignature.accountId, code || "VERIFICATION_FAILED", message)
     setVerificationStatus("error")
     onError(message, code)
   }
@@ -173,6 +152,13 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
     const maxPolls = 60 // 2 minutes at 2s interval
     const pollIntervalMs = 2000
 
+    // Track polling started
+    trackEvent({
+      domain: "verification",
+      action: "polling_started",
+      sessionId,
+    })
+
     for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
       try {
         const response = await fetch(
@@ -180,17 +166,18 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
         )
 
         if (response.ok) {
-          const data = await response.json()
+          const json = await response.json()
+          const parsed = statusResponseSchema.safeParse(json)
+
+          // If validation fails, continue polling (invalid response = retry)
+          if (!parsed.success) {
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+            continue
+          }
+
+          const data = parsed.data
 
           if (data.status === "success") {
-            const method = window.innerWidth < 768 ? "deeplink" : "qr"
-            analytics.trackVerificationCompleted(nearSignature.accountId, method)
-            clientLogger.info("Verification status confirmed", {
-              ...logContext,
-              operation: Op.VERIFICATION.STEP2_CONFIRM_STATUS,
-              attestation_id: data.attestationId,
-              status: data.status,
-            })
             confirmationInProgressRef.current = false
             setVerificationStatus("success")
             onSuccess(data.attestationId)
@@ -212,22 +199,20 @@ export function Step2QrScan({ nearSignature, sessionId, onSuccess, onError }: St
           finalizeWithError("Verification session expired. Please try again.", "TIMEOUT")
           return
         }
-      } catch (error) {
-        const errorDetails =
-          error instanceof Error
-            ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
-            : { error_message: String(error) }
-        clientLogger.warn("Failed to check verification status", {
-          ...logContext,
-          operation: Op.VERIFICATION.STEP2_CONFIRM_STATUS,
-          poll_count: pollCount + 1,
-          ...errorDetails,
-        })
+      } catch {
+        // Network error, continue polling
       }
 
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
     }
 
+    // Track polling timeout
+    trackEvent({
+      domain: "verification",
+      action: "polling_timeout",
+      sessionId,
+      pollCount: maxPolls,
+    })
     finalizeWithError("Verification timed out. Please try again.", "TIMEOUT")
   }
 

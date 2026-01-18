@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 import { Check, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getAttestationTypeName } from "@near-citizens/shared"
+import { getAttestationTypeName, type AttestationId, type NearAccountId } from "@/lib"
 import { StarPattern } from "../icons/star-pattern"
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform } from "framer-motion"
 
 interface Step3SuccessProps {
-  accountId: string
-  attestationId?: string | number | null
+  accountId: NearAccountId
+  attestationId?: AttestationId | null
   onDisconnect?: () => void
 }
 

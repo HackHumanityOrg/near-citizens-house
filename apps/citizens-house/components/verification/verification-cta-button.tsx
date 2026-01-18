@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef } from "react"
-import { useNearWallet } from "@near-citizens/shared"
+import { useNearWallet } from "@/lib"
 import { Button, cn } from "@near-citizens/ui"
 
 type VerificationCtaButtonProps = {

@@ -1,8 +1,8 @@
 "use client"
 
 import useSWRImmutable from "swr/immutable"
-import { useNearWallet } from "@near-citizens/shared"
-import { checkVerificationStatus } from "@/lib/actions/verification"
+import { useNearWallet } from "@/lib"
+import { checkIsVerified } from "@/app/citizens/actions"
 
 export interface UseVerificationResult {
   /** Whether the connected wallet is verified */
@@ -21,7 +21,7 @@ export function useVerification(): UseVerificationResult {
   const { accountId } = useNearWallet()
 
   const { data: isVerified, isLoading } = useSWRImmutable(accountId ? ["verification", accountId] : null, () =>
-    checkVerificationStatus(accountId!),
+    checkIsVerified(accountId!),
   )
 
   return {

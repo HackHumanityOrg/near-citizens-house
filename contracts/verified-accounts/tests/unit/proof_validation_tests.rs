@@ -35,10 +35,10 @@ fn test_public_signals_too_many() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
@@ -57,7 +57,7 @@ fn test_public_signals_too_many() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     too_many_signals_proof,
                     "test_user_context_data".to_string(),
@@ -92,10 +92,10 @@ fn test_public_signal_item_too_long() {
                 let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                 let sig_data = NearSignatureData {
                     account_id: user.clone(),
-                    signature: vec![0; 64],
+                    signature: vec![0; 64].into(),
                     public_key: public_key_str.parse().unwrap(),
                     challenge: "Identify myself".to_string(),
-                    nonce: vec![0; 32],
+                    nonce: vec![0; 32].into(),
                     recipient: accounts(0),
                 };
 
@@ -116,7 +116,7 @@ fn test_public_signal_item_too_long() {
                 contract.store_verification(
                     "test_nullifier".to_string(),
                     user,
-                    "1".to_string(),
+                    1,
                     sig_data,
                     bad_signal_proof,
                     "test_user_context_data".to_string(),
@@ -153,10 +153,10 @@ fn test_proof_component_a_too_long() {
                     let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                     let sig_data = NearSignatureData {
                         account_id: user.clone(),
-                        signature: vec![0; 64],
+                        signature: vec![0; 64].into(),
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
-                        nonce: vec![0; 32],
+                        nonce: vec![0; 32].into(),
                         recipient: accounts(0),
                     };
 
@@ -175,7 +175,7 @@ fn test_proof_component_a_too_long() {
                     contract.store_verification(
                         "test_nullifier".to_string(),
                         user,
-                        "1".to_string(),
+                        1,
                         sig_data,
                         bad_proof,
                         "test_user_context_data".to_string(),
@@ -213,10 +213,10 @@ fn test_proof_component_b_too_long() {
                     let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                     let sig_data = NearSignatureData {
                         account_id: user.clone(),
-                        signature: vec![0; 64],
+                        signature: vec![0; 64].into(),
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
-                        nonce: vec![0; 32],
+                        nonce: vec![0; 32].into(),
                         recipient: accounts(0),
                     };
 
@@ -235,7 +235,7 @@ fn test_proof_component_b_too_long() {
                     contract.store_verification(
                         "test_nullifier".to_string(),
                         user,
-                        "1".to_string(),
+                        1,
                         sig_data,
                         bad_proof,
                         "test_user_context_data".to_string(),
@@ -288,7 +288,7 @@ fn test_public_signals_at_max_length_allowed() {
         contract.store_verification(
             "nullifier_proof_ok".to_string(),
             user.clone(),
-            "1".to_string(),
+            1,
             sig_data,
             proof,
             "ctx".to_string(),
@@ -329,7 +329,7 @@ fn test_public_signals_under_max_allowed() {
         contract.store_verification(
             "nullifier_three_signals".to_string(),
             user.clone(),
-            "1".to_string(),
+            1,
             sig_data,
             proof,
             "ctx".to_string(),
@@ -381,7 +381,7 @@ fn test_proof_components_at_max_length_allowed() {
         contract.store_verification(
             "nullifier_component_ok".to_string(),
             user.clone(),
-            "1".to_string(),
+            1,
             sig_data,
             proof,
             "ctx".to_string(),
@@ -419,10 +419,10 @@ fn test_proof_component_c_too_long() {
                     let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
                     let sig_data = NearSignatureData {
                         account_id: user.clone(),
-                        signature: vec![0; 64],
+                        signature: vec![0; 64].into(),
                         public_key: public_key_str.parse().unwrap(),
                         challenge: "Identify myself".to_string(),
-                        nonce: vec![0; 32],
+                        nonce: vec![0; 32].into(),
                         recipient: accounts(0),
                     };
 
@@ -441,7 +441,7 @@ fn test_proof_component_c_too_long() {
                     contract.store_verification(
                         "test_nullifier".to_string(),
                         user,
-                        "1".to_string(),
+                        1,
                         sig_data,
                         bad_proof,
                         "test_user_context_data".to_string(),

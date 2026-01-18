@@ -39,6 +39,7 @@ serde = { version = "1.0", features = ["derive"] }  # For test struct deserializ
 rand = "0.9"  # For random nonce generation in tests
 anyhow = "1.0"
 sha2 = "0.10"
+base64 = "0.22"  # For base64 encoding in integration tests
 allure-rs = { version = "0.1", features = ["async", "tokio"] }
 allure-core = { version = "0.1", features = ["async", "tokio"] }  # Required: macros expand to allure_core:: references
 futures = "0.3"  # Required for FutureExt::catch_unwind in async allure tests

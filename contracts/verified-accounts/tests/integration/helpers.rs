@@ -5,6 +5,7 @@
 
 #![allow(dead_code)] // Shared helpers - not all functions used by every test file
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use borsh::BorshSerialize;
 use near_workspaces::{Account, Contract, Worker};
 use serde_json::json;
@@ -81,12 +82,15 @@ pub fn test_self_proof() -> serde_json::Value {
 /// 3. Concatenate: tag_bytes + payload_bytes
 /// 4. SHA-256 hash the concatenated data
 /// 5. Sign the hash with Ed25519
+///
+/// Returns (signature_base64, public_key_string) - signature is base64 encoded
+/// to match the contract's Base64VecU8 format.
 pub fn generate_nep413_signature(
     account: &Account,
     message: &str,
     nonce: &[u8; 32],
     recipient: &str,
-) -> (Vec<u8>, String) {
+) -> (String, String) {
     // Get the secret key from the account
     let secret_key_str = account.secret_key().to_string();
     let secret_key =
@@ -126,11 +130,16 @@ pub fn generate_nep413_signature(
     // Sign the hash
     let signature = secret_key.sign(&hash);
 
-    // Extract the raw 64-byte signature
-    let signature_bytes = match signature {
-        near_crypto::Signature::ED25519(sig) => sig.to_bytes().to_vec(),
+    // Extract the raw 64-byte signature and encode as base64
+    let signature_base64 = match signature {
+        near_crypto::Signature::ED25519(sig) => BASE64.encode(sig.to_bytes()),
         _ => panic!("Expected ED25519 signature"),
     };
 
-    (signature_bytes, public_key_str)
+    (signature_base64, public_key_str)
+}
+
+/// Encode a 32-byte nonce as base64 string for contract input
+pub fn nonce_to_base64(nonce: &[u8; 32]) -> String {
+    BASE64.encode(nonce)
 }

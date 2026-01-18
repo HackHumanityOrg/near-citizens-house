@@ -1,25 +1,20 @@
 "use server"
 
-import { z } from "zod"
 import { unstable_cache } from "next/cache"
 import {
-  verifyStoredProofWithDetails,
   parseUserContextData,
   verifyNearSignature,
   buildProofData,
   getSigningMessage,
   getSigningRecipient,
   nearAccountIdSchema,
+  type NearAccountId,
   type Verification,
   type ProofData,
-} from "@near-citizens/shared"
-import { verificationDb } from "@near-citizens/shared/contracts/verification/client"
-import { createServerActionEvent, logger, LogScope, Op } from "@/lib/logger"
-
-const paginationSchema = z.object({
-  page: z.number().int().min(0).max(100000),
-  pageSize: z.number().int().min(1).max(100),
-})
+} from "@/lib"
+import { verifyStoredProofWithDetails } from "@/lib/zk-verify"
+import { verificationDb } from "@/lib/contracts/verification/client"
+import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 
 export type VerificationResult = {
   zkValid: boolean
@@ -42,9 +37,9 @@ export type GetVerificationsResult = {
  * Core data fetching logic - separated for caching.
  * Fetches accounts from NEAR contract and verifies each one.
  */
-async function fetchAndVerifyVerifications(page: number, pageSize: number): Promise<GetVerificationsResult> {
+async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
   // Get paginated accounts from NEAR contract (newest first)
-  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(page, pageSize)
+  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(pagination)
 
   // Verify each account in parallel
   const verifiedAccounts = await Promise.all(
@@ -59,26 +54,10 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
               proof: account.selfProof.proof,
               publicSignals: account.selfProof.publicSignals,
             },
-            Number(account.attestationId),
+            account.attestationId,
           )
-
-          // Log successful verification with RPC endpoint used
-          if (zkResult.isValid && zkResult.rpcUrl) {
-            logger.debug("ZK proof verified", {
-              scope: LogScope.VERIFICATION,
-              operation: Op.VERIFICATION.ZK_VERIFY,
-              account_id: account.nearAccountId,
-              rpc_url: zkResult.rpcUrl,
-            })
-          }
         } catch (error) {
           // Graceful degradation: RPC failed but account is verified by contract
-          logger.warn("ZK re-verification failed, but account is contract-verified", {
-            scope: LogScope.VERIFICATION,
-            operation: Op.VERIFICATION.ZK_VERIFY,
-            account_id: account.nearAccountId,
-            error_message: error instanceof Error ? error.message : String(error),
-          })
           zkResult = {
             isValid: false, // Mark as not re-verified (but don't fail)
             publicSignalsCount: account.selfProof.publicSignals.length,
@@ -131,12 +110,6 @@ async function fetchAndVerifyVerifications(page: number, pageSize: number): Prom
         }
       } catch (error) {
         // Final catch-all: Always display account even if verification completely fails
-        logger.error("Unexpected error verifying account", {
-          scope: LogScope.VERIFICATION,
-          operation: Op.VERIFICATION.VERIFY_ACCOUNT,
-          account_id: account.nearAccountId,
-          error_message: error instanceof Error ? error.message : String(error),
-        })
         return {
           account: {
             nearAccountId: account.nearAccountId,
@@ -175,49 +148,36 @@ const getCachedVerifications = unstable_cache(fetchAndVerifyVerifications, ["ver
  * All verification (ZK proof via Celo + NEAR signature) happens server-side.
  */
 export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
-  const event = createServerActionEvent(Op.SERVER_ACTION.CITIZENS_GET_VERIFICATIONS_WITH_STATUS)
-  event.set("page", page)
-  event.set("page_size", pageSize)
-
   // Validate input parameters with safeParse
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
-    event.setError({ code: "INVALID_PAGINATION", message: "Invalid pagination parameters" })
-    event.error("Invalid pagination")
     return { accounts: [], total: 0 }
   }
 
-  const result = await getCachedVerifications(params.data.page, params.data.pageSize)
-  event.set("accounts_returned", result.accounts.length)
-  event.set("total", result.total)
-  event.info("Verifications fetched with status")
-  return result
+  try {
+    return await getCachedVerifications(params.data)
+  } catch (error) {
+    // RPC failed - return empty without caching
+    // Next request will retry immediately instead of waiting 60s
+    console.error("[citizens] Failed to fetch verifications from RPC:", error)
+    return { accounts: [], total: 0 }
+  }
 }
 
 /**
  * Server action to check if a NEAR account is already verified.
  * Used by the UI to skip verification steps for already-verified accounts.
  */
-export async function checkIsVerified(nearAccountId: string): Promise<boolean> {
-  const event = createServerActionEvent(Op.SERVER_ACTION.CITIZENS_CHECK_IS_VERIFIED)
-  event.setUser({ account_id: nearAccountId })
-
-  // Validate account ID format
+export async function checkIsVerified(nearAccountId: NearAccountId): Promise<boolean> {
+  // Runtime validation for security (server actions can receive arbitrary input)
   const parsed = nearAccountIdSchema.safeParse(nearAccountId)
   if (!parsed.success) {
-    event.setError({ code: "INVALID_ACCOUNT_ID", message: "Invalid account ID format" })
-    event.error("Invalid account ID")
     return false
   }
 
   try {
-    const isVerified = await verificationDb.isVerified(parsed.data)
-    event.set("is_verified", isVerified)
-    event.info("Verification status checked")
-    return isVerified
-  } catch (error) {
-    event.setError(error instanceof Error ? error : { message: "Unknown error" })
-    event.error("Error checking account verification")
+    return await verificationDb.isVerified(parsed.data)
+  } catch {
     return false
   }
 }

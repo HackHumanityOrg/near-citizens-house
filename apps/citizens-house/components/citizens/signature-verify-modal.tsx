@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@near-citizens/ui"
-import { useAnalytics } from "@/lib/analytics"
+import { trackEvent } from "@/lib/analytics"
 import { Copy, Check, ExternalLink } from "lucide-react"
+import type { NearAccountId } from "@/lib/schemas"
 
 // Modal-specific type that combines nearSignatureVerification and signature fields from ProofData
 interface NearSignatureData {
@@ -12,6 +13,7 @@ interface NearSignatureData {
   signatureHex: string
   challenge: string
   recipient: string
+  accountId: NearAccountId
 }
 
 interface NearSignatureVerifyModalProps {
@@ -21,19 +23,36 @@ interface NearSignatureVerifyModalProps {
 }
 
 export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignatureVerifyModalProps) {
-  const analytics = useAnalytics()
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
-  const copyToClipboard = useCallback((text: string, field: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedField(field)
-    setTimeout(() => setCopiedField(null), 2000)
-  }, [])
+  const copyToClipboard = useCallback(
+    (text: string, field: "hash" | "publicKey" | "signature") => {
+      navigator.clipboard.writeText(text)
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 2000)
+      if (data) {
+        trackEvent({
+          domain: "citizens",
+          action: "copied_to_clipboard",
+          viewedAccountId: data.accountId,
+          field,
+        })
+      }
+    },
+    [data],
+  )
 
   const openVerifier = useCallback(() => {
-    analytics.trackExternalVerifierOpened("cyphr")
+    if (data) {
+      trackEvent({
+        domain: "citizens",
+        action: "external_verifier_opened",
+        viewedAccountId: data.accountId,
+        verifier: "cyphrme",
+      })
+    }
     window.open("https://cyphr.me/ed25519_tool/ed.html", "_blank")
-  }, [analytics])
+  }, [data])
 
   if (!data) return null
 

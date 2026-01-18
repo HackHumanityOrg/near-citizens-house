@@ -1,30 +1,33 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import {
-  SELF_CONFIG,
-  NEAR_CONFIG,
   getSigningMessage,
   getSigningRecipient,
-  getVerifier,
-  getRpcProvider,
   verifyNearSignature,
-  verifyRequestSchema,
-  attestationIdStringSchema,
-  createVerificationError,
-  type SelfVerificationResult,
+  getAttestationTypeName,
+  type NearAccountId,
   type NearSignatureData,
   type VerificationDataWithSignature,
-} from "@near-citizens/shared"
-import { setBackendKeyPoolRedis, verificationDb } from "@near-citizens/shared/contracts/verification/client"
+} from "@/lib"
+import { getRpcProvider } from "@/lib/providers/rpc-provider"
+import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
+import { getVerifier } from "@/lib/providers/self-provider"
+import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
+import { trackServerEvent } from "@/lib/analytics-server"
 import {
-  extractPostHogDistinctIdFromCookies,
-  trackVerificationCompletedServer,
-  trackVerificationFailedServer,
-  trackVerificationStartedServer,
-} from "@/lib/analytics-server"
-import { createApiEvent, logger, LogScope, Op } from "@/lib/logger"
+  verifyRequestSchema,
+  createVerificationError,
+  mapContractErrorToCode,
+  userDefinedDataSchema,
+  parseUserDefinedDataRaw,
+  selfVerificationResultSchema,
+  nearAccessKeyResponseSchema,
+  type VerifyResponse,
+  type AttestationId,
+  type NearAccessKeyPermission,
+} from "@/lib/schemas"
 
 // Initialize Redis for backend key pool (for concurrent transaction support)
 // This is lazy - the actual connection happens on first use
@@ -44,198 +47,84 @@ const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
 // Allows for minor time differences between client and server
 const CLOCK_SKEW_MS = 10 * 1000
 
-/**
- * Parse userDefinedData to extract signature JSON.
- * The QR code contains signature data without challenge/recipient (to reduce size).
- * Backend reconstructs these from config values.
- */
-function parseUserDefinedData(userDefinedDataRaw: unknown): string | null {
-  if (!userDefinedDataRaw) return null
-
-  let jsonString = ""
-
-  if (typeof userDefinedDataRaw === "string") {
-    if (userDefinedDataRaw.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(userDefinedDataRaw)) {
-      jsonString = Buffer.from(userDefinedDataRaw, "hex").toString("utf8")
-    } else {
-      jsonString = userDefinedDataRaw
-    }
-  } else if (Array.isArray(userDefinedDataRaw)) {
-    jsonString = new TextDecoder().decode(new Uint8Array(userDefinedDataRaw))
-  } else if (typeof userDefinedDataRaw === "object" && userDefinedDataRaw !== null) {
-    const values = Object.values(userDefinedDataRaw)
-    if (values.every((v) => typeof v === "number")) {
-      jsonString = new TextDecoder().decode(new Uint8Array(values as number[]))
-    }
-  }
-
-  if (!jsonString) return null
-
-  jsonString = jsonString.replace(/\0/g, "")
-
-  const firstBrace = jsonString.indexOf("{")
-  const lastBrace = jsonString.lastIndexOf("}")
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    return jsonString.substring(firstBrace, lastBrace + 1)
-  }
-
-  return jsonString
-}
-
-function isFullAccessPermission(permission: unknown): boolean {
+function isFullAccessPermission(permission: NearAccessKeyPermission): boolean {
   if (permission === "FullAccess") {
     return true
   }
 
-  if (permission && typeof permission === "object" && "FullAccess" in permission) {
+  if (typeof permission === "object" && "FullAccess" in permission) {
     return true
   }
 
   return false
 }
 
-function mapStorageErrorToCode(errorMessage: string): Parameters<typeof createVerificationError>[0] {
-  const message = errorMessage.toLowerCase()
-
-  if (message.includes("nullifier already used") || message.includes("already registered")) {
-    return "DUPLICATE_PASSPORT"
-  }
-
-  if (message.includes("near account already verified")) {
-    return "ACCOUNT_ALREADY_VERIFIED"
-  }
-
-  if (message.includes("contract is paused")) {
-    return "CONTRACT_PAUSED"
-  }
-
-  if (
-    message.includes("invalid near signature") ||
-    message.includes("signature account id") ||
-    message.includes("signature recipient")
-  ) {
-    return "NEAR_SIGNATURE_INVALID"
-  }
-
-  if (
-    message.includes("attestation id") ||
-    message.includes("nullifier") ||
-    message.includes("public signals") ||
-    message.includes("proof component") ||
-    message.includes("user context data")
-  ) {
-    return "VERIFICATION_FAILED"
-  }
-
-  return "STORAGE_FAILED"
-}
-
-async function hasFullAccessKey(accountId: string, publicKey: string): Promise<boolean> {
+async function hasFullAccessKey(accountId: NearAccountId, publicKey: string): Promise<boolean> {
   const provider = getRpcProvider()
 
   try {
-    const accessKey = (await provider.query({
+    const rawResponse = await provider.query({
       request_type: "view_access_key",
       finality: "final",
       account_id: accountId,
       public_key: publicKey,
-    })) as { permission?: unknown }
-
-    return isFullAccessPermission(accessKey.permission)
-  } catch (error) {
-    logger.warn("Failed to query access key", {
-      scope: LogScope.API,
-      operation: Op.VERIFICATION.ACCESS_KEY_CHECK,
-      account_id: accountId,
-      error_message: error instanceof Error ? error.message : "Unknown error",
     })
+
+    const parseResult = nearAccessKeyResponseSchema.safeParse(rawResponse)
+    if (!parseResult.success) {
+      return false
+    }
+
+    return isFullAccessPermission(parseResult.data.permission)
+  } catch {
     return false
   }
 }
 
 export async function POST(request: NextRequest) {
-  // Create wide event for this request
-  const event = createApiEvent(Op.API.VERIFICATION_VERIFY, request)
-  const eventAttributes = event.getAttributes()
-  const requestId = typeof eventAttributes.request_id === "string" ? eventAttributes.request_id : undefined
-  const distinctId = extractPostHogDistinctIdFromCookies(request.headers.get("cookie") || undefined)
-
-  const selfNetwork = SELF_CONFIG.networkId
   let sessionId: string | undefined
-  let accountId: string | undefined
-  let nationality: string | undefined
-  let isValid: boolean | undefined
-
-  // Set initial verification context
-  event.setVerification({
-    self_network: selfNetwork,
-  })
+  let accountId: NearAccountId | undefined
+  let optimisticAccountId: NearAccountId | undefined
 
   const respondWithError = async ({
     code,
     status,
     details,
-    stage,
     attestationId,
   }: {
     code: Parameters<typeof createVerificationError>[0]
     status: number
     details?: string
     stage: string
-    attestationId?: number | string
+    attestationId?: AttestationId
   }) => {
     const errorResponse = createVerificationError(code, details)
 
-    // Update wide event with error context
-    event.setStatus(status)
-    event.setError({ code, message: errorResponse.reason })
-    event.setVerification({ stage, attestation_id: attestationId?.toString() })
-    event.setUser({ account_id: accountId, session_id: sessionId })
-    event.error(`Verification failed: ${code}`)
-
-    try {
-      await trackVerificationFailedServer({
-        distinctId: distinctId ?? sessionId ?? requestId ?? "unknown",
-        accountId,
-        sessionId,
-        requestId,
-        nationality,
-        attestationId: attestationId ? attestationId.toString() : undefined,
-        errorCode: code,
-        errorReason: errorResponse.reason,
-        stage,
-        selfNetwork,
-        isValid,
-        timestamp: Date.now(),
-      })
-    } catch (error) {
-      logger.warn("Failed to track verification_failed event", {
-        scope: LogScope.API,
-        operation: Op.VERIFICATION.ANALYTICS,
-        error_message: error instanceof Error ? error.message : "Unknown error",
-      })
-    }
+    // Track rejection event - distinctId priority: accountId > optimisticAccountId > sessionId > anonymous
+    const distinctId = accountId || optimisticAccountId || sessionId || "anonymous"
+    await trackServerEvent(distinctId, {
+      domain: "verification",
+      action: "rejected",
+      accountId: accountId || optimisticAccountId,
+      reason: errorResponse.reason,
+      errorCode: code,
+    })
 
     if (sessionId) {
       try {
         await updateSession(sessionId, {
           status: "error",
           accountId,
-          attestationId: attestationId?.toString(),
+          attestationId,
           error: errorResponse.reason,
           errorCode: code,
         })
-      } catch (error) {
-        logger.warn("Failed to update verification session", {
-          scope: LogScope.API,
-          operation: Op.VERIFICATION.SESSION_UPDATE,
-          session_id: sessionId,
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        })
+      } catch {
+        // Failed to update session, continue with error response
       }
     }
 
-    return NextResponse.json(errorResponse satisfies SelfVerificationResult, { status })
+    return NextResponse.json(errorResponse satisfies VerifyResponse, { status })
   }
 
   try {
@@ -253,33 +142,31 @@ export async function POST(request: NextRequest) {
     }
 
     const { attestationId, proof, publicSignals, userContextData } = parseResult.data
-    const attestationIdString = attestationIdStringSchema.parse(attestationId.toString())
 
-    // Update wide event with attestation ID
-    event.setVerification({ attestation_id: attestationIdString, stage: "started" })
-
+    // Optimistically try to extract accountId from userContextData for early tracking
+    // This data will be validated properly later, but we want it for analytics
     try {
-      await trackVerificationStartedServer({
-        distinctId: distinctId ?? requestId ?? "unknown",
-        accountId,
-        attestationId: attestationIdString,
-        sessionId,
-        requestId,
-        selfNetwork,
-      })
-    } catch (error) {
-      logger.warn("Failed to track verification_started event", {
-        scope: LogScope.API,
-        operation: Op.VERIFICATION.ANALYTICS,
-        error_message: error instanceof Error ? error.message : "Unknown error",
-      })
+      const parsed = JSON.parse(userContextData)
+      if (parsed && typeof parsed.accountId === "string") {
+        optimisticAccountId = parsed.accountId as NearAccountId
+      }
+    } catch {
+      // Failed to parse, will use "anonymous" for tracking
     }
 
-    let selfVerificationResult
+    // Track proof submission attempt with optimistic accountId if available
+    await trackServerEvent(optimisticAccountId || "anonymous", {
+      domain: "verification",
+      action: "proof_submitted",
+      accountId: optimisticAccountId,
+      sessionId: "pending",
+    })
+
+    let rawSdkResponse: unknown
 
     try {
       const verifier = getVerifier()
-      selfVerificationResult = await verifier.verify(attestationId, proof, publicSignals, userContextData)
+      rawSdkResponse = await verifier.verify(attestationId, proof, publicSignals, userContextData)
     } catch (error) {
       return respondWithError({
         code: "VERIFICATION_FAILED",
@@ -290,33 +177,23 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    sessionId = selfVerificationResult.userData?.userIdentifier
-    nationality =
-      typeof selfVerificationResult.discloseOutput?.nationality === "string"
-        ? selfVerificationResult.discloseOutput.nationality
-        : undefined
-
-    const validity = selfVerificationResult.isValidDetails || {}
-    isValid = validity.isValid
-
-    // Update wide event with verification results
-    event.setVerification({
-      is_valid: isValid,
-      nationality,
-      stage: "self_verified",
-    })
-    event.setUser({ session_id: sessionId })
-
-    // Type guards: ensure SDK returned expected boolean fields
-    if (typeof isValid !== "boolean") {
+    // Validate SDK response structure at external boundary
+    const sdkParseResult = selfVerificationResultSchema.safeParse(rawSdkResponse)
+    if (!sdkParseResult.success) {
+      const issues = sdkParseResult.error.issues.map((i) => i.path.join(".")).join(", ")
       return respondWithError({
         code: "VERIFICATION_FAILED",
         status: 502,
-        details: "Invalid verifier response structure",
+        details: `Invalid verifier response structure: ${issues}`,
         stage: "self_verify_response",
         attestationId,
       })
     }
+
+    const selfVerificationResult = sdkParseResult.data
+    sessionId = selfVerificationResult.userData.userIdentifier
+
+    const isValid = selfVerificationResult.isValidDetails.isValid
 
     if (!isValid) {
       return respondWithError({
@@ -327,22 +204,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const nullifier = selfVerificationResult.discloseOutput?.nullifier
+    // We don't have accountId yet at this point, but we need it for proof_validated
+    // We'll track proof_validated after parsing userDefinedData (see below)
 
-    if (!nullifier) {
-      return respondWithError({
-        code: "NULLIFIER_MISSING",
-        status: 400,
-        stage: "nullifier_check",
-        attestationId,
-      })
-    }
+    const nullifier = selfVerificationResult.discloseOutput.nullifier
 
     // Parse NEAR signature from userDefinedData
     // QR code contains signature data without challenge/recipient (to reduce size)
     // Backend reconstructs these from known values
-    const userDefinedDataRaw = selfVerificationResult.userData?.userDefinedData
-    const jsonString = parseUserDefinedData(userDefinedDataRaw)
+    const userDefinedDataRaw = selfVerificationResult.userData.userDefinedData
+    const jsonString = parseUserDefinedDataRaw(userDefinedDataRaw)
 
     if (!jsonString) {
       return respondWithError({
@@ -354,9 +225,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    let data: Record<string, unknown>
+    let rawData: unknown
     try {
-      data = JSON.parse(jsonString)
+      rawData = JSON.parse(jsonString)
     } catch {
       return respondWithError({
         code: "NEAR_SIGNATURE_MISSING",
@@ -367,35 +238,45 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    accountId = typeof data.accountId === "string" ? data.accountId : undefined
-
-    if (!data.accountId || !data.signature || !data.publicKey || !data.nonce) {
-      const missingFields = ["accountId", "signature", "publicKey", "nonce"].filter((f) => !data[f]).join(", ")
+    // Validate user defined data with schema
+    const userDataResult = userDefinedDataSchema.safeParse(rawData)
+    if (!userDataResult.success) {
+      const issues = userDataResult.error.issues.map((i) => i.path.join(".")).join(", ")
       return respondWithError({
         code: "NEAR_SIGNATURE_MISSING",
         status: 400,
-        details: `Missing NEP-413 fields: ${missingFields}`,
+        details: `Invalid NEP-413 fields: ${issues}`,
         stage: "signature_parse",
         attestationId,
       })
     }
 
-    let nonce = data.nonce
-    if (typeof nonce === "string") {
-      nonce = Array.from(Buffer.from(nonce, "base64"))
-    }
-    if (!Array.isArray(nonce) || nonce.length !== 32) {
+    const data = userDataResult.data
+    accountId = data.accountId
+
+    // Track proof validation success (ZK proof passed, accountId now known)
+    await trackServerEvent(accountId, {
+      domain: "verification",
+      action: "proof_validated",
+      accountId,
+    })
+
+    // Nonce is now base64 encoded throughout the system
+    const nonce = data.nonce
+    // Validate nonce is valid base64 and has correct length (32 bytes = ~44 base64 chars)
+    const nonceBytes = Buffer.from(nonce, "base64")
+    if (nonceBytes.length !== 32) {
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
-        details: "Invalid nonce: expected 32-byte array",
+        details: `Invalid nonce: expected 32 bytes, got ${nonceBytes.length}`,
         stage: "signature_parse",
         attestationId,
       })
     }
 
     // Validate signature timestamp freshness
-    const signatureTimestamp = typeof data.timestamp === "number" ? data.timestamp : 0
+    const signatureTimestamp = data.timestamp ?? 0
     const now = Date.now()
     const signatureAge = now - signatureTimestamp
 
@@ -447,13 +328,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const signatureCheck = verifyNearSignature(
-      expectedChallenge,
-      data.signature as string,
-      data.publicKey as string,
-      nonce as number[],
-      recipient,
-    )
+    const signatureCheck = verifyNearSignature(expectedChallenge, data.signature, data.publicKey, nonce, recipient)
 
     if (!signatureCheck.valid) {
       return respondWithError({
@@ -465,7 +340,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const isFullAccess = await hasFullAccessKey(data.accountId as string, data.publicKey as string)
+    const isFullAccess = await hasFullAccessKey(data.accountId, data.publicKey)
     if (!isFullAccess) {
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
@@ -476,20 +351,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const nonceBase64 = Buffer.from(nonce as number[]).toString("base64")
+    // Nonce is already base64 encoded; use directly for deduplication
     // Nonce TTL should cover remaining validity time to avoid unnecessarily long reservations
     const remainingValidityMs = MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS - signatureAge
     const nonceTtlSeconds = Math.max(60, Math.ceil(remainingValidityMs / 1000)) // Min 60s to handle processing time
-    const nonceReserved = await reserveSignatureNonce(data.accountId as string, nonceBase64, nonceTtlSeconds)
+    const nonceReserved = await reserveSignatureNonce(data.accountId, nonce, nonceTtlSeconds)
 
     if (!nonceReserved) {
-      logger.warn("Nonce replay attempt detected", {
-        scope: LogScope.API,
-        operation: Op.VERIFICATION.NONCE_CHECK,
-        account_id: data.accountId as string,
-        attestation_id: attestationId.toString(),
-        nonce_base64: nonceBase64,
-      })
       return respondWithError({
         code: "NEAR_SIGNATURE_INVALID",
         status: 400,
@@ -500,18 +368,18 @@ export async function POST(request: NextRequest) {
     }
 
     const nearSignature: NearSignatureData = {
-      accountId: data.accountId as string,
-      signature: data.signature as string,
-      publicKey: data.publicKey as string,
+      accountId: data.accountId,
+      signature: data.signature,
+      publicKey: data.publicKey,
       challenge: expectedChallenge,
       timestamp: signatureTimestamp,
-      nonce: nonce as number[],
+      nonce, // base64 encoded
       recipient,
     }
 
-    // Ensure backend wallet is configured for on-chain storage.
-    // verificationDb can run in read-only mode for pages, but this endpoint must be able to write.
-    if (!NEAR_CONFIG.backendAccountId || !NEAR_CONFIG.backendPrivateKey) {
+    // Defense-in-depth: verify backend wallet is configured before attempting storage.
+    // The verificationDb singleton also validates this, but we check early for a clearer error.
+    if (!NEAR_SERVER_CONFIG.backendAccountId || !NEAR_SERVER_CONFIG.backendPrivateKey) {
       return respondWithError({
         code: "INTERNAL_ERROR",
         status: 500,
@@ -528,15 +396,10 @@ export async function POST(request: NextRequest) {
         await updateSession(sessionId, {
           status: "pending",
           accountId: nearSignature.accountId,
-          attestationId: attestationIdString,
+          attestationId,
         })
-      } catch (error) {
-        logger.warn("Failed to update verification session", {
-          operation: Op.VERIFICATION.SESSION_UPDATE,
-          session_id: sessionId,
-          account_id: nearSignature.accountId,
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        })
+      } catch {
+        // Failed to update session, continue with verification
       }
     }
 
@@ -565,7 +428,7 @@ export async function POST(request: NextRequest) {
         accountId: data.accountId,
         publicKey: data.publicKey,
         signature: data.signature,
-        nonce: nonceBase64,
+        nonce, // already base64 encoded
         timestamp: signatureTimestamp,
       })
 
@@ -575,41 +438,23 @@ export async function POST(request: NextRequest) {
       await verificationDb.storeVerification({
         nullifier: nullifier.toString(),
         nearAccountId: nearSignature.accountId,
-        attestationId: attestationIdString,
+        attestationId,
         signatureData: nearSignature,
         selfProofData,
         userContextData: fullUserContextData,
       } satisfies VerificationDataWithSignature)
 
+      // Track successful on-chain storage
+      await trackServerEvent(nearSignature.accountId, {
+        domain: "verification",
+        action: "stored_onchain",
+        accountId: nearSignature.accountId,
+        attestationType: getAttestationTypeName(attestationId),
+      })
+
       // Revalidate the verifications cache so new verification appears immediately
       // Next.js 16 requires a cacheLife profile as second argument
       revalidateTag("verifications", "max")
-
-      // Update wide event with success context
-      event.setUser({ account_id: nearSignature.accountId })
-      event.setVerification({ nullifier: nullifier.toString(), stage: "stored" })
-
-      // Track verification completed for analytics
-      try {
-        await trackVerificationCompletedServer({
-          accountId: nearSignature.accountId,
-          nationality,
-          attestationId: attestationIdString,
-          selfNetwork,
-          isValid,
-          sessionId,
-          requestId,
-          distinctId: distinctId ?? nearSignature.accountId,
-          timestamp: Date.now(),
-        })
-      } catch (error) {
-        logger.warn("Failed to track verification_completed event", {
-          scope: LogScope.API,
-          operation: Op.VERIFICATION.ANALYTICS,
-          account_id: nearSignature.accountId,
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        })
-      }
 
       // Update session status for deep link callback
       // The userId from Self.xyz is used as the sessionId in our deep link flow
@@ -618,22 +463,15 @@ export async function POST(request: NextRequest) {
           await updateSession(sessionId, {
             status: "success",
             accountId: nearSignature.accountId,
-            attestationId: attestationIdString,
+            attestationId,
           })
-          event.set("session_updated", true)
-        } catch (error) {
-          logger.warn("Failed to update verification session", {
-            operation: Op.VERIFICATION.SESSION_UPDATE,
-            session_id: sessionId,
-            account_id: nearSignature.accountId,
-            error_message: error instanceof Error ? error.message : "Unknown error",
-          })
-          event.set("session_updated", false)
+        } catch {
+          // Failed to update session, but verification succeeded
         }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : ""
-      const errCode = mapStorageErrorToCode(errorMsg)
+      const errCode = mapContractErrorToCode(errorMsg)
 
       return respondWithError({
         code: errCode,
@@ -644,23 +482,18 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Emit successful verification wide event
-    event.setStatus(200)
-    event.setVerification({ stage: "completed" })
-    event.info("Verification completed successfully")
-
     return NextResponse.json(
       {
         status: "success",
         result: true,
         attestationId,
         userData: {
-          userId: selfVerificationResult.userData?.userIdentifier || "unknown",
+          userId: selfVerificationResult.userData.userIdentifier,
           nearAccountId: nearSignature.accountId,
           nearSignature: nearSignature.signature,
         },
         discloseOutput: selfVerificationResult.discloseOutput,
-      } satisfies SelfVerificationResult,
+      } satisfies VerifyResponse,
       { status: 200 },
     )
   } catch (error) {

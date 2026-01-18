@@ -77,7 +77,7 @@ fn test_versioned_verification_discriminants_are_stable() {
     let v1 = VersionedVerification::V1(VerificationV1 {
         nullifier: "test".to_string(),
         near_account_id: "test.near".parse().expect("valid account"),
-        attestation_id: "1".to_string(),
+        attestation_id: 1,
         verified_at: 0,
         self_proof: SelfProofData {
             proof: ZkProof {

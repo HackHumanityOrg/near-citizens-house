@@ -1,13 +1,10 @@
 "use client"
 
-import { useEffect, useState, Suspense, useRef, useMemo } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { useAnalytics } from "@/lib/analytics"
-import { clientLogger } from "@/lib/logger-client"
-import { LogScope, Op } from "@/lib/logging"
 import { Loader2 } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/verification-errors"
+import { getErrorTitle, getErrorMessage, isNonRetryableError, statusResponseSchema } from "@/lib/schemas"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 type VerificationStatus = "checking" | "success" | "error" | "expired"
@@ -17,78 +14,13 @@ function VerifyCallbackContent() {
   const router = useRouter()
   const sessionId = searchParams.get("sessionId")
   const accountIdFromUrl = searchParams.get("accountId")
-  const analytics = useAnalytics()
   const [status, setStatus] = useState<VerificationStatus>("checking")
   const [accountId, setAccountId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<string | null>(null)
-  const trackedResultRef = useRef(false)
-
-  const logContext = useMemo(
-    () => ({
-      scope: LogScope.VERIFICATION,
-      component: "verification.callback",
-      session_id: sessionId ?? undefined,
-    }),
-    [sessionId],
-  )
-
-  // Track verification result when status changes
-  useEffect(() => {
-    if (trackedResultRef.current) return
-
-    if (status === "success" && accountId) {
-      analytics.trackVerificationCompleted(accountId, "deeplink")
-      clientLogger.info("Verification callback completed", {
-        ...logContext,
-        operation: Op.VERIFICATION.CALLBACK_RESULT,
-        account_id: accountId,
-        status,
-      })
-      trackedResultRef.current = true
-    } else if (status === "error" || status === "expired") {
-      const storedAccountId = (() => {
-        if (accountIdFromUrl) return accountIdFromUrl
-        if (!sessionId) return "unknown"
-
-        try {
-          const storedSession = localStorage.getItem(`self-session-${sessionId}`)
-          if (!storedSession) return "unknown"
-
-          const parsed = JSON.parse(storedSession) as { accountId?: unknown }
-          return typeof parsed.accountId === "string" ? parsed.accountId : "unknown"
-        } catch {
-          return "unknown"
-        }
-      })()
-
-      // Use actual error code if available, fallback to generic codes
-      const trackingErrorCode = errorCode || (status === "expired" ? "TIMEOUT" : "VERIFICATION_FAILED")
-
-      try {
-        analytics.trackVerificationFailed(storedAccountId, trackingErrorCode, errorMessage || undefined)
-      } catch {
-        // Don't crash UI on analytics failures
-      }
-
-      clientLogger.warn("Verification callback failed", {
-        ...logContext,
-        operation: Op.VERIFICATION.CALLBACK_RESULT,
-        account_id: storedAccountId,
-        status,
-        error_code: trackingErrorCode,
-        error_message: errorMessage ?? undefined,
-      })
-      trackedResultRef.current = true
-    }
-  }, [status, accountId, sessionId, accountIdFromUrl, errorMessage, errorCode, analytics, logContext])
 
   useEffect(() => {
     if (!sessionId) {
-      clientLogger.warn("Missing sessionId in verification callback", {
-        ...logContext,
-        operation: Op.VERIFICATION.CALLBACK_INIT,
-      })
       setStatus("error")
       setErrorMessage("Invalid callback URL - missing session ID")
       return
@@ -142,43 +74,34 @@ function VerifyCallbackContent() {
           // (30 seconds) before treating 404 as terminal.
           const GRACE_PERIOD_POLLS = 15
           if (response.status === 404 && pollCount < GRACE_PERIOD_POLLS) {
-            clientLogger.debug("Verification session not found yet, retrying", {
-              ...logContext,
-              operation: Op.VERIFICATION.CALLBACK_POLL,
-              poll_count: pollCount + 1,
-              grace_period_polls: GRACE_PERIOD_POLLS,
-              status_code: response.status,
-            })
             return false // Continue polling
           }
           // Other 4xx = client error (invalid/expired session) - terminal, stop polling
           if (response.status >= 400 && response.status < 500) {
-            clientLogger.warn("Verification status API client error", {
-              ...logContext,
-              operation: Op.VERIFICATION.CALLBACK_POLL,
-              status_code: response.status,
-            })
             setStatus("error")
             setErrorMessage("Invalid or expired verification session. Please try again.")
             return true
           }
           // 5xx = server error - keep retrying
-          clientLogger.error("Verification status API server error", {
-            ...logContext,
-            operation: Op.VERIFICATION.CALLBACK_POLL,
-            status_code: response.status,
-          })
           return false
         }
 
-        const data = await response.json()
+        const rawData = await response.json()
 
         // Check mounted again before updating state
         if (!isMounted) return false
 
+        // Validate response shape for defense-in-depth
+        const parsed = statusResponseSchema.safeParse(rawData)
+        if (!parsed.success) {
+          // Invalid response structure - keep polling
+          return false
+        }
+        const data = parsed.data
+
         if (data.status === "success") {
           setStatus("success")
-          setAccountId(data.accountId)
+          setAccountId(data.accountId ?? null)
           // Clean up localStorage (wrapped in try/catch for restricted environments)
           try {
             localStorage.removeItem(`self-session-${sessionId}`)
@@ -190,12 +113,12 @@ function VerifyCallbackContent() {
           setStatus("error")
           // Use errorCode if available, fall back to error field for backwards compatibility
           const code = data.errorCode || data.error
-          setErrorCode(code)
+          setErrorCode(code ?? null)
           setErrorMessage(getErrorMessage(code))
           return true
         } else if (data.status === "expired") {
           setStatus("expired")
-          setErrorMessage("Session expired. Please try again.")
+          setErrorMessage(data.error ?? "Session expired. Please try again.")
           return true
         }
         // Still pending
@@ -205,16 +128,6 @@ function VerifyCallbackContent() {
         if (error instanceof Error && error.name === "AbortError") {
           return false
         }
-        // Log unexpected errors for debugging
-        const errorDetails =
-          error instanceof Error
-            ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
-            : { error_message: String(error) }
-        clientLogger.error("Verification callback polling error", {
-          ...logContext,
-          operation: Op.VERIFICATION.CALLBACK_POLL,
-          ...errorDetails,
-        })
         // Network error - keep polling (but only if still mounted)
         return false
       }
@@ -256,7 +169,7 @@ function VerifyCallbackContent() {
         timeoutId = null
       }
     }
-  }, [sessionId, accountIdFromUrl, logContext])
+  }, [sessionId, accountIdFromUrl])
 
   // Auto-redirect on success (skip the intermediate "Continue" screen)
   useEffect(() => {

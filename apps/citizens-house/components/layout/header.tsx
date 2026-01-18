@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   Identicon,
 } from "@near-citizens/ui"
-import { useNearWallet } from "@near-citizens/shared"
+import { useNearWallet } from "@/lib"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
 
 export function Header() {

@@ -2,7 +2,7 @@
 //!
 //! Tests for replay attempt rejection, batch size limits, and storage economics.
 
-use crate::helpers::{generate_nep413_signature, init, test_self_proof, WASM_PATH};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof, WASM_PATH};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
@@ -33,13 +33,13 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "replay_test_nullifier_1",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature.clone(),
                 "public_key": public_key.clone(),
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -65,13 +65,13 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "replay_test_nullifier_2", // Different nullifier - trying to bypass nullifier check
             "near_account_id": user.id(),           // Same account
-            "attestation_id": "2",
+            "attestation_id": 2,
             "signature_data": {
                 "account_id": user.id(),            // Same account
                 "signature": signature.clone(),     // SAME signature!
                 "public_key": public_key.clone(),   // Same public key
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -247,13 +247,13 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "low_balance_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),

@@ -30,9 +30,7 @@ import type { KeyPairString } from "@near-js/crypto"
 import { KeyPairSigner } from "@near-js/signers"
 import { JsonRpcProvider } from "@near-js/providers"
 import * as fs from "fs"
-import { logger, LogScope, Op } from "../../lib/logger"
-
-const logContext = { scope: LogScope.E2E, operation: Op.E2E.CLEANUP_ORPHAN_ACCOUNTS }
+import { nearAccountIdSchema, type NearAccountId } from "@/lib"
 
 // RPC Configuration (same as near-account-manager.ts)
 function getFastNearUrl(): string {
@@ -54,7 +52,7 @@ function createRpcProvider() {
   return new JsonRpcProvider({ url: fastNearUrl, headers: getFastNearHeaders() })
 }
 
-async function checkAccountExists(accountId: string): Promise<boolean> {
+async function checkAccountExists(accountId: NearAccountId): Promise<boolean> {
   try {
     const rpcUrl = getFastNearUrl()
     const response = await fetch(rpcUrl, {
@@ -78,7 +76,7 @@ async function checkAccountExists(accountId: string): Promise<boolean> {
   }
 }
 
-async function getAccountBalance(accountId: string): Promise<string> {
+async function getAccountBalance(accountId: NearAccountId): Promise<string> {
   try {
     const rpcUrl = getFastNearUrl()
     const response = await fetch(rpcUrl, {
@@ -112,13 +110,8 @@ async function main() {
   const parentPrivateKey = process.env.NEAR_PRIVATE_KEY
 
   if (!parentAccountId || !parentPrivateKey) {
-    logger.error("Missing NEAR credentials for cleanup script", {
-      ...logContext,
-      reason: "missing_env",
-    })
-    logger.info("Run with: doppler run -- pnpm cleanup-orphan-accounts", {
-      ...logContext,
-    })
+    console.error("Missing NEAR credentials for cleanup script")
+    console.error("Run with: doppler run -- pnpm cleanup-orphan-accounts")
     process.exit(1)
   }
 
@@ -126,13 +119,8 @@ async function main() {
   const subaccountsFile = process.argv[2] || "/tmp/subaccounts.txt"
 
   if (!fs.existsSync(subaccountsFile)) {
-    logger.error("Subaccounts file not found", {
-      ...logContext,
-      subaccounts_file: subaccountsFile,
-    })
-    logger.info("Provide a file with one subaccount per line", {
-      ...logContext,
-    })
+    console.error(`Subaccounts file not found: ${subaccountsFile}`)
+    console.error("Provide a file with one subaccount per line")
     process.exit(1)
   }
 
@@ -143,16 +131,17 @@ async function main() {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
 
-  // Filter to E2E test accounts for this parent
-  const e2eAccounts = allAccounts.filter((id) => id.startsWith("e2e") && id.endsWith(`.${parentAccountId}`))
+  // Filter to E2E test accounts for this parent and validate as NearAccountId
+  const e2eAccounts = allAccounts
+    .filter((id) => id.startsWith("e2e") && id.endsWith(`.${parentAccountId}`))
+    .filter((id): id is NearAccountId => nearAccountIdSchema.safeParse(id).success)
 
-  logger.info("Cleanup orphan E2E accounts", {
-    ...logContext,
-    parent_account: parentAccountId,
-    network: process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet",
-    total_accounts: allAccounts.length,
-    e2e_accounts: e2eAccounts.length,
-  })
+  console.log(`Cleanup orphan E2E accounts`)
+  console.log(`  Parent: ${parentAccountId}`)
+  console.log(`  Network: ${process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"}`)
+  console.log(`  Total accounts in file: ${allAccounts.length}`)
+  console.log(`  E2E accounts to process: ${e2eAccounts.length}`)
+  console.log("")
 
   // Create parent signer
   const parentKeyPair = KeyPair.fromString(parentPrivateKey as KeyPairString)
@@ -167,11 +156,7 @@ async function main() {
     // Check if account still exists
     const exists = await checkAccountExists(accountId)
     if (!exists) {
-      logger.info("Account already deleted", {
-        ...logContext,
-        account_id: accountId,
-        status: "already_deleted",
-      })
+      console.log(`  ${accountId}: already deleted`)
       notFound++
       continue
     }
@@ -184,32 +169,17 @@ async function main() {
 
       await subaccount.deleteAccount(parentAccountId)
 
-      logger.info("Account deleted", {
-        ...logContext,
-        account_id: accountId,
-        status: "deleted",
-        balance_returned: balance,
-      })
+      console.log(`  ${accountId}: deleted (returned ${balance})`)
       deleted++
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
 
       // Key not registered = old account before the fix
       if (msg.includes("InvalidAccessKeyError") || msg.includes("does not exist")) {
-        logger.warn("Account missing parent key", {
-          ...logContext,
-          account_id: accountId,
-          status: "missing_parent_key",
-          balance_locked: balance,
-        })
+        console.log(`  ${accountId}: missing parent key (locked ${balance})`)
         failed++
       } else {
-        logger.warn("Account cleanup failed", {
-          ...logContext,
-          account_id: accountId,
-          status: "error",
-          error_message: msg.slice(0, 100),
-        })
+        console.log(`  ${accountId}: error - ${msg.slice(0, 80)}`)
         failed++
       }
     }
@@ -218,29 +188,19 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
 
-  logger.info("Cleanup summary", {
-    ...logContext,
-    deleted,
-    not_found: notFound,
-    failed,
-  })
+  console.log("")
+  console.log("=== Summary ===")
+  console.log(`  Deleted: ${deleted}`)
+  console.log(`  Not found: ${notFound}`)
+  console.log(`  Failed: ${failed}`)
 
   if (failed > 0) {
-    logger.warn("Some accounts have locked funds from pre-backup accounts", {
-      ...logContext,
-      failed,
-    })
+    console.log("")
+    console.log("Note: Some accounts have locked funds from pre-backup accounts")
   }
 }
 
 main().catch((error) => {
-  const errorDetails =
-    error instanceof Error
-      ? { error_type: error.name, error_message: error.message, error_stack: error.stack }
-      : { error_message: String(error) }
-  logger.error("Cleanup script failed", {
-    ...logContext,
-    ...errorDetails,
-  })
+  console.error("Cleanup script failed:", error)
   process.exit(1)
 })

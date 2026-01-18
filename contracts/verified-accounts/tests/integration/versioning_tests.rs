@@ -24,7 +24,7 @@
 //! cargo test --features integration-tests --test integration versioning
 //! ```
 
-use crate::helpers::{generate_nep413_signature, test_self_proof};
+use crate::helpers::{generate_nep413_signature, nonce_to_base64, test_self_proof};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, AccountId, Contract, Worker};
@@ -42,7 +42,7 @@ pub const WASM_V2_PATH: &str = "./tests/fixtures/v2/verified_accounts.wasm";
 pub struct VerificationSummary {
     pub nullifier: String,
     pub near_account_id: AccountId,
-    pub attestation_id: String,
+    pub attestation_id: u8,
     pub verified_at: u64,
 }
 
@@ -113,13 +113,13 @@ async fn store_verification(
         .args_json(json!({
             "nullifier": nullifier,
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -159,13 +159,13 @@ async fn store_verification_v2(
         .args_json(json!({
             "nullifier": nullifier,
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -416,13 +416,13 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "protected_nullifier",
             "near_account_id": user2.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user2.id(),
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
@@ -489,13 +489,13 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "sig_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature.clone(),
                 "public_key": public_key.clone(),
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient.clone()
             },
             "self_proof": test_self_proof(),
@@ -516,13 +516,13 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
         .args_json(json!({
             "nullifier": "different_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": "1",
+            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
                 "public_key": public_key,
                 "challenge": challenge,
-                "nonce": nonce.to_vec(),
+                "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
             "self_proof": test_self_proof(),
