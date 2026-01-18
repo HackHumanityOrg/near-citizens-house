@@ -1,39 +1,65 @@
-/**
- * Server Logger Entry Point
- *
- * Use this import for server-side logging (API routes, server components, etc.)
- *
- * @example
- * ```ts
- * import { logger, serializeError, withRequestContext } from "@/lib/logger/server"
- *
- * export async function POST(req: NextRequest) {
- *   return withRequestContext({ requestId: crypto.randomUUID() }, async () => {
- *     logger.info("verification", "start", { source: "button_click" }, "Started")
- *     // requestId automatically included in log
- *   })
- * }
- * ```
- */
 import "server-only"
+import { logs, SeverityNumber } from "@opentelemetry/api-logs"
 
-export { logger, serializeError } from "./logger.server"
-export { withRequestContext, getRequestContext, updateRequestContext, requestContext } from "./context"
-export type { RequestContext } from "./context"
+type LogLevel = "debug" | "info" | "warn" | "error"
 
-// Re-export types for convenience
-export type {
-  LogLevel,
-  LogDomain,
-  LogEvent,
-  VerificationLog,
-  SessionLog,
-  RpcLog,
-  CitizensLog,
-  AuthLog,
-  LogError,
-  LogActionForDomain,
-  LogEventForAction,
-} from "@/lib/schemas/log"
+const severityMap: Record<LogLevel, SeverityNumber> = {
+  debug: SeverityNumber.DEBUG,
+  info: SeverityNumber.INFO,
+  warn: SeverityNumber.WARN,
+  error: SeverityNumber.ERROR,
+}
 
-export { logEventSchema, logLevelSchema, logErrorSchema, parseLogEvent } from "@/lib/schemas/log"
+function log(level: LogLevel, message: string, attributes?: Record<string, string | number | boolean | null>): void {
+  // Console output (structured JSON, silent fail)
+  try {
+    const logData = {
+      level,
+      msg: message,
+      ...attributes,
+      ts: new Date().toISOString(),
+    }
+    if (level === "error") {
+      console.error(JSON.stringify(logData))
+    } else {
+      console.log(JSON.stringify(logData))
+    }
+  } catch {
+    // Silent fail - logging should never break the request
+  }
+
+  // PostHog via OpenTelemetry (silent fail)
+  try {
+    const otelLogger = logs.getLogger("citizens-house")
+
+    // Filter out null values for OTEL attributes
+    const otelAttributes: Record<string, string | number | boolean> = {}
+    if (attributes) {
+      for (const [key, value] of Object.entries(attributes)) {
+        if (value !== null) {
+          otelAttributes[key] = value
+        }
+      }
+    }
+
+    otelLogger.emit({
+      severityNumber: severityMap[level],
+      severityText: level.toUpperCase(),
+      body: message,
+      attributes: otelAttributes,
+    })
+  } catch {
+    // Silent fail - logging should never break the request
+  }
+}
+
+export const logger = {
+  debug: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
+    log("debug", message, attributes),
+  info: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
+    log("info", message, attributes),
+  warn: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
+    log("warn", message, attributes),
+  error: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
+    log("error", message, attributes),
+}

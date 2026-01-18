@@ -7,20 +7,10 @@
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
 
-import { logs } from "@opentelemetry/api-logs"
-import type { LoggerProvider } from "@opentelemetry/sdk-logs"
-import { initializeOtelLogs } from "@/lib/logger/otel-logs"
+import { initializePostHogLogs } from "@/lib/logger/posthog-logs"
 
 export async function register() {
-  initializeOtelLogs()
-
-  // Graceful shutdown to flush pending logs
-  process.on("SIGTERM", async () => {
-    const provider = logs.getLoggerProvider()
-    if (provider && "shutdown" in provider) {
-      await (provider as LoggerProvider).shutdown()
-    }
-  })
+  initializePostHogLogs()
 }
 
 /**
