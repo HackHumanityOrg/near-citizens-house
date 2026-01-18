@@ -7,7 +7,8 @@
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
 
+import { initializeOtelLogs } from "@/lib/logger/otel-logs"
+
 export async function register() {
-  // Instrumentation hook - currently no server-side initialization needed
-  // Environment validation happens at build time via next.config.ts
+  initializeOtelLogs()
 }

@@ -24,6 +24,8 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./"),
       "@near-citizens/ui": path.resolve(__dirname, "./components/ui"),
+      // Mock server-only to be a no-op in tests (it throws in non-RSC contexts)
+      "server-only": path.resolve(__dirname, "./lib/__tests__/__mocks__/server-only.ts"),
     },
   },
 })
