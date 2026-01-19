@@ -296,7 +296,7 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
     );
 
     // Verify the verification was not stored (NEAR's atomic transactions ensure rollback)
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step(
         "Verify no verification was stored (atomic rollback)",

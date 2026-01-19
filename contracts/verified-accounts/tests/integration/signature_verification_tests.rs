@@ -120,7 +120,7 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
     });
 
     // Verify count increased
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify count increased to 1", || {
         assert_eq!(count, 1);
@@ -438,7 +438,7 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
     }
 
     // Verify total count
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify total count is 3", || {
         assert_eq!(count, 3);

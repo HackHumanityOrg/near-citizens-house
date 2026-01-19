@@ -107,15 +107,15 @@ async fn test_stress_bulk_verifications_and_pagination() -> anyhow::Result<()> {
         }
     }
 
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
     step("Verify total verified count matches", || {
-        assert_eq!(count, total as u64);
+        assert_eq!(count, total as u32);
     });
 
     let page_size = 50usize;
     let page1: Vec<serde_json::Value> = contract
         .view("list_verifications")
-        .args_json(json!({"from_index": 0u64, "limit": page_size as u64}))
+        .args_json(json!({"from_index": 0u32, "limit": page_size as u32}))
         .await?
         .json()?;
 
@@ -169,9 +169,9 @@ async fn test_stress_batch_reads_at_max_limit() -> anyhow::Result<()> {
         }
     }
 
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
     step("Verify total verified count matches", || {
-        assert_eq!(count, total as u64);
+        assert_eq!(count, total as u32);
     });
 
     let batch_ids = account_ids[..MAX_BATCH_SIZE].to_vec();

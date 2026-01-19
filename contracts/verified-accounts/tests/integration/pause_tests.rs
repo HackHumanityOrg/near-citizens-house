@@ -243,7 +243,7 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
         );
     });
 
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify get_verified_count works when paused", || {
         assert_eq!(count, 1, "Count should be accessible when paused");

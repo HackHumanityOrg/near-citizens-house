@@ -242,7 +242,7 @@ async fn test_upgrade_v1_to_v2_preserves_verifications() -> anyhow::Result<()> {
     store_verification(&backend, &contract, &user2, "v1_user2_nullifier").await?;
 
     // Verify V1 state
-    let v1_count: u64 = contract.view("get_verified_count").await?.json()?;
+    let v1_count: u32 = contract.view("get_verified_count").await?.json()?;
     let v1_state_version: u8 = contract.view("get_state_version").await?.json()?;
 
     step("Verify V1 state before upgrade", || {
@@ -260,7 +260,7 @@ async fn test_upgrade_v1_to_v2_preserves_verifications() -> anyhow::Result<()> {
     );
 
     // Step 3: Verify V1 data is readable with V2 code
-    let v2_count: u64 = contract.view("get_verified_count").await?.json()?;
+    let v2_count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify verification count persists after upgrade", || {
         assert_eq!(
@@ -594,7 +594,7 @@ async fn test_upgrade_new_verifications_work() -> anyhow::Result<()> {
     store_verification_v2(&backend, &contract, &user2, "v2_verification", false).await?;
 
     // Verify counts
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify new verifications work after upgrade", || {
         assert_eq!(
@@ -735,7 +735,7 @@ async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
     // Test pagination after upgrade
     let first_page: Vec<serde_json::Value> = contract
         .view("list_verifications")
-        .args_json(json!({"from_index": 0u64, "limit": 3u64}))
+        .args_json(json!({"from_index": 0u32, "limit": 3u32}))
         .await?
         .json()?;
 
@@ -745,7 +745,7 @@ async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
 
     let second_page: Vec<serde_json::Value> = contract
         .view("list_verifications")
-        .args_json(json!({"from_index": 3u64, "limit": 3u64}))
+        .args_json(json!({"from_index": 3u32, "limit": 3u32}))
         .await?
         .json()?;
 
@@ -1153,7 +1153,7 @@ async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
     // Verify V1 state
     let v1_state_version: u8 = contract.view("get_state_version").await?.json()?;
     let v1_paused: bool = contract.view("is_paused").await?.json()?;
-    let v1_count: u64 = contract.view("get_verified_count").await?.json()?;
+    let v1_count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify V1 state before migrate", || {
         assert_eq!(v1_state_version, 1, "Should be state version 1");
@@ -1187,7 +1187,7 @@ async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
     });
 
     // Step 3: Verify state is preserved after migrate
-    let v2_count: u64 = contract.view("get_verified_count").await?.json()?;
+    let v2_count: u32 = contract.view("get_verified_count").await?.json()?;
     let v2_paused: bool = contract.view("is_paused").await?.json()?;
     let v2_backend: AccountId = contract.view("get_backend_wallet").await?.json()?;
 

@@ -15,7 +15,7 @@
 
 use near_sdk::assert_one_yocto;
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LookupSet, UnorderedMap};
+use near_sdk::store::{IterableMap, LookupSet};
 use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
@@ -141,7 +141,7 @@ pub struct ContractV1 {
     /// Set of used nullifiers
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
-    pub verifications: UnorderedMap<AccountId, VersionedVerification>,
+    pub verifications: IterableMap<AccountId, VersionedVerification>,
     /// Whether the contract is paused
     pub paused: bool,
 }
@@ -154,7 +154,7 @@ pub struct ContractV2 {
     /// Set of used nullifiers
     pub nullifiers: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
-    pub verifications: UnorderedMap<AccountId, VersionedVerification>,
+    pub verifications: IterableMap<AccountId, VersionedVerification>,
     /// Whether the contract is paused
     pub paused: bool,
     /// Timestamp when contract was upgraded from V1 to V2
@@ -181,7 +181,7 @@ impl VersionedContract {
                     ),
                     verifications: std::mem::replace(
                         &mut v1.verifications,
-                        UnorderedMap::new(StorageKey::Accounts),
+                        IterableMap::new(StorageKey::Accounts),
                     ),
                     paused: v1.paused,
                     upgrade_timestamp: env::block_timestamp(),
@@ -201,7 +201,7 @@ impl VersionedContract {
     // eliminating the need for duplicate view method implementations.
 
     /// Get reference to verifications map (works across all versions)
-    fn verifications(&self) -> &UnorderedMap<AccountId, VersionedVerification> {
+    fn verifications(&self) -> &IterableMap<AccountId, VersionedVerification> {
         match self {
             Self::V1(c) => &c.verifications,
             Self::V2(c) => &c.verifications,
@@ -243,7 +243,7 @@ impl VersionedContract {
         VersionedContract::V1(ContractV1 {
             backend_wallet,
             nullifiers: LookupSet::new(StorageKey::Nullifiers),
-            verifications: UnorderedMap::new(StorageKey::Accounts),
+            verifications: IterableMap::new(StorageKey::Accounts),
             paused: false,
         })
     }
@@ -464,10 +464,10 @@ impl VersionedContract {
         };
 
         // Store verification and tracking data
-        contract.nullifiers.insert(&nullifier);
+        contract.nullifiers.insert(nullifier.clone());
         contract
             .verifications
-            .insert(&near_account_id, &VersionedVerification::from(verification));
+            .insert(near_account_id.clone(), VersionedVerification::from(verification));
 
         // Emit event
         emit_event(
@@ -569,14 +569,14 @@ impl VersionedContract {
     pub fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary> {
         self.verifications()
             .get(&account_id)
-            .map(|v| VerificationSummary::from(&v))
+            .map(|v| VerificationSummary::from(v))
     }
 
     /// Get full verification record including ZK proof (public read)
     pub fn get_full_verification(&self, account_id: AccountId) -> Option<Verification> {
         self.verifications()
             .get(&account_id)
-            .map(|v| v.into_current())
+            .map(|v| v.clone().into_current())
     }
 
     /// Check if an account is verified (public read)
@@ -590,7 +590,7 @@ impl VersionedContract {
     }
 
     /// Get total number of verified accounts (public read)
-    pub fn get_verified_count(&self) -> u64 {
+    pub fn get_verified_count(&self) -> u32 {
         self.verifications().len()
     }
 
@@ -600,19 +600,12 @@ impl VersionedContract {
     }
 
     /// Get paginated list of all verifications (public read)
-    pub fn list_verifications(&self, from_index: u64, limit: u64) -> Vec<Verification> {
-        let verifications = self.verifications();
-        let limit = std::cmp::min(limit, 100);
-        let keys = verifications.keys_as_vector();
-        let from_index = std::cmp::min(from_index, keys.len());
-        let to_index = std::cmp::min(from_index + limit, keys.len());
-
-        (from_index..to_index)
-            .filter_map(|index| {
-                keys.get(index)
-                    .and_then(|account_id| verifications.get(&account_id))
-                    .map(|v| v.into_current())
-            })
+    pub fn list_verifications(&self, from_index: u32, limit: u32) -> Vec<Verification> {
+        self.verifications()
+            .iter()
+            .skip(from_index as usize)
+            .take(std::cmp::min(limit, 100) as usize)
+            .map(|(_, v)| v.clone().into_current())
             .collect()
     }
 
@@ -643,7 +636,7 @@ impl VersionedContract {
         let verifications = self.verifications();
         account_ids
             .iter()
-            .map(|id| verifications.get(id).map(|v| VerificationSummary::from(&v)))
+            .map(|id| verifications.get(id).map(|v| VerificationSummary::from(v)))
             .collect()
     }
 
@@ -662,7 +655,7 @@ impl VersionedContract {
     pub fn get_nationality_disclosed(&self, account_id: AccountId) -> Option<bool> {
         self.verifications()
             .get(&account_id)
-            .map(|v| v.into_current().nationality_disclosed)
+            .map(|v| v.clone().into_current().nationality_disclosed)
     }
 
     /// Get upgrade timestamp (V2 feature)
