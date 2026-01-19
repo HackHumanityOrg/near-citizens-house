@@ -1,6 +1,6 @@
 # Product Requirements Document: Citizens House Voting
 
-**Version:** 0.2.1
+**Version:** 0.2.2
 **Date:** 2026-01-19
 **Status:** Draft
 **Owner:** Dan Cunningham
@@ -156,6 +156,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **add_admin(account_id)**: Admin-only; uses `assert_one_yocto()`.
 - **remove_admin(account_id)**: Admin-only; uses `assert_one_yocto()`; cannot remove last admin.
 - **is_admin(account_id)** view.
+- **list_admins(from_index, limit)** view with pagination.
 - All admin writes require `predecessor_account_id` checks and `assert_one_yocto()`.
 
 ### 10.3 Proposal Management
@@ -185,15 +186,16 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Async `get_verification` callback enforces `verified_at <= proposal.created_at`.
   - Pending vote lock prevents concurrent submissions; cleared on callback.
   - On failure, deposit is refunded to voter.
-- **has_voted(proposal_id, account_id)** view.
-- **get_vote(proposal_id, account_id)** view.
-- **list_votes(proposal_id, from_index, limit)** view with pagination (limit <= 100), ordered by `voted_at`.
+- **has_voted(proposal_id, account_id)** view — O(1) lookup.
+- **get_vote(proposal_id, account_id)** view — O(1) lookup.
+- **Note**: No on-chain `list_votes`. For vote enumeration, use an indexer (NEAR Lake, QueryAPI) to query `vote_cast` events. This avoids storage duplication and scales to 10,000+ votes.
 
 ### 10.5 Reject List
 
 - **blocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Prevents future votes; excludes account's votes from Active proposals at finalize.
 - **unblocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`.
 - **is_blocklisted(account_id)** view.
+- **list_blocklist(from_index, limit)** view with pagination.
 - Actions emit events and are reversible only by admin.
 
 ### 10.6 Configuration
@@ -247,11 +249,28 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 ### 11.3 Collections
 
-- `proposals: UnorderedMap<u64, Proposal>`
-- `votes: UnorderedMap<(u64, AccountId), VoteChoice>`
-- `pending_votes: LookupSet<(u64, AccountId)>` (vote lock during async verification)
-- `admins: LookupSet<AccountId>`
-- `blocklist: LookupSet<AccountId>`
+All collections use `near_sdk::store` (not the deprecated `near_sdk::collections`).
+
+- `proposals: IterableMap<u64, Proposal>` — iteration needed for `list_proposals`
+- `votes: LookupMap<(u64, AccountId), Vote>` — O(1) lookup; no on-chain iteration (use indexer)
+- `pending_votes: LookupSet<(u64, AccountId)>` — vote lock during async verification
+- `admins: IterableSet<AccountId>` — iteration needed for `list_admins`
+- `blocklist: IterableSet<AccountId>` — iteration needed for `list_blocklist`
+
+### 11.4 Storage Keys
+
+Use an enum with `BorshStorageKey` to ensure unique prefixes:
+
+```rust
+#[derive(BorshSerialize, BorshStorageKey)]
+enum StorageKey {
+    Proposals,
+    Votes,
+    PendingVotes,
+    Admins,
+    Blocklist,
+}
+```
 
 ---
 
@@ -381,18 +400,19 @@ Event names and payloads:
 ## 19. Testing Requirements
 
 - Unit tests:
-  - Admin access control and role changes.
-  - Proposal creation, cancellation, finalization.
+  - Admin access control, role changes, and list_admins pagination.
+  - Proposal creation, cancellation, finalization, and list_proposals pagination.
   - Vote counting, quorum, and tie handling.
   - Vote pending lock and double-submit prevention.
   - Vote deposit calculation and direct refund behavior.
   - Proposal bond and refund behavior on cancel/fail.
   - Config updates blocked while proposals are Active.
-  - Blocklist behavior.
+  - Blocklist behavior and list_blocklist pagination.
   - Pause/unpause behavior, including finalize blocked while paused.
 - Integration tests:
   - Mock Verified Accounts contract for snapshot and is_verified.
   - Async callbacks and failure paths, including deposit/bond refunds on failure.
+  - Event emission for indexer consumption (vote_cast events).
 
 ---
 
@@ -411,6 +431,9 @@ Event names and payloads:
 
 - NEAR security checklist: https://docs.near.org/smart-contracts/security/checklist
 - NEAR best practices: https://docs.near.org/smart-contracts/anatomy/best-practices
+- NEAR collections: https://docs.near.org/smart-contracts/anatomy/collections
+- NEAR SDK store module: https://docs.rs/near-sdk/latest/near_sdk/store/index.html
+- NEAR indexers: https://docs.near.org/data-infrastructure/indexers
 - NEAR cross-contract callbacks: https://docs.near.org/smart-contracts/security/callbacks
 - NEAR reentrancy: https://docs.near.org/smart-contracts/security/reentrancy
 - NEAR frontrunning: https://docs.near.org/smart-contracts/security/frontrunning
