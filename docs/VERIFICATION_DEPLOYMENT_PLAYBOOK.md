@@ -206,7 +206,7 @@ shasum -a 256 target/near/verified_accounts.wasm
 
 Record the SHA-256 output in your release notes.
 
-Latest reproducible build SHA-256: `56a7835187c2f96018a62b6d67b89901e959f1b20d089202debc85a74da0385c`.
+Latest reproducible build SHA-256: `76eb5664455f8302ec53692fbe4af1fb6d7819ee08d044cd65cbc3e1f811c9e4`.
 
 Save the SHA-256; you will compare it to the on-chain contract hash in Step 4.4.
 
