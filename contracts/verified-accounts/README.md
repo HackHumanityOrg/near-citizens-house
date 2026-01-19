@@ -77,8 +77,8 @@ pub fn store_verification(
 - `get_full_verification(account_id: AccountId) -> Option<Verification>` - Full record with ZK proof
 - `is_verified(account_id: AccountId) -> bool` - Simple boolean check
 - `get_backend_wallet() -> AccountId` - Get backend wallet address
-- `get_verified_count() -> u64` - Get total verified count
-- `list_verifications(from_index: u64, limit: u64) -> Vec<Verification>` - Paginated list
+- `get_verified_count() -> u32` - Get total verified count
+- `list_verifications(from_index: u32, limit: u32) -> Vec<Verification>` - Paginated list
 - `are_verified(account_ids: Vec<AccountId>) -> Vec<bool>` - Batch verification check
 - `get_verifications(account_ids: Vec<AccountId>) -> Vec<Option<VerificationSummary>>` - Batch summaries
 - `is_paused() -> bool` - Check if contract is paused

@@ -248,7 +248,7 @@ pub trait VerifiedAccountsInterface {
     // ==================== Metadata ====================
 
     /// Get total number of verified accounts.
-    fn get_verified_count(&self) -> u64;
+    fn get_verified_count(&self) -> u32;
 
     /// Check if contract is paused.
     ///

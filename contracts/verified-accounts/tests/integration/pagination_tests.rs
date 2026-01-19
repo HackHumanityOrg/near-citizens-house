@@ -54,7 +54,7 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
     }
 
     // Verify we have 105 accounts
-    let count: u64 = contract.view("get_verified_count").await?.json()?;
+    let count: u32 = contract.view("get_verified_count").await?.json()?;
 
     step("Verify we have 105 verified accounts", || {
         assert_eq!(count, 105, "Should have 105 verified accounts");
