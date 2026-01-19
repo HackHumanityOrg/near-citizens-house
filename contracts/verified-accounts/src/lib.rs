@@ -535,7 +535,7 @@ impl VersionedContract {
     pub fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary> {
         self.verifications()
             .get(&account_id)
-            .map(|v| VerificationSummary::from(v))
+            .map(VerificationSummary::from)
     }
 
     /// Get full verification record including ZK proof (public read)
@@ -602,7 +602,7 @@ impl VersionedContract {
         let verifications = self.verifications();
         account_ids
             .iter()
-            .map(|id| verifications.get(id).map(|v| VerificationSummary::from(v)))
+            .map(|id| verifications.get(id).map(VerificationSummary::from))
             .collect()
     }
 
