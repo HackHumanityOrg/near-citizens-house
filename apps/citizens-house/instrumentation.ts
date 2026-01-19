@@ -11,6 +11,14 @@ import { initializePostHogLogs } from "@/lib/logger/posthog-logs"
 
 export async function register() {
   initializePostHogLogs()
+
+  // Register backend key pool on-chain (only on Node.js runtime, not edge)
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Run async without blocking server startup
+    import("@/lib/backend-key-registration")
+      .then(({ ensureBackendKeysRegistered }) => ensureBackendKeysRegistered())
+      .catch((err) => console.error("[Instrumentation] Failed to load backend-key-registration:", err))
+  }
 }
 
 /**
