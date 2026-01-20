@@ -1,4 +1,4 @@
-# How It Works
+# NEAR Citizens House Verification - Technical Architecture
 
 ## Overview
 
@@ -15,10 +15,10 @@ NEAR Citizens House links a NEAR wallet to a single real-world identity using Se
 
 ## End-to-end verification flow
 
-1. **Wallet signature**: the user connects a NEAR wallet and signs a NEP-413 challenge (message + 32-byte nonce + recipient). The recipient is the verification contract account; the message is derived from the app URL and contract ID so it can be rebuilt deterministically later; uniqueness comes from the random nonce.
+1. **Wallet signature**: the user connects a NEAR wallet and signs a NEP-413 challenge (message + 32-byte nonce + recipient). The message is derived from the app URL and contract ID so it can be rebuilt deterministically later; uniqueness comes from the random nonce.
 2. **QR/deeplink creation**: the app builds a Self payload (`SelfAppBuilder`) containing:
    - `userId` (UUID session ID used as the Self user identifier, required by Self)
-   - `userDefinedData` with NEP-413 fields (accountId, publicKey, signature, nonce, timestamp). Self docs describe `userDefinedData` as an app-supplied string passed through verification and encoded to bytes in the QR flow. The challenge and recipient are omitted to reduce QR payload size; the backend reconstructs them from config.
+   - `userDefinedData` with NEP-413 fields (accountId, publicKey, signature, nonce, timestamp). Self docs describe `userDefinedData` as an app-supplied string passed through verification and encoded to bytes in the QR flow. The challenge and recipient are omitted to reduce QR payload size; the backend reconstructs them from config and accountId.
 3. **Self app proof**: the Self mobile app reads the passport NFC and initiates proof generation; Self’s TEE/relayer flow produces the Groth16 proof. Self relayers submit the proof to `POST /api/verification/verify` with `attestationId`, proof, public signals, and `userContextData`.
 4. **Backend verification**:
    - verifies the ZK proof via `SelfBackendVerifier` (scope/config checks)
