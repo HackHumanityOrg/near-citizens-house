@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@near-citizens/ui"
-import { NEAR_CONFIG, getAttestationTypeName } from "@/lib"
+import { NEAR_CONFIG } from "@/lib"
 import { trackEvent } from "@/lib/analytics"
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
@@ -87,7 +87,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                 NEAR Account
               </span>
               <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center">
-                Attestation Type
+                Verification
               </span>
               <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white text-center whitespace-nowrap">
                 Verified At
@@ -131,7 +131,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                         <TooltipTrigger asChild>
                           <div className="bg-verified-badge-bg flex h-[32px] max-w-[180px] items-center justify-center rounded-full px-[12px] py-[6px] cursor-pointer overflow-hidden">
                             <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
-                              {getAttestationTypeName(account.attestationId)}
+                              ID Verified
                             </span>
                           </div>
                         </TooltipTrigger>
@@ -140,7 +140,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           side="top"
                           className="bg-[#1c1c1c] text-[#fcfaf7] dark:bg-[#2a2a2a] dark:text-white rounded-[8px] px-[12px] py-[6px] text-[12px] leading-[1.4] font-fk-grotesk"
                         >
-                          Nullifier: {truncate(account.nullifier, 16)}
+                          SumSub ID: {truncate(account.sumsubApplicantId, 16)}
                         </TooltipContent>
                       </Tooltip>
                       <button
@@ -175,13 +175,13 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                       </a>
                     </div>
 
-                    {/* Attestation Type */}
+                    {/* Verification Badge */}
                     <div className="flex items-center justify-center">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="bg-verified-badge-bg flex h-[32px] max-w-[180px] items-center justify-center rounded-full px-[12px] py-[6px] cursor-pointer overflow-hidden">
                             <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
-                              {getAttestationTypeName(account.attestationId)}
+                              ID Verified
                             </span>
                           </div>
                         </TooltipTrigger>
@@ -189,7 +189,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                           side="left"
                           className="bg-[#1c1c1c] text-[#fcfaf7] dark:bg-[#2a2a2a] dark:text-white rounded-[8px] px-[16px] py-[8px] text-[14px] leading-[1.4] font-fk-grotesk"
                         >
-                          Nullifier: {truncate(account.nullifier, 16)}
+                          SumSub ID: {truncate(account.sumsubApplicantId, 16)}
                         </TooltipContent>
                       </Tooltip>
                     </div>

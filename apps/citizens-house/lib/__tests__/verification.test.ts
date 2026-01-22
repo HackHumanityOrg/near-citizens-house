@@ -2,7 +2,7 @@
  * Unit tests for verification.ts
  *
  * Tests NEP-413 signature verification functions per TESTING_STRATEGY.md Section 1.2
- * Covers: computeNep413Hash, extractEd25519PublicKeyHex, parseUserContextData, verifyNearSignature, buildProofData
+ * Covers: computeNep413Hash, extractEd25519PublicKeyHex, parseUserContextData, verifyNearSignature
  */
 import { describe, it, expect } from "vitest"
 import * as allure from "allure-js-commons"
@@ -12,7 +12,6 @@ import {
   extractEd25519PublicKeyHex,
   parseUserContextData,
   verifyNearSignature,
-  buildProofData,
 } from "../verification"
 
 // ============================================================================
@@ -716,137 +715,6 @@ describe("Near Citizens House", () => {
             )
 
             expect(result.valid).toBe(false)
-          })
-        })
-      })
-
-      // ============================================================================
-      // buildProofData Tests
-      // ============================================================================
-
-      describe("buildProofData", () => {
-        type BuildProofAccount = Parameters<typeof buildProofData>[0]
-
-        // Sample account data
-        const sampleAccount: BuildProofAccount = {
-          nullifier: "12345678901234567890",
-          attestationId: 1,
-          verifiedAt: Date.now(),
-          selfProof: {
-            proof: {
-              a: ["1", "2"] as [string, string],
-              b: [
-                ["3", "4"],
-                ["5", "6"],
-              ] as [[string, string], [string, string]],
-              c: ["7", "8"] as [string, string],
-            },
-            publicSignals: Array(21).fill("0"),
-          },
-          userContextData: validUserContextHex,
-        }
-
-        const sampleSigData = {
-          accountId: testAccountId,
-          signature: "test-sig-base64",
-          publicKey: testPublicKey,
-          nonce: standardNonce, // base64 encoded
-          challenge: "Identify myself",
-          recipient: testRecipient,
-        }
-
-        describe("Happy Path", () => {
-          it("should build proof data from valid inputs", async () => {
-            await allure.severity("critical")
-
-            const result = buildProofData(sampleAccount, sampleSigData)
-
-            expect(result).not.toBeNull()
-            expect(result?.nullifier).toBe(sampleAccount.nullifier)
-            expect(result?.attestationId).toBe(sampleAccount.attestationId)
-          })
-
-          it("should include NEP-413 verification data", async () => {
-            await allure.severity("critical")
-
-            const result = buildProofData(sampleAccount, sampleSigData)
-
-            expect(result?.nearSignatureVerification).toBeDefined()
-            expect(result?.nearSignatureVerification.nep413Hash).toBeDefined()
-            expect(result?.nearSignatureVerification.nep413Hash).toHaveLength(64)
-            expect(result?.nearSignatureVerification.publicKeyHex).toBeDefined()
-            expect(result?.nearSignatureVerification.signatureHex).toBeDefined()
-          })
-        })
-
-        describe("Positive Tests", () => {
-          it("should include signature data in correct format", async () => {
-            await allure.severity("normal")
-
-            const result = buildProofData(sampleAccount, sampleSigData)
-
-            expect(result?.signature.accountId).toBe(sampleSigData.accountId)
-            expect(result?.signature.publicKey).toBe(sampleSigData.publicKey)
-            expect(result?.signature.challenge).toBe("Identify myself")
-            expect(result?.signature.recipient).toBe(sampleSigData.recipient)
-          })
-
-          it("should preserve base64 nonce", async () => {
-            await allure.severity("normal")
-
-            const result = buildProofData(sampleAccount, sampleSigData)
-
-            expect(result?.signature.nonce).toBeDefined()
-            expect(result?.signature.nonce).toBe(standardNonce)
-            // Verify it's valid base64
-            const decoded = Buffer.from(result?.signature.nonce ?? "", "base64")
-            expect(decoded).toHaveLength(32)
-          })
-
-          it("should include ZK proof data", async () => {
-            await allure.severity("normal")
-
-            const result = buildProofData(sampleAccount, sampleSigData)
-
-            expect(result?.zkProof).toEqual(sampleAccount.selfProof.proof)
-            expect(result?.publicSignals).toEqual(sampleAccount.selfProof.publicSignals)
-          })
-        })
-
-        describe("Negative Tests", () => {
-          it("should return null when sigData is null", async () => {
-            await allure.severity("critical")
-
-            const result = buildProofData(sampleAccount, null)
-
-            expect(result).toBeNull()
-          })
-        })
-
-        describe("Edge Cases", () => {
-          it("should handle minimum valid inputs", async () => {
-            await allure.severity("minor")
-
-            const minAccount = {
-              ...sampleAccount,
-              nullifier: "1",
-              selfProof: {
-                proof: {
-                  a: ["0", "0"] as [string, string],
-                  b: [
-                    ["0", "0"],
-                    ["0", "0"],
-                  ] as [[string, string], [string, string]],
-                  c: ["0", "0"] as [string, string],
-                },
-                publicSignals: [],
-              },
-            }
-
-            const result = buildProofData(minAccount, sampleSigData)
-
-            expect(result).not.toBeNull()
-            expect(result?.nullifier).toBe("1")
           })
         })
       })

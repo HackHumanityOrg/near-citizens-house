@@ -183,6 +183,33 @@ const verificationPollingTimeoutEventSchema = z
   })
   .strict()
 
+// SumSub SDK lifecycle events
+const verificationSumsubSdkLoadedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_sdk_loaded"),
+    sessionId: z.string(),
+  })
+  .strict()
+
+const verificationSumsubMessageEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_message"),
+    sessionId: z.string(),
+    messageType: z.string(),
+  })
+  .strict()
+
+const verificationSumsubErrorEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_error"),
+    sessionId: z.string(),
+    errorMessage: z.string(),
+  })
+  .strict()
+
 const verificationErrorShownEventSchema = z
   .object({
     ...verificationEventBase,
@@ -268,6 +295,10 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationDeeplinkOpenedEventSchema,
   verificationPollingStartedEventSchema,
   verificationPollingTimeoutEventSchema,
+  // Client-side events - SumSub SDK
+  verificationSumsubSdkLoadedEventSchema,
+  verificationSumsubMessageEventSchema,
+  verificationSumsubErrorEventSchema,
   // Client-side events - mobile callback
   verificationCallbackLoadedEventSchema,
   verificationCallbackPollingStartedEventSchema,

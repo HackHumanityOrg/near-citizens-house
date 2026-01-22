@@ -2,89 +2,9 @@
  * Test Data Fixtures for @/lib tests
  *
  * Contains synthetic test data for unit tests.
- * For real integration tests, use actual Self.xyz mock passport data.
  */
 
 import type { NearAccountId } from "../../schemas/near"
-import type { SelfProofData } from "../../schemas/selfxyz"
-
-// ============================================================================
-// ZK Proof Test Data
-// ============================================================================
-
-/**
- * Syntactically valid but cryptographically invalid proof
- * Use for testing network calls and error handling
- */
-export const mockInvalidProof: SelfProofData = {
-  proof: {
-    a: ["1", "2"],
-    b: [
-      ["3", "4"],
-      ["5", "6"],
-    ],
-    c: ["7", "8"],
-  },
-  publicSignals: Array(21).fill("0"),
-}
-
-/**
- * Well-formed proof with valid BigInt strings (max BN254 field element - 1)
- * Still cryptographically invalid, but passes structural validation
- */
-export const wellFormedProof: SelfProofData = {
-  proof: {
-    a: [
-      "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-      "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-    ],
-    b: [
-      [
-        "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-        "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-      ],
-      [
-        "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-        "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-      ],
-    ],
-    c: [
-      "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-      "21888242871839275222246405745257275088696311157297823662689037894645226208582",
-    ],
-  },
-  publicSignals: Array(21).fill("21888242871839275222246405745257275088696311157297823662689037894645226208582"),
-}
-
-/**
- * Proof with all zero values
- */
-export const zeroProof: SelfProofData = {
-  proof: {
-    a: ["0", "0"],
-    b: [
-      ["0", "0"],
-      ["0", "0"],
-    ],
-    c: ["0", "0"],
-  },
-  publicSignals: Array(21).fill("0"),
-}
-
-/**
- * Proof with empty public signals (edge case)
- */
-export const emptySignalsProof: SelfProofData = {
-  proof: {
-    a: ["0", "0"],
-    b: [
-      ["0", "0"],
-      ["0", "0"],
-    ],
-    c: ["0", "0"],
-  },
-  publicSignals: [],
-}
 
 // ============================================================================
 // NEP-413 Test Data
@@ -147,26 +67,13 @@ export function userContextToHex(context: object): string {
 }
 
 // ============================================================================
-// Attestation IDs
-// ============================================================================
-
-export const AttestationIds = {
-  PASSPORT: 1,
-  BIOMETRIC_ID: 2,
-  AADHAAR: 3,
-} as const
-
-// ============================================================================
 // Size Limits (from contracts/verified-accounts-interface)
 // ============================================================================
 
 export const SizeLimits = {
-  NULLIFIER: 80,
+  SUMSUB_APPLICANT_ID: 80,
   USER_ID: 80,
-  ATTESTATION_ID: 1, // Self.xyz uses 1, 2, 3
   USER_CONTEXT_DATA: 4096,
-  PUBLIC_SIGNALS_COUNT: 21,
-  PROOF_COMPONENT: 80,
   MAX_BATCH_SIZE: 100,
   NONCE_LENGTH: 32,
   SIGNATURE_LENGTH: 64,

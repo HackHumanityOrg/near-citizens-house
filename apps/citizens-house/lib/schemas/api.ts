@@ -4,24 +4,17 @@
 import { z } from "zod"
 import { verificationErrorCodeSchema, validationIssueSchema } from "./errors"
 import { nearAccountIdSchema } from "./near"
-import { attestationIdSchema } from "./selfxyz"
 
 export const verifyResponseSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("success"),
     result: z.literal(true),
-    attestationId: attestationIdSchema,
     userData: z.object({
       userId: z.string(),
       nearAccountId: nearAccountIdSchema,
       nearSignature: z.string(),
     }),
-    discloseOutput: z
-      .object({
-        nullifier: z.string().optional(),
-      })
-      .catchall(z.unknown())
-      .optional(),
+    sumsubApplicantId: z.string().optional(),
   }),
   z.object({
     status: z.literal("error"),
@@ -40,17 +33,15 @@ export const statusResponseSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("success"),
     accountId: nearAccountIdSchema.optional(),
-    attestationId: attestationIdSchema.optional(),
+    sumsubApplicantId: z.string().optional(),
   }),
   z.object({
     status: z.literal("pending"),
     accountId: nearAccountIdSchema.optional(),
-    attestationId: attestationIdSchema.optional(),
   }),
   z.object({
     status: z.literal("error"),
     accountId: nearAccountIdSchema.optional(),
-    attestationId: attestationIdSchema.optional(),
     error: z.string().optional(),
     errorCode: z.string().optional(),
   }),

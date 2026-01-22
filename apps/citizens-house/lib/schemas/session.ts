@@ -3,7 +3,6 @@
  */
 import { z } from "zod"
 import { nearAccountIdSchema } from "./near"
-import { attestationIdSchema } from "./selfxyz"
 
 export const sessionStatusSchema = z.enum(["pending", "success", "error"])
 
@@ -12,7 +11,7 @@ export type SessionStatus = z.infer<typeof sessionStatusSchema>
 export const sessionSchema = z.object({
   status: sessionStatusSchema,
   accountId: nearAccountIdSchema.optional(),
-  attestationId: attestationIdSchema.optional(),
+  sumsubApplicantId: z.string().optional(),
   error: z.string().optional(),
   errorCode: z.string().optional(),
   timestamp: z.number(),

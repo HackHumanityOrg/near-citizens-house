@@ -34,8 +34,8 @@ const outcomeSchema = z.enum([
 
 const errorStageSchema = z.enum([
   "request_validation",
-  "self_verify",
-  "self_verify_response",
+  "sumsub_verify",
+  "sumsub_verify_response",
   "signature_parse",
   "signature_validate",
   "storage",
@@ -70,8 +70,8 @@ const stageReachedSchema = z
 
 const externalCallsSchema = z
   .object({
-    selfxyzCalled: z.boolean().optional(),
-    selfxyzSuccess: z.boolean().optional(),
+    sumsubCalled: z.boolean().optional(),
+    sumsubSuccess: z.boolean().optional(),
     nearRpcCalled: z.boolean().optional(),
     nearRpcSuccess: z.boolean().optional(),
     redisCalled: z.boolean().optional(),
@@ -101,7 +101,7 @@ const keyPoolContextSchema = z
 const verifyTimingsSchema = z
   .object({
     parseBody: z.number().optional(),
-    selfxyzVerify: z.number().optional(),
+    sumsubVerify: z.number().optional(),
     signatureValidation: z.number().optional(),
     nonceReservation: z.number().optional(),
     contractStorage: z.number().optional(),
@@ -151,19 +151,16 @@ const baseEventFieldsSchema = z.object({
 // =============================================================================
 
 /**
- * Verify request event - /api/verification/verify
+ * SumSub webhook event - /api/verification/sumsub/webhook
  */
-const verifyRequestEventSchema = baseEventFieldsSchema
+const sumsubWebhookEventSchema = baseEventFieldsSchema
   .extend({
-    route: z.literal("/api/verification/verify"),
+    route: z.literal("/api/verification/sumsub/webhook"),
     method: z.literal("POST"),
     nearAccountId: z.string().optional(),
-    attestationType: z.string().optional(),
-    attestationId: z.number().optional(),
-    nationality: z.string().optional(),
-    hasProof: z.boolean().optional(),
-    hasPublicSignals: z.boolean().optional(),
-    hasUserContextData: z.boolean().optional(),
+    sumsubApplicantId: z.string().optional(),
+    webhookType: z.string().optional(),
+    reviewResult: z.string().optional(),
     signaturePresent: z.boolean().optional(),
     signatureTimestampAge: z.number().optional(),
     stageReached: stageReachedSchema.optional(),
@@ -240,7 +237,7 @@ const checkIsVerifiedEventSchema = baseEventFieldsSchema
  * Union of all wide event schemas
  */
 const wideEventSchema = z.union([
-  verifyRequestEventSchema,
+  sumsubWebhookEventSchema,
   statusRequestEventSchema,
   getVerificationsEventSchema,
   checkIsVerifiedEventSchema,
@@ -255,14 +252,14 @@ export type Outcome = z.infer<typeof outcomeSchema>
 export type ErrorStage = z.infer<typeof errorStageSchema>
 export type Platform = z.infer<typeof platformSchema>
 
-export type VerifyRequestEvent = z.infer<typeof verifyRequestEventSchema>
+export type SumSubWebhookEvent = z.infer<typeof sumsubWebhookEventSchema>
 export type StatusRequestEvent = z.infer<typeof statusRequestEventSchema>
 export type GetVerificationsEvent = z.infer<typeof getVerificationsEventSchema>
 export type CheckIsVerifiedEvent = z.infer<typeof checkIsVerifiedEventSchema>
 export type WideEvent = z.infer<typeof wideEventSchema>
 
 // Timer type unions (for compile-time timer name validation)
-export type VerifyTimers = keyof Omit<z.infer<typeof verifyTimingsSchema>, "total">
+export type SumSubWebhookTimers = keyof Omit<z.infer<typeof verifyTimingsSchema>, "total">
 export type StatusTimers = keyof Omit<z.infer<typeof statusTimingsSchema>, "total">
 export type GetVerificationsTimers = keyof Omit<z.infer<typeof getVerificationsTimingsSchema>, "total">
 export type CheckIsVerifiedTimers = keyof Omit<z.infer<typeof checkIsVerifiedTimingsSchema>, "total">
@@ -274,8 +271,8 @@ export type CheckIsVerifiedTimers = keyof Omit<z.infer<typeof checkIsVerifiedTim
 /**
  * Maps an event type to its valid timer names
  */
-export type EventTimers<E extends WideEvent> = E extends VerifyRequestEvent
-  ? VerifyTimers
+export type EventTimers<E extends WideEvent> = E extends SumSubWebhookEvent
+  ? SumSubWebhookTimers
   : E extends StatusRequestEvent
     ? StatusTimers
     : E extends GetVerificationsEvent

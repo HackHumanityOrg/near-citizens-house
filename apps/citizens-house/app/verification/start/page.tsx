@@ -3,18 +3,11 @@
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
-import {
-  useNearWallet,
-  CONSTANTS,
-  statusResponseSchema,
-  getAttestationTypeName,
-  type NearSignatureData,
-  type AttestationId,
-} from "@/lib"
+import { useNearWallet, CONSTANTS, type NearSignatureData } from "@/lib"
 import { trackEvent, getPlatform, identifyVerifiedUser } from "@/lib/analytics"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
-import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
+import { Step2SumSub } from "../../../components/verification/flow/step-2-sumsub"
 import { Step3Success } from "../../../components/verification/flow/step-3-success"
 import { ErrorModal } from "../../../components/verification/flow/error-modal"
 
@@ -109,7 +102,6 @@ function VerificationStartContent() {
   // State management
   const [currentStep, setCurrentStep] = useState<VerificationProgressStep>(VerificationProgressStep.NotConnected)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
-  const [attestationId, setAttestationId] = useState<AttestationId | null>(null)
   const [sessionId] = useState<string>(() => crypto.randomUUID())
   const [isSigning, setIsSigning] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
@@ -187,21 +179,6 @@ function VerificationStartContent() {
     if (status === "success" && sessionIdParam) {
       // Verification successful from mobile flow
       setCurrentStep(VerificationProgressStep.VerificationComplete)
-      void (async () => {
-        try {
-          const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionIdParam)}`)
-          if (response.ok) {
-            const data = await response.json()
-            // Validate response shape for defense-in-depth
-            const parsed = statusResponseSchema.safeParse(data)
-            if (parsed.success && parsed.data.status === "success") {
-              setAttestationId(parsed.data.attestationId ?? null)
-            }
-          }
-        } catch {
-          // Failed to fetch attestation status, continue without it
-        }
-      })()
       handled = true
     } else if (status === "error") {
       // Verification failed from mobile flow
@@ -309,17 +286,15 @@ function VerificationStartContent() {
   }
 
   // Handle verification success
-  const handleVerificationSuccess = (verifiedAttestationId?: AttestationId) => {
+  const handleVerificationSuccess = () => {
     // Identify verified user for PostHog segmentation
     if (accountId) {
       identifyVerifiedUser(accountId, {
-        attestationType: verifiedAttestationId ? getAttestationTypeName(verifiedAttestationId) : undefined,
         platform: getPlatform(),
       })
     }
 
     setErrorMessage(null)
-    setAttestationId(verifiedAttestationId ?? null)
     setCurrentStep(VerificationProgressStep.VerificationComplete)
     toast.success("Successfully Verified Identity.")
   }
@@ -340,7 +315,6 @@ function VerificationStartContent() {
     setErrorMessage(null)
     setErrorCode(null)
     setNearSignature(null)
-    setAttestationId(null)
     setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
 
     // Auto-retry signing only for signing errors
@@ -353,7 +327,6 @@ function VerificationStartContent() {
   const handleDisconnect = () => {
     disconnect()
     setNearSignature(null)
-    setAttestationId(null)
     setErrorMessage(null)
     setCurrentStep(VerificationProgressStep.NotConnected)
   }
@@ -376,9 +349,9 @@ function VerificationStartContent() {
           />
         )}
 
-        {/* Step 2: QR Scan */}
+        {/* Step 2: SumSub Verification */}
         {currentStep === VerificationProgressStep.MessageSigned && nearSignature && (
-          <Step2QrScan
+          <Step2SumSub
             nearSignature={nearSignature}
             sessionId={sessionId}
             onSuccess={handleVerificationSuccess}
@@ -388,12 +361,7 @@ function VerificationStartContent() {
 
         {/* Step 3: Success */}
         {currentStep === VerificationProgressStep.VerificationComplete && accountId && (
-          <Step3Success
-            accountId={accountId}
-            attestationId={attestationId}
-            sessionId={sessionId}
-            onDisconnect={handleDisconnect}
-          />
+          <Step3Success accountId={accountId} sessionId={sessionId} onDisconnect={handleDisconnect} />
         )}
       </div>
 

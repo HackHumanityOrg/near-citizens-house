@@ -17,12 +17,13 @@ import { z } from "zod"
 export const verificationErrorCodeSchema = z.enum([
   "MISSING_FIELDS",
   "VERIFICATION_FAILED",
-  "NULLIFIER_MISSING",
+  "SUMSUB_APPLICANT_MISSING",
+  "SUMSUB_VERIFICATION_REJECTED",
   "NEAR_SIGNATURE_INVALID",
   "NEAR_SIGNATURE_MISSING",
   "SIGNATURE_EXPIRED",
   "SIGNATURE_TIMESTAMP_INVALID",
-  "DUPLICATE_PASSPORT",
+  "DUPLICATE_IDENTITY",
   "ACCOUNT_ALREADY_VERIFIED",
   "CONTRACT_PAUSED",
   "STORAGE_FAILED",
@@ -42,12 +43,13 @@ export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
 export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
   MISSING_FIELDS: "Missing required fields",
   VERIFICATION_FAILED: "Verification failed",
-  NULLIFIER_MISSING: "Nullifier missing from proof",
+  SUMSUB_APPLICANT_MISSING: "SumSub applicant ID missing",
+  SUMSUB_VERIFICATION_REJECTED: "Identity verification was rejected",
   NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
   NEAR_SIGNATURE_MISSING: "Invalid or missing NEAR signature data",
   SIGNATURE_EXPIRED: "Signature expired",
   SIGNATURE_TIMESTAMP_INVALID: "Invalid signature timestamp",
-  DUPLICATE_PASSPORT: "This passport has already been registered",
+  DUPLICATE_IDENTITY: "This identity has already been registered",
   ACCOUNT_ALREADY_VERIFIED: "This NEAR account is already verified",
   CONTRACT_PAUSED: "Verification is temporarily unavailable",
   STORAGE_FAILED: "Unable to finalize verification at this time",
@@ -60,9 +62,9 @@ export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> 
 
 /**
  * Error codes that indicate non-recoverable issues.
- * Users cannot retry verification with the same account/passport.
+ * Users cannot retry verification with the same account/identity.
  */
-export const NON_RETRYABLE_ERRORS = ["DUPLICATE_PASSPORT", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
+export const NON_RETRYABLE_ERRORS = ["DUPLICATE_IDENTITY", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
 
 export type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
 
@@ -133,8 +135,8 @@ export function createVerificationError(
 export function mapContractErrorToCode(errorMessage: string): VerificationErrorCode {
   const message = errorMessage.toLowerCase()
 
-  if (message.includes("nullifier already used") || message.includes("already registered")) {
-    return "DUPLICATE_PASSPORT"
+  if (message.includes("sumsub applicant already used") || message.includes("already registered")) {
+    return "DUPLICATE_IDENTITY"
   }
 
   if (message.includes("near account already verified")) {
@@ -153,13 +155,7 @@ export function mapContractErrorToCode(errorMessage: string): VerificationErrorC
     return "NEAR_SIGNATURE_INVALID"
   }
 
-  if (
-    message.includes("attestation id") ||
-    message.includes("nullifier") ||
-    message.includes("public signals") ||
-    message.includes("proof component") ||
-    message.includes("user context data")
-  ) {
+  if (message.includes("sumsub") || message.includes("applicant") || message.includes("user context data")) {
     return "VERIFICATION_FAILED"
   }
 
@@ -176,12 +172,14 @@ export function mapContractErrorToCode(errorMessage: string): VerificationErrorC
  */
 export function getErrorTitle(errorCode: string | null | undefined): string {
   switch (errorCode) {
-    case "DUPLICATE_PASSPORT":
+    case "DUPLICATE_IDENTITY":
       return "Already Verified"
     case "ACCOUNT_ALREADY_VERIFIED":
       return "Account Already Verified"
     case "CONTRACT_PAUSED":
       return "Verification Unavailable"
+    case "SUMSUB_VERIFICATION_REJECTED":
+      return "Verification Rejected"
     default:
       return "Verification Failed"
   }
@@ -200,12 +198,14 @@ export function getErrorMessage(errorCode: string | null | undefined, fallbackMe
   }
 
   switch (errorCode) {
-    case "DUPLICATE_PASSPORT":
-      return "This passport has already been used to verify another NEAR account. Each passport can only verify one account."
+    case "DUPLICATE_IDENTITY":
+      return "This identity has already been used to verify another NEAR account. Each person can only verify one account."
     case "ACCOUNT_ALREADY_VERIFIED":
       return "This NEAR account is already verified. Connect a different account to continue."
     case "CONTRACT_PAUSED":
       return "Verification is temporarily unavailable. Please try again later."
+    case "SUMSUB_VERIFICATION_REJECTED":
+      return "Your identity verification was not approved. Please ensure your documents are clear and valid."
     default:
       // Check if it's a known error code from the schema
       if (errorCode in VERIFICATION_ERROR_MESSAGES) {

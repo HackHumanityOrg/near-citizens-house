@@ -20,88 +20,61 @@ use near_sdk::{ext_contract, AccountId, NearSchema};
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum VersionedVerification {
-    /// V1: Original verification format (current version)
-    V1(VerificationV1),
-    // Future versions append here:
-    // V2(VerificationV2),  // 0x01 - example: adds new field
+    /// V2: SumSub-based verification (current version)
+    /// Note: We skip V1 for fresh deploy - old Self.xyz verifications are not migrated
+    V2(VerificationV2),
 }
 
 /// Current verification version number.
 /// Update this when adding new versions.
-pub const CURRENT_VERIFICATION_VERSION: u8 = 1;
+pub const CURRENT_VERIFICATION_VERSION: u8 = 2;
 
 impl VersionedVerification {
-    /// Create a new versioned verification using the current version (V1).
+    /// Create a new versioned verification using the current version (V2).
     pub fn new(v: Verification) -> Self {
-        Self::V1(v)
+        Self::V2(v)
     }
 
     /// Convert to current Verification format.
     /// This performs lazy migration from older versions.
     pub fn into_current(self) -> Verification {
         match self {
-            Self::V1(v) => v,
-            // Future versions: migrate to current
-            // Self::V2(v) => v,
+            Self::V2(v) => v,
         }
     }
 
     /// Get a reference as current Verification (cloning if migration needed).
     pub fn as_current(&self) -> Verification {
         match self {
-            Self::V1(v) => v.clone(),
-            // Future versions: migrate to current
-            // Self::V2(v) => v.clone(),
+            Self::V2(v) => v.clone(),
         }
     }
 
-    /// Check if this is the current version (V1).
+    /// Check if this is the current version (V2).
     pub fn is_current(&self) -> bool {
-        matches!(self, Self::V1(_))
+        matches!(self, Self::V2(_))
     }
 
     /// Get the version number of this record.
     pub fn version(&self) -> u8 {
         match self {
-            Self::V1(_) => 1,
-            // Self::V2(_) => 2,
+            Self::V2(_) => 2,
         }
     }
 }
 
 impl From<Verification> for VersionedVerification {
     fn from(v: Verification) -> Self {
-        Self::V1(v)
+        Self::V2(v)
     }
 }
 
 // ==================== Data Types ====================
 
-/// Groth16 ZK proof structure (a, b, c points)
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
-#[serde(crate = "near_sdk::serde")]
-#[borsh(crate = "near_sdk::borsh")]
-pub struct ZkProof {
-    pub a: [String; 2],
-    pub b: [[String; 2]; 2],
-    pub c: [String; 2],
-}
-
-/// Self.xyz proof data (ZK proof + public signals)
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
-#[serde(crate = "near_sdk::serde")]
-#[borsh(crate = "near_sdk::borsh")]
-pub struct SelfProofData {
-    /// Groth16 ZK proof (a, b, c points)
-    pub proof: ZkProof,
-    /// Public signals from the circuit (contains nullifier, merkle root, scope, etc.)
-    pub public_signals: Vec<String>,
-}
-
-/// Lightweight verification summary (no proof data).
+/// Lightweight verification summary (no signature data).
 ///
 /// This is the most commonly used return type for cross-contract calls.
-/// It includes all essential verification data without the large ZK proof,
+/// It includes all essential verification data without user context,
 /// keeping gas costs low.
 ///
 /// Note: This type is NOT versioned because it's only used for view responses,
@@ -110,37 +83,31 @@ pub struct SelfProofData {
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationSummary {
-    /// Unique nullifier from the ZK proof (prevents duplicate passport use)
-    pub nullifier: String,
+    /// Unique SumSub applicant ID (prevents duplicate identity use)
+    pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
-    /// Attestation ID from the identity provider
-    pub attestation_id: u8,
     /// Unix timestamp (nanoseconds) when verification was recorded
     pub verified_at: u64,
 }
 
 // ==================== Versioned Verification Types ====================
 
-/// V1: Original verification format.
+/// V2: SumSub-based verification format.
 ///
-/// This was the first version of the verification structure.
-/// Do NOT modify this struct - create new versions instead.
+/// This version uses SumSub KYC verification instead of Self.xyz ZK proofs.
+/// The sumsub_applicant_id uniquely identifies the verified identity.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
-pub struct VerificationV1 {
-    /// Unique nullifier from the ZK proof (prevents duplicate passport use)
-    pub nullifier: String,
+pub struct VerificationV2 {
+    /// Unique SumSub applicant ID (prevents duplicate identity use)
+    pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
-    /// Attestation ID from the identity provider
-    pub attestation_id: u8,
     /// Unix timestamp (nanoseconds) when verification was recorded
     pub verified_at: u64,
-    /// Self.xyz ZK proof data (for re-verification)
-    pub self_proof: SelfProofData,
-    /// Additional context data from verification flow
+    /// Additional context data from verification flow (contains NEAR signature data)
     pub user_context_data: String,
 }
 
@@ -149,14 +116,13 @@ pub struct VerificationV1 {
 /// Use this in application code for clarity. When the current version changes,
 /// update this alias to point to the new struct (along with migration logic
 /// in `VersionedVerification::into_current()`).
-pub type Verification = VerificationV1;
+pub type Verification = VerificationV2;
 
-impl From<&VerificationV1> for VerificationSummary {
-    fn from(v: &VerificationV1) -> Self {
+impl From<&VerificationV2> for VerificationSummary {
+    fn from(v: &VerificationV2) -> Self {
         Self {
-            nullifier: v.nullifier.clone(),
+            sumsub_applicant_id: v.sumsub_applicant_id.clone(),
             near_account_id: v.near_account_id.clone(),
-            attestation_id: v.attestation_id,
             verified_at: v.verified_at,
         }
     }
@@ -165,9 +131,7 @@ impl From<&VerificationV1> for VerificationSummary {
 impl From<&VersionedVerification> for VerificationSummary {
     fn from(v: &VersionedVerification) -> Self {
         match v {
-            VersionedVerification::V1(v) => Self::from(v),
-            // Future versions: add conversion here
-            // VersionedVerification::V2(v) => Self::from(v),
+            VersionedVerification::V2(v) => Self::from(v),
         }
     }
 }
