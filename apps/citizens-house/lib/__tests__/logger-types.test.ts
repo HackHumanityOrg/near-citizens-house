@@ -243,14 +243,10 @@ describe("Logger RequestContext Type Safety", () => {
       ctx.set("statusCode", 200)
       ctx.set("signaturePresent", true)
 
-      const outcome = ctx.get("outcome")
-      const statusCode = ctx.get("statusCode")
-      const signaturePresent = ctx.get("signaturePresent")
-
-      // These type assertions verify the return types are correct
-      const _outcome: typeof outcome = "success" as const
-      const _statusCode: typeof statusCode = 200
-      const _signaturePresent: typeof signaturePresent = true
+      // These assignments verify the return types are correct at compile time
+      const _outcome: "success" | "error" | "pending" | undefined = ctx.get("outcome")
+      const _statusCode: number | undefined = ctx.get("statusCode")
+      const _signaturePresent: boolean | undefined = ctx.get("signaturePresent")
 
       expect(_outcome).toBeDefined()
       expect(_statusCode).toBeDefined()

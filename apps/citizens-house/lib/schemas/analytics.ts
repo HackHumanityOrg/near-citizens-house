@@ -433,7 +433,7 @@ const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCaptured
  * a discriminated union on "action". Type safety is preserved through
  * the domain literal on each event schema.
  */
-const analyticsEventSchema = z.union([
+export const analyticsEventSchema = z.union([
   verificationEventSchema,
   citizensEventSchema,
   consentEventSchema,

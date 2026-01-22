@@ -12,17 +12,17 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import { verifyWebhookSignature, getApplicant, getMetadataValue } from "@/lib/providers/sumsub-provider"
-import { getRpcProvider } from "@/lib/providers/rpc-provider"
 import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
 import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
 import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
 import { getRedisClient } from "@/lib/redis"
 import { trackServerEvent } from "@/lib/analytics-server"
-import { getSigningMessage, getSigningRecipient, verifyNearSignature } from "@/lib/verification"
+import { getSigningMessage, getSigningRecipient, verifyNearSignature, validateSignatureData } from "@/lib/verification"
+import { hasFullAccessKey } from "@/lib/verification.server"
 import { logger } from "@/lib/logger"
 import { isNonRetryableError } from "@/lib/schemas/errors"
 import { sumsubWebhookPayloadSchema, applicantMetadataSchema } from "@/lib/schemas/sumsub"
-import { nearAccessKeyResponseSchema, type NearAccountId, type NearAccessKeyPermission } from "@/lib/schemas/near"
+import { SIGNATURE_VALIDATION, type NearAccountId } from "@/lib/schemas/near"
 import { createVerificationError, mapContractErrorToCode } from "@/lib/schemas"
 
 // Initialize Redis for backend key pool
@@ -34,39 +34,9 @@ async function ensureRedisInitialized(): Promise<void> {
   redisInitialized = true
 }
 
-// Maximum age for signature timestamps (10 minutes)
-const MAX_SIGNATURE_AGE_MS = 10 * 60 * 1000
-
-// Clock skew tolerance (10 seconds)
-const CLOCK_SKEW_MS = 10 * 1000
-
-function isFullAccessPermission(permission: NearAccessKeyPermission): boolean {
-  if (permission === "FullAccess") return true
-  if (typeof permission === "object" && "FullAccess" in permission) return true
-  return false
-}
-
-async function hasFullAccessKey(accountId: NearAccountId, publicKey: string): Promise<boolean> {
-  const provider = getRpcProvider()
-
-  try {
-    const rawResponse = await provider.query({
-      request_type: "view_access_key",
-      finality: "final",
-      account_id: accountId,
-      public_key: publicKey,
-    })
-
-    const parseResult = nearAccessKeyResponseSchema.safeParse(rawResponse)
-    if (!parseResult.success) {
-      return false
-    }
-
-    return isFullAccessPermission(parseResult.data.permission)
-  } catch {
-    return false
-  }
-}
+// Use shared constants from schemas
+const MAX_SIGNATURE_AGE_MS = SIGNATURE_VALIDATION.MAX_AGE_MS
+const CLOCK_SKEW_MS = SIGNATURE_VALIDATION.CLOCK_SKEW_MS
 
 export async function POST(request: NextRequest) {
   let sessionId: string | undefined
@@ -170,68 +140,35 @@ export async function POST(request: NextRequest) {
     sessionId = nearMetadata.session_id
     const signatureTimestamp = parseInt(nearMetadata.near_timestamp, 10)
 
-    // Validate signature timestamp freshness
-    const now = Date.now()
-    const signatureAge = now - signatureTimestamp
+    // Validate signature data format (timestamp freshness, nonce format, public key format)
+    const formatCheck = validateSignatureData({
+      timestamp: signatureTimestamp,
+      nonce: nearMetadata.near_nonce,
+      publicKey: nearMetadata.near_public_key,
+    })
 
-    if (signatureAge > MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS) {
-      logger.warn("sumsub_webhook_signature_expired", {
+    if (!formatCheck.valid) {
+      logger.warn("sumsub_webhook_invalid_format", {
         applicantId,
         accountId,
-        signatureAge,
+        error: formatCheck.error ?? "Unknown validation error",
+        errorCode: formatCheck.errorCode ?? "UNKNOWN",
       })
 
       if (sessionId) {
         await updateSession(sessionId, {
           status: "error",
           accountId,
-          error: `Signature expired (${Math.round(signatureAge / 1000)}s old)`,
-          errorCode: "SIGNATURE_EXPIRED",
+          error: formatCheck.error ?? "Invalid signature data",
+          errorCode: formatCheck.errorCode ?? "NEAR_SIGNATURE_INVALID",
         })
       }
 
-      return NextResponse.json({ error: "Signature expired" }, { status: 400 })
+      return NextResponse.json({ error: formatCheck.error ?? "Invalid signature data" }, { status: 400 })
     }
 
-    if (signatureAge < -CLOCK_SKEW_MS) {
-      logger.warn("sumsub_webhook_future_timestamp", {
-        applicantId,
-        accountId,
-        signatureAge,
-      })
-
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          accountId,
-          error: "Future timestamp exceeds clock skew tolerance",
-          errorCode: "SIGNATURE_TIMESTAMP_INVALID",
-        })
-      }
-
-      return NextResponse.json({ error: "Invalid timestamp" }, { status: 400 })
-    }
-
-    // Validate nonce format
-    const nonceBytes = Buffer.from(nearMetadata.near_nonce, "base64")
-    if (nonceBytes.length !== 32) {
-      logger.warn("sumsub_webhook_invalid_nonce", {
-        applicantId,
-        accountId,
-        nonceLength: nonceBytes.length,
-      })
-
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          accountId,
-          error: `Invalid nonce: expected 32 bytes, got ${nonceBytes.length}`,
-          errorCode: "NEAR_SIGNATURE_INVALID",
-        })
-      }
-
-      return NextResponse.json({ error: "Invalid nonce" }, { status: 400 })
-    }
+    // Calculate signature age for nonce TTL (validation already passed above)
+    const signatureAge = Date.now() - signatureTimestamp
 
     // Verify the NEAR signature cryptographically
     const expectedChallenge = getSigningMessage()
@@ -271,23 +208,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the public key is a full-access key
-    const isFullAccess = await hasFullAccessKey(accountId, nearMetadata.near_public_key)
-    if (!isFullAccess) {
+    const keyCheck = await hasFullAccessKey(accountId, nearMetadata.near_public_key)
+    if (!keyCheck.isFullAccess) {
       logger.warn("sumsub_webhook_not_full_access", {
         applicantId,
         accountId,
+        error: keyCheck.error ?? "Unknown key validation error",
       })
 
       if (sessionId) {
         await updateSession(sessionId, {
           status: "error",
           accountId,
-          error: "Public key is not an active full-access key",
+          error: keyCheck.error ?? "Public key is not an active full-access key",
           errorCode: "NEAR_SIGNATURE_INVALID",
         })
       }
 
-      return NextResponse.json({ error: "Invalid public key" }, { status: 400 })
+      return NextResponse.json({ error: keyCheck.error ?? "Invalid public key" }, { status: 400 })
     }
 
     // Reserve nonce to prevent replay attacks

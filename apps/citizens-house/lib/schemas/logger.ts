@@ -16,7 +16,7 @@ import { z } from "zod"
 // Shared Enums
 // =============================================================================
 
-const logLevelSchema = z.enum(["info", "warn", "error"])
+export const logLevelSchema = z.enum(["info", "warn", "error"])
 
 const outcomeSchema = z.enum([
   "success",
@@ -236,7 +236,7 @@ const checkIsVerifiedEventSchema = baseEventFieldsSchema
 /**
  * Union of all wide event schemas
  */
-const wideEventSchema = z.union([
+export const wideEventSchema = z.union([
   sumsubWebhookEventSchema,
   statusRequestEventSchema,
   getVerificationsEventSchema,
