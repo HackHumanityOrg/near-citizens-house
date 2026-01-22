@@ -95,9 +95,6 @@ export default function TermsPage() {
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                  Are at least eighteen (18) years of age and have legal capacity to enter into these Terms;
-                </li>
-                <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                   Control the blockchain wallet that you connect to the Services;
                 </li>
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
