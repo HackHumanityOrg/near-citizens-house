@@ -1,0 +1,94 @@
+{
+  "name": "NEAR Citizens House",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  "features": {
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.86.0",
+      "profile": "default",
+      "targets": "wasm32-unknown-unknown"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "pnpmVersion": "10.28.0"
+    },
+    "ghcr.io/near/near-devcontainers/features/cargo-near:latest": {},
+    "ghcr.io/near/near-devcontainers/features/near-cli:latest": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "containerEnv": {
+    "REDIS_URL": "redis://redis:6379",
+    "NEXT_PUBLIC_NEAR_NETWORK": "testnet",
+    "NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT": "verification-v1.near-citizens.testnet",
+    "NEXT_PUBLIC_SELF_NETWORK": "mainnet",
+    "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+    "NEXT_PUBLIC_POSTHOG_KEY": "",
+    "NEXT_PUBLIC_USERJOT_PROJECT_ID": "",
+    "CARGO_TERM_COLOR": "always",
+    "RUST_BACKTRACE": "1"
+  },
+
+  "secrets": {
+    "NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID": {
+      "description": "Reown (WalletConnect) project ID from https://cloud.reown.com - optional for wallet connections"
+    }
+  },
+
+  "forwardPorts": [3000, 6379],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js App",
+      "onAutoForward": "notify"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "serayuzgur.crates",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-playwright.playwright",
+        "vitest.explorer",
+        "GitHub.copilot"
+      ],
+      "settings": {
+        "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+        "rust-analyzer.check.command": "clippy",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        },
+        "[toml]": {
+          "editor.defaultFormatter": "tamasfe.even-better-toml"
+        }
+      }
+    },
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+
+  "remoteUser": "vscode"
+}
