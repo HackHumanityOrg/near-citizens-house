@@ -8,7 +8,13 @@ import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
 import { getSigningMessage, getSigningRecipient } from "./config"
-import { parsedSignatureDataSchema, type ParsedSignatureData } from "./schemas/near"
+import {
+  parsedSignatureDataSchema,
+  type ParsedSignatureData,
+  nep413NonceSchema,
+  freshTimestampSchema,
+  nearPublicKeySchema,
+} from "./schemas/near"
 
 // Re-export signing helpers for use in API routes
 export { getSigningMessage, getSigningRecipient }
@@ -210,4 +216,61 @@ export function buildSignatureVerificationData(sigData: ParsedSignatureData): {
     publicKeyHex,
     signatureHex: Buffer.from(sigData.signature, "base64").toString("hex"),
   }
+}
+
+// ==================== Signature Validation Helpers ====================
+
+/**
+ * Result of signature data validation.
+ */
+export interface SignatureValidationResult {
+  valid: boolean
+  error?: string
+  errorCode?: string
+}
+
+/**
+ * Validate NEAR signature data using Zod schemas.
+ * Validates timestamp freshness, nonce format, and public key format.
+ *
+ * Note: This does NOT verify the cryptographic signature or check RPC for key validity.
+ * Use verifyNearSignature() and hasFullAccessKey() for those checks.
+ */
+export function validateSignatureData(data: {
+  timestamp: number
+  nonce: string
+  publicKey: string
+}): SignatureValidationResult {
+  // Validate timestamp freshness
+  const timestampResult = freshTimestampSchema.safeParse(data.timestamp)
+  if (!timestampResult.success) {
+    const age = Date.now() - data.timestamp
+    return {
+      valid: false,
+      error: age > 0 ? `Signature expired (${Math.round(age / 1000)}s old)` : "Future timestamp",
+      errorCode: age > 0 ? "SIGNATURE_EXPIRED" : "SIGNATURE_TIMESTAMP_INVALID",
+    }
+  }
+
+  // Validate nonce format
+  const nonceResult = nep413NonceSchema.safeParse(data.nonce)
+  if (!nonceResult.success) {
+    return {
+      valid: false,
+      error: nonceResult.error.issues[0]?.message ?? "Invalid nonce format",
+      errorCode: "NEAR_SIGNATURE_INVALID",
+    }
+  }
+
+  // Validate public key format
+  const pubKeyResult = nearPublicKeySchema.safeParse(data.publicKey)
+  if (!pubKeyResult.success) {
+    return {
+      valid: false,
+      error: pubKeyResult.error.issues[0]?.message ?? "Invalid public key format",
+      errorCode: "NEAR_SIGNATURE_INVALID",
+    }
+  }
+
+  return { valid: true }
 }
