@@ -3,23 +3,22 @@
 import { useState, useEffect, useRef } from "react"
 import { Check, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getAttestationTypeName, type AttestationId, type NearAccountId } from "@/lib"
+import { type NearAccountId } from "@/lib"
 import { trackEvent, getPlatform } from "@/lib/analytics"
 import { StarPattern } from "../icons/star-pattern"
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform } from "framer-motion"
 
 interface Step3SuccessProps {
   accountId: NearAccountId
-  attestationId?: AttestationId | null
   sessionId?: string
   onDisconnect?: () => void
 }
 
 type AnimationPhase = "initial" | "labelsOut" | "merging" | "checkmark" | "complete"
 
-export function Step3Success({ accountId, attestationId, sessionId, onDisconnect }: Step3SuccessProps) {
+export function Step3Success({ accountId, sessionId, onDisconnect }: Step3SuccessProps) {
   const shouldReduceMotion = useReducedMotion()
-  const attestationLabel = attestationId ? getAttestationTypeName(attestationId) : "Identity Document"
+  const verificationLabel = "ID Verified"
   const [phase, setPhase] = useState<AnimationPhase>(shouldReduceMotion ? "complete" : "initial")
   const hasTrackedDisplay = useRef(false)
 
@@ -39,9 +38,8 @@ export function Step3Success({ accountId, attestationId, sessionId, onDisconnect
       platform: getPlatform(),
       sessionId,
       accountId,
-      attestationType: attestationId ? getAttestationTypeName(attestationId) : undefined,
     })
-  }, [accountId, attestationId, sessionId])
+  }, [accountId, sessionId])
 
   useEffect(() => {
     if (shouldReduceMotion) {
@@ -343,7 +341,7 @@ export function Step3Success({ accountId, attestationId, sessionId, onDisconnect
                       data-testid="attestation-badge-mobile"
                     >
                       <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
-                        {attestationLabel}
+                        {verificationLabel}
                       </span>
                     </div>
                   </div>
@@ -363,7 +361,7 @@ export function Step3Success({ accountId, attestationId, sessionId, onDisconnect
                         data-testid="attestation-badge-desktop"
                       >
                         <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
-                          {attestationLabel}
+                          {verificationLabel}
                         </span>
                       </div>
                     </div>

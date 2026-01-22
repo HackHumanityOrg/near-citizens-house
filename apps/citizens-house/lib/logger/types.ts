@@ -12,13 +12,13 @@ export type {
   ErrorStage,
   Platform,
   // Event types
-  VerifyRequestEvent,
+  SumSubWebhookEvent,
   StatusRequestEvent,
   GetVerificationsEvent,
   CheckIsVerifiedEvent,
   WideEvent,
   // Timer types
-  VerifyTimers,
+  SumSubWebhookTimers,
   StatusTimers,
   GetVerificationsTimers,
   CheckIsVerifiedTimers,

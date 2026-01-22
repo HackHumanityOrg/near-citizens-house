@@ -6,7 +6,6 @@ import "server-only"
 import { getRedisClient } from "./redis"
 import { parseSession, sessionSchema, type Session, type SessionStatus } from "./schemas/session"
 import type { NearAccountId } from "./schemas/near"
-import type { AttestationId } from "./schemas/selfxyz"
 
 // Session expiration time (5 minutes)
 const SESSION_TTL_SECONDS = 5 * 60
@@ -14,7 +13,7 @@ const SESSION_TTL_SECONDS = 5 * 60
 const NONCE_TTL_SECONDS = 10 * 60
 
 function getSessionKey(sessionId: string): string {
-  return `self-session:${sessionId}`
+  return `sumsub-session:${sessionId}`
 }
 
 export async function createSession(sessionId: string): Promise<void> {
@@ -42,7 +41,7 @@ export async function updateSession(
   update: {
     status: SessionStatus
     accountId?: NearAccountId
-    attestationId?: AttestationId
+    sumsubApplicantId?: string
     error?: string
     errorCode?: string
   },
@@ -57,7 +56,7 @@ export async function updateSession(
     : {
         status: update.status,
         accountId: update.accountId,
-        attestationId: update.attestationId,
+        sumsubApplicantId: update.sumsubApplicantId,
         error: update.error,
         errorCode: update.errorCode,
         timestamp: Date.now(),

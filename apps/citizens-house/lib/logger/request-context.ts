@@ -10,9 +10,9 @@
  * ctx.set("route", "/api/verification/verify")
  * ctx.set("method", "POST")
  * ctx.setNested("error.code", "VALIDATION_ERROR")
- * ctx.startTimer("selfxyzVerify")
+ * ctx.startTimer("sumsubVerify")
  * // ... perform verification
- * ctx.endTimer("selfxyzVerify")
+ * ctx.endTimer("sumsubVerify")
  * ctx.set("outcome", "success")
  * ctx.emit("info")
  * ```
@@ -29,7 +29,7 @@ import { setNestedProperty, getNestedProperty } from "./helpers"
 import type {
   LogLevel,
   WideEvent,
-  VerifyRequestEvent,
+  SumSubWebhookEvent,
   StatusRequestEvent,
   GetVerificationsEvent,
   CheckIsVerifiedEvent,
@@ -202,10 +202,10 @@ export class RequestContext<E extends WideEvent> {
 // ============================================================================
 
 /**
- * Create a RequestContext for /api/verification/verify
+ * Create a RequestContext for /api/verification/sumsub/webhook
  */
-export function createVerifyContext(): RequestContext<VerifyRequestEvent> {
-  return new RequestContext<VerifyRequestEvent>()
+export function createSumSubWebhookContext(): RequestContext<SumSubWebhookEvent> {
+  return new RequestContext<SumSubWebhookEvent>()
 }
 
 /**
@@ -229,5 +229,5 @@ export function createCheckIsVerifiedContext(): RequestContext<CheckIsVerifiedEv
   return new RequestContext<CheckIsVerifiedEvent>()
 }
 
-// Type alias for verify context (used in backend-key-pool.ts)
-export type VerifyContext = RequestContext<VerifyRequestEvent>
+// Type alias for webhook context (used in backend-key-pool.ts)
+export type SumSubWebhookContext = RequestContext<SumSubWebhookEvent>

@@ -30,6 +30,11 @@ export const env = createEnv({
     SKIP_ZK_VERIFICATION: z.string().optional(),
     E2E_TESTING: z.string().optional(),
 
+    // SumSub KYC verification credentials
+    SUMSUB_APP_TOKEN: z.string().optional(),
+    SUMSUB_SECRET_KEY: z.string().optional(),
+    SUMSUB_WEBHOOK_SECRET: z.string().optional(),
+
     // PostHog source maps upload (optional - for error tracking with readable stack traces)
     // Personal API Key: https://app.posthog.com/settings/user-api-keys
     POSTHOG_PERSONAL_API_KEY: z.string().optional(),
@@ -46,8 +51,8 @@ export const env = createEnv({
     // NEAR network configuration
     NEXT_PUBLIC_NEAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
 
-    // Self.xyz network (independent from NEAR network)
-    NEXT_PUBLIC_SELF_NETWORK: z.enum(["testnet", "mainnet"]).default("mainnet"),
+    // SumSub verification level name
+    NEXT_PUBLIC_SUMSUB_LEVEL_NAME: z.string().default("id-and-liveness"),
 
     // Contract address - REQUIRED for functionality
     NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: z.string().min(1, "Verification contract ID is required"),
@@ -80,9 +85,12 @@ export const env = createEnv({
     E2E_TESTING: process.env.E2E_TESTING,
     POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
     POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
+    SUMSUB_APP_TOKEN: process.env.SUMSUB_APP_TOKEN,
+    SUMSUB_SECRET_KEY: process.env.SUMSUB_SECRET_KEY,
+    SUMSUB_WEBHOOK_SECRET: process.env.SUMSUB_WEBHOOK_SECRET,
     // Client variables
     NEXT_PUBLIC_NEAR_NETWORK: process.env.NEXT_PUBLIC_NEAR_NETWORK,
-    NEXT_PUBLIC_SELF_NETWORK: process.env.NEXT_PUBLIC_SELF_NETWORK,
+    NEXT_PUBLIC_SUMSUB_LEVEL_NAME: process.env.NEXT_PUBLIC_SUMSUB_LEVEL_NAME,
     NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_USERJOT_PROJECT_ID: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID,

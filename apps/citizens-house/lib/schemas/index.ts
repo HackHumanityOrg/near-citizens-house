@@ -5,7 +5,7 @@
  * Import from '@/lib/schemas' or specific modules for tree-shaking.
  */
 
-export * from "./selfxyz"
+export * from "./sumsub"
 export * from "./core"
 export * from "./errors"
 export * from "./near"

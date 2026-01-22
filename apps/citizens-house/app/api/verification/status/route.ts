@@ -68,17 +68,11 @@ export async function GET(request: NextRequest) {
           const isVerified = await verificationDb.isVerified(parsedAccountId.data)
           ctx.set("contractCheckSuccess", true)
           if (isVerified) {
-            // Try to retrieve attestation ID from contract (best effort)
-            const verification = await verificationDb.getVerification(parsedAccountId.data)
-
-            const attestationId = verification?.attestationId ?? session.attestationId
-
             // Best-effort: fix up the session so subsequent polls don't hit the chain
             try {
               await updateSession(sessionId, {
                 status: "success",
                 accountId: parsedAccountId.data,
-                attestationId,
               })
             } catch {
               // Ignore session update failures; the response is still accurate
@@ -92,7 +86,6 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
               status: "success",
               accountId: parsedAccountId.data,
-              attestationId,
             })
           }
           ctx.endTimer("contractFallback")
@@ -113,7 +106,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       status: session.status,
       accountId: session.accountId,
-      attestationId: session.attestationId,
       error: session.error,
       errorCode: session.errorCode,
     })
