@@ -4,15 +4,14 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import dynamic from "next/dynamic"
 import { type NearSignatureData } from "@/lib"
 import { trackEvent } from "@/lib/analytics"
+import { checkIsVerified } from "@/app/citizens/actions"
 import {
-  statusResponseSchema,
   sumsubTokenResponseSchema,
   type SumSubWebSdkProps,
   type SumSubWebSdkPayload,
   type SumSubApplicantStatusChangedPayload,
 } from "@/lib/schemas"
 import { Loader2, Info, Ban, Check, Shield } from "lucide-react"
-import { getErrorMessage } from "@/lib/schemas/errors"
 import { StarPattern } from "../icons/star-pattern"
 
 // Dynamic import of SumSub WebSDK to avoid SSR issues
@@ -36,12 +35,11 @@ const SumSubWebSdk = dynamic<SumSubWebSdkProps>(
 
 interface Step2SumSubProps {
   nearSignature: NearSignatureData
-  sessionId: string
   onSuccess: () => void
   onError: (error: string, code?: string) => void
 }
 
-export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: Step2SumSubProps) {
+export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubProps) {
   const [verificationStatus, setVerificationStatus] = useState<
     "loading" | "ready" | "verifying" | "polling" | "success" | "error"
   >("loading")
@@ -56,7 +54,6 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId,
           nearSignature: {
             accountId: nearSignature.accountId,
             signature: nearSignature.signature,
@@ -84,7 +81,7 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
       const message = err instanceof Error ? err.message : "Failed to initialize verification"
       throw new Error(message)
     }
-  }, [sessionId, nearSignature])
+  }, [nearSignature])
 
   // Initial token fetch
   useEffect(() => {
@@ -99,7 +96,7 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
           trackEvent({
             domain: "verification",
             action: "sumsub_sdk_loaded",
-            sessionId,
+            accountId: nearSignature.accountId,
           })
         }
       } catch (err) {
@@ -117,7 +114,7 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
     return () => {
       mounted = false
     }
-  }, [fetchAccessToken, sessionId, onError])
+  }, [fetchAccessToken, nearSignature.accountId, onError])
 
   // Token refresh handler for SumSub SDK
   const handleExpirationRefresh = useCallback(async (): Promise<string> => {
@@ -131,7 +128,7 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
     }
   }, [fetchAccessToken])
 
-  // Poll for backend status confirmation
+  // Poll for backend status confirmation by checking contract directly
   const confirmBackendStatus = useCallback(async () => {
     const maxPolls = 60 // 2 minutes at 2s interval
     const pollIntervalMs = 2000
@@ -139,52 +136,16 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
     trackEvent({
       domain: "verification",
       action: "polling_started",
-      sessionId,
+      accountId: nearSignature.accountId,
     })
 
     for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
       try {
-        const response = await fetch(
-          `/api/verification/status?sessionId=${encodeURIComponent(sessionId)}&accountId=${encodeURIComponent(nearSignature.accountId)}`,
-        )
-
-        if (response.ok) {
-          const json = await response.json()
-          const parsed = statusResponseSchema.safeParse(json)
-
-          if (!parsed.success) {
-            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
-            continue
-          }
-
-          const data = parsed.data
-
-          if (data.status === "success") {
-            confirmationInProgressRef.current = false
-            setVerificationStatus("success")
-            onSuccess()
-            return
-          }
-
-          if (data.status === "error") {
-            const code = data.errorCode || data.error
-            const message = getErrorMessage(code, data.error)
-            confirmationInProgressRef.current = false
-            setVerificationStatus("error")
-            onError(message, code)
-            return
-          }
-
-          if (data.status === "expired") {
-            confirmationInProgressRef.current = false
-            setVerificationStatus("error")
-            onError("Verification timed out. Please try again.", "TIMEOUT")
-            return
-          }
-        } else if (response.status >= 400 && response.status < 500 && response.status !== 404) {
+        const isVerified = await checkIsVerified(nearSignature.accountId)
+        if (isVerified) {
           confirmationInProgressRef.current = false
-          setVerificationStatus("error")
-          onError("Verification session expired. Please try again.", "TIMEOUT")
+          setVerificationStatus("success")
+          onSuccess()
           return
         }
       } catch {
@@ -198,13 +159,13 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
     trackEvent({
       domain: "verification",
       action: "polling_timeout",
-      sessionId,
+      accountId: nearSignature.accountId,
       pollCount: maxPolls,
     })
     confirmationInProgressRef.current = false
     setVerificationStatus("error")
-    onError("Verification timed out. Please try again.", "TIMEOUT")
-  }, [sessionId, nearSignature.accountId, onSuccess, onError])
+    onError("Verification is taking longer than expected. Please try again.", "TIMEOUT")
+  }, [nearSignature.accountId, onSuccess, onError])
 
   // Handle SumSub SDK messages
   const handleMessage = useCallback(
@@ -212,7 +173,7 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
       trackEvent({
         domain: "verification",
         action: "sumsub_message",
-        sessionId,
+        accountId: nearSignature.accountId,
         messageType: type,
       })
 
@@ -245,7 +206,7 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
         }
       }
     },
-    [sessionId, confirmBackendStatus],
+    [nearSignature.accountId, confirmBackendStatus],
   )
 
   // Handle SumSub SDK errors
@@ -254,13 +215,13 @@ export function Step2SumSub({ nearSignature, sessionId, onSuccess, onError }: St
       trackEvent({
         domain: "verification",
         action: "sumsub_error",
-        sessionId,
+        accountId: nearSignature.accountId,
         errorMessage: error.message,
       })
       // Don't immediately fail - SDK might recover
       console.error("SumSub SDK error:", error)
     },
-    [sessionId],
+    [nearSignature.accountId],
   )
 
   return (

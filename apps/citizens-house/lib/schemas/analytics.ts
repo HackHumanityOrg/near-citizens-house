@@ -64,7 +64,6 @@ const verificationSignStartedEventSchema = z
     ...verificationEventBase,
     action: z.literal("sign_started"),
     platform: platformSchema,
-    sessionId: z.string(),
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -74,7 +73,6 @@ const verificationSignCompletedEventSchema = z
     ...verificationEventBase,
     action: z.literal("sign_completed"),
     platform: platformSchema,
-    sessionId: z.string(),
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -84,7 +82,6 @@ const verificationSignFailedEventSchema = z
     ...verificationEventBase,
     action: z.literal("sign_failed"),
     platform: platformSchema,
-    sessionId: z.string(),
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
     wasUserRejection: z.boolean(),
@@ -101,14 +98,12 @@ const verificationAlreadyVerifiedEventSchema = z
   })
   .strict()
 
-// Mobile callback flow
+// Callback flow (contract polling)
 const verificationCallbackLoadedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("callback_loaded"),
-    sessionId: z.string(),
-    hasAccountId: z.boolean(),
-    source: z.enum(["url_param", "local_storage", "none"]),
+    accountId: nearAccountIdSchema,
   })
   .strict()
 
@@ -116,7 +111,7 @@ const verificationCallbackPollingStartedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("callback_polling_started"),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
   })
   .strict()
 
@@ -124,7 +119,7 @@ const verificationCallbackResultEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("callback_result"),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
     status: z.enum(["success", "error", "expired", "timeout"]),
     pollCount: z.number(),
   })
@@ -136,7 +131,6 @@ const verificationSuccessDisplayedEventSchema = z
     ...verificationEventBase,
     action: z.literal("success_displayed"),
     platform: platformSchema,
-    sessionId: z.string().optional(),
     accountId: nearAccountIdSchema,
     attestationType: z.string().optional(),
   })
@@ -150,27 +144,11 @@ const verificationSuccessDisconnectClickedEventSchema = z
   })
   .strict()
 
-const verificationQrDisplayedEventSchema = z
-  .object({
-    ...verificationEventBase,
-    action: z.literal("qr_displayed"),
-    sessionId: z.string(),
-  })
-  .strict()
-
-const verificationDeeplinkOpenedEventSchema = z
-  .object({
-    ...verificationEventBase,
-    action: z.literal("deeplink_opened"),
-    sessionId: z.string(),
-  })
-  .strict()
-
 const verificationPollingStartedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("polling_started"),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
   })
   .strict()
 
@@ -178,7 +156,7 @@ const verificationPollingTimeoutEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("polling_timeout"),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
     pollCount: z.number(),
   })
   .strict()
@@ -188,7 +166,7 @@ const verificationSumsubSdkLoadedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("sumsub_sdk_loaded"),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
   })
   .strict()
 
@@ -196,7 +174,7 @@ const verificationSumsubMessageEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("sumsub_message"),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
     messageType: z.string(),
   })
   .strict()
@@ -205,7 +183,7 @@ const verificationSumsubErrorEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("sumsub_error"),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
     errorMessage: z.string(),
   })
   .strict()
@@ -243,8 +221,7 @@ const verificationProofSubmittedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("proof_submitted"),
-    accountId: nearAccountIdSchema.optional(),
-    sessionId: z.string(),
+    accountId: nearAccountIdSchema,
   })
   .strict()
 
@@ -290,16 +267,14 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationSignFailedEventSchema,
   // Client-side events - already verified
   verificationAlreadyVerifiedEventSchema,
-  // Client-side events - QR/polling
-  verificationQrDisplayedEventSchema,
-  verificationDeeplinkOpenedEventSchema,
+  // Client-side events - polling
   verificationPollingStartedEventSchema,
   verificationPollingTimeoutEventSchema,
   // Client-side events - SumSub SDK
   verificationSumsubSdkLoadedEventSchema,
   verificationSumsubMessageEventSchema,
   verificationSumsubErrorEventSchema,
-  // Client-side events - mobile callback
+  // Client-side events - callback
   verificationCallbackLoadedEventSchema,
   verificationCallbackPollingStartedEventSchema,
   verificationCallbackResultEventSchema,
@@ -433,7 +408,7 @@ const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCaptured
  * a discriminated union on "action". Type safety is preserved through
  * the domain literal on each event schema.
  */
-export const analyticsEventSchema = z.union([
+const analyticsEventSchema = z.union([
   verificationEventSchema,
   citizensEventSchema,
   consentEventSchema,

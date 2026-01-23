@@ -16,7 +16,7 @@ import { z } from "zod"
 // Shared Enums
 // =============================================================================
 
-export const logLevelSchema = z.enum(["info", "warn", "error"])
+const logLevelSchema = z.enum(["info", "warn", "error"])
 
 const outcomeSchema = z.enum([
   "success",
@@ -111,14 +111,6 @@ const verifyTimingsSchema = z
   })
   .strict()
 
-const statusTimingsSchema = z
-  .object({
-    redisLookup: z.number().optional(),
-    contractFallback: z.number().optional(),
-    total: z.number().optional(),
-  })
-  .strict()
-
 const getVerificationsTimingsSchema = z
   .object({
     contractFetch: z.number().optional(),
@@ -175,26 +167,6 @@ const sumsubWebhookEventSchema = baseEventFieldsSchema
   .strict()
 
 /**
- * Status request event - /api/verification/status
- */
-const statusRequestEventSchema = baseEventFieldsSchema
-  .extend({
-    route: z.literal("/api/verification/status"),
-    method: z.literal("GET"),
-    nearAccountId: z.string().optional(),
-    sessionFound: z.boolean().optional(),
-    sessionStatus: z.string().optional(),
-    sessionAge: z.number().optional(),
-    usedContractFallback: z.boolean().optional(),
-    contractCheckSuccess: z.boolean().optional(),
-    timings: statusTimingsSchema.optional(),
-    outcome: outcomeSchema.optional(),
-    statusCode: z.number().optional(),
-    error: errorContextSchema.optional(),
-  })
-  .strict()
-
-/**
  * Server action event - getVerificationsWithStatus
  */
 const getVerificationsEventSchema = baseEventFieldsSchema
@@ -236,9 +208,8 @@ const checkIsVerifiedEventSchema = baseEventFieldsSchema
 /**
  * Union of all wide event schemas
  */
-export const wideEventSchema = z.union([
+const wideEventSchema = z.union([
   sumsubWebhookEventSchema,
-  statusRequestEventSchema,
   getVerificationsEventSchema,
   checkIsVerifiedEventSchema,
 ])
@@ -253,14 +224,12 @@ export type ErrorStage = z.infer<typeof errorStageSchema>
 export type Platform = z.infer<typeof platformSchema>
 
 export type SumSubWebhookEvent = z.infer<typeof sumsubWebhookEventSchema>
-export type StatusRequestEvent = z.infer<typeof statusRequestEventSchema>
 export type GetVerificationsEvent = z.infer<typeof getVerificationsEventSchema>
 export type CheckIsVerifiedEvent = z.infer<typeof checkIsVerifiedEventSchema>
 export type WideEvent = z.infer<typeof wideEventSchema>
 
 // Timer type unions (for compile-time timer name validation)
 export type SumSubWebhookTimers = keyof Omit<z.infer<typeof verifyTimingsSchema>, "total">
-export type StatusTimers = keyof Omit<z.infer<typeof statusTimingsSchema>, "total">
 export type GetVerificationsTimers = keyof Omit<z.infer<typeof getVerificationsTimingsSchema>, "total">
 export type CheckIsVerifiedTimers = keyof Omit<z.infer<typeof checkIsVerifiedTimingsSchema>, "total">
 
@@ -273,10 +242,8 @@ export type CheckIsVerifiedTimers = keyof Omit<z.infer<typeof checkIsVerifiedTim
  */
 export type EventTimers<E extends WideEvent> = E extends SumSubWebhookEvent
   ? SumSubWebhookTimers
-  : E extends StatusRequestEvent
-    ? StatusTimers
-    : E extends GetVerificationsEvent
-      ? GetVerificationsTimers
-      : E extends CheckIsVerifiedEvent
-        ? CheckIsVerifiedTimers
-        : never
+  : E extends GetVerificationsEvent
+    ? GetVerificationsTimers
+    : E extends CheckIsVerifiedEvent
+      ? CheckIsVerifiedTimers
+      : never
