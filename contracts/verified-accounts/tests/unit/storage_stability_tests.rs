@@ -7,7 +7,7 @@
 //! **CRITICAL:** If these tests fail, on-chain data will be corrupted after upgrade!
 
 use allure_rs::prelude::*;
-use verified_accounts::interface::VerificationV2;
+use verified_accounts::interface::VerificationV1;
 use verified_accounts::{StorageKey, VersionedVerification};
 
 #[allure_parent_suite("Near Citizens House")]
@@ -63,28 +63,28 @@ fn test_storage_key_discriminants_are_stable() {
 Verifies that VersionedVerification enum discriminants remain constant for record migration.
 
 ## Why This Matters
-- If VersionedVerification::V2 discriminant changes, existing records become unreadable
-- Lazy migration relies on correctly deserializing V2 records
+- If VersionedVerification::V1 discriminant changes, existing records become unreadable
+- Lazy migration relies on correctly deserializing V1 records
 
 ## Expected Values
-- V2: 0x00
+- V1: 0x00
 "#
 )]
 #[allure_test]
 #[test]
 fn test_versioned_verification_discriminants_are_stable() {
-    // Create a minimal V2 verification for testing
-    let v2 = VersionedVerification::V2(VerificationV2 {
+    // Create a minimal V1 verification for testing
+    let v1 = VersionedVerification::V1(VerificationV1 {
         sumsub_applicant_id: "test".to_string(),
         near_account_id: "test.near".parse().expect("valid account"),
         verified_at: 0,
         user_context_data: String::new(),
     });
-    let v2_bytes = near_sdk::borsh::to_vec(&v2).expect("V2 should serialize");
+    let v1_bytes = near_sdk::borsh::to_vec(&v1).expect("V1 should serialize");
 
     assert_eq!(
-        v2_bytes.first().copied(),
+        v1_bytes.first().copied(),
         Some(0x00),
-        "VersionedVerification::V2 discriminant changed! Existing records will be unreadable."
+        "VersionedVerification::V1 discriminant changed! Existing records will be unreadable."
     );
 }

@@ -20,52 +20,58 @@ use near_sdk::{ext_contract, AccountId, NearSchema};
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum VersionedVerification {
-    /// V2: SumSub-based verification (current version)
-    /// Note: We skip V1 for fresh deploy - old Self.xyz verifications are not migrated
-    V2(VerificationV2),
+    /// V1: SumSub-based verification (current version)
+    V1(VerificationV1),
+    // Future versions append here:
+    // V2(VerificationV2),
 }
 
 /// Current verification version number.
 /// Update this when adding new versions.
-pub const CURRENT_VERIFICATION_VERSION: u8 = 2;
+pub const CURRENT_VERIFICATION_VERSION: u8 = 1;
 
 impl VersionedVerification {
-    /// Create a new versioned verification using the current version (V2).
+    /// Create a new versioned verification using the current version (V1).
     pub fn new(v: Verification) -> Self {
-        Self::V2(v)
+        Self::V1(v)
     }
 
     /// Convert to current Verification format.
     /// This performs lazy migration from older versions.
     pub fn into_current(self) -> Verification {
         match self {
-            Self::V2(v) => v,
+            Self::V1(v) => v,
+            // Future versions: migrate to current
+            // Self::V2(v) => v,
         }
     }
 
     /// Get a reference as current Verification (cloning if migration needed).
     pub fn as_current(&self) -> Verification {
         match self {
-            Self::V2(v) => v.clone(),
+            Self::V1(v) => v.clone(),
+            // Future versions: migrate to current
+            // Self::V2(v) => v.clone(),
         }
     }
 
-    /// Check if this is the current version (V2).
+    /// Check if this is the current version (V1).
     pub fn is_current(&self) -> bool {
-        matches!(self, Self::V2(_))
+        matches!(self, Self::V1(_))
     }
 
     /// Get the version number of this record.
     pub fn version(&self) -> u8 {
         match self {
-            Self::V2(_) => 2,
+            Self::V1(_) => 1,
+            // Self::V2(_) => 2,
         }
     }
 }
 
 impl From<Verification> for VersionedVerification {
     fn from(v: Verification) -> Self {
-        Self::V2(v)
+        Self::V1(v)
     }
 }
 
@@ -93,14 +99,14 @@ pub struct VerificationSummary {
 
 // ==================== Versioned Verification Types ====================
 
-/// V2: SumSub-based verification format.
+/// V1: SumSub-based verification format (current version).
 ///
-/// This version uses SumSub KYC verification instead of Self.xyz ZK proofs.
-/// The sumsub_applicant_id uniquely identifies the verified identity.
+/// Uses SumSub KYC verification. The sumsub_applicant_id uniquely
+/// identifies the verified identity.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
-pub struct VerificationV2 {
+pub struct VerificationV1 {
     /// Unique SumSub applicant ID (prevents duplicate identity use)
     pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
@@ -116,10 +122,10 @@ pub struct VerificationV2 {
 /// Use this in application code for clarity. When the current version changes,
 /// update this alias to point to the new struct (along with migration logic
 /// in `VersionedVerification::into_current()`).
-pub type Verification = VerificationV2;
+pub type Verification = VerificationV1;
 
-impl From<&VerificationV2> for VerificationSummary {
-    fn from(v: &VerificationV2) -> Self {
+impl From<&VerificationV1> for VerificationSummary {
+    fn from(v: &VerificationV1) -> Self {
         Self {
             sumsub_applicant_id: v.sumsub_applicant_id.clone(),
             near_account_id: v.near_account_id.clone(),
@@ -131,7 +137,8 @@ impl From<&VerificationV2> for VerificationSummary {
 impl From<&VersionedVerification> for VerificationSummary {
     fn from(v: &VersionedVerification) -> Self {
         match v {
-            VersionedVerification::V2(v) => Self::from(v),
+            VersionedVerification::V1(v) => Self::from(v),
+            // VersionedVerification::V2(v) => Self::from(v),
         }
     }
 }
@@ -170,19 +177,18 @@ pub trait VerifiedAccountsInterface {
     /// This is the most gas-efficient method.
     fn is_verified(&self, account_id: AccountId) -> bool;
 
-    /// Get verification summary (without ZK proof).
+    /// Get verification summary.
     ///
     /// **Use this for:** Most cross-contract calls that need verification details.
-    /// Returns all essential data (nullifier, attestation_id, timestamp)
-    /// without the large ZK proof, keeping gas costs low.
+    /// Returns all essential data (sumsub_applicant_id, timestamp)
+    /// keeping gas costs low.
     ///
     /// Returns `None` if the account is not verified.
     fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary>;
 
-    /// Get full verification record including ZK proof.
+    /// Get full verification record including user context data.
     ///
-    /// **Use this for:** Re-verification, audit trails, proof validation.
-    /// This is the most expensive method due to large proof data (~2.5 KB).
+    /// **Use this for:** Audit trails, detailed verification info.
     ///
     /// Returns `None` if the account is not verified.
     fn get_full_verification(&self, account_id: AccountId) -> Option<Verification>;
