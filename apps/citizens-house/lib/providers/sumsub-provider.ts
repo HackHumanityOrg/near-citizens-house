@@ -28,6 +28,16 @@ import {
 
 const SUMSUB_BASE_URL = "https://api.sumsub.com"
 
+/**
+ * RFC 3986 compliant URI encoding.
+ *
+ * JavaScript's encodeURIComponent doesn't encode !'()* as they're "unreserved" per RFC 3986,
+ * but SumSub requires these encoded for signature matching.
+ */
+function encodeRFC3986(str: string): string {
+  return encodeURIComponent(str).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase())
+}
+
 // Get credentials from environment
 function getCredentials() {
   const appToken = env.SUMSUB_APP_TOKEN
@@ -63,17 +73,6 @@ function getAuthHeaders(method: string, path: string, body?: string): Record<str
   const timestamp = Math.floor(Date.now() / 1000)
   const signature = generateSignature(secretKey, timestamp, method, path, body)
 
-  // TEMPORARY DEBUG - Remove after diagnosis
-  logger.info("sumsub_auth_debug", {
-    appTokenPrefix: appToken.substring(0, 15),
-    secretKeyLength: secretKey.length,
-    method,
-    path,
-    bodyLength: body?.length ?? 0,
-    timestamp,
-    signaturePrefix: signature.substring(0, 16),
-  })
-
   return {
     "X-App-Token": appToken,
     "X-App-Access-Sig": signature,
@@ -97,7 +96,7 @@ function getAuthHeaders(method: string, path: string, body?: string): Record<str
  * @returns Applicant data
  */
 export async function createApplicant(externalUserId: string, levelName: string): Promise<SumSubApplicant> {
-  const path = `/resources/applicants?levelName=${encodeURIComponent(levelName)}`
+  const path = `/resources/applicants?levelName=${encodeRFC3986(levelName)}`
   const method = "POST"
   const body = JSON.stringify({ externalUserId })
   const headers = getAuthHeaders(method, path, body)
@@ -147,7 +146,7 @@ export async function generateAccessToken(
   externalUserId: string,
   levelName: string,
 ): Promise<SumSubAccessTokenApiResponse> {
-  const path = `/resources/accessTokens?userId=${encodeURIComponent(externalUserId)}&levelName=${encodeURIComponent(levelName)}`
+  const path = `/resources/accessTokens?userId=${encodeURIComponent(externalUserId)}&levelName=${encodeRFC3986(levelName)}`
   const method = "POST"
   const headers = getAuthHeaders(method, path)
 
