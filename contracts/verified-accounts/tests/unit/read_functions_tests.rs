@@ -1,6 +1,6 @@
 //! Read functions tests for verified-accounts contract
 
-use super::helpers::{create_signer, create_valid_signature, get_context, test_self_proof};
+use super::helpers::{create_signer, create_valid_signature, get_context};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
@@ -72,14 +72,17 @@ fn test_read_functions_with_verified_accounts() {
     step("Store first verified account", || {
         let user_a = accounts(2);
         let signer_a = create_signer(&user_a);
-        let sig_a =
-            create_valid_signature(&signer_a, &user_a, "Identify myself", &[9; 32], &accounts(0));
+        let sig_a = create_valid_signature(
+            &signer_a,
+            &user_a,
+            "Identify myself",
+            &[9; 32],
+            &accounts(0),
+        );
         contract.store_verification(
-            "nullifier_a".to_string(),
+            "sumsub_applicant_a".to_string(),
             user_a,
-            1,
             sig_a,
-            test_self_proof(),
             "ctx".to_string(),
         );
     });
@@ -87,14 +90,17 @@ fn test_read_functions_with_verified_accounts() {
     step("Store second verified account", || {
         let user_b = accounts(3);
         let signer_b = create_signer(&user_b);
-        let sig_b =
-            create_valid_signature(&signer_b, &user_b, "Identify myself", &[10; 32], &accounts(0));
+        let sig_b = create_valid_signature(
+            &signer_b,
+            &user_b,
+            "Identify myself",
+            &[10; 32],
+            &accounts(0),
+        );
         contract.store_verification(
-            "nullifier_b".to_string(),
+            "sumsub_applicant_b".to_string(),
             user_b,
-            1,
             sig_b,
-            test_self_proof(),
             "ctx".to_string(),
         );
     });

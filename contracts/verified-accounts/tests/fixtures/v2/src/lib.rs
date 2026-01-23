@@ -1,15 +1,14 @@
 //! # Verified Accounts Contract (V2 Fixture)
 //!
-//! Test fixture used for upgrade scenarios; adds `upgrade_timestamp` and
-//! `nationality_disclosed`.
+//! Test fixture used for upgrade scenarios; adds `upgrade_timestamp`.
 //!
 //! ## Versioning
 //! - Contract state: append-only `VersionedContract`; migrate in `contract_mut()`.
 //! - Records: `VersionedVerification` with lazy upgrades (see `interface.rs`).
 //!
 //! ## Security Model
-//! Backend verifies proofs and access keys off-chain; on-chain checks NEP-413
-//! signatures plus nullifier and account uniqueness.
+//! Backend verifies KYC off-chain via SumSub; on-chain checks NEP-413
+//! signatures plus applicant ID and account uniqueness.
 
 #![allow(clippy::too_many_arguments)]
 
@@ -23,15 +22,12 @@ use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault
 // Interface module for cross-contract calls
 pub mod interface;
 pub use interface::{
-    ext_verified_accounts, SelfProofData, Verification, VerificationSummary, VersionedVerification,
-    ZkProof,
+    ext_verified_accounts, Verification, VerificationSummary, VersionedVerification,
 };
 
 /// Maximum length for string inputs
-const MAX_NULLIFIER_LEN: usize = 80; // uint256 max = 78 decimal digits
+const MAX_SUMSUB_APPLICANT_ID_LEN: usize = 80;
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
-const MAX_PUBLIC_SIGNALS_COUNT: usize = 21; // Passport proofs have 21 signals
-const MAX_PROOF_COMPONENT_LEN: usize = 80; // BN254 field elements ~77 decimal digits
 
 /// Maximum accounts per batch query
 const MAX_BATCH_SIZE: usize = 100;
@@ -41,7 +37,7 @@ const MAX_BATCH_SIZE: usize = 100;
 #[derive(BorshStorageKey, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum StorageKey {
-    Nullifiers,
+    SumsubApplicants,
     Accounts,
 }
 
@@ -78,8 +74,7 @@ pub struct Nep413Payload {
 #[serde(crate = "near_sdk::serde")]
 pub struct VerificationStoredEvent {
     pub near_account_id: AccountId,
-    pub nullifier: String,
-    pub attestation_id: u8,
+    pub sumsub_applicant_id: String,
 }
 
 /// Event emitted when contract is paused
@@ -138,8 +133,8 @@ pub enum VersionedContract {
 pub struct ContractV1 {
     /// Account authorized to write to this contract
     pub backend_wallet: AccountId,
-    /// Set of used nullifiers
-    pub nullifiers: LookupSet<String>,
+    /// Set of used SumSub applicant IDs
+    pub sumsub_applicants: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
     pub verifications: IterableMap<AccountId, VersionedVerification>,
     /// Whether the contract is paused
@@ -151,8 +146,8 @@ pub struct ContractV1 {
 pub struct ContractV2 {
     /// Account authorized to write to this contract
     pub backend_wallet: AccountId,
-    /// Set of used nullifiers
-    pub nullifiers: LookupSet<String>,
+    /// Set of used SumSub applicant IDs
+    pub sumsub_applicants: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
     pub verifications: IterableMap<AccountId, VersionedVerification>,
     /// Whether the contract is paused
@@ -175,9 +170,9 @@ impl VersionedContract {
                 // Move collections to V2, preserving their data (same storage keys)
                 let v2 = ContractV2 {
                     backend_wallet: v1.backend_wallet.clone(),
-                    nullifiers: std::mem::replace(
-                        &mut v1.nullifiers,
-                        LookupSet::new(StorageKey::Nullifiers),
+                    sumsub_applicants: std::mem::replace(
+                        &mut v1.sumsub_applicants,
+                        LookupSet::new(StorageKey::SumsubApplicants),
                     ),
                     verifications: std::mem::replace(
                         &mut v1.verifications,
@@ -242,7 +237,7 @@ impl VersionedContract {
     pub fn new(backend_wallet: AccountId) -> Self {
         VersionedContract::V1(ContractV1 {
             backend_wallet,
-            nullifiers: LookupSet::new(StorageKey::Nullifiers),
+            sumsub_applicants: LookupSet::new(StorageKey::SumsubApplicants),
             verifications: IterableMap::new(StorageKey::Accounts),
             paused: false,
         })
@@ -263,7 +258,7 @@ impl VersionedContract {
         match old_state {
             VersionedContract::V1(v1) => VersionedContract::V2(ContractV2 {
                 backend_wallet: v1.backend_wallet,
-                nullifiers: v1.nullifiers,
+                sumsub_applicants: v1.sumsub_applicants,
                 verifications: v1.verifications,
                 paused: v1.paused,
                 upgrade_timestamp: env::block_timestamp(),
@@ -342,13 +337,10 @@ impl VersionedContract {
     #[payable]
     pub fn store_verification(
         &mut self,
-        nullifier: String,
+        sumsub_applicant_id: String,
         near_account_id: AccountId,
-        attestation_id: u8,
         signature_data: NearSignatureData,
-        self_proof: SelfProofData,
         user_context_data: String,
-        nationality_disclosed: bool,
     ) {
         assert_one_yocto();
 
@@ -362,61 +354,19 @@ impl VersionedContract {
 
         // Input length validation
         assert!(
-            nullifier.len() <= MAX_NULLIFIER_LEN,
-            "Nullifier exceeds maximum length of {}",
-            MAX_NULLIFIER_LEN
+            !sumsub_applicant_id.is_empty(),
+            "SumSub applicant ID cannot be empty"
         );
         assert!(
-            attestation_id == 1 || attestation_id == 2 || attestation_id == 3,
-            "Attestation ID must be one of: 1, 2, 3"
+            sumsub_applicant_id.len() <= MAX_SUMSUB_APPLICANT_ID_LEN,
+            "SumSub applicant ID exceeds maximum length of {}",
+            MAX_SUMSUB_APPLICANT_ID_LEN
         );
         assert!(
             user_context_data.len() <= MAX_USER_CONTEXT_DATA_LEN,
             "User context data exceeds maximum length of {}",
             MAX_USER_CONTEXT_DATA_LEN
         );
-
-        // ZK Proof validation
-        assert!(
-            self_proof.public_signals.len() <= MAX_PUBLIC_SIGNALS_COUNT,
-            "Public signals array exceeds maximum length of {}",
-            MAX_PUBLIC_SIGNALS_COUNT
-        );
-
-        // Validate individual string lengths in proof components
-        for signal in &self_proof.public_signals {
-            assert!(
-                signal.len() <= MAX_PROOF_COMPONENT_LEN,
-                "Public signal string exceeds maximum length of {}",
-                MAX_PROOF_COMPONENT_LEN
-            );
-        }
-
-        for component in &self_proof.proof.a {
-            assert!(
-                component.len() <= MAX_PROOF_COMPONENT_LEN,
-                "Proof component 'a' string exceeds maximum length of {}",
-                MAX_PROOF_COMPONENT_LEN
-            );
-        }
-
-        for row in &self_proof.proof.b {
-            for component in row {
-                assert!(
-                    component.len() <= MAX_PROOF_COMPONENT_LEN,
-                    "Proof component 'b' string exceeds maximum length of {}",
-                    MAX_PROOF_COMPONENT_LEN
-                );
-            }
-        }
-
-        for component in &self_proof.proof.c {
-            assert!(
-                component.len() <= MAX_PROOF_COMPONENT_LEN,
-                "Proof component 'c' string exceeds maximum length of {}",
-                MAX_PROOF_COMPONENT_LEN
-            );
-        }
 
         // Access control: only backend wallet can write
         assert_eq!(
@@ -440,10 +390,10 @@ impl VersionedContract {
         // Verify the NEAR signature
         Self::verify_near_signature(&signature_data);
 
-        // Prevent duplicate nullifiers
+        // Prevent duplicate SumSub applicant IDs
         assert!(
-            !contract.nullifiers.contains(&nullifier),
-            "Nullifier already used - passport already registered"
+            !contract.sumsub_applicants.contains(&sumsub_applicant_id),
+            "SumSub applicant ID already used - identity already registered"
         );
 
         // Prevent re-verification of accounts
@@ -454,17 +404,14 @@ impl VersionedContract {
 
         // Create verification record (always use current version - V2)
         let verification = Verification {
-            nullifier: nullifier.clone(),
+            sumsub_applicant_id: sumsub_applicant_id.clone(),
             near_account_id: near_account_id.clone(),
-            attestation_id,
             verified_at: env::block_timestamp(),
-            self_proof,
             user_context_data,
-            nationality_disclosed,
         };
 
         // Store verification and tracking data
-        contract.nullifiers.insert(nullifier.clone());
+        contract.sumsub_applicants.insert(sumsub_applicant_id.clone());
         contract
             .verifications
             .insert(near_account_id.clone(), VersionedVerification::from(verification));
@@ -474,8 +421,7 @@ impl VersionedContract {
             "verification_stored",
             &VerificationStoredEvent {
                 near_account_id,
-                nullifier,
-                attestation_id,
+                sumsub_applicant_id,
             },
         );
     }
@@ -565,14 +511,14 @@ impl VersionedContract {
 
     // ==================== View Methods ====================
 
-    /// Get verification summary without proof data (public read)
+    /// Get verification summary (public read)
     pub fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary> {
         self.verifications()
             .get(&account_id)
             .map(|v| VerificationSummary::from(v))
     }
 
-    /// Get full verification record including ZK proof (public read)
+    /// Get full verification record (public read)
     pub fn get_full_verification(&self, account_id: AccountId) -> Option<Verification> {
         self.verifications()
             .get(&account_id)
@@ -649,14 +595,6 @@ impl VersionedContract {
     }
 
     // ==================== V2 View Methods ====================
-
-    /// Get nationality_disclosed for an account (V2 feature)
-    /// Returns None if account is not verified
-    pub fn get_nationality_disclosed(&self, account_id: AccountId) -> Option<bool> {
-        self.verifications()
-            .get(&account_id)
-            .map(|v| v.clone().into_current().nationality_disclosed)
-    }
 
     /// Get upgrade timestamp (V2 feature)
     /// Returns the timestamp when contract was upgraded from V1 to V2

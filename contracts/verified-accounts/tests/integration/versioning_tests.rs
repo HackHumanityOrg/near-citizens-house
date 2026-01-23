@@ -10,7 +10,7 @@
 //! These tests use pre-built WASM artifacts from `tests/fixtures/`:
 //! - `v1/verified_accounts.wasm` - V1 contract (current production)
 //! - `v2/verified_accounts.wasm` - V2 contract with:
-//!   - `VerificationV2` (adds `nationality_disclosed` field)
+//!   - `VerificationV2` (adds hypothetical new fields)
 //!   - `ContractV2` (adds `upgrade_timestamp` field)
 //!
 //! The V2 fixture was built from temporary V2 code (since reverted) to enable
@@ -24,7 +24,7 @@
 //! cargo test --features integration-tests --test integration versioning
 //! ```
 
-use crate::helpers::{generate_nep413_signature, nonce_to_base64, test_self_proof};
+use crate::helpers::{generate_nep413_signature, nonce_to_base64};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, AccountId, Contract, Worker};
@@ -34,15 +34,14 @@ use serde_json::json;
 /// Path to V1 WASM fixture (production build)
 pub const WASM_V1_PATH: &str = "./tests/fixtures/v1/verified_accounts.wasm";
 
-/// Path to V2 WASM fixture (has nationality_disclosed field)
+/// Path to V2 WASM fixture (has upgrade_timestamp field)
 pub const WASM_V2_PATH: &str = "./tests/fixtures/v2/verified_accounts.wasm";
 
 /// Verification summary response (matches contract's VerificationSummary)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct VerificationSummary {
-    pub nullifier: String,
+    pub sumsub_applicant_id: String,
     pub near_account_id: AccountId,
-    pub attestation_id: u8,
     pub verified_at: u64,
 }
 
@@ -73,6 +72,7 @@ fn load_v2_wasm() -> Vec<u8> {
 }
 
 /// Initialize test environment with V1 contract deployed
+#[allow(dead_code)]
 async fn init_v1() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>, Contract, Account)>
 {
     let worker = near_workspaces::sandbox().await?;
@@ -95,12 +95,12 @@ async fn init_v1() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>,
     Ok((worker, contract, backend))
 }
 
-/// Store a verification (V1 contract - no nationality_disclosed parameter)
+/// Store a verification (V1 contract)
 async fn store_verification(
     backend: &Account,
     contract: &Contract,
     user: &Account,
-    nullifier: &str,
+    sumsub_applicant_id: &str,
 ) -> anyhow::Result<()> {
     let nonce: [u8; 32] = rand::random();
     let challenge = "Identify myself";
@@ -111,9 +111,8 @@ async fn store_verification(
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": nullifier,
+            "sumsub_applicant_id": sumsub_applicant_id,
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -122,7 +121,6 @@ async fn store_verification(
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "context"
         }))
         .gas(Gas::from_tgas(100))
@@ -140,13 +138,12 @@ async fn store_verification(
     Ok(())
 }
 
-/// Store a verification against V2 contract (requires nationality_disclosed)
+/// Store a verification against V2 contract
 async fn store_verification_v2(
     backend: &Account,
     contract: &Contract,
     user: &Account,
-    nullifier: &str,
-    nationality_disclosed: bool,
+    sumsub_applicant_id: &str,
 ) -> anyhow::Result<()> {
     let nonce: [u8; 32] = rand::random();
     let challenge = "Identify myself";
@@ -157,9 +154,8 @@ async fn store_verification_v2(
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": nullifier,
+            "sumsub_applicant_id": sumsub_applicant_id,
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -168,9 +164,7 @@ async fn store_verification_v2(
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context",
-            "nationality_disclosed": nationality_disclosed
+            "user_context_data": "context"
         }))
         .gas(Gas::from_tgas(100))
         .transact()
@@ -238,8 +232,8 @@ async fn test_upgrade_v1_to_v2_preserves_verifications() -> anyhow::Result<()> {
     // Store verifications with V1
     let user1 = worker.dev_create_account().await?;
     let user2 = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user1, "v1_user1_nullifier").await?;
-    store_verification(&backend, &contract, &user2, "v1_user2_nullifier").await?;
+    store_verification(&backend, &contract, &user1, "v1_user1_sumsub_id").await?;
+    store_verification(&backend, &contract, &user2, "v1_user2_sumsub_id").await?;
 
     // Verify V1 state
     let v1_count: u32 = contract.view("get_verified_count").await?.json()?;
@@ -279,7 +273,7 @@ async fn test_upgrade_v1_to_v2_preserves_verifications() -> anyhow::Result<()> {
     step("Verify user1 verification readable after upgrade", || {
         assert!(summary1.is_some());
         let s = summary1.expect("checked");
-        assert_eq!(s.nullifier, "v1_user1_nullifier");
+        assert_eq!(s.sumsub_applicant_id, "v1_user1_sumsub_id");
         assert_eq!(s.near_account_id, *user1.id());
     });
 
@@ -293,7 +287,7 @@ async fn test_upgrade_v1_to_v2_preserves_verifications() -> anyhow::Result<()> {
     step("Verify user2 verification readable after upgrade", || {
         assert!(summary2.is_some());
         let s = summary2.expect("checked");
-        assert_eq!(s.nullifier, "v1_user2_nullifier");
+        assert_eq!(s.sumsub_applicant_id, "v1_user2_sumsub_id");
     });
 
     Ok(())
@@ -369,18 +363,20 @@ async fn test_upgrade_preserves_contract_state() -> anyhow::Result<()> {
 #[allure_suite_label("Verified Accounts Integration Tests")]
 #[allure_sub_suite("Versioning")]
 #[allure_severity("critical")]
-#[allure_tags("integration", "versioning", "upgrade", "nullifier")]
-#[allure_description("Upgrade test: Nullifier protection persists across V1 to V2 upgrade.")]
+#[allure_tags("integration", "versioning", "upgrade", "sumsub-applicant")]
+#[allure_description(
+    "Upgrade test: SumSub applicant ID protection persists across V1 to V2 upgrade."
+)]
 #[allure_test]
 #[tokio::test]
-async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
+async fn test_upgrade_sumsub_applicant_id_protection_persists() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let v1_wasm = load_v1_wasm();
     let backend = worker.dev_create_account().await?;
 
     let contract_account = worker
         .root_account()?
-        .create_subaccount("nullifier-test")
+        .create_subaccount("sumsub-test")
         .initial_balance(NearToken::from_near(50))
         .transact()
         .await?
@@ -397,13 +393,13 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
 
     // Store verification with V1
     let user1 = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user1, "protected_nullifier").await?;
+    store_verification(&backend, &contract, &user1, "protected_sumsub_id").await?;
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
     let _ = contract_account.deploy(&v2_wasm).await?;
 
-    // Try to reuse nullifier with V2 code - should fail
+    // Try to reuse SumSub applicant ID with V2 code - should fail
     let user2 = worker.dev_create_account().await?;
     let nonce: [u8; 32] = rand::random();
     let challenge = "Identify myself";
@@ -414,9 +410,8 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "protected_nullifier",
+            "sumsub_applicant_id": "protected_sumsub_id",
             "near_account_id": user2.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user2.id(),
                 "signature": signature,
@@ -425,23 +420,24 @@ async fn test_upgrade_nullifier_protection_persists() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context",
-            "nationality_disclosed": false
+            "user_context_data": "context"
         }))
         .gas(Gas::from_tgas(100))
         .transact()
         .await?;
 
-    step("Verify nullifier protection persists after upgrade", || {
-        assert!(result.is_failure());
-        let failure_msg = format!("{:?}", result.failures());
-        assert!(
-            failure_msg.contains("Nullifier already used"),
-            "Expected nullifier error, got: {}",
-            failure_msg
-        );
-    });
+    step(
+        "Verify SumSub applicant ID protection persists after upgrade",
+        || {
+            assert!(result.is_failure());
+            let failure_msg = format!("{:?}", result.failures());
+            assert!(
+                failure_msg.contains("SumSub applicant ID already used"),
+                "Expected SumSub applicant ID error, got: {}",
+                failure_msg
+            );
+        },
+    );
 
     Ok(())
 }
@@ -487,9 +483,8 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "sig_test_nullifier",
+            "sumsub_applicant_id": "sig_test_sumsub_id",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature.clone(),
@@ -498,7 +493,6 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient.clone()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "context"
         }))
         .gas(Gas::from_tgas(100))
@@ -514,9 +508,8 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "different_nullifier",
+            "sumsub_applicant_id": "different_sumsub_id",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -525,26 +518,21 @@ async fn test_upgrade_account_uniqueness_persists() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context",
-            "nationality_disclosed": false
+            "user_context_data": "context"
         }))
         .gas(Gas::from_tgas(100))
         .transact()
         .await?;
 
-    step(
-        "Verify account uniqueness persists after upgrade",
-        || {
-            assert!(result.is_failure());
-            let failure_msg = format!("{:?}", result.failures());
-            assert!(
-                failure_msg.contains("NEAR account already verified"),
-                "Expected account uniqueness error, got: {}",
-                failure_msg
-            );
-        },
-    );
+    step("Verify account uniqueness persists after upgrade", || {
+        assert!(result.is_failure());
+        let failure_msg = format!("{:?}", result.failures());
+        assert!(
+            failure_msg.contains("NEAR account already verified"),
+            "Expected account uniqueness error, got: {}",
+            failure_msg
+        );
+    });
 
     Ok(())
 }
@@ -583,15 +571,15 @@ async fn test_upgrade_new_verifications_work() -> anyhow::Result<()> {
 
     // Store one verification with V1
     let user1 = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user1, "v1_verification").await?;
+    store_verification(&backend, &contract, &user1, "v1_verification_sumsub_id").await?;
 
     // Upgrade to V2 (redeploy new code)
     let v2_wasm = load_v2_wasm();
     let _ = contract_account.deploy(&v2_wasm).await?;
 
-    // Store new verification after upgrade (V2 requires nationality_disclosed)
+    // Store new verification after upgrade
     let user2 = worker.dev_create_account().await?;
-    store_verification_v2(&backend, &contract, &user2, "v2_verification", false).await?;
+    store_verification_v2(&backend, &contract, &user2, "v2_verification_sumsub_id").await?;
 
     // Verify counts
     let count: u32 = contract.view("get_verified_count").await?.json()?;
@@ -650,8 +638,8 @@ async fn test_upgrade_batch_queries_work() -> anyhow::Result<()> {
     let user1 = worker.dev_create_account().await?;
     let user2 = worker.dev_create_account().await?;
     let user3 = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user1, "batch_v1_1").await?;
-    store_verification(&backend, &contract, &user2, "batch_v1_2").await?;
+    store_verification(&backend, &contract, &user1, "batch_v1_sumsub_1").await?;
+    store_verification(&backend, &contract, &user2, "batch_v1_sumsub_2").await?;
     // user3 not verified
 
     // Upgrade to V2
@@ -725,7 +713,7 @@ async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
     // Store 5 verifications with V1
     for i in 0..5 {
         let user = worker.dev_create_account().await?;
-        store_verification(&backend, &contract, &user, &format!("page_v1_{}", i)).await?;
+        store_verification(&backend, &contract, &user, &format!("page_v1_sumsub_{}", i)).await?;
     }
 
     // Upgrade to V2
@@ -761,9 +749,7 @@ async fn test_upgrade_pagination_works() -> anyhow::Result<()> {
 #[allure_sub_suite("Versioning")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "versioning", "upgrade", "full-verification")]
-#[allure_description(
-    "Upgrade test: Full verification data (including ZK proof) readable after upgrade."
-)]
+#[allure_description("Upgrade test: Full verification data readable after upgrade.")]
 #[allure_test]
 #[tokio::test]
 async fn test_upgrade_full_verification_readable() -> anyhow::Result<()> {
@@ -789,7 +775,7 @@ async fn test_upgrade_full_verification_readable() -> anyhow::Result<()> {
         .await?;
 
     let user = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user, "full_v1_nullifier").await?;
+    store_verification(&backend, &contract, &user, "full_v1_sumsub_id").await?;
 
     // Upgrade to V2
     let v2_wasm = load_v2_wasm();
@@ -806,10 +792,9 @@ async fn test_upgrade_full_verification_readable() -> anyhow::Result<()> {
         assert!(full.is_some());
         let v = full.expect("checked");
         assert_eq!(
-            v.get("nullifier").and_then(|v| v.as_str()),
-            Some("full_v1_nullifier")
+            v.get("sumsub_applicant_id").and_then(|v| v.as_str()),
+            Some("full_v1_sumsub_id")
         );
-        assert!(v.get("self_proof").is_some());
         assert!(v.get("user_context_data").is_some());
     });
 
@@ -905,83 +890,8 @@ async fn test_upgrade_admin_functions_work() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Integration Tests")]
-#[allure_sub_suite("Versioning")]
-#[allure_severity("critical")]
-#[allure_tags("integration", "versioning", "upgrade", "v2-feature")]
-#[allure_description(
-    "Upgrade test: V2-specific get_nationality_disclosed method works after upgrade. \
-     V1 records should have nationality_disclosed=false (default for migrated records)."
-)]
-#[allure_test]
-#[tokio::test]
-async fn test_upgrade_v2_nationality_disclosed_field() -> anyhow::Result<()> {
-    let worker = near_workspaces::sandbox().await?;
-    let v1_wasm = load_v1_wasm();
-    let backend = worker.dev_create_account().await?;
-
-    let contract_account = worker
-        .root_account()?
-        .create_subaccount("nationality-test")
-        .initial_balance(NearToken::from_near(50))
-        .transact()
-        .await?
-        .result;
-
-    let deploy_result = contract_account.deploy(&v1_wasm).await?;
-    let contract = deploy_result.result;
-
-    let _ = contract
-        .call("new")
-        .args_json(json!({ "backend_wallet": backend.id() }))
-        .transact()
-        .await?;
-
-    // Store verification with V1 (no nationality_disclosed field)
-    let user = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user, "v1_no_nationality").await?;
-
-    // Upgrade to V2
-    let v2_wasm = load_v2_wasm();
-    let _ = contract_account.deploy(&v2_wasm).await?;
-
-    // Call V2-only method: get_nationality_disclosed
-    // V1 records should migrate with nationality_disclosed=false
-    let nationality: Option<bool> = contract
-        .view("get_nationality_disclosed")
-        .args_json(json!({"account_id": user.id()}))
-        .await?
-        .json()?;
-
-    step(
-        "Verify V1 record has nationality_disclosed=false after migration",
-        || {
-            assert_eq!(
-                nationality,
-                Some(false),
-                "Migrated V1 records should have nationality_disclosed=false"
-            );
-        },
-    );
-
-    // Verify unverified account returns None
-    let unverified = worker.dev_create_account().await?;
-    let no_nationality: Option<bool> = contract
-        .view("get_nationality_disclosed")
-        .args_json(json!({"account_id": unverified.id()}))
-        .await?
-        .json()?;
-
-    step("Verify unverified account returns None", || {
-        assert_eq!(
-            no_nationality, None,
-            "Unverified account should return None"
-        );
-    });
-
-    Ok(())
-}
+// NOTE: The nationality_disclosed test was removed during SumSub migration.
+// The V2 fixture no longer includes this feature as it was specific to Self.xyz.
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Integration Tests")]
@@ -1018,7 +928,7 @@ async fn test_upgrade_v2_contract_upgrade_timestamp() -> anyhow::Result<()> {
 
     // Store verification with V1
     let user = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user, "upgrade_ts_nullifier").await?;
+    store_verification(&backend, &contract, &user, "upgrade_ts_sumsub_id").await?;
 
     // Verify V1 state before upgrade
     let v1_state_version: u8 = contract.view("get_state_version").await?.json()?;
@@ -1141,7 +1051,7 @@ async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
 
     // Store verification with V1
     let user = worker.dev_create_account().await?;
-    store_verification(&backend, &contract, &user, "migrate_fn_test_nullifier").await?;
+    store_verification(&backend, &contract, &user, "migrate_fn_test_sumsub_id").await?;
 
     // Pause the contract to test state preservation
     let _ = backend
@@ -1211,7 +1121,7 @@ async fn test_migrate_function_explicit_call() -> anyhow::Result<()> {
     step("Verify verification data accessible after migrate", || {
         assert!(summary.is_some(), "Verification should be retrievable");
         let s = summary.expect("checked");
-        assert_eq!(s.nullifier, "migrate_fn_test_nullifier");
+        assert_eq!(s.sumsub_applicant_id, "migrate_fn_test_sumsub_id");
         assert_eq!(s.near_account_id, *user.id());
     });
 

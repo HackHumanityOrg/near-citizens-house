@@ -5,7 +5,7 @@ use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::de::DeserializeOwned;
 use near_sdk::serde::Deserialize;
 use near_sdk::{env, test_utils::accounts, test_utils::VMContextBuilder, AccountId};
-use verified_accounts::{NearSignatureData, SelfProofData, ZkProof};
+use verified_accounts::NearSignatureData;
 
 // Re-export event structs from the contract for test use
 pub use verified_accounts::{
@@ -47,21 +47,6 @@ pub fn assert_panic_with<F: FnOnce()>(f: F, expected: &str) {
     }
 }
 
-/// Create test Self proof data
-pub fn test_self_proof() -> SelfProofData {
-    SelfProofData {
-        proof: ZkProof {
-            a: ["1".to_string(), "2".to_string()],
-            b: [
-                ["3".to_string(), "4".to_string()],
-                ["5".to_string(), "6".to_string()],
-            ],
-            c: ["7".to_string(), "8".to_string()],
-        },
-        public_signals: vec!["0".to_string(); 21],
-    }
-}
-
 /// Helper to create signature data for boundary tests
 pub fn create_test_sig_data(user: AccountId) -> verified_accounts::NearSignatureData {
     let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
@@ -72,21 +57,6 @@ pub fn create_test_sig_data(user: AccountId) -> verified_accounts::NearSignature
         challenge: "Identify myself".to_string(),
         nonce: Base64VecU8::from(vec![0; 32]),
         recipient: env::current_account_id(),
-    }
-}
-
-/// Helper to create proof with custom public signals
-pub fn test_self_proof_with_signals(signals: Vec<String>) -> SelfProofData {
-    SelfProofData {
-        proof: ZkProof {
-            a: ["1".to_string(), "2".to_string()],
-            b: [
-                ["3".to_string(), "4".to_string()],
-                ["5".to_string(), "6".to_string()],
-            ],
-            c: ["7".to_string(), "8".to_string()],
-        },
-        public_signals: signals,
     }
 }
 

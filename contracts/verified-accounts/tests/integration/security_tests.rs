@@ -2,7 +2,7 @@
 //!
 //! Tests for replay attempt rejection, batch size limits, and storage economics.
 
-use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof, WASM_PATH};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, WASM_PATH};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
@@ -31,9 +31,8 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "replay_test_nullifier_1",
+            "sumsub_applicant_id": "replay_test_sumsub_applicant_id_1",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature.clone(),
@@ -42,7 +41,6 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient.clone()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "context1"
         }))
         .gas(Gas::from_tgas(100))
@@ -57,15 +55,14 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         );
     });
 
-    // Now try to replay the EXACT SAME signature with a DIFFERENT nullifier
+    // Now try to replay the EXACT SAME signature with a DIFFERENT SumSub applicant ID
     // Account uniqueness should reject this attempt.
     let result = backend
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "replay_test_nullifier_2", // Different nullifier - trying to bypass nullifier check
+            "sumsub_applicant_id": "replay_test_sumsub_applicant_id_2", // Different SumSub applicant ID - trying to bypass check
             "near_account_id": user.id(),           // Same account
-            "attestation_id": 2,
             "signature_data": {
                 "account_id": user.id(),            // Same account
                 "signature": signature.clone(),     // SAME signature!
@@ -74,7 +71,6 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "context2"
         }))
         .gas(Gas::from_tgas(100))
@@ -245,9 +241,8 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "low_balance_test_nullifier",
+            "sumsub_applicant_id": "low_balance_test_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -256,7 +251,6 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test_context"
         }))
         .gas(Gas::from_tgas(100))
