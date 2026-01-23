@@ -472,14 +472,14 @@ impl VersionedContract {
 
     // ==================== View Methods ====================
 
-    /// Get verification summary without proof data (public read)
+    /// Get verification summary (public read)
     pub fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary> {
         self.verifications()
             .get(&account_id)
             .map(VerificationSummary::from)
     }
 
-    /// Get full verification record including ZK proof (public read)
+    /// Get full verification record including user context data (public read)
     pub fn get_full_verification(&self, account_id: AccountId) -> Option<Verification> {
         self.verifications()
             .get(&account_id)
