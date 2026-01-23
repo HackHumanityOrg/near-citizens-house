@@ -63,6 +63,17 @@ function getAuthHeaders(method: string, path: string, body?: string): Record<str
   const timestamp = Math.floor(Date.now() / 1000)
   const signature = generateSignature(secretKey, timestamp, method, path, body)
 
+  // TEMPORARY DEBUG - Remove after diagnosis
+  logger.info("sumsub_auth_debug", {
+    appTokenPrefix: appToken.substring(0, 15),
+    secretKeyLength: secretKey.length,
+    method,
+    path,
+    bodyLength: body?.length ?? 0,
+    timestamp,
+    signaturePrefix: signature.substring(0, 16),
+  })
+
   return {
     "X-App-Token": appToken,
     "X-App-Access-Sig": signature,
