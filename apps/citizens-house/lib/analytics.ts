@@ -35,13 +35,6 @@ export function trackEvent<T extends AnalyticsEvent>(event: T): void {
 }
 
 /**
- * Check if analytics is enabled (PostHog initialized and consent granted)
- */
-export function isAnalyticsEnabled(): boolean {
-  return typeof window !== "undefined" && posthog.__loaded && !posthog.has_opted_out_capturing()
-}
-
-/**
  * Capture an error with typed analytics and PostHog exception tracking.
  *
  * Sends both a typed analytics event and PostHog's native exception capture

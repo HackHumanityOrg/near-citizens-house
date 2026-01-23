@@ -39,32 +39,6 @@ export function extractDistinctId(request: NextRequest): string | null {
 }
 
 /**
- * Extract PostHog session ID from request cookies
- *
- * PostHog SDK includes `$sesid` in the same cookie as distinct_id.
- * The session ID is the second element of the array.
- */
-export function extractSessionId(request: NextRequest): string | null {
-  try {
-    for (const [name, cookie] of request.cookies) {
-      if (name.startsWith(POSTHOG_DISTINCT_ID_COOKIE) && name.endsWith(POSTHOG_SESSION_ID_SUFFIX)) {
-        const value = cookie.value
-        if (value) {
-          const parsed = JSON.parse(decodeURIComponent(value))
-          // PostHog stores session as: $sesid: [timestamp, sessionId, ...]
-          if (parsed && Array.isArray(parsed.$sesid) && typeof parsed.$sesid[1] === "string") {
-            return parsed.$sesid[1]
-          }
-        }
-      }
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-/**
  * Detect platform from User-Agent header
  *
  * Simple heuristic to categorize as mobile, desktop, or unknown.
