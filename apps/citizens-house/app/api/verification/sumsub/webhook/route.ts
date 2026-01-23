@@ -121,12 +121,15 @@ export async function POST(request: NextRequest) {
     accountId = nearMetadata.near_account_id
     const signatureTimestamp = parseInt(nearMetadata.near_timestamp, 10)
 
-    // Validate signature data format (timestamp freshness, nonce format, public key format)
-    const formatCheck = validateSignatureData({
-      timestamp: signatureTimestamp,
-      nonce: nearMetadata.near_nonce,
-      publicKey: nearMetadata.near_public_key,
-    })
+    // Validate signature data format (timestamp format, nonce format, public key format)
+    const formatCheck = validateSignatureData(
+      {
+        timestamp: signatureTimestamp,
+        nonce: nearMetadata.near_nonce,
+        publicKey: nearMetadata.near_public_key,
+      },
+      { skipFreshness: true },
+    )
 
     if (!formatCheck.valid) {
       logger.warn("sumsub_webhook_invalid_format", {
