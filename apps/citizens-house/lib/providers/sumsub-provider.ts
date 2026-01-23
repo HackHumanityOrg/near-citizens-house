@@ -76,6 +76,56 @@ function getAuthHeaders(method: string, path: string, body?: string): Record<str
 // ==============================================================================
 
 /**
+ * Create a new applicant explicitly.
+ *
+ * This ensures the applicant exists before we try to update metadata,
+ * avoiding the race condition where SumSub creates applicants asynchronously.
+ *
+ * @param externalUserId - Unique user identifier (we use NEAR account ID)
+ * @param levelName - Verification level name configured in SumSub dashboard
+ * @returns Applicant data
+ */
+export async function createApplicant(externalUserId: string, levelName: string): Promise<SumSubApplicant> {
+  const path = `/resources/applicants?levelName=${encodeURIComponent(levelName)}`
+  const method = "POST"
+  const body = JSON.stringify({ externalUserId })
+  const headers = getAuthHeaders(method, path, body)
+
+  const response = await fetch(`${SUMSUB_BASE_URL}${path}`, {
+    method,
+    headers,
+    body,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    logger.error("sumsub_create_applicant_failed", {
+      status: response.status,
+      error: errorText,
+      externalUserId,
+    })
+    throw new Error(`Failed to create applicant: ${response.status} - ${errorText}`)
+  }
+
+  const data = await response.json()
+  const parsed = sumsubApplicantSchema.safeParse(data)
+
+  if (!parsed.success) {
+    logger.error("sumsub_create_applicant_invalid_response", {
+      error: parsed.error.message,
+    })
+    throw new Error("Invalid response from SumSub create applicant API")
+  }
+
+  logger.info("sumsub_applicant_created", {
+    applicantId: parsed.data.id,
+    externalUserId,
+  })
+
+  return parsed.data
+}
+
+/**
  * Generate an access token for the SumSub WebSDK.
  *
  * @param externalUserId - Unique user identifier (we use NEAR account ID)

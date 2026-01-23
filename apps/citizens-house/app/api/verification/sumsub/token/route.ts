@@ -11,13 +11,19 @@
  */
 import { type NextRequest, NextResponse } from "next/server"
 import {
+  createApplicant,
   generateAccessToken,
   updateApplicantMetadata,
   getApplicantByExternalUserId,
 } from "@/lib/providers/sumsub-provider"
 import { createSession } from "@/lib/session-store"
 import { env } from "@/lib/schemas/env"
-import { sumsubTokenRequestSchema, type SumSubTokenResponse, type SumSubMetadataItem } from "@/lib/schemas/sumsub"
+import {
+  sumsubTokenRequestSchema,
+  type SumSubTokenResponse,
+  type SumSubMetadataItem,
+  type SumSubApplicant,
+} from "@/lib/schemas/sumsub"
 import { logger } from "@/lib/logger"
 import { validateSignatureData, verifyNearSignature, getSigningMessage, getSigningRecipient } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
@@ -117,39 +123,51 @@ export async function POST(request: NextRequest) {
     // Create session for polling
     await createSession(sessionId)
 
-    // Generate SumSub access token
+    // Step 1: Create or get existing applicant
+    // This guarantees the applicant exists before we try to update metadata
+    let applicant: SumSubApplicant
+    try {
+      applicant = await createApplicant(externalUserId, levelName)
+    } catch (error) {
+      // If applicant already exists (409 Conflict), fetch it
+      if (error instanceof Error && error.message.includes("409")) {
+        applicant = await getApplicantByExternalUserId(externalUserId)
+        logger.info("sumsub_applicant_exists", {
+          sessionId,
+          externalUserId,
+          applicantId: applicant.id,
+        })
+      } else {
+        throw error
+      }
+    }
+
+    // Step 2: Store NEAR metadata on applicant (guaranteed to exist now)
+    const metadata: SumSubMetadataItem[] = [
+      { key: "near_account_id", value: nearSignature.accountId },
+      { key: "near_signature", value: nearSignature.signature },
+      { key: "near_public_key", value: nearSignature.publicKey },
+      { key: "near_nonce", value: nearSignature.nonce },
+      { key: "near_timestamp", value: nearSignature.timestamp.toString() },
+      { key: "session_id", value: sessionId },
+    ]
+
+    await updateApplicantMetadata(applicant.id, metadata)
+
+    logger.info("sumsub_metadata_stored", {
+      sessionId,
+      externalUserId,
+      applicantId: applicant.id,
+    })
+
+    // Step 3: Generate access token for the existing applicant
     const tokenResponse = await generateAccessToken(externalUserId, levelName)
 
-    // Store NEAR signature data as metadata on the applicant
-    // First, we need to get the applicant ID (created by generateAccessToken)
-    try {
-      const applicant = await getApplicantByExternalUserId(externalUserId)
-
-      const metadata: SumSubMetadataItem[] = [
-        { key: "near_account_id", value: nearSignature.accountId },
-        { key: "near_signature", value: nearSignature.signature },
-        { key: "near_public_key", value: nearSignature.publicKey },
-        { key: "near_nonce", value: nearSignature.nonce },
-        { key: "near_timestamp", value: nearSignature.timestamp.toString() },
-        { key: "session_id", value: sessionId },
-      ]
-
-      await updateApplicantMetadata(applicant.id, metadata)
-
-      logger.info("sumsub_token_generated", {
-        sessionId,
-        externalUserId,
-        applicantId: applicant.id,
-      })
-    } catch (metadataError) {
-      // Log but don't fail - the applicant might not exist yet
-      // Metadata will be retrieved from the webhook payload instead
-      logger.warn("sumsub_metadata_update_skipped", {
-        sessionId,
-        externalUserId,
-        error: metadataError instanceof Error ? metadataError.message : "Unknown error",
-      })
-    }
+    logger.info("sumsub_token_generated", {
+      sessionId,
+      externalUserId,
+      applicantId: applicant.id,
+    })
 
     const response: SumSubTokenResponse = {
       token: tokenResponse.token,
