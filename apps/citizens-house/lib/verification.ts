@@ -231,24 +231,38 @@ export interface SignatureValidationResult {
 
 /**
  * Validate NEAR signature data using Zod schemas.
- * Validates timestamp freshness, nonce format, and public key format.
+ * Validates timestamp format, nonce format, and public key format.
+ * Timestamp freshness can be skipped for long-lived webhook flows.
  *
  * Note: This does NOT verify the cryptographic signature or check RPC for key validity.
  * Use verifyNearSignature() and hasFullAccessKey() for those checks.
  */
-export function validateSignatureData(data: {
-  timestamp: number
-  nonce: string
-  publicKey: string
-}): SignatureValidationResult {
-  // Validate timestamp freshness
-  const timestampResult = freshTimestampSchema.safeParse(data.timestamp)
-  if (!timestampResult.success) {
-    const age = Date.now() - data.timestamp
+export function validateSignatureData(
+  data: {
+    timestamp: number
+    nonce: string
+    publicKey: string
+  },
+  options: { skipFreshness?: boolean } = {},
+): SignatureValidationResult {
+  if (!Number.isFinite(data.timestamp)) {
     return {
       valid: false,
-      error: age > 0 ? `Signature expired (${Math.round(age / 1000)}s old)` : "Future timestamp",
-      errorCode: age > 0 ? "SIGNATURE_EXPIRED" : "SIGNATURE_TIMESTAMP_INVALID",
+      error: "Invalid timestamp",
+      errorCode: "SIGNATURE_TIMESTAMP_INVALID",
+    }
+  }
+
+  // Validate timestamp freshness
+  if (!options.skipFreshness) {
+    const timestampResult = freshTimestampSchema.safeParse(data.timestamp)
+    if (!timestampResult.success) {
+      const age = Date.now() - data.timestamp
+      return {
+        valid: false,
+        error: age > 0 ? `Signature expired (${Math.round(age / 1000)}s old)` : "Future timestamp",
+        errorCode: age > 0 ? "SIGNATURE_EXPIRED" : "SIGNATURE_TIMESTAMP_INVALID",
+      }
     }
   }
 
