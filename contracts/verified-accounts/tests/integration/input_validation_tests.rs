@@ -1,6 +1,6 @@
 //! Input validation tests for verified-accounts contract
 
-use crate::helpers::{init, nonce_to_base64, test_self_proof};
+use crate::helpers::{init, nonce_to_base64};
 use allure_rs::prelude::*;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use near_workspaces::types::NearToken;
@@ -22,9 +22,8 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "test_nullifier",
+            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),
@@ -33,7 +32,6 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
                 "nonce": BASE64.encode([0u8; 16]), // Invalid: should be 32 bytes
                 "recipient": contract.id()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()
@@ -64,9 +62,8 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "test_nullifier",
+            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 32]), // Invalid: should be 64 bytes
@@ -75,7 +72,6 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()
@@ -107,9 +103,8 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "test_nullifier",
+            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(), // Trying to verify this account
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": different_user.id(), // But signature is for different account
                 "signature": BASE64.encode([0u8; 64]),
@@ -118,7 +113,6 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()
@@ -150,9 +144,8 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "test_nullifier",
+            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),
@@ -161,7 +154,6 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": different_recipient.id() // Recipient mismatch
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()

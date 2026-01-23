@@ -1,6 +1,6 @@
 //! Edge case tests for verified-accounts contract
 
-use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
@@ -32,9 +32,8 @@ async fn test_max_length_user_context_data() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "max_context_nullifier",
+            "sumsub_applicant_id": "max_context_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -43,7 +42,6 @@ async fn test_max_length_user_context_data() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": max_context
         }))
         .gas(Gas::from_tgas(100))
@@ -88,9 +86,8 @@ async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "unicode_context_nullifier",
+            "sumsub_applicant_id": "unicode_context_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 2,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -99,7 +96,6 @@ async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": unicode_context
         }))
         .gas(Gas::from_tgas(100))
@@ -154,9 +150,8 @@ async fn test_nonce_all_zeros() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "zero_nonce_nullifier",
+            "sumsub_applicant_id": "zero_nonce_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 3,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -165,7 +160,6 @@ async fn test_nonce_all_zeros() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "zero_nonce_context"
         }))
         .gas(Gas::from_tgas(100))
@@ -208,9 +202,8 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "max_nonce_nullifier",
+            "sumsub_applicant_id": "max_nonce_sumsub_applicant_id",
             "near_account_id": user.id(),
-            "attestation_id": 3,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -219,7 +212,6 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "max_nonce_context"
         }))
         .gas(Gas::from_tgas(100))

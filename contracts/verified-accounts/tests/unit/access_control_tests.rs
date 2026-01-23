@@ -1,6 +1,6 @@
 //! Access control tests for verified-accounts contract
 
-use super::helpers::{assert_panic_with, get_context, test_self_proof};
+use super::helpers::{assert_panic_with, get_context};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
@@ -35,11 +35,9 @@ fn test_unauthorized_write() {
                 };
 
                 contract.store_verification(
-                    "test_nullifier".to_string(),
+                    "test_sumsub_applicant_id".to_string(),
                     accounts(2),
-                    1,
                     sig_data,
-                    test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },

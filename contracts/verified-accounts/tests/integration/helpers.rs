@@ -62,18 +62,6 @@ pub async fn init() -> anyhow::Result<(Worker<near_workspaces::network::Sandbox>
     Ok((worker, contract, backend))
 }
 
-/// Create test Self.xyz proof data
-pub fn test_self_proof() -> serde_json::Value {
-    json!({
-        "proof": {
-            "a": ["1", "2"],
-            "b": [["3", "4"], ["5", "6"]],
-            "c": ["7", "8"]
-        },
-        "public_signals": vec!["0"; 21]
-    })
-}
-
 /// Generate a valid NEP-413 signature using an account's secret key
 ///
 /// The NEP-413 signing process:
