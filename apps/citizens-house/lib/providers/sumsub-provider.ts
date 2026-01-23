@@ -259,9 +259,14 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
  * @param metadata - Array of key-value pairs to set
  */
 export async function updateApplicantMetadata(applicantId: string, metadata: SumSubMetadataItem[]): Promise<void> {
-  const path = `/resources/applicants/${encodeURIComponent(applicantId)}/metadata`
+  // SumSub API requires PATCH to /resources/applicants with ID in body
+  // See: https://docs.sumsub.com/reference/change-profile-data-details
+  const path = `/resources/applicants`
   const method = "PATCH"
-  const body = JSON.stringify(metadata)
+  const body = JSON.stringify({
+    id: applicantId,
+    metadata: metadata,
+  })
   const headers = getAuthHeaders(method, path, body)
 
   const response = await fetch(`${SUMSUB_BASE_URL}${path}`, {
