@@ -16,7 +16,6 @@ import {
   updateApplicantMetadata,
   getApplicantByExternalUserId,
 } from "@/lib/providers/sumsub-provider"
-import { createSession } from "@/lib/session-store"
 import { env } from "@/lib/schemas/env"
 import {
   sumsubTokenRequestSchema,
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid request", details: issues }, { status: 400 })
     }
 
-    const { sessionId, nearSignature } = parseResult.data
+    const { nearSignature } = parseResult.data
 
     // ==================== SECURITY: Validate NEAR signature ====================
     // This prevents attackers from associating their KYC with another user's account
@@ -53,7 +52,6 @@ export async function POST(request: NextRequest) {
 
     if (!formatCheck.valid) {
       logger.warn("sumsub_token_invalid_format", {
-        sessionId,
         accountId: nearSignature.accountId,
         error: formatCheck.error ?? "Unknown validation error",
         errorCode: formatCheck.errorCode ?? "UNKNOWN",
@@ -73,7 +71,7 @@ export async function POST(request: NextRequest) {
     try {
       recipient = getSigningRecipient()
     } catch {
-      logger.error("sumsub_token_missing_config", { sessionId })
+      logger.error("sumsub_token_missing_config", {})
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
     }
 
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
 
     if (!signatureCheck.valid) {
       logger.warn("sumsub_token_invalid_signature", {
-        sessionId,
         accountId: nearSignature.accountId,
         error: signatureCheck.error ?? "Unknown signature error",
       })
@@ -101,7 +98,6 @@ export async function POST(request: NextRequest) {
     const keyCheck = await hasFullAccessKey(nearSignature.accountId, nearSignature.publicKey)
     if (!keyCheck.isFullAccess) {
       logger.warn("sumsub_token_not_full_access", {
-        sessionId,
         accountId: nearSignature.accountId,
         error: keyCheck.error ?? "Unknown key validation error",
       })
@@ -120,9 +116,6 @@ export async function POST(request: NextRequest) {
     const externalUserId = nearSignature.accountId
     const levelName = env.NEXT_PUBLIC_SUMSUB_LEVEL_NAME
 
-    // Create session for polling
-    await createSession(sessionId)
-
     // Step 1: Create or get existing applicant
     // This guarantees the applicant exists before we try to update metadata
     let applicant: SumSubApplicant
@@ -133,7 +126,6 @@ export async function POST(request: NextRequest) {
       if (error instanceof Error && error.message.includes("409")) {
         applicant = await getApplicantByExternalUserId(externalUserId)
         logger.info("sumsub_applicant_exists", {
-          sessionId,
           externalUserId,
           applicantId: applicant.id,
         })
@@ -149,13 +141,11 @@ export async function POST(request: NextRequest) {
       { key: "near_public_key", value: nearSignature.publicKey },
       { key: "near_nonce", value: nearSignature.nonce },
       { key: "near_timestamp", value: nearSignature.timestamp.toString() },
-      { key: "session_id", value: sessionId },
     ]
 
     await updateApplicantMetadata(applicant.id, metadata)
 
     logger.info("sumsub_metadata_stored", {
-      sessionId,
       externalUserId,
       applicantId: applicant.id,
     })
@@ -164,7 +154,6 @@ export async function POST(request: NextRequest) {
     const tokenResponse = await generateAccessToken(externalUserId, levelName)
 
     logger.info("sumsub_token_generated", {
-      sessionId,
       externalUserId,
       applicantId: applicant.id,
     })

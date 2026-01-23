@@ -7,14 +7,13 @@
  * 1. Verifies the webhook signature
  * 2. Validates the NEAR signature stored in applicant metadata
  * 3. Stores the verification on-chain
- * 4. Updates the session status
  */
 import { type NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import { verifyWebhookSignature, getApplicant, getMetadataValue } from "@/lib/providers/sumsub-provider"
 import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
 import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
-import { reserveSignatureNonce, updateSession } from "@/lib/session-store"
+import { reserveSignatureNonce } from "@/lib/nonce-store"
 import { getRedisClient } from "@/lib/redis"
 import { trackServerEvent } from "@/lib/analytics-server"
 import { getSigningMessage, getSigningRecipient, verifyNearSignature, validateSignatureData } from "@/lib/verification"
@@ -23,7 +22,7 @@ import { logger } from "@/lib/logger"
 import { isNonRetryableError } from "@/lib/schemas/errors"
 import { sumsubWebhookPayloadSchema, applicantMetadataSchema } from "@/lib/schemas/sumsub"
 import { SIGNATURE_VALIDATION, type NearAccountId } from "@/lib/schemas/near"
-import { createVerificationError, mapContractErrorToCode } from "@/lib/schemas"
+import { mapContractErrorToCode } from "@/lib/schemas"
 
 // Initialize Redis for backend key pool
 let redisInitialized = false
@@ -39,7 +38,6 @@ const MAX_SIGNATURE_AGE_MS = SIGNATURE_VALIDATION.MAX_AGE_MS
 const CLOCK_SKEW_MS = SIGNATURE_VALIDATION.CLOCK_SKEW_MS
 
 export async function POST(request: NextRequest) {
-  let sessionId: string | undefined
   let accountId: NearAccountId | undefined
   let applicantId: string | undefined
 
@@ -95,21 +93,6 @@ export async function POST(request: NextRequest) {
         rejectLabels: JSON.stringify(payload.reviewResult?.rejectLabels ?? []),
       })
 
-      // Try to update session with error if we can get the session ID
-      try {
-        const applicant = await getApplicant(applicantId)
-        sessionId = getMetadataValue(applicant.metadata, "session_id")
-        if (sessionId) {
-          await updateSession(sessionId, {
-            status: "error",
-            error: `Verification ${reviewAnswer === "RED" ? "rejected" : "needs review"}`,
-            errorCode: "VERIFICATION_FAILED",
-          })
-        }
-      } catch {
-        // Ignore metadata fetch errors
-      }
-
       return NextResponse.json({ status: "ok", message: "Verification not approved" })
     }
 
@@ -123,7 +106,6 @@ export async function POST(request: NextRequest) {
       near_public_key: getMetadataValue(applicant.metadata, "near_public_key"),
       near_nonce: getMetadataValue(applicant.metadata, "near_nonce"),
       near_timestamp: getMetadataValue(applicant.metadata, "near_timestamp"),
-      session_id: getMetadataValue(applicant.metadata, "session_id"),
     }
 
     const metadataResult = applicantMetadataSchema.safeParse(metadata)
@@ -137,7 +119,6 @@ export async function POST(request: NextRequest) {
 
     const nearMetadata = metadataResult.data
     accountId = nearMetadata.near_account_id
-    sessionId = nearMetadata.session_id
     const signatureTimestamp = parseInt(nearMetadata.near_timestamp, 10)
 
     // Validate signature data format (timestamp freshness, nonce format, public key format)
@@ -154,15 +135,6 @@ export async function POST(request: NextRequest) {
         error: formatCheck.error ?? "Unknown validation error",
         errorCode: formatCheck.errorCode ?? "UNKNOWN",
       })
-
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          accountId,
-          error: formatCheck.error ?? "Invalid signature data",
-          errorCode: formatCheck.errorCode ?? "NEAR_SIGNATURE_INVALID",
-        })
-      }
 
       return NextResponse.json({ error: formatCheck.error ?? "Invalid signature data" }, { status: 400 })
     }
@@ -195,15 +167,6 @@ export async function POST(request: NextRequest) {
         error: signatureCheck.error ?? "Unknown error",
       })
 
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          accountId,
-          error: signatureCheck.error || "Signature verification failed",
-          errorCode: "NEAR_SIGNATURE_INVALID",
-        })
-      }
-
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
@@ -215,15 +178,6 @@ export async function POST(request: NextRequest) {
         accountId,
         error: keyCheck.error ?? "Unknown key validation error",
       })
-
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          accountId,
-          error: keyCheck.error ?? "Public key is not an active full-access key",
-          errorCode: "NEAR_SIGNATURE_INVALID",
-        })
-      }
 
       return NextResponse.json({ error: keyCheck.error ?? "Invalid public key" }, { status: 400 })
     }
@@ -238,15 +192,6 @@ export async function POST(request: NextRequest) {
         applicantId,
         accountId,
       })
-
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "error",
-          accountId,
-          error: "Nonce already used",
-          errorCode: "NEAR_SIGNATURE_INVALID",
-        })
-      }
 
       return NextResponse.json({ error: "Nonce already used" }, { status: 400 })
     }
@@ -302,14 +247,6 @@ export async function POST(request: NextRequest) {
       // Revalidate verifications cache
       revalidateTag("verifications", "max")
 
-      // Update session status
-      if (sessionId) {
-        await updateSession(sessionId, {
-          status: "success",
-          accountId,
-        })
-      }
-
       return NextResponse.json({
         status: "ok",
         message: "Verification stored successfully",
@@ -325,16 +262,6 @@ export async function POST(request: NextRequest) {
         error: errorMsg,
         errorCode: errCode,
       })
-
-      if (sessionId) {
-        const errorResponse = createVerificationError(errCode, errorMsg)
-        await updateSession(sessionId, {
-          status: "error",
-          accountId,
-          error: errorResponse.reason,
-          errorCode: errCode,
-        })
-      }
 
       // Track rejection
       await trackServerEvent(accountId, {

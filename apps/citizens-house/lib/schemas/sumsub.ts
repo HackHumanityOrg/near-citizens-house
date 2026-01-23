@@ -18,8 +18,6 @@ import { nearAccountIdSchema } from "./near"
  * Frontend sends this after completing NEAR wallet signature.
  */
 export const sumsubTokenRequestSchema = z.object({
-  /** Session ID for tracking the verification flow */
-  sessionId: z.uuid(),
   /** NEAR signature data to attach as metadata */
   nearSignature: z.object({
     accountId: nearAccountIdSchema,
@@ -129,7 +127,6 @@ export const applicantMetadataSchema = z.object({
   near_public_key: z.string(),
   near_nonce: z.string(),
   near_timestamp: z.string(),
-  session_id: z.string(),
 })
 
 export type ApplicantMetadata = z.infer<typeof applicantMetadataSchema>

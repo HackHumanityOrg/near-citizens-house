@@ -13,14 +13,12 @@ describe("Analytics Event Type Safety", () => {
     it("accepts valid verification events", () => {
       // These should all compile without errors
       trackEvent({ domain: "verification", action: "flow_started", platform: "desktop" })
-      trackEvent({ domain: "verification", action: "qr_displayed", sessionId: "abc123" })
-      trackEvent({ domain: "verification", action: "deeplink_opened", sessionId: "abc123" })
-      trackEvent({ domain: "verification", action: "polling_started", sessionId: "abc123" })
-      trackEvent({ domain: "verification", action: "polling_timeout", sessionId: "abc123", pollCount: 5 })
+      trackEvent({ domain: "verification", action: "polling_started", accountId: "alice.near" })
+      trackEvent({ domain: "verification", action: "polling_timeout", accountId: "alice.near", pollCount: 5 })
       trackEvent({ domain: "verification", action: "error_shown", errorCode: "E001", stage: "wallet_connect" })
       trackEvent({ domain: "verification", action: "error_retry_clicked", errorCode: "E001" })
       trackEvent({ domain: "verification", action: "error_abandoned", errorCode: "E001" })
-      trackEvent({ domain: "verification", action: "proof_submitted", sessionId: "abc123" })
+      trackEvent({ domain: "verification", action: "proof_submitted", accountId: "alice.near" })
       trackEvent({ domain: "verification", action: "proof_validated", accountId: "alice.near" })
       trackEvent({
         domain: "verification",

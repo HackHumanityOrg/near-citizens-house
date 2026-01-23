@@ -30,7 +30,6 @@ import type {
   LogLevel,
   WideEvent,
   SumSubWebhookEvent,
-  StatusRequestEvent,
   GetVerificationsEvent,
   CheckIsVerifiedEvent,
   EventTimers,
@@ -206,13 +205,6 @@ export class RequestContext<E extends WideEvent> {
  */
 export function createSumSubWebhookContext(): RequestContext<SumSubWebhookEvent> {
   return new RequestContext<SumSubWebhookEvent>()
-}
-
-/**
- * Create a RequestContext for /api/verification/status
- */
-export function createStatusContext(): RequestContext<StatusRequestEvent> {
-  return new RequestContext<StatusRequestEvent>()
 }
 
 /**

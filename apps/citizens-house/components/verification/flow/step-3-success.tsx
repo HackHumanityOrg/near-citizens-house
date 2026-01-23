@@ -10,13 +10,12 @@ import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform
 
 interface Step3SuccessProps {
   accountId: NearAccountId
-  sessionId?: string
   onDisconnect?: () => void
 }
 
 type AnimationPhase = "initial" | "labelsOut" | "merging" | "checkmark" | "complete"
 
-export function Step3Success({ accountId, sessionId, onDisconnect }: Step3SuccessProps) {
+export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
   const shouldReduceMotion = useReducedMotion()
   const verificationLabel = "ID Verified"
   const [phase, setPhase] = useState<AnimationPhase>(shouldReduceMotion ? "complete" : "initial")
@@ -36,10 +35,9 @@ export function Step3Success({ accountId, sessionId, onDisconnect }: Step3Succes
       domain: "verification",
       action: "success_displayed",
       platform: getPlatform(),
-      sessionId,
       accountId,
     })
-  }, [accountId, sessionId])
+  }, [accountId])
 
   useEffect(() => {
     if (shouldReduceMotion) {

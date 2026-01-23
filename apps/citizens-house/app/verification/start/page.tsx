@@ -102,7 +102,6 @@ function VerificationStartContent() {
   // State management
   const [currentStep, setCurrentStep] = useState<VerificationProgressStep>(VerificationProgressStep.NotConnected)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
-  const [sessionId] = useState<string>(() => crypto.randomUUID())
   const [isSigning, setIsSigning] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -136,7 +135,7 @@ function VerificationStartContent() {
     if (currentStep === VerificationProgressStep.NotConnected) {
       setCurrentStep(VerificationProgressStep.WalletConnected)
     }
-  }, [isConnected, currentStep, nearSignature, accountId, sessionId])
+  }, [isConnected, currentStep, nearSignature, accountId])
 
   // Check if already verified on mount
   useEffect(() => {
@@ -168,20 +167,20 @@ function VerificationStartContent() {
     checkVerification()
   }, [accountId])
 
-  // Handle URL params from callback (mobile flow)
+  // Handle URL params from callback
   useEffect(() => {
     const status = searchParams?.get("status")
-    const sessionIdParam = searchParams?.get("sessionId")
+    const accountIdParam = searchParams?.get("accountId")
     const errorParam = searchParams?.get("error")
     const errorCodeParam = searchParams?.get("errorCode")
     let handled = false
 
-    if (status === "success" && sessionIdParam) {
-      // Verification successful from mobile flow
+    if (status === "success" && accountIdParam) {
+      // Verification successful
       setCurrentStep(VerificationProgressStep.VerificationComplete)
       handled = true
     } else if (status === "error") {
-      // Verification failed from mobile flow
+      // Verification failed
       const message = errorParam || "Verification failed. Please try again."
       setErrorMessage(message)
       setErrorCode(errorCodeParam)
@@ -236,7 +235,6 @@ function VerificationStartContent() {
       domain: "verification",
       action: "sign_started",
       platform,
-      sessionId,
       accountId,
     })
 
@@ -254,7 +252,6 @@ function VerificationStartContent() {
         domain: "verification",
         action: "sign_completed",
         platform,
-        sessionId,
         accountId,
       })
 
@@ -272,7 +269,6 @@ function VerificationStartContent() {
         domain: "verification",
         action: "sign_failed",
         platform,
-        sessionId,
         accountId,
         errorMessage: message,
         wasUserRejection,
@@ -353,7 +349,6 @@ function VerificationStartContent() {
         {currentStep === VerificationProgressStep.MessageSigned && nearSignature && (
           <Step2SumSub
             nearSignature={nearSignature}
-            sessionId={sessionId}
             onSuccess={handleVerificationSuccess}
             onError={handleVerificationError}
           />
@@ -361,7 +356,7 @@ function VerificationStartContent() {
 
         {/* Step 3: Success */}
         {currentStep === VerificationProgressStep.VerificationComplete && accountId && (
-          <Step3Success accountId={accountId} sessionId={sessionId} onDisconnect={handleDisconnect} />
+          <Step3Success accountId={accountId} onDisconnect={handleDisconnect} />
         )}
       </div>
 

@@ -5,7 +5,6 @@
 import { describe, it, expect } from "vitest"
 import {
   createSumSubWebhookContext,
-  createStatusContext,
   createGetVerificationsContext,
   createCheckIsVerifiedContext,
 } from "../logger/request-context"
@@ -81,13 +80,6 @@ describe("Logger RequestContext Type Safety", () => {
       expect(true).toBe(true)
     })
 
-    it("rejects StatusContext timer names on SumSubWebhookContext", () => {
-      const ctx = createSumSubWebhookContext()
-      // @ts-expect-error - redisLookup is a StatusTimers, not SumSubWebhookTimers
-      ctx.startTimer("redisLookup")
-      expect(true).toBe(true)
-    })
-
     it("rejects invalid outcome values", () => {
       const ctx = createSumSubWebhookContext()
       // @ts-expect-error - invalid_outcome is not a valid Outcome
@@ -106,46 +98,6 @@ describe("Logger RequestContext Type Safety", () => {
       const ctx = createSumSubWebhookContext()
       // @ts-expect-error - statusCode expects number, not string
       ctx.set("statusCode", "200")
-      expect(true).toBe(true)
-    })
-  })
-
-  describe("StatusContext - valid operations compile correctly", () => {
-    it("accepts valid fields and timers", () => {
-      const ctx = createStatusContext()
-      ctx.set("route", "/api/verification/status")
-      ctx.set("method", "GET")
-      ctx.set("nearAccountId", "bob.near")
-      ctx.set("sessionFound", true)
-      ctx.set("usedContractFallback", false)
-      ctx.set("outcome", "verified")
-      ctx.startTimer("redisLookup")
-      ctx.endTimer("redisLookup")
-      ctx.startTimer("contractFallback")
-      ctx.endTimer("contractFallback")
-      expect(true).toBe(true)
-    })
-
-    it("accepts nested paths via setNested", () => {
-      const ctx = createStatusContext()
-      ctx.setNested("error.code", "NOT_FOUND")
-      ctx.setNested("error.message", "Session not found")
-      expect(true).toBe(true)
-    })
-  })
-
-  describe("StatusContext - invalid operations cause type errors", () => {
-    it("rejects SumSubWebhookContext-specific fields", () => {
-      const ctx = createStatusContext()
-      // @ts-expect-error - stageReached is a SumSubWebhookEvent field, not StatusRequestEvent
-      ctx.set("stageReached", { parsed: true })
-      expect(true).toBe(true)
-    })
-
-    it("rejects SumSubWebhookContext timer names", () => {
-      const ctx = createStatusContext()
-      // @ts-expect-error - sumsubVerify is a SumSubWebhookTimers, not StatusTimers
-      ctx.startTimer("sumsubVerify")
       expect(true).toBe(true)
     })
   })
@@ -199,8 +151,8 @@ describe("Logger RequestContext Type Safety", () => {
   describe("CheckIsVerifiedContext - invalid operations cause type errors", () => {
     it("rejects fields from other event types", () => {
       const ctx = createCheckIsVerifiedContext()
-      // @ts-expect-error - sessionFound is a StatusRequestEvent field
-      ctx.set("sessionFound", true)
+      // @ts-expect-error - stageReached is a SumSubWebhookEvent field
+      ctx.set("stageReached", { parsed: true })
       expect(true).toBe(true)
     })
 

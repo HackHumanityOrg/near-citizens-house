@@ -13,13 +13,11 @@ export type {
   Platform,
   // Event types
   SumSubWebhookEvent,
-  StatusRequestEvent,
   GetVerificationsEvent,
   CheckIsVerifiedEvent,
   WideEvent,
   // Timer types
   SumSubWebhookTimers,
-  StatusTimers,
   GetVerificationsTimers,
   CheckIsVerifiedTimers,
   // Type mappings
