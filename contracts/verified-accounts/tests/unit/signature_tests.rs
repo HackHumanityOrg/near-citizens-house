@@ -40,7 +40,6 @@ fn test_invalid_signature() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user,
                     sig_data,
                     "test_user_context_data".to_string(),
@@ -83,7 +82,6 @@ fn test_invalid_nonce_length() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user,
                     sig_data,
                     "test_user_context_data".to_string(),
@@ -126,7 +124,6 @@ fn test_invalid_signature_length() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user,
                     sig_data,
                     "test_user_context_data".to_string(),
@@ -169,7 +166,6 @@ fn test_nonce_too_long() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user,
                     sig_data,
                     "test_user_context_data".to_string(),
@@ -212,7 +208,6 @@ fn test_signature_too_long() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user,
                     sig_data,
                     "test_user_context_data".to_string(),
@@ -260,12 +255,7 @@ fn test_signature_from_different_key_rejected() {
 
             assert_panic_with(
                 || {
-                    contract.store_verification(
-                        "sumsub_wrong_key".to_string(),
-                        user.clone(),
-                        sig_data,
-                        "ctx".to_string(),
-                    );
+                    contract.store_verification(user.clone(), sig_data, "ctx".to_string());
                 },
                 "Invalid NEAR signature - NEP-413 verification failed",
             );
@@ -299,12 +289,7 @@ fn test_signature_wrong_nonce_rejected() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "sumsub_wrong_nonce".to_string(),
-                    user.clone(),
-                    sig_data,
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user.clone(), sig_data, "ctx".to_string());
             },
             "Invalid NEAR signature - NEP-413 verification failed",
         );
@@ -340,12 +325,7 @@ fn test_signature_wrong_recipient_rejected() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "sumsub_wrong_recipient".to_string(),
-                    user.clone(),
-                    sig_data,
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user.clone(), sig_data, "ctx".to_string());
             },
             "Signature recipient must match contract account",
         );
@@ -380,12 +360,7 @@ fn test_signature_wrong_challenge_rejected() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "sumsub_wrong_challenge".to_string(),
-                    user.clone(),
-                    sig_data,
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user.clone(), sig_data, "ctx".to_string());
             },
             "Invalid NEAR signature - NEP-413 verification failed",
         );
@@ -418,12 +393,7 @@ fn test_invalid_signature_contents() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "tampered".to_string(),
-                    user,
-                    sig_data,
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user, sig_data, "ctx".to_string());
             },
             "Invalid NEAR signature - NEP-413 verification failed",
         );

@@ -22,7 +22,6 @@ async fn test_invalid_nonce_length() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -62,7 +61,6 @@ async fn test_invalid_signature_length() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -103,7 +101,6 @@ async fn test_account_id_mismatch() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(), // Trying to verify this account
             "signature_data": {
                 "account_id": different_user.id(), // But signature is for different account
@@ -144,7 +141,6 @@ async fn test_recipient_mismatch() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),

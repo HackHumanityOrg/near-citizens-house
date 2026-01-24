@@ -13,7 +13,9 @@ use verified_accounts::VersionedContract;
 #[allure_sub_suite("Stress Tests")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "stress", "boundary")]
-#[allure_description("Verifies that store_verification accepts maximum-length inputs for SumSub applicant ID and user context data.")]
+#[allure_description(
+    "Verifies that store_verification accepts maximum-length inputs for user context data."
+)]
 #[allure_test]
 #[test]
 fn test_stress_max_length_inputs() {
@@ -30,24 +32,14 @@ fn test_stress_max_length_inputs() {
     });
 
     step("Store verification with maximum-length inputs", || {
-        // Maximum SumSub applicant ID is 80 characters
-        let max_sumsub_applicant_id = "s".repeat(80);
         // Maximum user context data is 4096 characters
         let max_user_context = "c".repeat(4096);
 
-        contract.store_verification(
-            max_sumsub_applicant_id,
-            user.clone(),
-            sig_data,
-            max_user_context,
-        );
+        contract.store_verification(user.clone(), sig_data, max_user_context);
     });
 
     step("Verify account is stored correctly", || {
         assert!(contract.is_verified(user.clone()));
         assert_eq!(contract.get_verified_count(), 1);
-
-        let verification = contract.get_verification(user).unwrap();
-        assert_eq!(verification.sumsub_applicant_id.len(), 80);
     });
 }

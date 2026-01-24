@@ -32,7 +32,6 @@ async fn test_max_length_user_context_data() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "max_context_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -86,7 +85,6 @@ async fn test_unicode_in_user_context_data() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "unicode_context_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -150,7 +148,6 @@ async fn test_nonce_all_zeros() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "zero_nonce_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -202,7 +199,6 @@ async fn test_nonce_all_max_bytes() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "max_nonce_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),

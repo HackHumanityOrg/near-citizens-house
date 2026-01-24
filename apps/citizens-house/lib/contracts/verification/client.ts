@@ -203,7 +203,7 @@ export class NearContractDatabase implements IVerificationDatabase {
   private async storeVerificationImpl(data: VerificationDataWithSignature): Promise<void> {
     try {
       // Extract NEAR signature data from verification data
-      const { signatureData, userContextData, sumsubApplicantId, nearAccountId } = data
+      const { signatureData, userContextData, nearAccountId } = data
 
       // Contract now uses Base64VecU8 for binary fields, so we can pass base64 strings directly
       // No need for type conversions - consistent base64 format across all boundaries
@@ -227,7 +227,6 @@ export class NearContractDatabase implements IVerificationDatabase {
           contractId: this.contractId,
           methodName: "store_verification",
           args: {
-            sumsub_applicant_id: sumsubApplicantId,
             near_account_id: nearAccountId,
             signature_data: nearSigData,
             user_context_data: userContextData,

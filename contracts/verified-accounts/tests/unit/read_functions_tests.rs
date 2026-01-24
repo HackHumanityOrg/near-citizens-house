@@ -79,12 +79,7 @@ fn test_read_functions_with_verified_accounts() {
             &[9; 32],
             &accounts(0),
         );
-        contract.store_verification(
-            "sumsub_applicant_a".to_string(),
-            user_a,
-            sig_a,
-            "ctx".to_string(),
-        );
+        contract.store_verification(user_a, sig_a, "ctx".to_string());
     });
 
     step("Store second verified account", || {
@@ -97,12 +92,7 @@ fn test_read_functions_with_verified_accounts() {
             &[10; 32],
             &accounts(0),
         );
-        contract.store_verification(
-            "sumsub_applicant_b".to_string(),
-            user_b,
-            sig_b,
-            "ctx".to_string(),
-        );
+        contract.store_verification(user_b, sig_b, "ctx".to_string());
     });
 
     step("Verify count is 2", || {

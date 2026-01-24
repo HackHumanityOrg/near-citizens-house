@@ -22,32 +22,24 @@ Verifies that StorageKey enum discriminants remain constant across contract vers
 These discriminants are used as storage prefixes for NEAR SDK collections.
 
 ## Why This Matters
-- If StorageKey::SumsubApplicants changes from 0x00 to 0x01, all existing applicant IDs become orphaned
+- If StorageKey::Accounts changes from 0x00 to 0x01, all existing verifications become orphaned
 - This is a **silent data corruption** bug - contract deploys but data is lost
 - Borsh uses enum declaration order to assign discriminants (0x00, 0x01, 0x02...)
 
 ## Expected Values
-- SumsubApplicants: 0x00
-- Accounts: 0x01
+- Accounts: 0x00
 "#
 )]
 #[allure_test]
 #[test]
 fn test_storage_key_discriminants_are_stable() {
     // Serialize each variant and check the discriminant byte (first byte)
-    let sumsub_applicants_bytes = near_sdk::borsh::to_vec(&StorageKey::SumsubApplicants)
-        .expect("SumsubApplicants should serialize");
     let accounts_bytes =
         near_sdk::borsh::to_vec(&StorageKey::Accounts).expect("Accounts should serialize");
 
     assert_eq!(
-        sumsub_applicants_bytes.first().copied(),
-        Some(0x00),
-        "StorageKey::SumsubApplicants discriminant changed! This will corrupt applicant ID data."
-    );
-    assert_eq!(
         accounts_bytes.first().copied(),
-        Some(0x01),
+        Some(0x00),
         "StorageKey::Accounts discriminant changed! This will corrupt verification data."
     );
 }
@@ -75,7 +67,6 @@ Verifies that VersionedVerification enum discriminants remain constant for recor
 fn test_versioned_verification_discriminants_are_stable() {
     // Create a minimal V1 verification for testing
     let v1 = VersionedVerification::V1(VerificationV1 {
-        sumsub_applicant_id: "test".to_string(),
         near_account_id: "test.near".parse().expect("valid account"),
         verified_at: 0,
         user_context_data: String::new(),

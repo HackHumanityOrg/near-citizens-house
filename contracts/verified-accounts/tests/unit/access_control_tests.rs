@@ -35,7 +35,6 @@ fn test_unauthorized_write() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     accounts(2),
                     sig_data,
                     "test_user_context_data".to_string(),

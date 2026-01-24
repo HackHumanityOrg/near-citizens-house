@@ -122,7 +122,6 @@ function buildTerminalOutput(
     lines.push("VERIFICATION DATA")
     lines.push("════════════════════════════════════════════════════════════════════════════════")
     lines.push("")
-    lines.push(`  sumsub_applicant_id: ${account.sumsubApplicantId}`)
     lines.push(`  near_account_id: ${account.nearAccountId}`)
     lines.push(`  verified_at: ${account.verifiedAt}`)
     lines.push(`  verified_at_iso: ${new Date(account.verifiedAt).toISOString()}`)
