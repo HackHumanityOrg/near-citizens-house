@@ -14,7 +14,7 @@
 
 use near_sdk::assert_one_yocto;
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
-use near_sdk::store::{IterableMap, LookupSet};
+use near_sdk::store::IterableMap;
 use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
@@ -26,7 +26,6 @@ pub use interface::{
 };
 
 /// Maximum length for string inputs
-const MAX_SUMSUB_APPLICANT_ID_LEN: usize = 80;
 const MAX_USER_CONTEXT_DATA_LEN: usize = 4096;
 
 /// Maximum accounts per batch query
@@ -37,7 +36,6 @@ const MAX_BATCH_SIZE: usize = 100;
 #[derive(BorshStorageKey, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum StorageKey {
-    SumsubApplicants,
     Accounts,
 }
 
@@ -74,7 +72,6 @@ pub struct Nep413Payload {
 #[serde(crate = "near_sdk::serde")]
 pub struct VerificationStoredEvent {
     pub near_account_id: AccountId,
-    pub sumsub_applicant_id: String,
 }
 
 /// Event emitted when contract is paused
@@ -133,8 +130,6 @@ pub enum VersionedContract {
 pub struct ContractV1 {
     /// Account authorized to write to this contract
     pub backend_wallet: AccountId,
-    /// Set of used SumSub applicant IDs
-    pub sumsub_applicants: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
     pub verifications: IterableMap<AccountId, VersionedVerification>,
     /// Whether the contract is paused
@@ -146,8 +141,6 @@ pub struct ContractV1 {
 pub struct ContractV2 {
     /// Account authorized to write to this contract
     pub backend_wallet: AccountId,
-    /// Set of used SumSub applicant IDs
-    pub sumsub_applicants: LookupSet<String>,
     /// Map of NEAR accounts to their verification records (versioned format)
     pub verifications: IterableMap<AccountId, VersionedVerification>,
     /// Whether the contract is paused
@@ -170,10 +163,6 @@ impl VersionedContract {
                 // Move collections to V2, preserving their data (same storage keys)
                 let v2 = ContractV2 {
                     backend_wallet: v1.backend_wallet.clone(),
-                    sumsub_applicants: std::mem::replace(
-                        &mut v1.sumsub_applicants,
-                        LookupSet::new(StorageKey::SumsubApplicants),
-                    ),
                     verifications: std::mem::replace(
                         &mut v1.verifications,
                         IterableMap::new(StorageKey::Accounts),
@@ -237,7 +226,6 @@ impl VersionedContract {
     pub fn new(backend_wallet: AccountId) -> Self {
         VersionedContract::V1(ContractV1 {
             backend_wallet,
-            sumsub_applicants: LookupSet::new(StorageKey::SumsubApplicants),
             verifications: IterableMap::new(StorageKey::Accounts),
             paused: false,
         })
@@ -258,7 +246,6 @@ impl VersionedContract {
         match old_state {
             VersionedContract::V1(v1) => VersionedContract::V2(ContractV2 {
                 backend_wallet: v1.backend_wallet,
-                sumsub_applicants: v1.sumsub_applicants,
                 verifications: v1.verifications,
                 paused: v1.paused,
                 upgrade_timestamp: env::block_timestamp(),
@@ -337,7 +324,6 @@ impl VersionedContract {
     #[payable]
     pub fn store_verification(
         &mut self,
-        sumsub_applicant_id: String,
         near_account_id: AccountId,
         signature_data: NearSignatureData,
         user_context_data: String,
@@ -353,15 +339,6 @@ impl VersionedContract {
         );
 
         // Input length validation
-        assert!(
-            !sumsub_applicant_id.is_empty(),
-            "SumSub applicant ID cannot be empty"
-        );
-        assert!(
-            sumsub_applicant_id.len() <= MAX_SUMSUB_APPLICANT_ID_LEN,
-            "SumSub applicant ID exceeds maximum length of {}",
-            MAX_SUMSUB_APPLICANT_ID_LEN
-        );
         assert!(
             user_context_data.len() <= MAX_USER_CONTEXT_DATA_LEN,
             "User context data exceeds maximum length of {}",
@@ -390,12 +367,6 @@ impl VersionedContract {
         // Verify the NEAR signature
         Self::verify_near_signature(&signature_data);
 
-        // Prevent duplicate SumSub applicant IDs
-        assert!(
-            !contract.sumsub_applicants.contains(&sumsub_applicant_id),
-            "SumSub applicant ID already used - identity already registered"
-        );
-
         // Prevent re-verification of accounts
         assert!(
             contract.verifications.get(&near_account_id).is_none(),
@@ -404,14 +375,12 @@ impl VersionedContract {
 
         // Create verification record (always use current version - V2)
         let verification = Verification {
-            sumsub_applicant_id: sumsub_applicant_id.clone(),
             near_account_id: near_account_id.clone(),
             verified_at: env::block_timestamp(),
             user_context_data,
         };
 
-        // Store verification and tracking data
-        contract.sumsub_applicants.insert(sumsub_applicant_id.clone());
+        // Store verification
         contract
             .verifications
             .insert(near_account_id.clone(), VersionedVerification::from(verification));
@@ -421,7 +390,6 @@ impl VersionedContract {
             "verification_stored",
             &VerificationStoredEvent {
                 near_account_id,
-                sumsub_applicant_id,
             },
         );
     }

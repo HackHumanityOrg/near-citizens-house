@@ -150,7 +150,6 @@ const sumsubWebhookEventSchema = baseEventFieldsSchema
     route: z.literal("/api/verification/sumsub/webhook"),
     method: z.literal("POST"),
     nearAccountId: z.string().optional(),
-    sumsubApplicantId: z.string().optional(),
     webhookType: z.string().optional(),
     reviewResult: z.string().optional(),
     signaturePresent: z.boolean().optional(),
@@ -208,11 +207,7 @@ const checkIsVerifiedEventSchema = baseEventFieldsSchema
 /**
  * Union of all wide event schemas
  */
-const wideEventSchema = z.union([
-  sumsubWebhookEventSchema,
-  getVerificationsEventSchema,
-  checkIsVerifiedEventSchema,
-])
+const wideEventSchema = z.union([sumsubWebhookEventSchema, getVerificationsEventSchema, checkIsVerifiedEventSchema])
 
 // =============================================================================
 // Type Exports

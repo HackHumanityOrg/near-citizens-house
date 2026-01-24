@@ -220,7 +220,6 @@ export async function POST(request: NextRequest) {
     // Store verification on-chain
     try {
       await verificationDb.storeVerification({
-        sumsubApplicantId: applicantId,
         nearAccountId: accountId,
         signatureData: {
           accountId,

@@ -33,7 +33,6 @@ async fn test_pagination_limit_capped_at_100() -> anyhow::Result<()> {
             .call(contract.id(), "store_verification")
             .deposit(NearToken::from_yoctonear(1))
             .args_json(json!({
-                "sumsub_applicant_id": format!("pagination_cap_sumsub_applicant_id_{}", i),
                 "near_account_id": user.id(),
                 "signature_data": {
                     "account_id": user.id(),

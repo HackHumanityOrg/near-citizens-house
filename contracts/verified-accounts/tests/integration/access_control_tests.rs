@@ -27,8 +27,7 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
-            "near_account_id": user.id(),
+"near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),
@@ -152,8 +151,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
     let result_no_deposit = backend
         .call(contract.id(), "store_verification")
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
-            "near_account_id": user.id(),
+"near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),
@@ -182,8 +180,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(2))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
-            "near_account_id": user.id(),
+"near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),

@@ -12,21 +12,18 @@ use verified_accounts::interface::*;
 #[test]
 fn test_verification_summary_serialization() {
     let summary = VerificationSummary {
-        sumsub_applicant_id: "sumsub123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
         verified_at: 1234567890,
     };
 
     // Test JSON serialization
     let json = near_sdk::serde_json::to_string(&summary).unwrap();
-    assert!(json.contains("sumsub123"));
     assert!(json.contains("test.near"));
 
     // Test Borsh serialization
     let borsh = near_sdk::borsh::to_vec(&summary).unwrap();
     let decoded: VerificationSummary = near_sdk::borsh::from_slice(&borsh).unwrap();
     assert_eq!(decoded.near_account_id, summary.near_account_id);
-    assert_eq!(decoded.sumsub_applicant_id, summary.sumsub_applicant_id);
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -38,7 +35,6 @@ fn test_verification_summary_serialization() {
 #[test]
 fn test_verification_serialization() {
     let verification = Verification {
-        sumsub_applicant_id: "sumsub123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
         verified_at: 1234567890,
         user_context_data: "context".to_string(),
@@ -48,10 +44,6 @@ fn test_verification_serialization() {
     let borsh = near_sdk::borsh::to_vec(&verification).unwrap();
     let decoded: Verification = near_sdk::borsh::from_slice(&borsh).unwrap();
     assert_eq!(decoded.near_account_id, verification.near_account_id);
-    assert_eq!(
-        decoded.sumsub_applicant_id,
-        verification.sumsub_applicant_id
-    );
     assert_eq!(decoded.user_context_data, verification.user_context_data);
 }
 
@@ -64,14 +56,12 @@ fn test_verification_serialization() {
 #[test]
 fn test_verification_summary_json_roundtrip() {
     let summary = VerificationSummary {
-        sumsub_applicant_id: "123456789012345678901234567890".to_string(),
         near_account_id: "alice.testnet".parse().unwrap(),
         verified_at: 1700000000000000000, // Realistic nanosecond timestamp
     };
 
     let json = near_sdk::serde_json::to_string(&summary).unwrap();
     let decoded: VerificationSummary = near_sdk::serde_json::from_str(&json).unwrap();
-    assert_eq!(decoded.sumsub_applicant_id, summary.sumsub_applicant_id);
     assert_eq!(decoded.near_account_id, summary.near_account_id);
     assert_eq!(decoded.verified_at, summary.verified_at);
 }
@@ -85,7 +75,6 @@ fn test_verification_summary_json_roundtrip() {
 #[test]
 fn test_verification_json_roundtrip() {
     let verification = Verification {
-        sumsub_applicant_id: "sumsub_applicant_test".to_string(),
         near_account_id: "user.near".parse().unwrap(),
         verified_at: 1700000000000000000,
         user_context_data: "test context data".to_string(),
@@ -93,10 +82,6 @@ fn test_verification_json_roundtrip() {
 
     let json = near_sdk::serde_json::to_string(&verification).unwrap();
     let decoded: Verification = near_sdk::serde_json::from_str(&json).unwrap();
-    assert_eq!(
-        decoded.sumsub_applicant_id,
-        verification.sumsub_applicant_id
-    );
     assert_eq!(decoded.near_account_id, verification.near_account_id);
     assert_eq!(decoded.verified_at, verification.verified_at);
     assert_eq!(decoded.user_context_data, verification.user_context_data);
@@ -111,7 +96,6 @@ fn test_verification_json_roundtrip() {
 #[test]
 fn test_empty_user_context_data() {
     let verification = Verification {
-        sumsub_applicant_id: "sumsub123".to_string(),
         near_account_id: "test.near".parse().unwrap(),
         verified_at: 0,
         user_context_data: "".to_string(), // Empty context

@@ -40,7 +40,6 @@ fn test_account_id_mismatch() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user, // But we're trying to verify accounts(2)
                     sig_data,
                     "test_user_context_data".to_string(),
@@ -85,7 +84,6 @@ fn test_recipient_mismatch() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user, // But we're trying to verify accounts(2)
                     sig_data,
                     "test_user_context_data".to_string(),
@@ -168,100 +166,6 @@ fn test_batch_size_exceeded_get_verifications() {
 #[allure_suite_label("Verified Accounts Unit Tests")]
 #[allure_sub_suite("Input Validation")]
 #[allure_severity("critical")]
-#[allure_tags("unit", "validation", "sumsub-applicant-id")]
-#[allure_description("Verifies that store_verification rejects SumSub applicant ID strings exceeding 80 character maximum length.")]
-#[allure_test]
-#[test]
-fn test_sumsub_applicant_id_too_long() {
-    let (mut contract, user) = step("Initialize contract", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-        let contract = VersionedContract::new(backend);
-        (contract, user)
-    });
-
-    step(
-        "Attempt verification with 81-char SumSub applicant ID",
-        || {
-            assert_panic_with(
-                || {
-                    let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-                    let sig_data = NearSignatureData {
-                        account_id: user.clone(),
-                        signature: vec![0; 64].into(),
-                        public_key: public_key_str.parse().unwrap(),
-                        challenge: "Identify myself".to_string(),
-                        nonce: vec![0; 32].into(),
-                        recipient: accounts(0),
-                    };
-
-                    let too_long_sumsub_applicant_id = "x".repeat(81);
-
-                    contract.store_verification(
-                        too_long_sumsub_applicant_id,
-                        user,
-                        sig_data,
-                        "test_user_context_data".to_string(),
-                    );
-                },
-                "SumSub applicant ID exceeds maximum length of 80",
-            );
-        },
-    );
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Input Validation")]
-#[allure_severity("critical")]
-#[allure_tags("unit", "validation", "sumsub-applicant-id")]
-#[allure_description("Verifies that store_verification rejects empty SumSub applicant ID strings.")]
-#[allure_test]
-#[test]
-fn test_sumsub_applicant_id_empty() {
-    let (mut contract, user) = step("Initialize contract", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-        let contract = VersionedContract::new(backend);
-        (contract, user)
-    });
-
-    step(
-        "Attempt verification with empty SumSub applicant ID",
-        || {
-            assert_panic_with(
-                || {
-                    let public_key_str = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847";
-                    let sig_data = NearSignatureData {
-                        account_id: user.clone(),
-                        signature: vec![0; 64].into(),
-                        public_key: public_key_str.parse().unwrap(),
-                        challenge: "Identify myself".to_string(),
-                        nonce: vec![0; 32].into(),
-                        recipient: accounts(0),
-                    };
-
-                    contract.store_verification(
-                        "".to_string(),
-                        user,
-                        sig_data,
-                        "test_user_context_data".to_string(),
-                    );
-                },
-                "SumSub applicant ID cannot be empty",
-            );
-        },
-    );
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Input Validation")]
-#[allure_severity("critical")]
 #[allure_tags("unit", "validation", "user-context-data")]
 #[allure_description("Verifies that store_verification rejects user_context_data strings exceeding 4096 character maximum length.")]
 #[allure_test]
@@ -293,50 +197,12 @@ fn test_user_context_data_too_long() {
 
                     let too_long_user_context = "x".repeat(4097);
 
-                    contract.store_verification(
-                        "test_sumsub_applicant_id".to_string(),
-                        user,
-                        sig_data,
-                        too_long_user_context,
-                    );
+                    contract.store_verification(user, sig_data, too_long_user_context);
                 },
                 "User context data exceeds maximum length of 4096",
             );
         },
     );
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Unit Tests")]
-#[allure_sub_suite("Input Validation")]
-#[allure_severity("normal")]
-#[allure_tags("unit", "validation", "sumsub-applicant-id", "boundary")]
-#[allure_description("Verifies that a SumSub applicant ID exactly 80 characters long is accepted.")]
-#[allure_test]
-#[test]
-fn test_sumsub_applicant_id_max_length_allowed() {
-    let (mut contract, user, sig_data) = step("Initialize contract with valid signature", || {
-        let backend = accounts(1);
-        let user = accounts(2);
-        let context = get_context(backend.clone());
-        testing_env!(context.build());
-        let contract = VersionedContract::new(backend);
-        let signer = create_signer(&user);
-        let sig_data =
-            create_valid_signature(&signer, &user, "Identify myself", &[2; 32], &accounts(0));
-        (contract, user, sig_data)
-    });
-
-    step(
-        "Store verification with 80-char SumSub applicant ID",
-        || {
-            contract.store_verification("n".repeat(80), user.clone(), sig_data, "ctx".to_string());
-        },
-    );
-
-    step("Verify account is verified", || {
-        assert!(contract.is_verified(user));
-    });
 }
 
 #[allure_parent_suite("Near Citizens House")]
@@ -364,19 +230,13 @@ fn test_user_context_data_max_length_allowed() {
         "Store verification with 4096-char user_context_data",
         || {
             let context_data = "c".repeat(4096);
-            contract.store_verification(
-                "sumsub_applicant_context".to_string(),
-                user.clone(),
-                sig_data,
-                context_data,
-            );
+            contract.store_verification(user.clone(), sig_data, context_data);
         },
     );
 
     step("Verify account data is stored correctly", || {
         let verification = contract.get_verification(user.clone()).unwrap();
         assert_eq!(verification.near_account_id, user);
-        assert_eq!(verification.sumsub_applicant_id, "sumsub_applicant_context");
         assert_eq!(contract.get_verified_count(), 1);
     });
 }

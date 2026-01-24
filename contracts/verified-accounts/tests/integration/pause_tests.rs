@@ -38,7 +38,6 @@ async fn test_store_verification_when_paused() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -193,7 +192,6 @@ async fn test_pause_allows_read_operations() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "pause_read_test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),

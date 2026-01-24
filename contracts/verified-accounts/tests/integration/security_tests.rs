@@ -31,7 +31,6 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "replay_test_sumsub_applicant_id_1",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -61,7 +60,6 @@ async fn test_signature_replay_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "replay_test_sumsub_applicant_id_2", // Different SumSub applicant ID - trying to bypass check
             "near_account_id": user.id(),           // Same account
             "signature_data": {
                 "account_id": user.id(),            // Same account
@@ -241,7 +239,6 @@ async fn test_insufficient_contract_balance_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "low_balance_test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),

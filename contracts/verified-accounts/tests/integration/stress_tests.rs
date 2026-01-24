@@ -33,7 +33,6 @@ async fn store_verification(
     backend: &Account,
     contract: &Contract,
     user: &Account,
-    sumsub_applicant_id: &str,
     nonce: [u8; 32],
 ) -> anyhow::Result<()> {
     let recipient = contract.id().to_string();
@@ -48,7 +47,6 @@ async fn store_verification(
         .deposit(NearToken::from_yoctonear(1))
         .gas(Gas::from_tgas(100))
         .args_json(json!({
-            "sumsub_applicant_id": sumsub_applicant_id,
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -92,9 +90,8 @@ async fn test_stress_bulk_verifications_and_pagination() -> anyhow::Result<()> {
 
     for i in 0..total {
         let user = worker.dev_create_account().await?;
-        let sumsub_applicant_id = format!("stress_sumsub_applicant_id_{:05}", i);
         let nonce = nonce_from_index(i);
-        store_verification(&backend, &contract, &user, &sumsub_applicant_id, nonce).await?;
+        store_verification(&backend, &contract, &user, nonce).await?;
         users.push(user);
 
         let done = i + 1;
@@ -121,7 +118,7 @@ async fn test_stress_bulk_verifications_and_pagination() -> anyhow::Result<()> {
 
     let sample_verified: bool = contract
         .view("is_verified")
-        .args_json(json!({"account_id": users[0].id()}))
+        .args_json(json!({"account_id": users.first().expect("users not empty").id()}))
         .await?
         .json()?;
 
@@ -157,9 +154,8 @@ async fn test_stress_batch_reads_at_max_limit() -> anyhow::Result<()> {
 
     for i in 0..total {
         let user = worker.dev_create_account().await?;
-        let sumsub_applicant_id = format!("batch_sumsub_applicant_id_{:05}", i);
         let nonce = nonce_from_index(i + 10_000);
-        store_verification(&backend, &contract, &user, &sumsub_applicant_id, nonce).await?;
+        store_verification(&backend, &contract, &user, nonce).await?;
         account_ids.push(user.id().clone());
 
         let done = i + 1;
@@ -173,7 +169,10 @@ async fn test_stress_batch_reads_at_max_limit() -> anyhow::Result<()> {
         assert_eq!(count, total as u32);
     });
 
-    let batch_ids = account_ids[..MAX_BATCH_SIZE].to_vec();
+    let batch_ids = account_ids
+        .get(..MAX_BATCH_SIZE)
+        .expect("total >= MAX_BATCH_SIZE")
+        .to_vec();
 
     let statuses: Vec<bool> = contract
         .view("are_verified")

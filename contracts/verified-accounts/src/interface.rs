@@ -89,8 +89,6 @@ impl From<Verification> for VersionedVerification {
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationSummary {
-    /// Unique SumSub applicant ID (prevents duplicate identity use)
-    pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
     /// Unix timestamp (nanoseconds) when verification was recorded
@@ -101,14 +99,12 @@ pub struct VerificationSummary {
 
 /// V1: SumSub-based verification format (current version).
 ///
-/// Uses SumSub KYC verification. The sumsub_applicant_id uniquely
-/// identifies the verified identity.
+/// Uses SumSub KYC verification. SumSub handles identity deduplication
+/// internally, so no applicant ID is stored on-chain.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationV1 {
-    /// Unique SumSub applicant ID (prevents duplicate identity use)
-    pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
     /// Unix timestamp (nanoseconds) when verification was recorded
@@ -127,7 +123,6 @@ pub type Verification = VerificationV1;
 impl From<&VerificationV1> for VerificationSummary {
     fn from(v: &VerificationV1) -> Self {
         Self {
-            sumsub_applicant_id: v.sumsub_applicant_id.clone(),
             near_account_id: v.near_account_id.clone(),
             verified_at: v.verified_at,
         }
@@ -180,8 +175,7 @@ pub trait VerifiedAccountsInterface {
     /// Get verification summary.
     ///
     /// **Use this for:** Most cross-contract calls that need verification details.
-    /// Returns all essential data (sumsub_applicant_id, timestamp)
-    /// keeping gas costs low.
+    /// Returns essential data (account ID, timestamp) keeping gas costs low.
     ///
     /// Returns `None` if the account is not verified.
     fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary>;
