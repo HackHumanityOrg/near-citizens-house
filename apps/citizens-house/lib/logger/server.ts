@@ -1,16 +1,16 @@
 import "server-only"
 import { logs, SeverityNumber } from "@opentelemetry/api-logs"
-
-type LogLevel = "debug" | "info" | "warn" | "error"
+import type { LogEvent, LogLevel } from "../schemas/logger"
 
 const severityMap: Record<LogLevel, SeverityNumber> = {
-  debug: SeverityNumber.DEBUG,
   info: SeverityNumber.INFO,
   warn: SeverityNumber.WARN,
   error: SeverityNumber.ERROR,
 }
 
-function log(level: LogLevel, message: string, attributes?: Record<string, string | number | boolean | null>): void {
+type LogAttributes = Record<string, string | number | boolean | null | unknown>
+
+function log(level: LogLevel, message: string, attributes?: LogAttributes): void {
   // Console output (structured JSON, silent fail)
   try {
     const logData = {
@@ -36,8 +36,13 @@ function log(level: LogLevel, message: string, attributes?: Record<string, strin
     const otelAttributes: Record<string, string | number | boolean> = {}
     if (attributes) {
       for (const [key, value] of Object.entries(attributes)) {
-        if (value !== null) {
-          otelAttributes[key] = value
+        if (value !== null && value !== undefined) {
+          // Convert unknown types to string for OTEL
+          if (typeof value === "object") {
+            otelAttributes[key] = JSON.stringify(value)
+          } else {
+            otelAttributes[key] = value as string | number | boolean
+          }
         }
       }
     }
@@ -53,13 +58,20 @@ function log(level: LogLevel, message: string, attributes?: Record<string, strin
   }
 }
 
-export const logger = {
-  debug: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
-    log("debug", message, attributes),
-  info: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
-    log("info", message, attributes),
-  warn: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
-    log("warn", message, attributes),
-  error: (message: string, attributes?: Record<string, string | number | boolean | null>) =>
-    log("error", message, attributes),
+/**
+ * Type-safe logging function using discriminated union events.
+ *
+ * @example
+ * ```ts
+ * logEvent({
+ *   event: "sumsub_token_generated",
+ *   level: "info",
+ *   externalUserId: "alice.near",
+ *   applicantId: "123",
+ * })
+ * ```
+ */
+export function logEvent<T extends LogEvent>(eventData: T): void {
+  const { event: eventName, level, ...attributes } = eventData
+  log(level, eventName, attributes)
 }

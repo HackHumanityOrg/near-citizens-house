@@ -28,6 +28,9 @@ export const verificationErrorCodeSchema = z.enum([
   "CONTRACT_PAUSED",
   "STORAGE_FAILED",
   "INTERNAL_ERROR",
+  "VERIFICATION_ON_HOLD",
+  "VERIFICATION_REJECTED",
+  "VERIFICATION_RETRY",
 ])
 
 export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
@@ -54,6 +57,9 @@ export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> 
   CONTRACT_PAUSED: "Verification is temporarily unavailable",
   STORAGE_FAILED: "Unable to finalize verification at this time",
   INTERNAL_ERROR: "Internal server error",
+  VERIFICATION_ON_HOLD: "Verification requires manual review",
+  VERIFICATION_REJECTED: "Verification was rejected",
+  VERIFICATION_RETRY: "Please resubmit with clearer documents",
 } as const
 
 // ============================================================================
@@ -64,7 +70,12 @@ export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> 
  * Error codes that indicate non-recoverable issues.
  * Users cannot retry verification with the same account/identity.
  */
-export const NON_RETRYABLE_ERRORS = ["DUPLICATE_IDENTITY", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
+export const NON_RETRYABLE_ERRORS = [
+  "DUPLICATE_IDENTITY",
+  "ACCOUNT_ALREADY_VERIFIED",
+  "CONTRACT_PAUSED",
+  "VERIFICATION_REJECTED",
+] as const
 
 export type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
 
@@ -180,6 +191,12 @@ export function getErrorTitle(errorCode: string | null | undefined): string {
       return "Verification Unavailable"
     case "SUMSUB_VERIFICATION_REJECTED":
       return "Verification Rejected"
+    case "VERIFICATION_ON_HOLD":
+      return "Verification Under Review"
+    case "VERIFICATION_REJECTED":
+      return "Verification Rejected"
+    case "VERIFICATION_RETRY":
+      return "Documents Need Resubmission"
     default:
       return "Verification Failed"
   }
@@ -206,6 +223,12 @@ export function getErrorMessage(errorCode: string | null | undefined, fallbackMe
       return "Verification is temporarily unavailable. Please try again later."
     case "SUMSUB_VERIFICATION_REJECTED":
       return "Your identity verification was not approved. Please ensure your documents are clear and valid."
+    case "VERIFICATION_ON_HOLD":
+      return "Your documents are being reviewed by our team. This typically takes a few hours."
+    case "VERIFICATION_REJECTED":
+      return "Your verification could not be approved. Please contact support if you believe this is an error."
+    case "VERIFICATION_RETRY":
+      return "Please resubmit your documents with clearer images. Ensure your ID is fully visible and not blurry."
     default:
       // Check if it's a known error code from the schema
       if (errorCode in VERIFICATION_ERROR_MESSAGES) {

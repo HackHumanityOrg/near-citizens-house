@@ -23,7 +23,7 @@ import {
   type SumSubMetadataItem,
   type SumSubApplicant,
 } from "@/lib/schemas/sumsub"
-import { logger } from "@/lib/logger"
+import { logEvent } from "@/lib/logger"
 import { validateSignatureData, verifyNearSignature, getSigningMessage, getSigningRecipient } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
 
@@ -51,7 +51,9 @@ export async function POST(request: NextRequest) {
     })
 
     if (!formatCheck.valid) {
-      logger.warn("sumsub_token_invalid_format", {
+      logEvent({
+        event: "sumsub_token_invalid_format",
+        level: "warn",
         accountId: nearSignature.accountId,
         error: formatCheck.error ?? "Unknown validation error",
         errorCode: formatCheck.errorCode ?? "UNKNOWN",
@@ -71,7 +73,10 @@ export async function POST(request: NextRequest) {
     try {
       recipient = getSigningRecipient()
     } catch {
-      logger.error("sumsub_token_missing_config", {})
+      logEvent({
+        event: "sumsub_token_missing_config",
+        level: "error",
+      })
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
     }
 
@@ -84,7 +89,9 @@ export async function POST(request: NextRequest) {
     )
 
     if (!signatureCheck.valid) {
-      logger.warn("sumsub_token_invalid_signature", {
+      logEvent({
+        event: "sumsub_token_invalid_signature",
+        level: "warn",
         accountId: nearSignature.accountId,
         error: signatureCheck.error ?? "Unknown signature error",
       })
@@ -97,7 +104,9 @@ export async function POST(request: NextRequest) {
     // 3. Verify public key is a full-access key via NEAR RPC
     const keyCheck = await hasFullAccessKey(nearSignature.accountId, nearSignature.publicKey)
     if (!keyCheck.isFullAccess) {
-      logger.warn("sumsub_token_not_full_access", {
+      logEvent({
+        event: "sumsub_token_not_full_access",
+        level: "warn",
         accountId: nearSignature.accountId,
         error: keyCheck.error ?? "Unknown key validation error",
       })
@@ -125,7 +134,9 @@ export async function POST(request: NextRequest) {
       // If applicant already exists (409 Conflict), fetch it
       if (error instanceof Error && error.message.includes("409")) {
         applicant = await getApplicantByExternalUserId(externalUserId)
-        logger.info("sumsub_applicant_exists", {
+        logEvent({
+          event: "sumsub_applicant_exists",
+          level: "info",
           externalUserId,
           applicantId: applicant.id,
         })
@@ -145,7 +156,9 @@ export async function POST(request: NextRequest) {
 
     await updateApplicantMetadata(applicant.id, metadata)
 
-    logger.info("sumsub_metadata_stored", {
+    logEvent({
+      event: "sumsub_metadata_stored",
+      level: "info",
       externalUserId,
       applicantId: applicant.id,
     })
@@ -153,7 +166,9 @@ export async function POST(request: NextRequest) {
     // Step 3: Generate access token for the existing applicant
     const tokenResponse = await generateAccessToken(externalUserId, levelName)
 
-    logger.info("sumsub_token_generated", {
+    logEvent({
+      event: "sumsub_token_generated",
+      level: "info",
       externalUserId,
       applicantId: applicant.id,
     })
@@ -165,7 +180,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    logger.error("sumsub_token_error", {
+    logEvent({
+      event: "sumsub_token_error",
+      level: "error",
       error: error instanceof Error ? error.message : "Unknown error",
     })
 

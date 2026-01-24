@@ -161,6 +161,14 @@ const verificationPollingTimeoutEventSchema = z
   })
   .strict()
 
+const verificationManualReviewShownEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("manual_review_shown"),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
 // SumSub SDK lifecycle events
 const verificationSumsubSdkLoadedEventSchema = z
   .object({
@@ -270,6 +278,7 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   // Client-side events - polling
   verificationPollingStartedEventSchema,
   verificationPollingTimeoutEventSchema,
+  verificationManualReviewShownEventSchema,
   // Client-side events - SumSub SDK
   verificationSumsubSdkLoadedEventSchema,
   verificationSumsubMessageEventSchema,
@@ -408,7 +417,7 @@ const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCaptured
  * a discriminated union on "action". Type safety is preserved through
  * the domain literal on each event schema.
  */
-const analyticsEventSchema = z.union([
+export const analyticsEventSchema = z.union([
   verificationEventSchema,
   citizensEventSchema,
   consentEventSchema,

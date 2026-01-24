@@ -6,7 +6,6 @@
  * our backend when verification is complete.
  */
 import { z } from "zod"
-import { SIZE_LIMITS } from "./core"
 import { nearAccountIdSchema } from "./near"
 
 // ==============================================================================
@@ -58,11 +57,20 @@ export const reviewAnswerSchema = z.enum([
 export type ReviewAnswer = z.infer<typeof reviewAnswerSchema>
 
 /**
+ * SumSub rejection type.
+ * RETRY = user can resubmit documents
+ * FINAL = permanent rejection, cannot retry
+ */
+export const reviewRejectTypeSchema = z.enum(["RETRY", "FINAL"])
+
+export type ReviewRejectType = z.infer<typeof reviewRejectTypeSchema>
+
+/**
  * Review result details from SumSub webhook.
  */
 export const reviewResultSchema = z.object({
   reviewAnswer: reviewAnswerSchema,
-  reviewRejectType: z.string().optional(),
+  reviewRejectType: reviewRejectTypeSchema.optional(),
   rejectLabels: z.array(z.string()).optional(),
   reviewResult: z.string().optional(),
   moderationComment: z.string().optional(),
@@ -398,3 +406,59 @@ export interface SumSubWebSdkProps {
   /** Called when SDK encounters errors */
   onError: (error: Error) => void
 }
+
+// ==============================================================================
+// Webhook Status (for intermediate states before on-chain storage)
+// ==============================================================================
+
+/**
+ * Intermediate webhook status stored in Redis.
+ * Used to communicate webhook results to the frontend before on-chain finalization.
+ */
+export const webhookStatusCodeSchema = z.enum([
+  "ON_HOLD", // Requires manual review (applicantOnHold webhook)
+  "REJECTED", // RED with FINAL - cannot retry
+  "RETRY", // RED with RETRY - user can resubmit documents
+])
+
+export type WebhookStatusCode = z.infer<typeof webhookStatusCodeSchema>
+
+/**
+ * Full webhook status response from Redis.
+ */
+export const webhookStatusSchema = z.object({
+  status: webhookStatusCodeSchema,
+  updatedAt: z.number(),
+  rejectLabels: z.array(z.string()).optional(),
+  moderationComment: z.string().optional(),
+})
+
+export type WebhookStatus = z.infer<typeof webhookStatusSchema>
+
+// ==============================================================================
+// Verification Status API Response
+// ==============================================================================
+
+/**
+ * Response schema for the /api/verification/status endpoint.
+ * Combines on-chain status with intermediate webhook states.
+ */
+export const verificationStatusResponseSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("APPROVED") }),
+  z.object({ status: z.literal("ON_HOLD"), updatedAt: z.number() }),
+  z.object({
+    status: z.literal("REJECTED"),
+    updatedAt: z.number(),
+    rejectLabels: z.array(z.string()).optional(),
+    moderationComment: z.string().optional(),
+  }),
+  z.object({
+    status: z.literal("RETRY"),
+    updatedAt: z.number(),
+    rejectLabels: z.array(z.string()).optional(),
+    moderationComment: z.string().optional(),
+  }),
+  z.object({ status: z.literal("NOT_FOUND") }),
+])
+
+export type VerificationStatusResponse = z.infer<typeof verificationStatusResponseSchema>

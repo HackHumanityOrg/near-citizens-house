@@ -1,244 +1,460 @@
 /**
  * Logger Event Schemas
  *
- * Strongly-typed wide event logging using Zod schemas.
- * Each request type (verify, status, etc.) has its own schema with all valid fields.
- * The combined WideEvent schema uses a union of all event schemas.
+ * Strongly-typed log events using Zod discriminated unions.
+ * Each event has a unique "event" field that discriminates the union.
  *
  * @example
  * ```ts
- * import type { VerifyRequestEvent } from "@/lib/schemas/logger"
+ * import { logEvent } from "@/lib/logger"
+ * logEvent({ event: "sumsub_token_generated", level: "info", externalUserId: "...", applicantId: "..." })
  * ```
  */
 import { z } from "zod"
 
 // =============================================================================
-// Shared Enums
+// Log Levels
 // =============================================================================
 
-const logLevelSchema = z.enum(["info", "warn", "error"])
+export const logLevelSchema = z.enum(["info", "warn", "error"])
+export type LogLevel = z.infer<typeof logLevelSchema>
 
-const outcomeSchema = z.enum([
-  "success",
-  "validation_error",
-  "signature_error",
-  "proof_error",
-  "storage_error",
-  "internal_error",
-  "pending",
-  "not_found",
-  "verified",
-  "not_verified",
-  "error",
+// =============================================================================
+// Token Route Events (8 events)
+// =============================================================================
+
+const sumsubTokenInvalidFormatEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_invalid_format"),
+    level: z.literal("warn"),
+    accountId: z.string(),
+    error: z.string(),
+    errorCode: z.string(),
+  })
+  .strict()
+
+const sumsubTokenMissingConfigEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_missing_config"),
+    level: z.literal("error"),
+  })
+  .strict()
+
+const sumsubTokenInvalidSignatureEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_invalid_signature"),
+    level: z.literal("warn"),
+    accountId: z.string(),
+    error: z.string(),
+  })
+  .strict()
+
+const sumsubTokenNotFullAccessEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_not_full_access"),
+    level: z.literal("warn"),
+    accountId: z.string(),
+    error: z.string(),
+  })
+  .strict()
+
+const sumsubApplicantExistsEventSchema = z
+  .object({
+    event: z.literal("sumsub_applicant_exists"),
+    level: z.literal("info"),
+    externalUserId: z.string(),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const sumsubMetadataStoredEventSchema = z
+  .object({
+    event: z.literal("sumsub_metadata_stored"),
+    level: z.literal("info"),
+    externalUserId: z.string(),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const sumsubTokenGeneratedEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_generated"),
+    level: z.literal("info"),
+    externalUserId: z.string(),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const sumsubTokenErrorEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_error"),
+    level: z.literal("error"),
+    error: z.string(),
+  })
+  .strict()
+
+// =============================================================================
+// Webhook Route Events (15 events)
+// =============================================================================
+
+const sumsubWebhookMissingSignatureEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_missing_signature"),
+    level: z.literal("warn"),
+  })
+  .strict()
+
+const sumsubWebhookInvalidSignatureEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_invalid_signature"),
+    level: z.literal("warn"),
+  })
+  .strict()
+
+const sumsubWebhookInvalidPayloadEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_invalid_payload"),
+    level: z.literal("warn"),
+    errors: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookReceivedEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_received"),
+    level: z.literal("info"),
+    type: z.string(),
+    applicantId: z.string(),
+    externalUserId: z.string(),
+    reviewStatus: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookNotApprovedEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_not_approved"),
+    level: z.literal("info"),
+    applicantId: z.string(),
+    reviewAnswer: z.string(),
+    rejectLabels: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookMissingMetadataEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_missing_metadata"),
+    level: z.literal("error"),
+    applicantId: z.string(),
+    missingFields: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookInvalidFormatEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_invalid_format"),
+    level: z.literal("warn"),
+    applicantId: z.string(),
+    accountId: z.string(),
+    error: z.string(),
+    errorCode: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookMissingConfigEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_missing_config"),
+    level: z.literal("error"),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookSignatureInvalidEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_signature_invalid"),
+    level: z.literal("warn"),
+    applicantId: z.string(),
+    accountId: z.string(),
+    error: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookNotFullAccessEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_not_full_access"),
+    level: z.literal("warn"),
+    applicantId: z.string(),
+    accountId: z.string(),
+    error: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookNonceUsedEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_nonce_used"),
+    level: z.literal("warn"),
+    applicantId: z.string(),
+    accountId: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookMissingBackendConfigEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_missing_backend_config"),
+    level: z.literal("error"),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookStoredOnchainEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_stored_onchain"),
+    level: z.literal("info"),
+    applicantId: z.string(),
+    accountId: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookStorageFailedEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_storage_failed"),
+    level: z.literal("error"),
+    applicantId: z.string(),
+    accountId: z.string(),
+    error: z.string(),
+    errorCode: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookErrorEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_error"),
+    level: z.literal("error"),
+    applicantId: z.string(),
+    accountId: z.string(),
+    error: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookPendingReviewEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_pending_review"),
+    level: z.literal("info"),
+    applicantId: z.string(),
+    reviewAnswer: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookMissingExternalUserIdEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_missing_external_user_id"),
+    level: z.literal("warn"),
+    applicantId: z.string(),
+  })
+  .strict()
+
+// =============================================================================
+// SumSub Provider Events (11 events)
+// =============================================================================
+
+const sumsubCreateApplicantFailedEventSchema = z
+  .object({
+    event: z.literal("sumsub_create_applicant_failed"),
+    level: z.literal("error"),
+    status: z.number(),
+    error: z.string(),
+    externalUserId: z.string(),
+  })
+  .strict()
+
+const sumsubCreateApplicantInvalidResponseEventSchema = z
+  .object({
+    event: z.literal("sumsub_create_applicant_invalid_response"),
+    level: z.literal("error"),
+    error: z.string(),
+  })
+  .strict()
+
+const sumsubApplicantCreatedEventSchema = z
+  .object({
+    event: z.literal("sumsub_applicant_created"),
+    level: z.literal("info"),
+    applicantId: z.string(),
+    externalUserId: z.string(),
+  })
+  .strict()
+
+const sumsubAccessTokenFailedEventSchema = z
+  .object({
+    event: z.literal("sumsub_access_token_failed"),
+    level: z.literal("error"),
+    status: z.number(),
+    error: z.string(),
+    externalUserId: z.string(),
+  })
+  .strict()
+
+const sumsubAccessTokenInvalidResponseEventSchema = z
+  .object({
+    event: z.literal("sumsub_access_token_invalid_response"),
+    level: z.literal("error"),
+    error: z.string(),
+    response: z.unknown(),
+  })
+  .strict()
+
+const sumsubGetApplicantFailedEventSchema = z
+  .object({
+    event: z.literal("sumsub_get_applicant_failed"),
+    level: z.literal("error"),
+    status: z.number(),
+    error: z.string(),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const sumsubGetApplicantInvalidResponseEventSchema = z
+  .object({
+    event: z.literal("sumsub_get_applicant_invalid_response"),
+    level: z.literal("error"),
+    error: z.string(),
+    response: z.unknown(),
+  })
+  .strict()
+
+const sumsubGetApplicantByExternalIdFailedEventSchema = z
+  .object({
+    event: z.literal("sumsub_get_applicant_by_external_id_failed"),
+    level: z.literal("error"),
+    status: z.number(),
+    error: z.string(),
+    externalUserId: z.string(),
+  })
+  .strict()
+
+const sumsubGetApplicantByExternalIdInvalidResponseEventSchema = z
+  .object({
+    event: z.literal("sumsub_get_applicant_by_external_id_invalid_response"),
+    level: z.literal("error"),
+    error: z.string(),
+    response: z.unknown(),
+  })
+  .strict()
+
+const sumsubUpdateMetadataFailedEventSchema = z
+  .object({
+    event: z.literal("sumsub_update_metadata_failed"),
+    level: z.literal("error"),
+    status: z.number(),
+    error: z.string(),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookSecretNotConfiguredEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_secret_not_configured"),
+    level: z.literal("error"),
+  })
+  .strict()
+
+// =============================================================================
+// Redis Events (2 events)
+// =============================================================================
+
+const redisConnectionEstablishedEventSchema = z
+  .object({
+    event: z.literal("redis_connection_established"),
+    level: z.literal("info"),
+    url: z.string(),
+  })
+  .strict()
+
+const redisConnectionFailedEventSchema = z
+  .object({
+    event: z.literal("redis_connection_failed"),
+    level: z.literal("error"),
+    error: z.string(),
+  })
+  .strict()
+
+// =============================================================================
+// Verification Status Events (2 events)
+// =============================================================================
+
+const verificationStatusSetEventSchema = z
+  .object({
+    event: z.literal("verification_status_set"),
+    level: z.literal("info"),
+    accountId: z.string(),
+    status: z.string(),
+  })
+  .strict()
+
+const verificationStatusClearedEventSchema = z
+  .object({
+    event: z.literal("verification_status_cleared"),
+    level: z.literal("info"),
+    accountId: z.string(),
+  })
+  .strict()
+
+// =============================================================================
+// Combined Schema
+// =============================================================================
+
+/**
+ * All log events - discriminated union by "event" field
+ */
+export const logEventSchema = z.discriminatedUnion("event", [
+  // Token route events
+  sumsubTokenInvalidFormatEventSchema,
+  sumsubTokenMissingConfigEventSchema,
+  sumsubTokenInvalidSignatureEventSchema,
+  sumsubTokenNotFullAccessEventSchema,
+  sumsubApplicantExistsEventSchema,
+  sumsubMetadataStoredEventSchema,
+  sumsubTokenGeneratedEventSchema,
+  sumsubTokenErrorEventSchema,
+  // Webhook route events
+  sumsubWebhookMissingSignatureEventSchema,
+  sumsubWebhookInvalidSignatureEventSchema,
+  sumsubWebhookInvalidPayloadEventSchema,
+  sumsubWebhookReceivedEventSchema,
+  sumsubWebhookNotApprovedEventSchema,
+  sumsubWebhookMissingMetadataEventSchema,
+  sumsubWebhookInvalidFormatEventSchema,
+  sumsubWebhookMissingConfigEventSchema,
+  sumsubWebhookSignatureInvalidEventSchema,
+  sumsubWebhookNotFullAccessEventSchema,
+  sumsubWebhookNonceUsedEventSchema,
+  sumsubWebhookMissingBackendConfigEventSchema,
+  sumsubWebhookStoredOnchainEventSchema,
+  sumsubWebhookStorageFailedEventSchema,
+  sumsubWebhookErrorEventSchema,
+  sumsubWebhookPendingReviewEventSchema,
+  sumsubWebhookMissingExternalUserIdEventSchema,
+  // SumSub provider events
+  sumsubCreateApplicantFailedEventSchema,
+  sumsubCreateApplicantInvalidResponseEventSchema,
+  sumsubApplicantCreatedEventSchema,
+  sumsubAccessTokenFailedEventSchema,
+  sumsubAccessTokenInvalidResponseEventSchema,
+  sumsubGetApplicantFailedEventSchema,
+  sumsubGetApplicantInvalidResponseEventSchema,
+  sumsubGetApplicantByExternalIdFailedEventSchema,
+  sumsubGetApplicantByExternalIdInvalidResponseEventSchema,
+  sumsubUpdateMetadataFailedEventSchema,
+  sumsubWebhookSecretNotConfiguredEventSchema,
+  // Redis events
+  redisConnectionEstablishedEventSchema,
+  redisConnectionFailedEventSchema,
+  // Verification status events
+  verificationStatusSetEventSchema,
+  verificationStatusClearedEventSchema,
 ])
-
-const errorStageSchema = z.enum([
-  "request_validation",
-  "sumsub_verify",
-  "sumsub_verify_response",
-  "signature_parse",
-  "signature_validate",
-  "storage",
-  "config",
-  "internal",
-])
-
-const platformSchema = z.enum(["desktop", "mobile", "unknown"])
-
-// =============================================================================
-// Nested Context Schemas
-// =============================================================================
-
-const errorContextSchema = z
-  .object({
-    code: z.string().optional(),
-    message: z.string().optional(),
-    isRetryable: z.boolean().optional(),
-    stage: errorStageSchema.optional(),
-  })
-  .strict()
-
-const stageReachedSchema = z
-  .object({
-    parsed: z.boolean().optional(),
-    signatureValidated: z.boolean().optional(),
-    proofValidated: z.boolean().optional(),
-    nonceReserved: z.boolean().optional(),
-    storedOnChain: z.boolean().optional(),
-  })
-  .strict()
-
-const externalCallsSchema = z
-  .object({
-    sumsubCalled: z.boolean().optional(),
-    sumsubSuccess: z.boolean().optional(),
-    nearRpcCalled: z.boolean().optional(),
-    nearRpcSuccess: z.boolean().optional(),
-    redisCalled: z.boolean().optional(),
-    redisSuccess: z.boolean().optional(),
-    contractCalled: z.boolean().optional(),
-    contractSuccess: z.boolean().optional(),
-  })
-  .strict()
-
-const contractContextSchema = z
-  .object({
-    contractId: z.string().optional(),
-    methodCalled: z.string().optional(),
-  })
-  .strict()
-
-const keyPoolContextSchema = z
-  .object({
-    index: z.number().optional(),
-  })
-  .strict()
-
-// =============================================================================
-// Timing Schemas (per event type)
-// =============================================================================
-
-const verifyTimingsSchema = z
-  .object({
-    parseBody: z.number().optional(),
-    sumsubVerify: z.number().optional(),
-    signatureValidation: z.number().optional(),
-    nonceReservation: z.number().optional(),
-    contractStorage: z.number().optional(),
-    sessionUpdate: z.number().optional(),
-    keyPoolSelection: z.number().optional(),
-    total: z.number().optional(),
-  })
-  .strict()
-
-const getVerificationsTimingsSchema = z
-  .object({
-    contractFetch: z.number().optional(),
-    zkVerification: z.number().optional(),
-    total: z.number().optional(),
-  })
-  .strict()
-
-const checkIsVerifiedTimingsSchema = z
-  .object({
-    contractCall: z.number().optional(),
-    total: z.number().optional(),
-  })
-  .strict()
-
-// =============================================================================
-// Base Event Fields
-// =============================================================================
-
-const baseEventFieldsSchema = z.object({
-  requestId: z.string(),
-  timestamp: z.number().optional(),
-  distinctId: z.string().nullish(),
-  sessionId: z.string().nullish(),
-  platform: platformSchema.optional(),
-})
-
-// =============================================================================
-// Event Schemas
-// =============================================================================
-
-/**
- * SumSub webhook event - /api/verification/sumsub/webhook
- */
-const sumsubWebhookEventSchema = baseEventFieldsSchema
-  .extend({
-    route: z.literal("/api/verification/sumsub/webhook"),
-    method: z.literal("POST"),
-    nearAccountId: z.string().optional(),
-    webhookType: z.string().optional(),
-    reviewResult: z.string().optional(),
-    signaturePresent: z.boolean().optional(),
-    signatureTimestampAge: z.number().optional(),
-    stageReached: stageReachedSchema.optional(),
-    timings: verifyTimingsSchema.optional(),
-    externalCalls: externalCallsSchema.optional(),
-    contract: contractContextSchema.optional(),
-    keyPool: keyPoolContextSchema.optional(),
-    outcome: outcomeSchema.optional(),
-    statusCode: z.number().optional(),
-    error: errorContextSchema.optional(),
-  })
-  .strict()
-
-/**
- * Server action event - getVerificationsWithStatus
- */
-const getVerificationsEventSchema = baseEventFieldsSchema
-  .extend({
-    action: z.literal("getVerificationsWithStatus"),
-    page: z.number().optional(),
-    pageSize: z.number().optional(),
-    verificationsRequested: z.number().optional(),
-    verificationsReturned: z.number().optional(),
-    totalVerifications: z.number().optional(),
-    zkVerificationAttempted: z.number().optional(),
-    zkVerificationSucceeded: z.number().optional(),
-    zkVerificationFailed: z.number().optional(),
-    signatureVerificationAttempted: z.number().optional(),
-    signatureVerificationSucceeded: z.number().optional(),
-    signatureVerificationFailed: z.number().optional(),
-    timings: getVerificationsTimingsSchema.optional(),
-    outcome: outcomeSchema.optional(),
-  })
-  .strict()
-
-/**
- * Server action event - checkIsVerified
- */
-const checkIsVerifiedEventSchema = baseEventFieldsSchema
-  .extend({
-    action: z.literal("checkIsVerified"),
-    nearAccountId: z.string().optional(),
-    isVerified: z.boolean().optional(),
-    timings: checkIsVerifiedTimingsSchema.optional(),
-    outcome: outcomeSchema.optional(),
-  })
-  .strict()
-
-// =============================================================================
-// Combined Schema & Type Exports
-// =============================================================================
-
-/**
- * Union of all wide event schemas
- */
-const wideEventSchema = z.union([sumsubWebhookEventSchema, getVerificationsEventSchema, checkIsVerifiedEventSchema])
 
 // =============================================================================
 // Type Exports
 // =============================================================================
 
-export type LogLevel = z.infer<typeof logLevelSchema>
-export type Outcome = z.infer<typeof outcomeSchema>
-export type ErrorStage = z.infer<typeof errorStageSchema>
-export type Platform = z.infer<typeof platformSchema>
-
-export type SumSubWebhookEvent = z.infer<typeof sumsubWebhookEventSchema>
-export type GetVerificationsEvent = z.infer<typeof getVerificationsEventSchema>
-export type CheckIsVerifiedEvent = z.infer<typeof checkIsVerifiedEventSchema>
-export type WideEvent = z.infer<typeof wideEventSchema>
-
-// Timer type unions (for compile-time timer name validation)
-export type SumSubWebhookTimers = keyof Omit<z.infer<typeof verifyTimingsSchema>, "total">
-export type GetVerificationsTimers = keyof Omit<z.infer<typeof getVerificationsTimingsSchema>, "total">
-export type CheckIsVerifiedTimers = keyof Omit<z.infer<typeof checkIsVerifiedTimingsSchema>, "total">
-
-// =============================================================================
-// Type-Level Mappings (for RequestContext)
-// =============================================================================
-
-/**
- * Maps an event type to its valid timer names
- */
-export type EventTimers<E extends WideEvent> = E extends SumSubWebhookEvent
-  ? SumSubWebhookTimers
-  : E extends GetVerificationsEvent
-    ? GetVerificationsTimers
-    : E extends CheckIsVerifiedEvent
-      ? CheckIsVerifiedTimers
-      : never
+export type LogEvent = z.infer<typeof logEventSchema>
