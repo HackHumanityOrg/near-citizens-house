@@ -158,7 +158,6 @@ fn test_store_verification_when_paused() {
                 };
 
                 contract.store_verification(
-                    "test_sumsub_applicant_id".to_string(),
                     user,
                     sig_data,
                     "test_user_context_data".to_string(),

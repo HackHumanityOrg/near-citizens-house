@@ -27,7 +27,6 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -77,7 +76,6 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "valid_test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -129,91 +127,6 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
 #[allure_suite_label("Verified Accounts Integration Tests")]
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
-#[allure_tags("integration", "security", "sumsub-applicant-id")]
-#[allure_description(
-    "Verifies that duplicate SumSub applicant IDs are rejected to prevent double-verification."
-)]
-#[allure_test]
-#[tokio::test]
-async fn test_duplicate_sumsub_applicant_id_rejected() -> anyhow::Result<()> {
-    let (worker, contract, backend) = init().await?;
-    let user1 = worker.dev_create_account().await?;
-    let user2 = worker.dev_create_account().await?;
-
-    // Generate valid signatures for both users
-    let nonce1: [u8; 32] = [1u8; 32];
-    let nonce2: [u8; 32] = [2u8; 32];
-    let challenge = "Identify myself";
-    let recipient = contract.id().to_string();
-
-    let (signature1, public_key1) =
-        generate_nep413_signature(&user1, challenge, &nonce1, &recipient);
-    let (signature2, public_key2) =
-        generate_nep413_signature(&user2, challenge, &nonce2, &recipient);
-
-    // First verification should succeed
-    let first_result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "sumsub_applicant_id": "duplicate_test_sumsub_applicant_id",
-            "near_account_id": user1.id(),
-            "signature_data": {
-                "account_id": user1.id(),
-                "signature": signature1,
-                "public_key": public_key1,
-                "challenge": challenge,
-                "nonce": nonce_to_base64(&nonce1),
-                "recipient": recipient.clone()
-            },
-            "user_context_data": "context1"
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    step("Verify first verification succeeds", || {
-        assert!(
-            first_result.is_success(),
-            "First verification failed: {:?}",
-            first_result.failures()
-        );
-    });
-
-    // Second verification with same SumSub applicant ID should fail
-    let result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "sumsub_applicant_id": "duplicate_test_sumsub_applicant_id", // Same SumSub applicant ID!
-            "near_account_id": user2.id(),
-            "signature_data": {
-                "account_id": user2.id(),
-                "signature": signature2,
-                "public_key": public_key2,
-                "challenge": challenge,
-                "nonce": nonce_to_base64(&nonce2),
-                "recipient": recipient.clone()
-            },
-            "user_context_data": "context2"
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    step("Verify duplicate SumSub applicant ID is rejected", || {
-        assert!(result.is_failure());
-        let failure_msg = format!("{:?}", result.failures());
-        assert!(failure_msg.contains("SumSub applicant ID already used"));
-    });
-
-    Ok(())
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Integration Tests")]
-#[allure_sub_suite("Signature Verification")]
-#[allure_severity("critical")]
 #[allure_tags("integration", "security", "duplicate")]
 #[allure_description("Verifies that an already verified account cannot be verified again.")]
 #[allure_test]
@@ -238,7 +151,6 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "first_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -267,7 +179,6 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "second_sumsub_applicant_id", // Different SumSub applicant ID
             "near_account_id": user.id(),    // Same account!
             "signature_data": {
                 "account_id": user.id(),
@@ -319,7 +230,6 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "sumsub_applicant_id": "data_test_sumsub_applicant_id",
             "near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
@@ -352,10 +262,6 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
 
     step("Verify get_full_verification returns correct data", || {
         // Verify the returned data
-        assert_eq!(
-            account_data.get("sumsub_applicant_id"),
-            Some(&serde_json::json!("data_test_sumsub_applicant_id"))
-        );
         assert_eq!(
             account_data.get("user_context_data"),
             Some(&serde_json::json!("custom_context_data"))
@@ -396,7 +302,6 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
             .call(contract.id(), "store_verification")
             .deposit(NearToken::from_yoctonear(1))
             .args_json(json!({
-                "sumsub_applicant_id": format!("pagination_sumsub_applicant_id_{}", i),
                 "near_account_id": user.id(),
                 "signature_data": {
                     "account_id": user.id(),

@@ -38,7 +38,6 @@ impl VersionedVerification {
     pub fn into_current(self) -> Verification {
         match self {
             Self::V1(v) => VerificationV2 {
-                sumsub_applicant_id: v.sumsub_applicant_id,
                 near_account_id: v.near_account_id,
                 verified_at: v.verified_at,
                 user_context_data: v.user_context_data,
@@ -51,7 +50,6 @@ impl VersionedVerification {
     pub fn as_current(&self) -> Verification {
         match self {
             Self::V1(v) => VerificationV2 {
-                sumsub_applicant_id: v.sumsub_applicant_id.clone(),
                 near_account_id: v.near_account_id.clone(),
                 verified_at: v.verified_at,
                 user_context_data: v.user_context_data.clone(),
@@ -93,8 +91,6 @@ impl From<Verification> for VersionedVerification {
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationSummary {
-    /// SumSub applicant ID (prevents duplicate identity use)
-    pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
     /// Unix timestamp (nanoseconds) when verification was recorded
@@ -111,8 +107,6 @@ pub struct VerificationSummary {
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationV1 {
-    /// SumSub applicant ID (prevents duplicate identity use)
-    pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
     /// Unix timestamp (nanoseconds) when verification was recorded
@@ -129,8 +123,6 @@ pub struct VerificationV1 {
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationV2 {
-    /// SumSub applicant ID (prevents duplicate identity use)
-    pub sumsub_applicant_id: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
     /// Unix timestamp (nanoseconds) when verification was recorded
@@ -145,7 +137,6 @@ pub type Verification = VerificationV2;
 impl From<&VerificationV1> for VerificationSummary {
     fn from(v: &VerificationV1) -> Self {
         Self {
-            sumsub_applicant_id: v.sumsub_applicant_id.clone(),
             near_account_id: v.near_account_id.clone(),
             verified_at: v.verified_at,
         }
@@ -155,7 +146,6 @@ impl From<&VerificationV1> for VerificationSummary {
 impl From<&VerificationV2> for VerificationSummary {
     fn from(v: &VerificationV2) -> Self {
         Self {
-            sumsub_applicant_id: v.sumsub_applicant_id.clone(),
             near_account_id: v.near_account_id.clone(),
             verified_at: v.verified_at,
         }

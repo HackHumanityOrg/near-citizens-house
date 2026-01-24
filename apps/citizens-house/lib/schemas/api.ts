@@ -14,7 +14,6 @@ export const verifyResponseSchema = z.discriminatedUnion("status", [
       nearAccountId: nearAccountIdSchema,
       nearSignature: z.string(),
     }),
-    sumsubApplicantId: z.string().optional(),
   }),
   z.object({
     status: z.literal("error"),

@@ -16,7 +16,6 @@ describe("Logger RequestContext Type Safety", () => {
       ctx.set("route", "/api/verification/sumsub/webhook")
       ctx.set("method", "POST")
       ctx.set("nearAccountId", "alice.near")
-      ctx.set("sumsubApplicantId", "applicant-123")
       ctx.set("webhookType", "applicantReviewed")
       ctx.set("reviewResult", "GREEN")
       ctx.set("outcome", "success")

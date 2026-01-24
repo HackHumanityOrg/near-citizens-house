@@ -139,7 +139,6 @@ export type ApplicantMetadata = z.infer<typeof applicantMetadataSchema>
  * SumSub-based verification data (replaces Self.xyz nullifier-based data).
  */
 export const sumsubVerificationDataSchema = z.object({
-  sumsubApplicantId: z.string().max(SIZE_LIMITS.NULLIFIER),
   nearAccountId: nearAccountIdSchema,
 })
 
@@ -149,7 +148,6 @@ export type SumSubVerificationData = z.infer<typeof sumsubVerificationDataSchema
  * Verification summary for API responses.
  */
 export const sumsubVerificationSummarySchema = z.object({
-  sumsubApplicantId: z.string().max(SIZE_LIMITS.NULLIFIER),
   nearAccountId: nearAccountIdSchema,
   verifiedAt: z.number(),
 })
