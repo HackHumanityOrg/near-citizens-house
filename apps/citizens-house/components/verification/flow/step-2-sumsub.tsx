@@ -287,12 +287,48 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         setVerificationStatus("verifying")
       }
 
-      // Applicant submitted their documents - start polling for webhook
-      if (type === "idCheck.onApplicantSubmitted" || type === "idCheck.applicantStatus") {
+      // Applicant submitted their documents or status changed - handle based on review result
+      if (
+        type === "idCheck.onApplicantSubmitted" ||
+        type === "idCheck.applicantStatus" ||
+        type === "idCheck.onApplicantStatusChanged"
+      ) {
         const status = payload as SumSubApplicantStatusChangedPayload | undefined
+        const reviewAnswer = status?.reviewResult?.reviewAnswer
 
-        // Check if verification is complete
-        if (status?.reviewStatus === "completed" || status?.reviewResult?.reviewAnswer === "GREEN") {
+        // Handle immediate rejection from SumSub (duplicate detection, etc.)
+        // NOTE: SDK message doesn't include rejectLabels, so we show generic rejection
+        // The webhook will set the specific error code (DUPLICATE_IDENTITY, etc.) in Redis
+        if (reviewAnswer === "RED") {
+          trackEvent({
+            domain: "verification",
+            action: "sumsub_rejected",
+            accountId: nearSignature.accountId,
+            reviewAnswer,
+          })
+          confirmationInProgressRef.current = false
+          setVerificationStatus("error")
+          onError("Verification was not approved. Please check the details shown above.", "VERIFICATION_REJECTED")
+          return
+        }
+
+        // Handle manual review needed
+        if (reviewAnswer === "YELLOW") {
+          trackEvent({
+            domain: "verification",
+            action: "manual_review_shown",
+            accountId: nearSignature.accountId,
+            reviewAnswer,
+          })
+          confirmationInProgressRef.current = false
+          setVerificationStatus("manual_review")
+          return
+        }
+
+        // Only poll for GREEN results or when reviewStatus is "completed" without a clear answer
+        // The "reviewStatus completed without reviewAnswer" case handles edge cases where
+        // SumSub sends completion without explicit answer (legacy behavior)
+        if (reviewAnswer === "GREEN" || (status?.reviewStatus === "completed" && !reviewAnswer)) {
           if (!confirmationInProgressRef.current) {
             confirmationInProgressRef.current = true
             setVerificationStatus("polling")
@@ -300,18 +336,8 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           }
         }
       }
-
-      // Handle step completion - user finished all steps
-      if (type === "idCheck.onApplicantStatusChanged") {
-        const status = payload as SumSubApplicantStatusChangedPayload | undefined
-        if (status?.reviewStatus === "completed" && !confirmationInProgressRef.current) {
-          confirmationInProgressRef.current = true
-          setVerificationStatus("polling")
-          void confirmBackendStatus()
-        }
-      }
     },
-    [nearSignature.accountId, confirmBackendStatus],
+    [nearSignature.accountId, confirmBackendStatus, onError],
   )
 
   // Handle SumSub SDK errors

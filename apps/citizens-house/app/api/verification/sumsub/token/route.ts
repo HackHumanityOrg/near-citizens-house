@@ -119,6 +119,22 @@ export async function POST(request: NextRequest) {
     // NOTE: Nonce is NOT reserved here - only in webhook to allow retries if SumSub verification fails.
     // The webhook will reserve the nonce to prevent replay attacks.
 
+    // ==================== Check if already verified ====================
+    // Prevent already-verified users from re-entering the verification flow
+    const { checkIsVerified } = await import("@/app/citizens/actions")
+    const isAlreadyVerified = await checkIsVerified(nearSignature.accountId)
+    if (isAlreadyVerified) {
+      logEvent({
+        event: "sumsub_token_already_verified",
+        level: "info",
+        accountId: nearSignature.accountId,
+      })
+      return NextResponse.json(
+        { error: "This account is already verified", code: "ACCOUNT_ALREADY_VERIFIED" },
+        { status: 400 },
+      )
+    }
+
     // ==================== Generate SumSub token ====================
 
     // Use NEAR account ID as external user ID in SumSub

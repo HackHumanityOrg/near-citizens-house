@@ -351,6 +351,23 @@ function VerificationStartContent() {
 
     const platform = getPlatform()
 
+    // Re-check if already verified before signing (prevents race conditions)
+    try {
+      const isVerified = await checkIsVerified(accountId)
+      if (isVerified) {
+        trackEvent({
+          domain: "verification",
+          action: "already_verified",
+          platform,
+          accountId,
+        })
+        setCurrentStep(VerificationProgressStep.VerificationComplete)
+        return
+      }
+    } catch {
+      // Continue with signing if check fails - the token endpoint will also check
+    }
+
     trackEvent({
       domain: "verification",
       action: "sign_started",

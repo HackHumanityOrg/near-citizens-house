@@ -196,6 +196,16 @@ const verificationSumsubErrorEventSchema = z
   })
   .strict()
 
+// Immediate rejection from SumSub SDK (e.g., duplicate identity detection)
+const verificationSumsubRejectedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_rejected"),
+    accountId: nearAccountIdSchema,
+    reviewAnswer: z.string(),
+  })
+  .strict()
+
 const verificationErrorShownEventSchema = z
   .object({
     ...verificationEventBase,
@@ -283,6 +293,7 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationSumsubSdkLoadedEventSchema,
   verificationSumsubMessageEventSchema,
   verificationSumsubErrorEventSchema,
+  verificationSumsubRejectedEventSchema,
   // Client-side events - callback
   verificationCallbackLoadedEventSchema,
   verificationCallbackPollingStartedEventSchema,

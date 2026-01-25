@@ -58,6 +58,14 @@ const sumsubTokenNotFullAccessEventSchema = z
   })
   .strict()
 
+const sumsubTokenAlreadyVerifiedEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_already_verified"),
+    level: z.literal("info"),
+    accountId: z.string(),
+  })
+  .strict()
+
 const sumsubApplicantExistsEventSchema = z
   .object({
     event: z.literal("sumsub_applicant_exists"),
@@ -411,6 +419,7 @@ export const logEventSchema = z.discriminatedUnion("event", [
   sumsubTokenMissingConfigEventSchema,
   sumsubTokenInvalidSignatureEventSchema,
   sumsubTokenNotFullAccessEventSchema,
+  sumsubTokenAlreadyVerifiedEventSchema,
   sumsubApplicantExistsEventSchema,
   sumsubMetadataStoredEventSchema,
   sumsubTokenGeneratedEventSchema,
