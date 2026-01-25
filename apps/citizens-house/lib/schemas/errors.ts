@@ -48,99 +48,184 @@ export const verificationErrorCodeSchema = z.enum([
 export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
 
 // ============================================================================
-// Error Messages
+// Error Categories & Definitions
 // ============================================================================
 
-/**
- * User-friendly error messages for each error code.
- * Used internally by createVerificationError and getErrorMessage.
- */
-const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
-  // Signature validation
-  NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
-  SIGNATURE_EXPIRED: "Signature expired",
-  SIGNATURE_TIMESTAMP_INVALID: "Invalid signature timestamp",
+export type ErrorCategory = "retryable" | "hold" | "non-retryable" | "internal"
 
-  // Contract errors
-  DUPLICATE_IDENTITY: "This identity has already been registered",
-  ACCOUNT_ALREADY_VERIFIED: "This NEAR account is already verified",
-  CONTRACT_PAUSED: "Verification is temporarily unavailable",
+export interface ErrorDefinition {
+  code: VerificationErrorCode
+  title: string
+  description: string
+  category: ErrorCategory
+  apiMessage: string
+}
+
+/**
+ * Single source of truth for all verification errors.
+ * Each error has a title, description, category, and API message.
+ */
+export const VERIFICATION_ERRORS = {
+  // Signature validation - retryable
+  NEAR_SIGNATURE_INVALID: {
+    code: "NEAR_SIGNATURE_INVALID",
+    title: "Signature Verification Failed",
+    description: "We couldn't verify your wallet signature. Please try signing the message again.",
+    category: "retryable",
+    apiMessage: "NEAR signature verification failed",
+  },
+  SIGNATURE_EXPIRED: {
+    code: "SIGNATURE_EXPIRED",
+    title: "Signature Expired",
+    description: "Your signature has expired. Please sign a new message to continue.",
+    category: "retryable",
+    apiMessage: "Signature expired",
+  },
+  SIGNATURE_TIMESTAMP_INVALID: {
+    code: "SIGNATURE_TIMESTAMP_INVALID",
+    title: "Signature Expired",
+    description: "Your signature has expired. Please sign a new message to continue.",
+    category: "retryable",
+    apiMessage: "Invalid signature timestamp",
+  },
+
+  // Contract errors - non-retryable
+  DUPLICATE_IDENTITY: {
+    code: "DUPLICATE_IDENTITY",
+    title: "Already Verified",
+    description:
+      "This identity has already been used to verify another NEAR account. Each person can only verify one account.",
+    category: "non-retryable",
+    apiMessage: "This identity has already been registered",
+  },
+  ACCOUNT_ALREADY_VERIFIED: {
+    code: "ACCOUNT_ALREADY_VERIFIED",
+    title: "Account Already Verified",
+    description: "This NEAR account is already verified. Connect a different account to continue.",
+    category: "non-retryable",
+    apiMessage: "This NEAR account is already verified",
+  },
+  CONTRACT_PAUSED: {
+    code: "CONTRACT_PAUSED",
+    title: "Verification Unavailable",
+    description: "Verification is temporarily unavailable. Please try again later.",
+    category: "non-retryable",
+    apiMessage: "Verification is temporarily unavailable",
+  },
 
   // Verification outcomes
-  VERIFICATION_ON_HOLD: "Verification requires manual review",
-  VERIFICATION_REJECTED: "Verification was rejected",
-  VERIFICATION_RETRY: "Please resubmit with clearer documents",
+  VERIFICATION_ON_HOLD: {
+    code: "VERIFICATION_ON_HOLD",
+    title: "Verification Under Review",
+    description: "Your documents are being reviewed by our team. This typically takes a few hours.",
+    category: "hold",
+    apiMessage: "Verification requires manual review",
+  },
+  VERIFICATION_REJECTED: {
+    code: "VERIFICATION_REJECTED",
+    title: "Verification Rejected",
+    description: "Your verification could not be approved. Please contact support if you believe this is an error.",
+    category: "non-retryable",
+    apiMessage: "Verification was rejected",
+  },
+  VERIFICATION_RETRY: {
+    code: "VERIFICATION_RETRY",
+    title: "Documents Need Resubmission",
+    description: "Please resubmit your documents with clearer images. Ensure your ID is fully visible and not blurry.",
+    category: "retryable",
+    apiMessage: "Please resubmit with clearer documents",
+  },
 
   // API-specific errors
-  INVALID_REQUEST: "Invalid request format",
-  TOKEN_GENERATION_FAILED: "Failed to generate access token",
-  WEBHOOK_SIGNATURE_INVALID: "Invalid webhook signature",
-  WEBHOOK_PAYLOAD_INVALID: "Invalid webhook payload",
-  MISSING_NEAR_METADATA: "Missing NEAR account metadata",
-  NONCE_ALREADY_USED: "Signature nonce already used",
-  BACKEND_NOT_CONFIGURED: "Backend not configured",
-  STORAGE_FAILED: "Failed to store verification",
+  INVALID_REQUEST: {
+    code: "INVALID_REQUEST",
+    title: "Something Went Wrong",
+    description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
+    category: "non-retryable",
+    apiMessage: "Invalid request format",
+  },
+  TOKEN_GENERATION_FAILED: {
+    code: "TOKEN_GENERATION_FAILED",
+    title: "Something Went Wrong",
+    description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
+    category: "internal",
+    apiMessage: "Failed to generate access token",
+  },
+  WEBHOOK_SIGNATURE_INVALID: {
+    code: "WEBHOOK_SIGNATURE_INVALID",
+    title: "Something Went Wrong",
+    description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
+    category: "non-retryable",
+    apiMessage: "Invalid webhook signature",
+  },
+  WEBHOOK_PAYLOAD_INVALID: {
+    code: "WEBHOOK_PAYLOAD_INVALID",
+    title: "Something Went Wrong",
+    description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
+    category: "non-retryable",
+    apiMessage: "Invalid webhook payload",
+  },
+  MISSING_NEAR_METADATA: {
+    code: "MISSING_NEAR_METADATA",
+    title: "Something Went Wrong",
+    description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
+    category: "non-retryable",
+    apiMessage: "Missing NEAR account metadata",
+  },
+  NONCE_ALREADY_USED: {
+    code: "NONCE_ALREADY_USED",
+    title: "Signature Already Used",
+    description: "This signature has already been used. Please sign a new message to continue.",
+    category: "retryable",
+    apiMessage: "Signature nonce already used",
+  },
+  BACKEND_NOT_CONFIGURED: {
+    code: "BACKEND_NOT_CONFIGURED",
+    title: "Something Went Wrong",
+    description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
+    category: "internal",
+    apiMessage: "Backend not configured",
+  },
+  STORAGE_FAILED: {
+    code: "STORAGE_FAILED",
+    title: "Something Went Wrong",
+    description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
+    category: "internal",
+    apiMessage: "Failed to store verification",
+  },
 
-  // Client-side errors
-  TIMEOUT: "Verification is taking longer than expected",
-  TOKEN_FETCH_FAILED: "Failed to initialize verification",
-} as const
-
-// ============================================================================
-// Error Categories
-// ============================================================================
+  // Client-side errors - retryable
+  TIMEOUT: {
+    code: "TIMEOUT",
+    title: "Verification Taking Longer",
+    description: "Verification is taking longer than expected. Please check back later.",
+    category: "retryable",
+    apiMessage: "Verification is taking longer than expected",
+  },
+  TOKEN_FETCH_FAILED: {
+    code: "TOKEN_FETCH_FAILED",
+    title: "Connection Error",
+    description: "Failed to initialize verification. Please try again.",
+    category: "retryable",
+    apiMessage: "Failed to initialize verification",
+  },
+} as const satisfies Record<VerificationErrorCode, ErrorDefinition>
 
 /**
- * Error codes that indicate non-recoverable issues.
- * Users cannot retry verification with the same account/identity.
+ * Derived error category mapping for backward compatibility.
+ * Used by debug menu to group errors by category.
  */
-const NON_RETRYABLE_ERRORS = [
-  "DUPLICATE_IDENTITY",
-  "ACCOUNT_ALREADY_VERIFIED",
-  "CONTRACT_PAUSED",
-  "VERIFICATION_REJECTED",
-  "WEBHOOK_SIGNATURE_INVALID",
-  "WEBHOOK_PAYLOAD_INVALID",
-  "MISSING_NEAR_METADATA",
-  "INVALID_REQUEST",
-] as const satisfies readonly VerificationErrorCode[]
-
-type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
-
-/**
- * Exhaustive error category mapping.
- * TypeScript will error if any VerificationErrorCode is not assigned a category.
- */
-export const ERROR_CATEGORIES = {
-  NEAR_SIGNATURE_INVALID: "retryable",
-  SIGNATURE_EXPIRED: "retryable",
-  SIGNATURE_TIMESTAMP_INVALID: "retryable",
-  VERIFICATION_RETRY: "retryable",
-  TIMEOUT: "retryable",
-  TOKEN_FETCH_FAILED: "retryable",
-  VERIFICATION_ON_HOLD: "hold",
-  DUPLICATE_IDENTITY: "non-retryable",
-  ACCOUNT_ALREADY_VERIFIED: "non-retryable",
-  CONTRACT_PAUSED: "non-retryable",
-  VERIFICATION_REJECTED: "non-retryable",
-  WEBHOOK_SIGNATURE_INVALID: "non-retryable",
-  WEBHOOK_PAYLOAD_INVALID: "non-retryable",
-  MISSING_NEAR_METADATA: "non-retryable",
-  NONCE_ALREADY_USED: "retryable",
-  INVALID_REQUEST: "non-retryable",
-  TOKEN_GENERATION_FAILED: "internal",
-  BACKEND_NOT_CONFIGURED: "internal",
-  STORAGE_FAILED: "internal",
-} as const satisfies Record<VerificationErrorCode, "retryable" | "hold" | "non-retryable" | "internal">
+export const ERROR_CATEGORIES = Object.fromEntries(
+  Object.entries(VERIFICATION_ERRORS).map(([code, def]) => [code, def.category]),
+) as Record<VerificationErrorCode, ErrorCategory>
 
 /**
  * Check if an error code indicates a non-retryable error.
  * Non-retryable errors cannot be resolved by the user trying again.
  */
 export function isNonRetryableError(errorCode: string | null | undefined): boolean {
-  return (
-    errorCode !== null && errorCode !== undefined && NON_RETRYABLE_ERRORS.includes(errorCode as NonRetryableErrorCode)
-  )
+  if (!errorCode || !(errorCode in VERIFICATION_ERRORS)) return false
+  return VERIFICATION_ERRORS[errorCode as VerificationErrorCode].category === "non-retryable"
 }
 
 /**
@@ -189,12 +274,12 @@ export function createVerificationError(
   details?: string,
   issues?: ValidationIssue[],
 ): VerificationError {
-  const baseMessage = VERIFICATION_ERROR_MESSAGES[code]
+  const { apiMessage } = VERIFICATION_ERRORS[code]
   return {
     status: "error",
     result: false,
     code,
-    reason: details ? `${baseMessage}: ${details}` : baseMessage,
+    reason: details ? `${apiMessage}: ${details}` : apiMessage,
     ...(issues && { issues }),
   }
 }
@@ -239,50 +324,10 @@ export function mapContractErrorToCode(errorMessage: string): VerificationErrorC
  * Used in error dialogs and UI displays.
  */
 export function getErrorTitle(errorCode: string | null | undefined): string {
-  switch (errorCode) {
-    // Non-retryable errors
-    case "DUPLICATE_IDENTITY":
-      return "Already Verified"
-    case "ACCOUNT_ALREADY_VERIFIED":
-      return "Account Already Verified"
-    case "CONTRACT_PAUSED":
-      return "Verification Unavailable"
-    case "VERIFICATION_REJECTED":
-      return "Verification Rejected"
-
-    // Hold errors
-    case "VERIFICATION_ON_HOLD":
-      return "Verification Under Review"
-
-    // Retryable errors
-    case "VERIFICATION_RETRY":
-      return "Documents Need Resubmission"
-    case "NEAR_SIGNATURE_INVALID":
-      return "Signature Verification Failed"
-    case "SIGNATURE_EXPIRED":
-      return "Signature Expired"
-    case "SIGNATURE_TIMESTAMP_INVALID":
-      return "Signature Expired"
-    case "TIMEOUT":
-      return "Verification Taking Longer"
-    case "TOKEN_FETCH_FAILED":
-      return "Connection Error"
-    case "NONCE_ALREADY_USED":
-      return "Signature Already Used"
-
-    // Technical/internal errors (generic title)
-    case "INVALID_REQUEST":
-    case "TOKEN_GENERATION_FAILED":
-    case "WEBHOOK_SIGNATURE_INVALID":
-    case "WEBHOOK_PAYLOAD_INVALID":
-    case "MISSING_NEAR_METADATA":
-    case "BACKEND_NOT_CONFIGURED":
-    case "STORAGE_FAILED":
-      return "Something Went Wrong"
-
-    default:
-      return "Verification Failed"
+  if (!errorCode || !(errorCode in VERIFICATION_ERRORS)) {
+    return "Verification Failed"
   }
+  return VERIFICATION_ERRORS[errorCode as VerificationErrorCode].title
 }
 
 /**
@@ -296,46 +341,8 @@ export function getErrorMessage(errorCode: string | null | undefined, fallbackMe
   if (!errorCode) {
     return fallbackMessage || "An unexpected error occurred. Please try again."
   }
-
-  switch (errorCode) {
-    case "DUPLICATE_IDENTITY":
-      return "This identity has already been used to verify another NEAR account. Each person can only verify one account."
-    case "ACCOUNT_ALREADY_VERIFIED":
-      return "This NEAR account is already verified. Connect a different account to continue."
-    case "CONTRACT_PAUSED":
-      return "Verification is temporarily unavailable. Please try again later."
-    case "VERIFICATION_ON_HOLD":
-      return "Your documents are being reviewed by our team. This typically takes a few hours."
-    case "VERIFICATION_REJECTED":
-      return "Your verification could not be approved. Please contact support if you believe this is an error."
-    case "VERIFICATION_RETRY":
-      return "Please resubmit your documents with clearer images. Ensure your ID is fully visible and not blurry."
-    case "TIMEOUT":
-      return "Verification is taking longer than expected. Please check back later."
-    case "TOKEN_FETCH_FAILED":
-      return "Failed to initialize verification. Please try again."
-    case "NEAR_SIGNATURE_INVALID":
-      return "We couldn't verify your wallet signature. Please try signing the message again."
-    case "SIGNATURE_EXPIRED":
-      return "Your signature has expired. Please sign a new message to continue."
-    case "SIGNATURE_TIMESTAMP_INVALID":
-      return "Your signature has expired. Please sign a new message to continue."
-    case "NONCE_ALREADY_USED":
-      return "This signature has already been used. Please sign a new message to continue."
-    case "INVALID_REQUEST":
-    case "TOKEN_GENERATION_FAILED":
-    case "WEBHOOK_SIGNATURE_INVALID":
-    case "WEBHOOK_PAYLOAD_INVALID":
-    case "MISSING_NEAR_METADATA":
-    case "BACKEND_NOT_CONFIGURED":
-    case "STORAGE_FAILED":
-      return "Something went wrong on our end. Please try again, or contact support if the issue persists."
-    default:
-      // Check if it's a known error code from the schema
-      if (errorCode in VERIFICATION_ERROR_MESSAGES) {
-        return VERIFICATION_ERROR_MESSAGES[errorCode as VerificationErrorCode]
-      }
-      // Return the error code itself as last resort (may be a descriptive message)
-      return fallbackMessage || errorCode
+  if (!(errorCode in VERIFICATION_ERRORS)) {
+    return fallbackMessage || errorCode
   }
+  return VERIFICATION_ERRORS[errorCode as VerificationErrorCode].description
 }
