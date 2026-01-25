@@ -6,8 +6,8 @@
  *
  * SECURITY: This route validates the NEAR signature BEFORE generating a SumSub
  * access token to prevent attackers from associating their KYC with another
- * user's NEAR account. The nonce is NOT reserved here (only in webhook) to
- * allow retries if SumSub verification fails.
+ * user's NEAR account. The nonce is reserved here with 10min TTL to match
+ * the signature freshness window during the step 1 → step 2 transition.
  */
 import { type NextRequest, NextResponse } from "next/server"
 import {
@@ -16,6 +16,7 @@ import {
   updateApplicantMetadata,
   getApplicantByExternalUserId,
 } from "@/lib/providers/sumsub-provider"
+import { reserveSignatureNonce } from "@/lib/nonce-store"
 import { env } from "@/lib/schemas/env"
 import {
   sumsubTokenRequestSchema,
@@ -27,6 +28,7 @@ import { logEvent } from "@/lib/logger"
 import { validateSignatureData, verifyNearSignature, getSigningMessage, getSigningRecipient } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
 import { apiError, apiSuccess } from "@/lib/api/response"
+import { type VerificationErrorCode } from "@/lib/schemas/errors"
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,14 +54,15 @@ export async function POST(request: NextRequest) {
     })
 
     if (!formatCheck.valid) {
+      const code = (formatCheck.errorCode as VerificationErrorCode) ?? "NEAR_SIGNATURE_INVALID"
       logEvent({
         event: "sumsub_token_invalid_format",
         level: "warn",
         accountId: nearSignature.accountId,
         error: formatCheck.error ?? "Unknown validation error",
-        errorCode: formatCheck.errorCode ?? "UNKNOWN",
+        errorCode: code,
       })
-      return apiError("NEAR_SIGNATURE_INVALID", formatCheck.error)
+      return apiError(code, formatCheck.error)
     }
 
     // 2. Verify NEAR signature cryptographically (NEP-413)
@@ -105,8 +108,20 @@ export async function POST(request: NextRequest) {
       return apiError("NEAR_SIGNATURE_INVALID", keyCheck.error ?? "Public key is not an active full-access key")
     }
 
-    // NOTE: Nonce is NOT reserved here - only in webhook to allow retries if SumSub verification fails.
-    // The webhook will reserve the nonce to prevent replay attacks.
+    // 4. Reserve nonce to prevent replay attacks
+    const NONCE_TTL_SECONDS = 10 * 60 // 10 minutes - matches signature freshness window
+    const nonceReserved = await reserveSignatureNonce(nearSignature.accountId, nearSignature.nonce, NONCE_TTL_SECONDS)
+    if (!nonceReserved) {
+      logEvent({
+        event: "sumsub_token_nonce_used",
+        level: "warn",
+        accountId: nearSignature.accountId,
+      })
+      return apiError("NONCE_ALREADY_USED")
+    }
+
+    // NOTE: If user fails SumSub verification, they'll need to sign a new message.
+    // This is acceptable since the signature is bound to this verification attempt.
 
     // ==================== Check if already verified ====================
     // Prevent already-verified users from re-entering the verification flow

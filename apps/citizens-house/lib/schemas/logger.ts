@@ -58,6 +58,14 @@ const sumsubTokenNotFullAccessEventSchema = z
   })
   .strict()
 
+const sumsubTokenNonceUsedEventSchema = z
+  .object({
+    event: z.literal("sumsub_token_nonce_used"),
+    level: z.literal("warn"),
+    accountId: z.string(),
+  })
+  .strict()
+
 const sumsubTokenAlreadyVerifiedEventSchema = z
   .object({
     event: z.literal("sumsub_token_already_verified"),
@@ -145,6 +153,26 @@ const sumsubWebhookNotApprovedEventSchema = z
     applicantId: z.string(),
     reviewAnswer: z.string(),
     rejectLabels: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookLateRejectionAfterApprovalEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_late_rejection_after_approval"),
+    level: z.literal("warn"),
+    applicantId: z.string(),
+    accountId: z.string(),
+    rejectLabels: z.string(),
+  })
+  .strict()
+
+const sumsubWebhookUserMismatchEventSchema = z
+  .object({
+    event: z.literal("sumsub_webhook_user_mismatch"),
+    level: z.literal("error"),
+    applicantId: z.string(),
+    externalUserId: z.string(),
+    metadataAccountId: z.string(),
   })
   .strict()
 
@@ -419,6 +447,7 @@ export const logEventSchema = z.discriminatedUnion("event", [
   sumsubTokenMissingConfigEventSchema,
   sumsubTokenInvalidSignatureEventSchema,
   sumsubTokenNotFullAccessEventSchema,
+  sumsubTokenNonceUsedEventSchema,
   sumsubTokenAlreadyVerifiedEventSchema,
   sumsubApplicantExistsEventSchema,
   sumsubMetadataStoredEventSchema,
@@ -430,6 +459,8 @@ export const logEventSchema = z.discriminatedUnion("event", [
   sumsubWebhookInvalidPayloadEventSchema,
   sumsubWebhookReceivedEventSchema,
   sumsubWebhookNotApprovedEventSchema,
+  sumsubWebhookLateRejectionAfterApprovalEventSchema,
+  sumsubWebhookUserMismatchEventSchema,
   sumsubWebhookMissingMetadataEventSchema,
   sumsubWebhookInvalidFormatEventSchema,
   sumsubWebhookMissingConfigEventSchema,

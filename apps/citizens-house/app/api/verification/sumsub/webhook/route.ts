@@ -13,15 +13,14 @@ import { revalidateTag } from "next/cache"
 import { verifyWebhookSignature, getApplicant, getMetadataValue } from "@/lib/providers/sumsub-provider"
 import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
 import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
-import { reserveSignatureNonce } from "@/lib/nonce-store"
 import { getRedisClient } from "@/lib/redis"
 import { trackServerEvent } from "@/lib/analytics-server"
 import { getSigningMessage, getSigningRecipient, verifyNearSignature, validateSignatureData } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
 import { logEvent } from "@/lib/logger"
 import { sumsubWebhookPayloadSchema, applicantMetadataSchema } from "@/lib/schemas/sumsub"
-import { SIGNATURE_VALIDATION, type NearAccountId } from "@/lib/schemas/near"
-import { mapContractErrorToCode } from "@/lib/schemas"
+import { type NearAccountId } from "@/lib/schemas/near"
+import { mapContractErrorToCode, type VerificationErrorCode } from "@/lib/schemas"
 import { setVerificationStatus, clearVerificationStatus } from "@/lib/verification-status"
 import { apiError, webhookAck } from "@/lib/api/response"
 
@@ -34,10 +33,6 @@ async function ensureRedisInitialized(): Promise<void> {
   redisInitialized = true
 }
 
-// Use shared constants from schemas
-const MAX_SIGNATURE_AGE_MS = SIGNATURE_VALIDATION.MAX_AGE_MS
-const CLOCK_SKEW_MS = SIGNATURE_VALIDATION.CLOCK_SKEW_MS
-
 export async function POST(request: NextRequest) {
   let accountId: NearAccountId | undefined
   let applicantId: string | undefined
@@ -46,6 +41,7 @@ export async function POST(request: NextRequest) {
     // Get raw body for signature verification
     const rawBody = await request.text()
     const signature = request.headers.get("x-payload-digest") || request.headers.get("x-signature")
+    const algorithm = request.headers.get("x-payload-digest-alg") || "HMAC_SHA256_HEX"
 
     if (!signature) {
       logEvent({
@@ -55,8 +51,8 @@ export async function POST(request: NextRequest) {
       return apiError("WEBHOOK_SIGNATURE_INVALID", "Missing signature header", 401)
     }
 
-    // Verify webhook signature
-    if (!verifyWebhookSignature(rawBody, signature)) {
+    // Verify webhook signature (supports SHA256, SHA512, SHA1 based on algorithm header)
+    if (!verifyWebhookSignature(rawBody, signature, algorithm)) {
       logEvent({
         event: "sumsub_webhook_invalid_signature",
         level: "warn",
@@ -145,6 +141,25 @@ export async function POST(request: NextRequest) {
       // Handle RED status - store rejection info for frontend
       if (reviewAnswer === "RED") {
         const externalUserId = payload.externalUserId
+
+        // Check if already approved on-chain before storing rejection
+        // (Late RED can occur after approval, e.g., fraud detection)
+        if (externalUserId) {
+          const { checkIsVerified } = await import("@/app/citizens/actions")
+          const isVerified = await checkIsVerified(externalUserId as NearAccountId)
+          if (isVerified) {
+            logEvent({
+              event: "sumsub_webhook_late_rejection_after_approval",
+              level: "warn",
+              applicantId,
+              accountId: externalUserId,
+              rejectLabels: JSON.stringify(payload.reviewResult?.rejectLabels ?? []),
+            })
+            // Don't update Redis - on-chain approval stands
+            return webhookAck("Late rejection logged (already approved on-chain)")
+          }
+        }
+
         const isRetryable = payload.reviewResult?.reviewRejectType === "RETRY"
         await setVerificationStatus(externalUserId, isRetryable ? "RETRY" : "REJECTED", {
           rejectLabels: payload.reviewResult?.rejectLabels,
@@ -183,6 +198,18 @@ export async function POST(request: NextRequest) {
     accountId = nearMetadata.near_account_id
     const signatureTimestamp = parseInt(nearMetadata.near_timestamp, 10)
 
+    // Security: Verify externalUserId matches metadata to prevent request tampering
+    if (payload.externalUserId && payload.externalUserId !== accountId) {
+      logEvent({
+        event: "sumsub_webhook_user_mismatch",
+        level: "error",
+        applicantId,
+        externalUserId: payload.externalUserId,
+        metadataAccountId: accountId,
+      })
+      return apiError("WEBHOOK_PAYLOAD_INVALID", "User ID mismatch", 400)
+    }
+
     // Validate signature data format (timestamp format, nonce format, public key format)
     const formatCheck = validateSignatureData(
       {
@@ -194,20 +221,18 @@ export async function POST(request: NextRequest) {
     )
 
     if (!formatCheck.valid) {
+      const code = (formatCheck.errorCode as VerificationErrorCode) ?? "NEAR_SIGNATURE_INVALID"
       logEvent({
         event: "sumsub_webhook_invalid_format",
         level: "warn",
         applicantId,
         accountId,
         error: formatCheck.error ?? "Unknown validation error",
-        errorCode: formatCheck.errorCode ?? "UNKNOWN",
+        errorCode: code,
       })
 
-      return apiError("NEAR_SIGNATURE_INVALID", formatCheck.error)
+      return apiError(code, formatCheck.error, 400)
     }
-
-    // Calculate signature age for nonce TTL (validation already passed above)
-    const signatureAge = Date.now() - signatureTimestamp
 
     // Verify the NEAR signature cryptographically
     const expectedChallenge = getSigningMessage()
@@ -240,7 +265,7 @@ export async function POST(request: NextRequest) {
         error: signatureCheck.error ?? "Unknown error",
       })
 
-      return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error)
+      return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error, 400)
     }
 
     // Verify the public key is a full-access key
@@ -254,24 +279,12 @@ export async function POST(request: NextRequest) {
         error: keyCheck.error ?? "Unknown key validation error",
       })
 
-      return apiError("NEAR_SIGNATURE_INVALID", keyCheck.error ?? "Invalid public key")
+      return apiError("NEAR_SIGNATURE_INVALID", keyCheck.error ?? "Invalid public key", 400)
     }
 
-    // Reserve nonce to prevent replay attacks
-    const remainingValidityMs = MAX_SIGNATURE_AGE_MS + CLOCK_SKEW_MS - signatureAge
-    const nonceTtlSeconds = Math.max(60, Math.ceil(remainingValidityMs / 1000))
-
-    const nonceReserved = await reserveSignatureNonce(accountId, nearMetadata.near_nonce, nonceTtlSeconds)
-    if (!nonceReserved) {
-      logEvent({
-        event: "sumsub_webhook_nonce_used",
-        level: "warn",
-        applicantId,
-        accountId,
-      })
-
-      return apiError("NONCE_ALREADY_USED")
-    }
+    // NOTE: Nonce is reserved in token API with 24h TTL to cover SumSub's full retry window.
+    // Webhook retries are now naturally idempotent via contract-level checks
+    // (ACCOUNT_ALREADY_VERIFIED, DUPLICATE_IDENTITY).
 
     // Verify backend wallet is configured
     if (!NEAR_SERVER_CONFIG.backendAccountId || !NEAR_SERVER_CONFIG.backendPrivateKey) {
@@ -346,6 +359,12 @@ export async function POST(request: NextRequest) {
         error: errorMsg,
         errorCode: errorCodeForLog,
       })
+
+      if (errCode === "ACCOUNT_ALREADY_VERIFIED") {
+        // Idempotent success: avoid surfacing false failures on webhook retries.
+        await clearVerificationStatus(accountId)
+        return webhookAck("Already verified", accountId)
+      }
 
       // Store contract error status in Redis for frontend to poll
       const contractErrorCodes = ["DUPLICATE_IDENTITY", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const

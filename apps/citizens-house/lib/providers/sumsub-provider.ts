@@ -323,11 +323,19 @@ export async function updateApplicantMetadata(applicantId: string, metadata: Sum
 /**
  * Verify SumSub webhook HMAC signature.
  *
+ * SumSub sends the signature algorithm in the X-Payload-Digest-Alg header.
+ * Supported algorithms: HMAC_SHA256_HEX (default), HMAC_SHA512_HEX, HMAC_SHA1_HEX
+ *
  * @param payload - Raw webhook body as string
  * @param signature - Signature from x-payload-digest header
+ * @param algorithm - Algorithm from X-Payload-Digest-Alg header (default: HMAC_SHA256_HEX)
  * @returns true if signature is valid
  */
-export function verifyWebhookSignature(payload: string, signature: string): boolean {
+export function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+  algorithm: string = "HMAC_SHA256_HEX",
+): boolean {
   const webhookSecret = env.SUMSUB_WEBHOOK_SECRET
 
   if (!webhookSecret) {
@@ -338,7 +346,10 @@ export function verifyWebhookSignature(payload: string, signature: string): bool
     throw new Error("SumSub webhook secret not configured")
   }
 
-  const expectedSignature = crypto.createHmac("sha256", webhookSecret).update(payload).digest("hex")
+  // Map SumSub algorithm header to node crypto hash algorithm
+  const hashAlgorithm = algorithm === "HMAC_SHA512_HEX" ? "sha512" : algorithm === "HMAC_SHA1_HEX" ? "sha1" : "sha256"
+
+  const expectedSignature = crypto.createHmac(hashAlgorithm, webhookSecret).update(payload).digest("hex")
 
   // Use timing-safe comparison to prevent timing attacks
   try {

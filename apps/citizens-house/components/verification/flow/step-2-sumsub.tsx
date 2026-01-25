@@ -13,6 +13,7 @@ import {
   type VerificationStepState,
   type VerificationErrorCode,
 } from "@/lib/schemas"
+import { VERIFICATION_ERRORS, getErrorMessage } from "@/lib/schemas/errors"
 import { Loader2, Info, Ban, Check, Shield } from "lucide-react"
 import { StarPattern } from "../icons/star-pattern"
 import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
@@ -96,8 +97,17 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to get access token: ${errorText}`)
+        // Parse error JSON to get specific error code
+        let errorCode: VerificationErrorCode = "TOKEN_FETCH_FAILED"
+        try {
+          const errorData = await response.json()
+          if (errorData?.code && errorData.code in VERIFICATION_ERRORS) {
+            errorCode = errorData.code as VerificationErrorCode
+          }
+        } catch {
+          // Not JSON, use default error code
+        }
+        throw new Error(errorCode)
       }
 
       const data = await response.json()
@@ -132,10 +142,12 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         }
       } catch (err) {
         if (mounted) {
-          const message = err instanceof Error ? err.message : "Failed to initialize"
-          setTokenError(message)
+          const message = err instanceof Error ? err.message : "TOKEN_FETCH_FAILED"
+          // Check if the message is actually an error code (thrown from fetchAccessToken)
+          const errorCode = message in VERIFICATION_ERRORS ? (message as VerificationErrorCode) : "TOKEN_FETCH_FAILED"
+          setTokenError(getErrorMessage(errorCode))
           setVerificationStatus("error")
-          onError("TOKEN_FETCH_FAILED")
+          onError(errorCode)
         }
       }
     }
@@ -280,7 +292,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
 
   // Handle SumSub SDK messages
   const handleMessage = useCallback(
-    (type: string, payload: SumSubWebSdkPayload) => {
+    async (type: string, payload: SumSubWebSdkPayload) => {
       trackEvent({
         domain: "verification",
         action: "sumsub_message",
@@ -303,8 +315,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         const reviewAnswer = status?.reviewResult?.reviewAnswer
 
         // Handle immediate rejection from SumSub (duplicate detection, etc.)
-        // NOTE: SDK message doesn't include rejectLabels, so we show generic rejection
-        // The webhook will set the specific error code (DUPLICATE_IDENTITY, etc.) in Redis
+        // Brief poll for webhook status to get specific error (RETRY, DUPLICATE_IDENTITY, etc.)
         if (reviewAnswer === "RED") {
           trackEvent({
             domain: "verification",
@@ -312,9 +323,39 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
             accountId: nearSignature.accountId,
             reviewAnswer,
           })
+
+          // Brief poll (3 attempts, 2s each = 6s max) for webhook status with more details
+          let specificError: VerificationErrorCode = "VERIFICATION_REJECTED"
+          for (let i = 0; i < 3; i++) {
+            await new Promise((r) => setTimeout(r, 2000))
+            try {
+              const response = await fetch(
+                `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
+              )
+              const data = await response.json()
+              const parsed = verificationStatusResponseSchema.safeParse(data)
+              if (parsed.success) {
+                const status = parsed.data.status
+                if (
+                  status === "RETRY" ||
+                  status === "DUPLICATE_IDENTITY" ||
+                  status === "ACCOUNT_ALREADY_VERIFIED" ||
+                  status === "REJECTED"
+                ) {
+                  // Map API status to error codes
+                  specificError =
+                    status === "REJECTED" ? "VERIFICATION_REJECTED" : status === "RETRY" ? "VERIFICATION_RETRY" : status
+                  break
+                }
+              }
+            } catch {
+              /* continue polling */
+            }
+          }
+
           confirmationInProgressRef.current = false
           setVerificationStatus("error")
-          onError("VERIFICATION_REJECTED")
+          onError(specificError)
           return
         }
 
