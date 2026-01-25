@@ -52,7 +52,7 @@ const reviewAnswerSchema = z.enum([
   "YELLOW", // Needs manual review
 ])
 
-export type ReviewAnswer = z.infer<typeof reviewAnswerSchema>
+type ReviewAnswer = z.infer<typeof reviewAnswerSchema>
 
 /**
  * SumSub rejection type.
@@ -61,7 +61,7 @@ export type ReviewAnswer = z.infer<typeof reviewAnswerSchema>
  */
 const reviewRejectTypeSchema = z.enum(["RETRY", "FINAL"])
 
-export type ReviewRejectType = z.infer<typeof reviewRejectTypeSchema>
+type ReviewRejectType = z.infer<typeof reviewRejectTypeSchema>
 
 /**
  * Review result details from SumSub webhook.
