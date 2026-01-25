@@ -419,6 +419,10 @@ export const webhookStatusCodeSchema = z.enum([
   "ON_HOLD", // Requires manual review (applicantOnHold webhook)
   "REJECTED", // RED with FINAL - cannot retry
   "RETRY", // RED with RETRY - user can resubmit documents
+  // Contract storage errors (propagated via Redis when GREEN but contract fails)
+  "DUPLICATE_IDENTITY", // Same identity already used
+  "ACCOUNT_ALREADY_VERIFIED", // NEAR account already verified
+  "CONTRACT_PAUSED", // Contract is paused
 ])
 
 export type WebhookStatusCode = z.infer<typeof webhookStatusCodeSchema>
@@ -458,6 +462,10 @@ export const verificationStatusResponseSchema = z.discriminatedUnion("status", [
     rejectLabels: z.array(z.string()).optional(),
     moderationComment: z.string().optional(),
   }),
+  // Contract storage errors
+  z.object({ status: z.literal("DUPLICATE_IDENTITY"), updatedAt: z.number() }),
+  z.object({ status: z.literal("ACCOUNT_ALREADY_VERIFIED"), updatedAt: z.number() }),
+  z.object({ status: z.literal("CONTRACT_PAUSED"), updatedAt: z.number() }),
   z.object({ status: z.literal("NOT_FOUND") }),
 ])
 

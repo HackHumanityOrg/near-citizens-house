@@ -350,6 +350,12 @@ export async function POST(request: NextRequest) {
         errorCode: errCode,
       })
 
+      // Store contract error status in Redis for frontend to poll
+      const contractErrorCodes = ["DUPLICATE_IDENTITY", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
+      if (contractErrorCodes.includes(errCode as (typeof contractErrorCodes)[number])) {
+        await setVerificationStatus(accountId, errCode as (typeof contractErrorCodes)[number])
+      }
+
       // Track rejection
       await trackServerEvent(accountId, {
         domain: "verification",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { type NearSignatureData } from "@/lib"
 import { trackEvent } from "@/lib/analytics"
@@ -13,6 +13,7 @@ import {
 } from "@/lib/schemas"
 import { Loader2, Info, Ban, Check, Shield } from "lucide-react"
 import { StarPattern } from "../icons/star-pattern"
+import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
 
 // Dynamic import of SumSub WebSDK to avoid SSR issues
 // The @sumsub/websdk-react package doesn't ship TypeScript definitions
@@ -46,6 +47,39 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const confirmationInProgressRef = useRef(false)
+
+  // Debug mode state override
+  const handleDebugStateChange = useCallback(
+    (state: string) => {
+      const validStates = ["loading", "ready", "verifying", "polling", "manual_review", "success", "error"] as const
+      if (validStates.includes(state as (typeof validStates)[number])) {
+        setVerificationStatus(state as (typeof validStates)[number])
+        // If switching to ready or verifying, set a mock token
+        if ((state === "ready" || state === "verifying") && !accessToken) {
+          setAccessToken("debug-token")
+        }
+        // If success, trigger the onSuccess callback
+        if (state === "success") {
+          onSuccess()
+        }
+      }
+    },
+    [accessToken, onSuccess],
+  )
+
+  // Register with debug context
+  const debugStates = useMemo(
+    () => ["loading", "ready", "verifying", "polling", "manual_review", "success", "error"],
+    [],
+  )
+
+  useDebugRegistration({
+    id: "step2-sumsub",
+    name: "Step 2: SumSub",
+    availableStates: debugStates,
+    currentState: verificationStatus,
+    onStateChange: handleDebugStateChange,
+  })
 
   // Fetch access token on mount
   const fetchAccessToken = useCallback(async (): Promise<string> => {
@@ -174,6 +208,24 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
             confirmationInProgressRef.current = false
             setVerificationStatus("error")
             onError(data.moderationComment || "Please try again with clearer documents.", "VERIFICATION_RETRY")
+            return
+
+          case "DUPLICATE_IDENTITY":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError("This identity has already been used.", "DUPLICATE_IDENTITY")
+            return
+
+          case "ACCOUNT_ALREADY_VERIFIED":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError("This account is already verified.", "ACCOUNT_ALREADY_VERIFIED")
+            return
+
+          case "CONTRACT_PAUSED":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError("Verification is temporarily unavailable.", "CONTRACT_PAUSED")
             return
 
           case "NOT_FOUND":
