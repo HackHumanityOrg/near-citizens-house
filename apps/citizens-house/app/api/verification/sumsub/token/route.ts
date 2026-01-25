@@ -9,7 +9,7 @@
  * user's NEAR account. The nonce is reserved here with 10min TTL to match
  * the signature freshness window during the step 1 → step 2 transition.
  */
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest } from "next/server"
 import {
   createApplicant,
   generateAccessToken,
@@ -18,24 +18,21 @@ import {
 } from "@/lib/providers/sumsub-provider"
 import { reserveSignatureNonce } from "@/lib/nonce-store"
 import { env } from "@/lib/schemas/env"
-import {
-  sumsubTokenRequestSchema,
-  type SumSubTokenResponse,
-  type SumSubMetadataItem,
-  type SumSubApplicant,
-} from "@/lib/schemas/sumsub"
+import { verificationTokenRequestSchema, verificationTokenResponseSchema } from "@/lib/schemas/api/verification"
+import { type SumSubMetadataItem, type SumSubApplicant } from "@/lib/schemas/providers/sumsub"
 import { logEvent } from "@/lib/logger"
 import { validateSignatureData, verifyNearSignature, getSigningMessage, getSigningRecipient } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
 import { apiError, apiSuccess } from "@/lib/api/response"
 import { type VerificationErrorCode } from "@/lib/schemas/errors"
+import { statusOkResponseSchema } from "@/lib/schemas/api/response"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
     // Validate request schema
-    const parseResult = sumsubTokenRequestSchema.safeParse(body)
+    const parseResult = verificationTokenRequestSchema.safeParse(body)
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => i.path.join(".")).join(", ")
       return apiError("INVALID_REQUEST", issues)
@@ -190,10 +187,10 @@ export async function POST(request: NextRequest) {
       applicantId: applicant.id,
     })
 
-    const response: SumSubTokenResponse = {
+    const response = verificationTokenResponseSchema.parse({
       token: tokenResponse.token,
       externalUserId,
-    }
+    })
 
     return apiSuccess(response)
   } catch (error) {
@@ -208,9 +205,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({
+  const response = statusOkResponseSchema.parse({
     status: "ok",
     message: "SumSub token API",
     timestamp: new Date().toISOString(),
   })
+
+  return apiSuccess(response)
 }

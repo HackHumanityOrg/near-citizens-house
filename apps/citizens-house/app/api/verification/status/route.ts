@@ -7,7 +7,8 @@
 import { type NextRequest } from "next/server"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { getVerificationStatus } from "@/lib/verification-status"
-import { nearAccountIdSchema, verificationStatusResponseSchema } from "@/lib/schemas"
+import { nearAccountIdSchema } from "@/lib/schemas"
+import { verificationStatusResponseSchema } from "@/lib/schemas/api/verification"
 import { apiError, apiSuccess } from "@/lib/api/response"
 
 export async function GET(request: NextRequest) {
@@ -22,18 +23,26 @@ export async function GET(request: NextRequest) {
   // First check if already verified on-chain
   const isVerified = await checkIsVerified(accountId)
   if (isVerified) {
-    return apiSuccess({ status: "APPROVED" as const })
+    const approvedResponse = verificationStatusResponseSchema.parse({ state: "approved" as const })
+    return apiSuccess(approvedResponse)
   }
 
   // Then check Redis for intermediate status
   const redisStatus = await getVerificationStatus(accountId)
   if (redisStatus) {
-    const responseData = {
-      status: redisStatus.status,
-      updatedAt: redisStatus.updatedAt,
-      ...(redisStatus.rejectLabels && { rejectLabels: redisStatus.rejectLabels }),
-      ...(redisStatus.moderationComment && { moderationComment: redisStatus.moderationComment }),
-    }
+    const responseData =
+      redisStatus.state === "hold"
+        ? {
+            state: "hold" as const,
+            updatedAt: redisStatus.updatedAt,
+            errorCode: "VERIFICATION_ON_HOLD" as const,
+          }
+        : {
+            state: "failed" as const,
+            updatedAt: redisStatus.updatedAt,
+            errorCode: redisStatus.errorCode,
+            ...(redisStatus.details && { details: redisStatus.details }),
+          }
     // Validate response shape before returning (defensive)
     const validatedResponse = verificationStatusResponseSchema.safeParse(responseData)
     if (!validatedResponse.success) {
@@ -43,5 +52,6 @@ export async function GET(request: NextRequest) {
     return apiSuccess(validatedResponse.data)
   }
 
-  return apiSuccess({ status: "NOT_FOUND" as const })
+  const pendingResponse = verificationStatusResponseSchema.parse({ state: "pending" as const })
+  return apiSuccess(pendingResponse)
 }

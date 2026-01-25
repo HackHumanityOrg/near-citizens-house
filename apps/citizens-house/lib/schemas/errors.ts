@@ -47,6 +47,33 @@ export const verificationErrorCodeSchema = z.enum([
 
 export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
 
+// ==========================================================================
+// Status Subsets (for verification state)
+// ==========================================================================
+
+export const verificationStatusErrorCodes = [
+  "VERIFICATION_ON_HOLD",
+  "VERIFICATION_REJECTED",
+  "VERIFICATION_RETRY",
+  "DUPLICATE_IDENTITY",
+  "ACCOUNT_ALREADY_VERIFIED",
+  "CONTRACT_PAUSED",
+] as const satisfies ReadonlyArray<VerificationErrorCode>
+
+export const verificationStatusFailureCodes = [
+  "VERIFICATION_REJECTED",
+  "VERIFICATION_RETRY",
+  "DUPLICATE_IDENTITY",
+  "ACCOUNT_ALREADY_VERIFIED",
+  "CONTRACT_PAUSED",
+] as const satisfies ReadonlyArray<VerificationErrorCode>
+
+export const verificationStatusErrorCodeSchema = z.enum(verificationStatusErrorCodes)
+export type VerificationStatusErrorCode = z.infer<typeof verificationStatusErrorCodeSchema>
+
+export const verificationStatusFailureCodeSchema = z.enum(verificationStatusFailureCodes)
+export type VerificationStatusFailureCode = z.infer<typeof verificationStatusFailureCodeSchema>
+
 // ============================================================================
 // Error Categories & Definitions
 // ============================================================================

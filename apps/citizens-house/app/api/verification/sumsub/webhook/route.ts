@@ -8,7 +8,7 @@
  * 2. Validates the NEAR signature stored in applicant metadata
  * 3. Stores the verification on-chain
  */
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest } from "next/server"
 import { revalidateTag } from "next/cache"
 import { verifyWebhookSignature, getApplicant, getMetadataValue } from "@/lib/providers/sumsub-provider"
 import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
@@ -18,11 +18,13 @@ import { trackServerEvent } from "@/lib/analytics-server"
 import { getSigningMessage, getSigningRecipient, verifyNearSignature, validateSignatureData } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
 import { logEvent } from "@/lib/logger"
-import { sumsubWebhookPayloadSchema, applicantMetadataSchema } from "@/lib/schemas/sumsub"
+import { sumsubWebhookPayloadSchema, applicantMetadataSchema } from "@/lib/schemas/providers/sumsub"
 import { type NearAccountId } from "@/lib/schemas/near"
 import { mapContractErrorToCode, type VerificationErrorCode } from "@/lib/schemas"
+import { verificationStatusErrorCodeSchema } from "@/lib/schemas/errors"
 import { setVerificationStatus, clearVerificationStatus } from "@/lib/verification-status"
-import { apiError, webhookAck } from "@/lib/api/response"
+import { apiError, apiSuccess, webhookAck } from "@/lib/api/response"
+import { statusOkResponseSchema } from "@/lib/schemas/api/response"
 
 // Initialize Redis for backend key pool
 let redisInitialized = false
@@ -89,7 +91,7 @@ export async function POST(request: NextRequest) {
     if (payload.type === "applicantOnHold") {
       const externalUserId = payload.externalUserId
       if (externalUserId) {
-        await setVerificationStatus(externalUserId, "ON_HOLD")
+        await setVerificationStatus(externalUserId, "VERIFICATION_ON_HOLD")
       } else {
         logEvent({
           event: "sumsub_webhook_missing_external_user_id",
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
           applicantId,
         })
       }
-      return webhookAck("Status updated to ON_HOLD")
+      return webhookAck("Status updated to VERIFICATION_ON_HOLD")
     }
 
     // Only process applicantReviewed events beyond this point
@@ -117,11 +119,11 @@ export async function POST(request: NextRequest) {
         rejectLabels: JSON.stringify(payload.reviewResult?.rejectLabels ?? []),
       })
 
-      // Handle YELLOW status - needs manual review (same as ON_HOLD)
+      // Handle YELLOW status - needs manual review (VERIFICATION_ON_HOLD)
       if (reviewAnswer === "YELLOW") {
         const externalUserId = payload.externalUserId
         if (externalUserId) {
-          await setVerificationStatus(externalUserId, "ON_HOLD")
+          await setVerificationStatus(externalUserId, "VERIFICATION_ON_HOLD")
         } else {
           logEvent({
             event: "sumsub_webhook_missing_external_user_id",
@@ -161,7 +163,7 @@ export async function POST(request: NextRequest) {
         }
 
         const isRetryable = payload.reviewResult?.reviewRejectType === "RETRY"
-        await setVerificationStatus(externalUserId, isRetryable ? "RETRY" : "REJECTED", {
+        await setVerificationStatus(externalUserId, isRetryable ? "VERIFICATION_RETRY" : "VERIFICATION_REJECTED", {
           rejectLabels: payload.reviewResult?.rejectLabels,
           moderationComment: payload.reviewResult?.moderationComment,
         })
@@ -367,9 +369,11 @@ export async function POST(request: NextRequest) {
       }
 
       // Store contract error status in Redis for frontend to poll
-      const contractErrorCodes = ["DUPLICATE_IDENTITY", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
-      if (errCode && contractErrorCodes.includes(errCode as (typeof contractErrorCodes)[number])) {
-        await setVerificationStatus(accountId, errCode as (typeof contractErrorCodes)[number])
+      if (errCode) {
+        const statusCode = verificationStatusErrorCodeSchema.safeParse(errCode)
+        if (statusCode.success) {
+          await setVerificationStatus(accountId, statusCode.data)
+        }
       }
 
       // Track rejection
@@ -401,9 +405,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({
+  const response = statusOkResponseSchema.parse({
     status: "ok",
     message: "SumSub webhook endpoint",
     timestamp: new Date().toISOString(),
   })
+
+  return apiSuccess(response)
 }

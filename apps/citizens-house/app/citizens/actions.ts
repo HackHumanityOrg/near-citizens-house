@@ -13,19 +13,11 @@ import {
 import type { TransformedVerification } from "@/lib/schemas/verification-contract"
 import { verificationDb } from "@/lib/contracts/verification/client"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
+import { signatureVerificationDataSchema, type SignatureVerificationData } from "@/lib/schemas/verification-signature"
 
 export type VerificationResult = {
   signatureValid: boolean
   error?: string
-}
-
-export type SignatureVerificationData = {
-  nep413Hash: string
-  publicKeyHex: string
-  signatureHex: string
-  challenge: string
-  recipient: string
-  accountId: NearAccountId
 }
 
 export type VerificationWithStatus = {
@@ -77,12 +69,12 @@ async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetV
           // Build signature verification data for display
           if (signatureValid) {
             const verificationData = buildSignatureVerificationData(sigData)
-            signatureVerificationData = {
+            signatureVerificationData = signatureVerificationDataSchema.parse({
               ...verificationData,
               challenge: signatureChallenge,
               recipient: signatureRecipient,
               accountId: account.nearAccountId,
-            }
+            })
           }
         } else {
           signatureError = "Could not parse signature data from userContextData"

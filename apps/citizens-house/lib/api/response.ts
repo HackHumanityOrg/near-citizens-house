@@ -5,6 +5,7 @@
  */
 import { NextResponse } from "next/server"
 import { type VerificationErrorCode, createVerificationError, isNonRetryableError } from "@/lib/schemas/errors"
+import { webhookAckResponseSchema } from "@/lib/schemas/api/response"
 
 /**
  * Create a typed error response using existing error infrastructure.
@@ -26,9 +27,10 @@ export function apiSuccess<T>(data: T, status = 200): NextResponse<T> {
  * Create a webhook acknowledgment response.
  */
 export function webhookAck(message: string, accountId?: string): NextResponse {
-  return NextResponse.json({
-    status: "ok" as const,
+  const payload = webhookAckResponseSchema.parse({
+    status: "ok",
     message,
     ...(accountId && { accountId }),
   })
+  return NextResponse.json(payload)
 }

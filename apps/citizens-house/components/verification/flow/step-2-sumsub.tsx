@@ -4,19 +4,17 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { type NearSignatureData } from "@/lib"
 import { trackEvent } from "@/lib/analytics"
-import {
-  sumsubTokenResponseSchema,
-  verificationStatusResponseSchema,
-  type SumSubWebSdkProps,
-  type SumSubWebSdkPayload,
-  type SumSubApplicantStatusChangedPayload,
-  type VerificationStepState,
-  type VerificationErrorCode,
-} from "@/lib/schemas"
-import { VERIFICATION_ERRORS, getErrorMessage } from "@/lib/schemas/errors"
+import { verificationTokenResponseSchema, verificationStatusResponseSchema } from "@/lib/schemas/api/verification"
+import { VERIFICATION_ERRORS, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
 import { Loader2, Info, Ban, Check, Shield } from "lucide-react"
 import { StarPattern } from "../icons/star-pattern"
 import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
+import {
+  type SumSubWebSdkProps,
+  type SumSubWebSdkPayload,
+  type SumSubApplicantStatusChangedPayload,
+} from "./sumsub-websdk.types"
+import { verificationStepStates, type VerificationStepState } from "./verification-step-state"
 
 // Dynamic import of SumSub WebSDK to avoid SSR issues
 // The @sumsub/websdk-react package doesn't ship TypeScript definitions
@@ -52,9 +50,8 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
   // Debug mode state override
   const handleDebugStateChange = useCallback(
     (state: string) => {
-      const validStates = ["loading", "ready", "verifying", "polling", "success", "error"] as const
-      if (validStates.includes(state as (typeof validStates)[number])) {
-        setVerificationStatus(state as (typeof validStates)[number])
+      if (verificationStepStates.includes(state as VerificationStepState)) {
+        setVerificationStatus(state as VerificationStepState)
         // If switching to ready or verifying, set a mock token
         if ((state === "ready" || state === "verifying") && !accessToken) {
           setAccessToken("debug-token")
@@ -69,7 +66,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
   )
 
   // Register with debug context
-  const debugStates = useMemo(() => ["loading", "ready", "verifying", "polling", "success", "error"], [])
+  const debugStates = useMemo(() => [...verificationStepStates], [])
 
   useDebugRegistration({
     id: "step2-sumsub",
@@ -111,7 +108,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       }
 
       const data = await response.json()
-      const parsed = sumsubTokenResponseSchema.safeParse(data)
+      const parsed = verificationTokenResponseSchema.safeParse(data)
 
       if (!parsed.success) {
         throw new Error("Invalid token response")
@@ -197,14 +194,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         }
         const data = parsed.data
 
-        switch (data.status) {
-          case "APPROVED":
+        switch (data.state) {
+          case "approved":
             confirmationInProgressRef.current = false
             setVerificationStatus("success")
             onSuccess()
             return
 
-          case "ON_HOLD":
+          case "hold":
             // Route to StepHold via onError callback
             trackEvent({
               domain: "verification",
@@ -212,40 +209,16 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
               accountId: nearSignature.accountId,
             })
             confirmationInProgressRef.current = false
-            onError("VERIFICATION_ON_HOLD")
+            onError(data.errorCode)
             return
 
-          case "REJECTED":
+          case "failed":
             confirmationInProgressRef.current = false
             setVerificationStatus("error")
-            onError("VERIFICATION_REJECTED")
+            onError(data.errorCode)
             return
 
-          case "RETRY":
-            confirmationInProgressRef.current = false
-            setVerificationStatus("error")
-            onError("VERIFICATION_RETRY")
-            return
-
-          case "DUPLICATE_IDENTITY":
-            confirmationInProgressRef.current = false
-            setVerificationStatus("error")
-            onError("DUPLICATE_IDENTITY")
-            return
-
-          case "ACCOUNT_ALREADY_VERIFIED":
-            confirmationInProgressRef.current = false
-            setVerificationStatus("error")
-            onError("ACCOUNT_ALREADY_VERIFIED")
-            return
-
-          case "CONTRACT_PAUSED":
-            confirmationInProgressRef.current = false
-            setVerificationStatus("error")
-            onError("CONTRACT_PAUSED")
-            return
-
-          case "NOT_FOUND":
+          case "pending":
             // Continue polling - still waiting for webhook
             break
         }
@@ -256,7 +229,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
     }
 
-    // Timeout - check one more time for ON_HOLD status
+    // Timeout - check one more time for hold status
     try {
       const finalResponse = await fetch(
         `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
@@ -264,14 +237,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       const finalRawData = await finalResponse.json()
       const finalParsed = verificationStatusResponseSchema.safeParse(finalRawData)
 
-      if (finalParsed.success && finalParsed.data.status === "ON_HOLD") {
+      if (finalParsed.success && finalParsed.data.state === "hold") {
         trackEvent({
           domain: "verification",
           action: "manual_review_shown",
           accountId: nearSignature.accountId,
         })
         confirmationInProgressRef.current = false
-        onError("VERIFICATION_ON_HOLD")
+        onError(finalParsed.data.errorCode)
         return
       }
     } catch {
@@ -315,7 +288,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         const reviewAnswer = status?.reviewResult?.reviewAnswer
 
         // Handle immediate rejection from SumSub (duplicate detection, etc.)
-        // Brief poll for webhook status to get specific error (RETRY, DUPLICATE_IDENTITY, etc.)
+        // Brief poll for webhook status to get specific error code (VERIFICATION_RETRY, DUPLICATE_IDENTITY, etc.)
         if (reviewAnswer === "RED") {
           trackEvent({
             domain: "verification",
@@ -335,16 +308,8 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
               const data = await response.json()
               const parsed = verificationStatusResponseSchema.safeParse(data)
               if (parsed.success) {
-                const status = parsed.data.status
-                if (
-                  status === "RETRY" ||
-                  status === "DUPLICATE_IDENTITY" ||
-                  status === "ACCOUNT_ALREADY_VERIFIED" ||
-                  status === "REJECTED"
-                ) {
-                  // Map API status to error codes
-                  specificError =
-                    status === "REJECTED" ? "VERIFICATION_REJECTED" : status === "RETRY" ? "VERIFICATION_RETRY" : status
+                if (parsed.data.state === "failed" || parsed.data.state === "hold") {
+                  specificError = parsed.data.errorCode
                   break
                 }
               }

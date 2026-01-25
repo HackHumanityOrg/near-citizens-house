@@ -5,7 +5,8 @@ import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@near-
 import { trackEvent } from "@/lib/analytics"
 import { ShieldCheck, ExternalLink } from "lucide-react"
 import { SignatureVerifyModal } from "./signature-verify-modal"
-import type { VerificationWithStatus, SignatureVerificationData } from "@/app/citizens/actions"
+import type { VerificationWithStatus } from "@/app/citizens/actions"
+import type { SignatureVerificationData } from "@/lib/schemas/verification-signature"
 import type { TransformedVerification } from "@/lib/schemas/verification-contract"
 
 interface Props {

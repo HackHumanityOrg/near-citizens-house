@@ -20,7 +20,7 @@ import {
   type SumSubAccessTokenApiResponse,
   type SumSubApplicant,
   type SumSubMetadataItem,
-} from "../schemas/sumsub"
+} from "../schemas/providers/sumsub"
 
 // ==============================================================================
 // Configuration
