@@ -145,9 +145,9 @@ export function createVerificationError(
 
 /**
  * Map contract/storage error messages to error codes.
- * Used to translate low-level errors to user-facing codes.
+ * Returns null for unknown errors to allow webhook retries.
  */
-export function mapContractErrorToCode(errorMessage: string): VerificationErrorCode {
+export function mapContractErrorToCode(errorMessage: string): VerificationErrorCode | null {
   const message = errorMessage.toLowerCase()
 
   if (message.includes("sumsub applicant already used") || message.includes("already registered")) {
@@ -170,8 +170,8 @@ export function mapContractErrorToCode(errorMessage: string): VerificationErrorC
     return "NEAR_SIGNATURE_INVALID"
   }
 
-  // Fallback for any other contract/storage error
-  return "VERIFICATION_REJECTED"
+  // Unknown contract/storage error - allow webhook retry
+  return null
 }
 
 // ============================================================================

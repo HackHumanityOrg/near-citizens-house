@@ -340,6 +340,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : ""
       const errCode = mapContractErrorToCode(errorMsg)
+      const errorCodeForLog = errCode ?? "UNKNOWN"
 
       logEvent({
         event: "sumsub_webhook_storage_failed",
@@ -347,12 +348,12 @@ export async function POST(request: NextRequest) {
         applicantId,
         accountId,
         error: errorMsg,
-        errorCode: errCode,
+        errorCode: errorCodeForLog,
       })
 
       // Store contract error status in Redis for frontend to poll
       const contractErrorCodes = ["DUPLICATE_IDENTITY", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
-      if (contractErrorCodes.includes(errCode as (typeof contractErrorCodes)[number])) {
+      if (errCode && contractErrorCodes.includes(errCode as (typeof contractErrorCodes)[number])) {
         await setVerificationStatus(accountId, errCode as (typeof contractErrorCodes)[number])
       }
 
@@ -362,12 +363,12 @@ export async function POST(request: NextRequest) {
         action: "rejected",
         accountId,
         reason: errorMsg,
-        errorCode: errCode,
+        errorCode: errorCodeForLog,
       })
 
       return NextResponse.json(
         { error: errorMsg || "Failed to store verification" },
-        { status: isNonRetryableError(errCode) ? 400 : 500 },
+        { status: errCode && isNonRetryableError(errCode) ? 400 : 500 },
       )
     }
   } catch (error) {
