@@ -53,9 +53,9 @@ export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
 
 /**
  * User-friendly error messages for each error code.
- * Used in API responses and error displays.
+ * Used internally by createVerificationError and getErrorMessage.
  */
-export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
+const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
   // Signature validation
   NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
   SIGNATURE_EXPIRED: "Signature expired",
@@ -91,32 +91,10 @@ export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> 
 // ============================================================================
 
 /**
- * Error codes that can be retried by the user.
- */
-export const RETRYABLE_ERRORS = [
-  "NEAR_SIGNATURE_INVALID",
-  "SIGNATURE_EXPIRED",
-  "SIGNATURE_TIMESTAMP_INVALID",
-  "VERIFICATION_RETRY",
-  "TIMEOUT",
-  "TOKEN_FETCH_FAILED",
-  "NONCE_ALREADY_USED",
-] as const satisfies readonly VerificationErrorCode[]
-
-export type RetryableErrorCode = (typeof RETRYABLE_ERRORS)[number]
-
-/**
- * Error codes that indicate verification is on hold.
- */
-export const HOLD_ERRORS = ["VERIFICATION_ON_HOLD"] as const satisfies readonly VerificationErrorCode[]
-
-export type HoldErrorCode = (typeof HOLD_ERRORS)[number]
-
-/**
  * Error codes that indicate non-recoverable issues.
  * Users cannot retry verification with the same account/identity.
  */
-export const NON_RETRYABLE_ERRORS = [
+const NON_RETRYABLE_ERRORS = [
   "DUPLICATE_IDENTITY",
   "ACCOUNT_ALREADY_VERIFIED",
   "CONTRACT_PAUSED",
@@ -125,21 +103,9 @@ export const NON_RETRYABLE_ERRORS = [
   "WEBHOOK_PAYLOAD_INVALID",
   "MISSING_NEAR_METADATA",
   "INVALID_REQUEST",
-] as const
-
-export type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
-
-/**
- * Internal/technical errors that indicate system issues.
- * Users should retry, but the issue is on our end.
- */
-export const INTERNAL_ERRORS = [
-  "TOKEN_GENERATION_FAILED",
-  "BACKEND_NOT_CONFIGURED",
-  "STORAGE_FAILED",
 ] as const satisfies readonly VerificationErrorCode[]
 
-export type InternalErrorCode = (typeof INTERNAL_ERRORS)[number]
+type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
 
 /**
  * Exhaustive error category mapping.
@@ -167,8 +133,6 @@ export const ERROR_CATEGORIES = {
   STORAGE_FAILED: "internal",
 } as const satisfies Record<VerificationErrorCode, "retryable" | "hold" | "non-retryable" | "internal">
 
-export type ErrorCategory = (typeof ERROR_CATEGORIES)[VerificationErrorCode]
-
 /**
  * Check if an error code indicates a non-retryable error.
  * Non-retryable errors cannot be resolved by the user trying again.
@@ -192,16 +156,14 @@ export function isHoldError(errorCode: string | null | undefined): boolean {
 // ============================================================================
 
 /**
- * Zod validation issue for structured error responses.
+ * Validation issue for structured error responses.
  * Allows API to return detailed field-level validation errors.
  */
-export const validationIssueSchema = z.object({
-  path: z.array(z.union([z.string(), z.number()])),
-  message: z.string(),
-  code: z.string().optional(),
-})
-
-export type ValidationIssue = z.infer<typeof validationIssueSchema>
+export interface ValidationIssue {
+  path: (string | number)[]
+  message: string
+  code?: string
+}
 
 // ============================================================================
 // Error Helpers

@@ -20,7 +20,7 @@ export const SIGNATURE_VALIDATION = {
 
 // ==================== Account ID Patterns ====================
 
-export const NEAR_ACCOUNT_PATTERNS = {
+const NEAR_ACCOUNT_PATTERNS = {
   named: /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/,
   implicit: /^[0-9a-f]{64}$/,
   ethImplicit: /^0x[0-9a-f]{40}$/,

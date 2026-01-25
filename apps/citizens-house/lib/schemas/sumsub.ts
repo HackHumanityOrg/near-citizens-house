@@ -27,8 +27,6 @@ export const sumsubTokenRequestSchema = z.object({
   }),
 })
 
-export type SumSubTokenRequest = z.infer<typeof sumsubTokenRequestSchema>
-
 /**
  * Response from access token generation.
  */
@@ -48,7 +46,7 @@ export type SumSubTokenResponse = z.infer<typeof sumsubTokenResponseSchema>
 /**
  * SumSub applicant review status.
  */
-export const reviewAnswerSchema = z.enum([
+const reviewAnswerSchema = z.enum([
   "GREEN", // Approved
   "RED", // Rejected
   "YELLOW", // Needs manual review
@@ -61,14 +59,14 @@ export type ReviewAnswer = z.infer<typeof reviewAnswerSchema>
  * RETRY = user can resubmit documents
  * FINAL = permanent rejection, cannot retry
  */
-export const reviewRejectTypeSchema = z.enum(["RETRY", "FINAL"])
+const reviewRejectTypeSchema = z.enum(["RETRY", "FINAL"])
 
 export type ReviewRejectType = z.infer<typeof reviewRejectTypeSchema>
 
 /**
  * Review result details from SumSub webhook.
  */
-export const reviewResultSchema = z.object({
+const reviewResultSchema = z.object({
   reviewAnswer: reviewAnswerSchema,
   reviewRejectType: reviewRejectTypeSchema.optional(),
   rejectLabels: z.array(z.string()).optional(),
@@ -76,8 +74,6 @@ export const reviewResultSchema = z.object({
   moderationComment: z.string().optional(),
   clientComment: z.string().optional(),
 })
-
-export type ReviewResult = z.infer<typeof reviewResultSchema>
 
 /**
  * SumSub webhook payload for applicantReviewed event.
@@ -109,18 +105,6 @@ export const sumsubWebhookPayloadSchema = z.object({
   sandboxMode: z.boolean().optional(),
 })
 
-export type SumSubWebhookPayload = z.infer<typeof sumsubWebhookPayloadSchema>
-
-/**
- * Applicant reviewed webhook - the primary webhook we process.
- */
-export const applicantReviewedWebhookSchema = sumsubWebhookPayloadSchema.extend({
-  type: z.literal("applicantReviewed"),
-  reviewResult: reviewResultSchema,
-})
-
-export type ApplicantReviewedWebhook = z.infer<typeof applicantReviewedWebhookSchema>
-
 // ==============================================================================
 // Applicant Metadata
 // ==============================================================================
@@ -136,31 +120,6 @@ export const applicantMetadataSchema = z.object({
   near_nonce: z.string(),
   near_timestamp: z.string(),
 })
-
-export type ApplicantMetadata = z.infer<typeof applicantMetadataSchema>
-
-// ==============================================================================
-// Verification Data
-// ==============================================================================
-
-/**
- * SumSub-based verification data (replaces Self.xyz nullifier-based data).
- */
-export const sumsubVerificationDataSchema = z.object({
-  nearAccountId: nearAccountIdSchema,
-})
-
-export type SumSubVerificationData = z.infer<typeof sumsubVerificationDataSchema>
-
-/**
- * Verification summary for API responses.
- */
-export const sumsubVerificationSummarySchema = z.object({
-  nearAccountId: nearAccountIdSchema,
-  verifiedAt: z.number(),
-})
-
-export type SumSubVerificationSummary = z.output<typeof sumsubVerificationSummarySchema>
 
 // ==============================================================================
 // SumSub API Response Types
@@ -472,8 +431,6 @@ export const verificationStatusResponseSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("CONTRACT_PAUSED"), updatedAt: z.number() }),
   z.object({ status: z.literal("NOT_FOUND") }),
 ])
-
-export type VerificationStatusResponse = z.infer<typeof verificationStatusResponseSchema>
 
 // ==============================================================================
 // Frontend Verification State
