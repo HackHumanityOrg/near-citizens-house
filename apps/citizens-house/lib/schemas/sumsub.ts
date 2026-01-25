@@ -474,3 +474,15 @@ export const verificationStatusResponseSchema = z.discriminatedUnion("status", [
 ])
 
 export type VerificationStatusResponse = z.infer<typeof verificationStatusResponseSchema>
+
+// ==============================================================================
+// Frontend Verification State
+// ==============================================================================
+
+/**
+ * Verification step state for frontend components.
+ * Tracks the current state of the verification flow.
+ */
+export const verificationStepStateSchema = z.enum(["loading", "ready", "verifying", "polling", "success", "error"])
+
+export type VerificationStepState = z.infer<typeof verificationStepStateSchema>

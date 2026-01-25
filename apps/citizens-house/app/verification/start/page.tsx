@@ -13,7 +13,7 @@ import { StepError } from "../../../components/verification/flow/step-error"
 import { StepHold } from "../../../components/verification/flow/step-hold"
 import { ErrorModal } from "../../../components/verification/flow/error-modal"
 import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
-import { isNonRetryableError, isHoldError } from "@/lib/schemas/errors"
+import { isNonRetryableError, isHoldError, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
 
 enum VerificationProgressStep {
   NotConnected = "not_connected",
@@ -111,7 +111,7 @@ function VerificationStartContent() {
   const [isSigning, setIsSigning] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [errorCode, setErrorCode] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<VerificationErrorCode | null>(null)
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
   const hasTrackedFlowStarted = useRef(false)
   const [debugModeActive, setDebugModeActive] = useState(false)
@@ -182,16 +182,18 @@ function VerificationStartContent() {
   // Listen for debug error trigger events
   useEffect(() => {
     const handleDebugTriggerError = (
-      event: CustomEvent<{ type: "retryable" | "non-retryable" | "hold"; code: string }>,
+      event: CustomEvent<{ type: "retryable" | "non-retryable" | "hold"; code: VerificationErrorCode }>,
     ) => {
       const { type, code } = event.detail
       setErrorMessage(`Debug: ${code}`)
       setErrorCode(code)
 
       if (type === "hold") {
+        setIsErrorModalOpen(false)
         setDebugModeActive(true)
         setCurrentStep(VerificationProgressStep.Hold)
       } else if (type === "non-retryable") {
+        setIsErrorModalOpen(false)
         setDebugModeActive(true)
         setCurrentStep(VerificationProgressStep.Error)
       } else {
@@ -296,7 +298,8 @@ function VerificationStartContent() {
       // Verification failed
       const message = errorParam || "Verification failed. Please try again."
       setErrorMessage(message)
-      setErrorCode(errorCodeParam)
+      // Cast to VerificationErrorCode - backend validates error codes before sending
+      setErrorCode(errorCodeParam as VerificationErrorCode | null)
       // Route to appropriate step based on error type
       if (errorCodeParam && isHoldError(errorCodeParam)) {
         setCurrentStep(VerificationProgressStep.Hold)
@@ -433,14 +436,14 @@ function VerificationStartContent() {
   }
 
   // Handle verification error
-  const handleVerificationError = (error: string, code?: string) => {
-    setErrorMessage(error)
-    setErrorCode(code || null)
+  const handleVerificationError = (code: VerificationErrorCode) => {
+    setErrorCode(code)
+    setErrorMessage(getErrorMessage(code))
 
     // Route to appropriate step based on error type
-    if (code && isHoldError(code)) {
+    if (isHoldError(code)) {
       setCurrentStep(VerificationProgressStep.Hold)
-    } else if (code && isNonRetryableError(code)) {
+    } else if (isNonRetryableError(code)) {
       setCurrentStep(VerificationProgressStep.Error)
     } else {
       setIsErrorModalOpen(true)

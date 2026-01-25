@@ -26,6 +26,7 @@ import {
 import { logEvent } from "@/lib/logger"
 import { validateSignatureData, verifyNearSignature, getSigningMessage, getSigningRecipient } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
+import { apiError, apiSuccess } from "@/lib/api/response"
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     const parseResult = sumsubTokenRequestSchema.safeParse(body)
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => i.path.join(".")).join(", ")
-      return NextResponse.json({ error: "Invalid request", details: issues }, { status: 400 })
+      return apiError("INVALID_REQUEST", issues)
     }
 
     const { nearSignature } = parseResult.data
@@ -58,13 +59,7 @@ export async function POST(request: NextRequest) {
         error: formatCheck.error ?? "Unknown validation error",
         errorCode: formatCheck.errorCode ?? "UNKNOWN",
       })
-      return NextResponse.json(
-        {
-          error: formatCheck.error ?? "Invalid signature data",
-          code: formatCheck.errorCode ?? "NEAR_SIGNATURE_INVALID",
-        },
-        { status: 400 },
-      )
+      return apiError("NEAR_SIGNATURE_INVALID", formatCheck.error)
     }
 
     // 2. Verify NEAR signature cryptographically (NEP-413)
@@ -77,7 +72,7 @@ export async function POST(request: NextRequest) {
         event: "sumsub_token_missing_config",
         level: "error",
       })
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+      return apiError("BACKEND_NOT_CONFIGURED", "Missing signing recipient")
     }
 
     const signatureCheck = verifyNearSignature(
@@ -95,10 +90,7 @@ export async function POST(request: NextRequest) {
         accountId: nearSignature.accountId,
         error: signatureCheck.error ?? "Unknown signature error",
       })
-      return NextResponse.json(
-        { error: signatureCheck.error ?? "Invalid signature", code: "NEAR_SIGNATURE_INVALID" },
-        { status: 400 },
-      )
+      return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error)
     }
 
     // 3. Verify public key is a full-access key via NEAR RPC
@@ -110,10 +102,7 @@ export async function POST(request: NextRequest) {
         accountId: nearSignature.accountId,
         error: keyCheck.error ?? "Unknown key validation error",
       })
-      return NextResponse.json(
-        { error: keyCheck.error ?? "Public key is not an active full-access key", code: "NEAR_SIGNATURE_INVALID" },
-        { status: 400 },
-      )
+      return apiError("NEAR_SIGNATURE_INVALID", keyCheck.error ?? "Public key is not an active full-access key")
     }
 
     // NOTE: Nonce is NOT reserved here - only in webhook to allow retries if SumSub verification fails.
@@ -129,10 +118,7 @@ export async function POST(request: NextRequest) {
         level: "info",
         accountId: nearSignature.accountId,
       })
-      return NextResponse.json(
-        { error: "This account is already verified", code: "ACCOUNT_ALREADY_VERIFIED" },
-        { status: 400 },
-      )
+      return apiError("ACCOUNT_ALREADY_VERIFIED")
     }
 
     // ==================== Generate SumSub token ====================
@@ -194,7 +180,7 @@ export async function POST(request: NextRequest) {
       externalUserId,
     }
 
-    return NextResponse.json(response)
+    return apiSuccess(response)
   } catch (error) {
     logEvent({
       event: "sumsub_token_error",
@@ -202,7 +188,7 @@ export async function POST(request: NextRequest) {
       error: error instanceof Error ? error.message : "Unknown error",
     })
 
-    return NextResponse.json({ error: "Failed to generate access token" }, { status: 500 })
+    return apiError("TOKEN_GENERATION_FAILED")
   }
 }
 

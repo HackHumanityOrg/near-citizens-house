@@ -170,3 +170,31 @@ export const freshTimestampSchema = z.number().refine(
 export const nearPublicKeySchema = z
   .string()
   .regex(/^ed25519:[1-9A-HJ-NP-Za-km-z]{43,44}$/, "Invalid NEAR public key format (expected ed25519:BASE58)")
+
+// ==================== RPC Response Types ====================
+
+/**
+ * Access key info from NEAR RPC view_access_key_list response.
+ */
+export interface AccessKeyInfoView {
+  public_key: string
+  access_key: {
+    nonce: number
+    permission:
+      | "FullAccess"
+      | {
+          FunctionCall: {
+            allowance: string | null
+            receiver_id: string
+            method_names: string[]
+          }
+        }
+  }
+}
+
+/**
+ * Access key list from NEAR RPC view_access_key_list response.
+ */
+export interface AccessKeyList {
+  keys: AccessKeyInfoView[]
+}

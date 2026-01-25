@@ -3,23 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { X, ChevronDown, ChevronRight, Bug, GripVertical } from "lucide-react"
 import { useDebugContext } from "@/lib/providers/debug-provider"
-
-// Error codes for testing
-const RETRYABLE_ERROR_CODES = [
-  "NEAR_SIGNATURE_INVALID",
-  "SIGNATURE_EXPIRED",
-  "SIGNATURE_TIMESTAMP_INVALID",
-  "VERIFICATION_RETRY",
-] as const
-
-const HOLD_ERROR_CODES = ["VERIFICATION_ON_HOLD"] as const
-
-const NON_RETRYABLE_ERROR_CODES = [
-  "DUPLICATE_IDENTITY",
-  "ACCOUNT_ALREADY_VERIFIED",
-  "CONTRACT_PAUSED",
-  "VERIFICATION_REJECTED",
-] as const
+import { ERROR_CATEGORIES, type VerificationErrorCode } from "@/lib/schemas"
 
 interface CollapsibleSectionProps {
   title: string
@@ -86,7 +70,7 @@ export function DebugMenu() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
   // Dispatch error trigger events
-  const triggerRetryableError = useCallback((code: string) => {
+  const triggerRetryableError = useCallback((code: VerificationErrorCode) => {
     window.dispatchEvent(
       new CustomEvent("debug:trigger-error", {
         detail: { type: "retryable", code },
@@ -94,7 +78,7 @@ export function DebugMenu() {
     )
   }, [])
 
-  const triggerHoldError = useCallback((code: string) => {
+  const triggerHoldError = useCallback((code: VerificationErrorCode) => {
     window.dispatchEvent(
       new CustomEvent("debug:trigger-error", {
         detail: { type: "hold", code },
@@ -102,7 +86,7 @@ export function DebugMenu() {
     )
   }, [])
 
-  const triggerNonRetryableError = useCallback((code: string) => {
+  const triggerNonRetryableError = useCallback((code: VerificationErrorCode) => {
     window.dispatchEvent(
       new CustomEvent("debug:trigger-error", {
         detail: { type: "non-retryable", code },
@@ -223,53 +207,68 @@ export function DebugMenu() {
         {/* Error Testing Section */}
         <CollapsibleSection title="Error Testing">
           <div className="space-y-3">
-            {/* Retryable Errors */}
-            <div className="space-y-1.5">
-              <span className="text-xs text-[#fa8]">Retryable → Modal:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {RETRYABLE_ERROR_CODES.map((code) => (
-                  <button
-                    key={code}
-                    onClick={() => triggerRetryableError(code)}
-                    className="px-2 py-1 text-xs rounded bg-[#3a3a2a] text-[#fa8] hover:bg-[#4a4a3a] transition-colors"
-                  >
-                    {formatErrorCode(code)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Hold Errors */}
-            <div className="space-y-1.5">
-              <span className="text-xs text-[#ffda1e]">Hold → Hold Step:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {HOLD_ERROR_CODES.map((code) => (
-                  <button
-                    key={code}
-                    onClick={() => triggerHoldError(code)}
-                    className="px-2 py-1 text-xs rounded bg-[#3a3a1a] text-[#ffda1e] hover:bg-[#4a4a2a] transition-colors"
-                  >
-                    {formatErrorCode(code)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Non-Retryable Errors */}
-            <div className="space-y-1.5">
-              <span className="text-xs text-[#f88]">Non-Retryable → Error Step:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {NON_RETRYABLE_ERROR_CODES.map((code) => (
-                  <button
-                    key={code}
-                    onClick={() => triggerNonRetryableError(code)}
-                    className="px-2 py-1 text-xs rounded bg-[#4a2a2a] text-[#f88] hover:bg-[#5a3a3a] transition-colors"
-                  >
-                    {formatErrorCode(code)}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Derive error lists from exhaustive ERROR_CATEGORIES */}
+            {(
+              [
+                {
+                  category: "retryable",
+                  label: "Retryable → Modal:",
+                  labelColor: "text-[#fa8]",
+                  btnBg: "bg-[#3a3a2a]",
+                  btnText: "text-[#fa8]",
+                  btnHover: "hover:bg-[#4a4a3a]",
+                  trigger: triggerRetryableError,
+                },
+                {
+                  category: "hold",
+                  label: "Hold → Hold Step:",
+                  labelColor: "text-[#ffda1e]",
+                  btnBg: "bg-[#3a3a1a]",
+                  btnText: "text-[#ffda1e]",
+                  btnHover: "hover:bg-[#4a4a2a]",
+                  trigger: triggerHoldError,
+                },
+                {
+                  category: "non-retryable",
+                  label: "Non-Retryable → Error Step:",
+                  labelColor: "text-[#f88]",
+                  btnBg: "bg-[#4a2a2a]",
+                  btnText: "text-[#f88]",
+                  btnHover: "hover:bg-[#5a3a3a]",
+                  trigger: triggerNonRetryableError,
+                },
+                {
+                  category: "internal",
+                  label: "Internal → Error Step:",
+                  labelColor: "text-[#88f]",
+                  btnBg: "bg-[#2a2a4a]",
+                  btnText: "text-[#88f]",
+                  btnHover: "hover:bg-[#3a3a5a]",
+                  trigger: triggerNonRetryableError,
+                },
+              ] as const
+            ).map(({ category, label, labelColor, btnBg, btnText, btnHover, trigger }) => {
+              const codes = (Object.keys(ERROR_CATEGORIES) as VerificationErrorCode[]).filter(
+                (code) => ERROR_CATEGORIES[code] === category,
+              )
+              if (codes.length === 0) return null
+              return (
+                <div key={category} className="space-y-1.5">
+                  <span className={`text-xs ${labelColor}`}>{label}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {codes.map((code) => (
+                      <button
+                        key={code}
+                        onClick={() => trigger(code)}
+                        className={`px-2 py-1 text-xs rounded ${btnBg} ${btnText} ${btnHover} transition-colors`}
+                      >
+                        {formatErrorCode(code)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
 
             {/* Clear Errors */}
             <button

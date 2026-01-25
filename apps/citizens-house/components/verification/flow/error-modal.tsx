@@ -3,11 +3,11 @@
 import { useEffect, useRef } from "react"
 import { Button } from "@near-citizens/ui"
 import { trackEvent } from "@/lib/analytics"
-import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/schemas/errors"
+import { getErrorTitle, getErrorMessage, isNonRetryableError, type VerificationErrorCode } from "@/lib/schemas/errors"
 
 type ErrorStage = "wallet_connect" | "message_sign" | "qr_scan" | "polling" | "unknown"
 
-function determineErrorStage(errorCode?: string): ErrorStage {
+function determineErrorStage(errorCode?: VerificationErrorCode): ErrorStage {
   if (!errorCode) return "unknown"
   const code = errorCode.toUpperCase()
   if (code.includes("WALLET") || code.includes("CONNECT")) return "wallet_connect"
@@ -20,14 +20,14 @@ function determineErrorStage(errorCode?: string): ErrorStage {
 interface ErrorModalProps {
   isOpen: boolean
   errorMessage?: string
-  errorCode?: string
+  errorCode?: VerificationErrorCode
   onClose: () => void
   onRetry: () => void
 }
 
 export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }: ErrorModalProps) {
   const hasTrackedErrorShown = useRef(false)
-  const lastErrorCode = useRef<string | undefined>(undefined)
+  const lastErrorCode = useRef<VerificationErrorCode | undefined>(undefined)
 
   // Track error_shown when modal opens
   useEffect(() => {

@@ -2,11 +2,11 @@
 
 import { X, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getErrorTitle, getErrorMessage } from "@/lib/schemas/errors"
+import { getErrorTitle, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
 import { StarPattern } from "../icons/star-pattern"
 
 interface StepErrorProps {
-  errorCode: string
+  errorCode: VerificationErrorCode
   errorMessage?: string
   isConnected?: boolean
   onDisconnect: () => void

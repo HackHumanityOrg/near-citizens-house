@@ -19,11 +19,11 @@ import { trackServerEvent } from "@/lib/analytics-server"
 import { getSigningMessage, getSigningRecipient, verifyNearSignature, validateSignatureData } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
 import { logEvent } from "@/lib/logger"
-import { isNonRetryableError } from "@/lib/schemas/errors"
 import { sumsubWebhookPayloadSchema, applicantMetadataSchema } from "@/lib/schemas/sumsub"
 import { SIGNATURE_VALIDATION, type NearAccountId } from "@/lib/schemas/near"
 import { mapContractErrorToCode } from "@/lib/schemas"
 import { setVerificationStatus, clearVerificationStatus } from "@/lib/verification-status"
+import { apiError, webhookAck } from "@/lib/api/response"
 
 // Initialize Redis for backend key pool
 let redisInitialized = false
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         event: "sumsub_webhook_missing_signature",
         level: "warn",
       })
-      return NextResponse.json({ error: "Missing signature header" }, { status: 401 })
+      return apiError("WEBHOOK_SIGNATURE_INVALID", "Missing signature header", 401)
     }
 
     // Verify webhook signature
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         event: "sumsub_webhook_invalid_signature",
         level: "warn",
       })
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+      return apiError("WEBHOOK_SIGNATURE_INVALID", undefined, 401)
     }
 
     // Parse webhook payload
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         level: "warn",
         errors: JSON.stringify(parseResult.error.issues),
       })
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
+      return apiError("WEBHOOK_PAYLOAD_INVALID")
     }
 
     const payload = parseResult.data
@@ -101,13 +101,13 @@ export async function POST(request: NextRequest) {
           applicantId,
         })
       }
-      return NextResponse.json({ status: "ok", message: "Status updated to ON_HOLD" })
+      return webhookAck("Status updated to ON_HOLD")
     }
 
     // Only process applicantReviewed events beyond this point
     if (payload.type !== "applicantReviewed") {
       // Acknowledge other webhook types but don't process
-      return NextResponse.json({ status: "ok", message: `Webhook type ${payload.type} acknowledged` })
+      return webhookAck(`Webhook type ${payload.type} acknowledged`)
     }
 
     // Check if verification was approved
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
           applicantId,
           reviewAnswer: "YELLOW",
         })
-        return NextResponse.json({ status: "ok", message: "Verification pending review" })
+        return webhookAck("Verification pending review")
       }
 
       // Handle RED status - store rejection info for frontend
@@ -150,10 +150,10 @@ export async function POST(request: NextRequest) {
           rejectLabels: payload.reviewResult?.rejectLabels,
           moderationComment: payload.reviewResult?.moderationComment,
         })
-        return NextResponse.json({ status: "ok", message: "Verification rejected" })
+        return webhookAck("Verification rejected")
       }
 
-      return NextResponse.json({ status: "ok", message: "Verification not approved" })
+      return webhookAck("Verification not approved")
     }
 
     // Fetch applicant data with metadata
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
         applicantId,
         missingFields: metadataResult.error.issues.map((i) => i.path.join(".")).join(", "),
       })
-      return NextResponse.json({ error: "Missing NEAR metadata on applicant" }, { status: 400 })
+      return apiError("MISSING_NEAR_METADATA")
     }
 
     const nearMetadata = metadataResult.data
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         errorCode: formatCheck.errorCode ?? "UNKNOWN",
       })
 
-      return NextResponse.json({ error: formatCheck.error ?? "Invalid signature data" }, { status: 400 })
+      return apiError("NEAR_SIGNATURE_INVALID", formatCheck.error)
     }
 
     // Calculate signature age for nonce TTL (validation already passed above)
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
         level: "error",
         applicantId,
       })
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+      return apiError("BACKEND_NOT_CONFIGURED", "Missing signing recipient")
     }
 
     const signatureCheck = verifyNearSignature(
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
         error: signatureCheck.error ?? "Unknown error",
       })
 
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
+      return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error)
     }
 
     // Verify the public key is a full-access key
@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
         error: keyCheck.error ?? "Unknown key validation error",
       })
 
-      return NextResponse.json({ error: keyCheck.error ?? "Invalid public key" }, { status: 400 })
+      return apiError("NEAR_SIGNATURE_INVALID", keyCheck.error ?? "Invalid public key")
     }
 
     // Reserve nonce to prevent replay attacks
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
         accountId,
       })
 
-      return NextResponse.json({ error: "Nonce already used" }, { status: 400 })
+      return apiError("NONCE_ALREADY_USED")
     }
 
     // Verify backend wallet is configured
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
         level: "error",
         applicantId,
       })
-      return NextResponse.json({ error: "Backend not configured" }, { status: 500 })
+      return apiError("BACKEND_NOT_CONFIGURED")
     }
 
     // Create user context data with signature info
@@ -332,11 +332,7 @@ export async function POST(request: NextRequest) {
       // Revalidate verifications cache
       revalidateTag("verifications", "max")
 
-      return NextResponse.json({
-        status: "ok",
-        message: "Verification stored successfully",
-        accountId,
-      })
+      return webhookAck("Verification stored successfully", accountId)
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : ""
       const errCode = mapContractErrorToCode(errorMsg)
@@ -366,10 +362,11 @@ export async function POST(request: NextRequest) {
         errorCode: errorCodeForLog,
       })
 
-      return NextResponse.json(
-        { error: errorMsg || "Failed to store verification" },
-        { status: errCode && isNonRetryableError(errCode) ? 400 : 500 },
-      )
+      // Use typed error code if available, otherwise generic storage failure
+      if (errCode) {
+        return apiError(errCode, errorMsg)
+      }
+      return apiError("STORAGE_FAILED", errorMsg)
     }
   } catch (error) {
     logEvent({
@@ -380,7 +377,7 @@ export async function POST(request: NextRequest) {
       error: error instanceof Error ? error.message : "Unknown error",
     })
 
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return apiError("STORAGE_FAILED", error instanceof Error ? error.message : "Internal server error")
   }
 }
 

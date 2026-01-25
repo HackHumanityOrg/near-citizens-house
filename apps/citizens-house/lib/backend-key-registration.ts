@@ -56,8 +56,8 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
     })
 
     // Extract public key strings from the response
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existingKeys = new Set((existingKeysResponse as any).keys.map((k: any) => k.public_key as string))
+    type AccessKeyList = import("./schemas/near").AccessKeyList
+    const existingKeys = new Set((existingKeysResponse as unknown as AccessKeyList).keys.map((k) => k.public_key))
 
     // Check which pool keys need to be registered
     const poolKeys = backendKeyPool.getAllPublicKeys()
