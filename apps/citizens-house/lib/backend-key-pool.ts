@@ -25,7 +25,6 @@ import { Account } from "@near-js/accounts"
 import type { Signer } from "@near-js/signers"
 import { NEAR_SERVER_CONFIG } from "./config.server"
 import { createRpcProvider } from "./providers/rpc-provider"
-import type { SumSubWebhookContext } from "./logger/request-context"
 
 const POOL_SIZE = 10 // Support 10 concurrent transactions
 const REDIS_KEY = "backend-key-pool:index"
@@ -107,15 +106,11 @@ class BackendKeyPool {
   /**
    * Create an Account instance with the next available pooled key.
    * Returns the account and key index for logging.
-   * Optionally accepts a RequestContext to log the key index.
    */
-  async createAccountWithNextKey(ctx?: SumSubWebhookContext): Promise<{ account: Account; keyIndex: number }> {
+  async createAccountWithNextKey(): Promise<{ account: Account; keyIndex: number }> {
     this.deriveKeys()
 
-    ctx?.startTimer("keyPoolSelection")
     const keyIndex = await this.getNextKeyIndex()
-    ctx?.endTimer("keyPoolSelection")
-    ctx?.setNested("keyPool.index", keyIndex)
 
     const keyPair = this.keys[keyIndex]
     const signer = new KeyPairSigner(keyPair)

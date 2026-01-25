@@ -13,7 +13,7 @@ import "server-only"
 
 import crypto from "crypto"
 import { env } from "../schemas/env"
-import { logger } from "../logger"
+import { logEvent } from "../logger"
 import {
   sumsubAccessTokenApiResponseSchema,
   sumsubApplicantSchema,
@@ -109,7 +109,9 @@ export async function createApplicant(externalUserId: string, levelName: string)
 
   if (!response.ok) {
     const errorText = await response.text()
-    logger.error("sumsub_create_applicant_failed", {
+    logEvent({
+      event: "sumsub_create_applicant_failed",
+      level: "error",
       status: response.status,
       error: errorText,
       externalUserId,
@@ -121,13 +123,17 @@ export async function createApplicant(externalUserId: string, levelName: string)
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logger.error("sumsub_create_applicant_invalid_response", {
+    logEvent({
+      event: "sumsub_create_applicant_invalid_response",
+      level: "error",
       error: parsed.error.message,
     })
     throw new Error("Invalid response from SumSub create applicant API")
   }
 
-  logger.info("sumsub_applicant_created", {
+  logEvent({
+    event: "sumsub_applicant_created",
+    level: "info",
     applicantId: parsed.data.id,
     externalUserId,
   })
@@ -157,7 +163,9 @@ export async function generateAccessToken(
 
   if (!response.ok) {
     const errorText = await response.text()
-    logger.error("sumsub_access_token_failed", {
+    logEvent({
+      event: "sumsub_access_token_failed",
+      level: "error",
       status: response.status,
       error: errorText,
       externalUserId,
@@ -169,7 +177,9 @@ export async function generateAccessToken(
   const parsed = sumsubAccessTokenApiResponseSchema.safeParse(data)
 
   if (!parsed.success) {
-    logger.error("sumsub_access_token_invalid_response", {
+    logEvent({
+      event: "sumsub_access_token_invalid_response",
+      level: "error",
       error: parsed.error.message,
       response: data,
     })
@@ -197,7 +207,9 @@ export async function getApplicant(applicantId: string): Promise<SumSubApplicant
 
   if (!response.ok) {
     const errorText = await response.text()
-    logger.error("sumsub_get_applicant_failed", {
+    logEvent({
+      event: "sumsub_get_applicant_failed",
+      level: "error",
       status: response.status,
       error: errorText,
       applicantId,
@@ -209,7 +221,9 @@ export async function getApplicant(applicantId: string): Promise<SumSubApplicant
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logger.error("sumsub_get_applicant_invalid_response", {
+    logEvent({
+      event: "sumsub_get_applicant_invalid_response",
+      level: "error",
       error: parsed.error.message,
       response: data,
     })
@@ -237,7 +251,9 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
 
   if (!response.ok) {
     const errorText = await response.text()
-    logger.error("sumsub_get_applicant_by_external_id_failed", {
+    logEvent({
+      event: "sumsub_get_applicant_by_external_id_failed",
+      level: "error",
       status: response.status,
       error: errorText,
       externalUserId,
@@ -249,7 +265,9 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logger.error("sumsub_get_applicant_by_external_id_invalid_response", {
+    logEvent({
+      event: "sumsub_get_applicant_by_external_id_invalid_response",
+      level: "error",
       error: parsed.error.message,
       response: data,
     })
@@ -287,7 +305,9 @@ export async function updateApplicantMetadata(applicantId: string, metadata: Sum
 
   if (!response.ok) {
     const errorText = await response.text()
-    logger.error("sumsub_update_metadata_failed", {
+    logEvent({
+      event: "sumsub_update_metadata_failed",
+      level: "error",
       status: response.status,
       error: errorText,
       applicantId,
@@ -311,7 +331,10 @@ export function verifyWebhookSignature(payload: string, signature: string): bool
   const webhookSecret = env.SUMSUB_WEBHOOK_SECRET
 
   if (!webhookSecret) {
-    logger.error("sumsub_webhook_secret_not_configured", {})
+    logEvent({
+      event: "sumsub_webhook_secret_not_configured",
+      level: "error",
+    })
     throw new Error("SumSub webhook secret not configured")
   }
 

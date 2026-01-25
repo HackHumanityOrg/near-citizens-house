@@ -15,19 +15,20 @@ import { z } from "zod"
  * Used across API responses, session storage, and client error handling.
  */
 export const verificationErrorCodeSchema = z.enum([
-  "MISSING_FIELDS",
-  "VERIFICATION_FAILED",
-  "SUMSUB_APPLICANT_MISSING",
-  "SUMSUB_VERIFICATION_REJECTED",
+  // Signature validation
   "NEAR_SIGNATURE_INVALID",
-  "NEAR_SIGNATURE_MISSING",
   "SIGNATURE_EXPIRED",
   "SIGNATURE_TIMESTAMP_INVALID",
+
+  // Contract errors (propagated via Redis)
   "DUPLICATE_IDENTITY",
   "ACCOUNT_ALREADY_VERIFIED",
   "CONTRACT_PAUSED",
-  "STORAGE_FAILED",
-  "INTERNAL_ERROR",
+
+  // Verification outcomes
+  "VERIFICATION_ON_HOLD",
+  "VERIFICATION_REJECTED",
+  "VERIFICATION_RETRY",
 ])
 
 export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
@@ -41,19 +42,20 @@ export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
  * Used in API responses and error displays.
  */
 export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> = {
-  MISSING_FIELDS: "Missing required fields",
-  VERIFICATION_FAILED: "Verification failed",
-  SUMSUB_APPLICANT_MISSING: "SumSub applicant ID missing",
-  SUMSUB_VERIFICATION_REJECTED: "Identity verification was rejected",
+  // Signature validation
   NEAR_SIGNATURE_INVALID: "NEAR signature verification failed",
-  NEAR_SIGNATURE_MISSING: "Invalid or missing NEAR signature data",
   SIGNATURE_EXPIRED: "Signature expired",
   SIGNATURE_TIMESTAMP_INVALID: "Invalid signature timestamp",
+
+  // Contract errors
   DUPLICATE_IDENTITY: "This identity has already been registered",
   ACCOUNT_ALREADY_VERIFIED: "This NEAR account is already verified",
   CONTRACT_PAUSED: "Verification is temporarily unavailable",
-  STORAGE_FAILED: "Unable to finalize verification at this time",
-  INTERNAL_ERROR: "Internal server error",
+
+  // Verification outcomes
+  VERIFICATION_ON_HOLD: "Verification requires manual review",
+  VERIFICATION_REJECTED: "Verification was rejected",
+  VERIFICATION_RETRY: "Please resubmit with clearer documents",
 } as const
 
 // ============================================================================
@@ -64,7 +66,12 @@ export const VERIFICATION_ERROR_MESSAGES: Record<VerificationErrorCode, string> 
  * Error codes that indicate non-recoverable issues.
  * Users cannot retry verification with the same account/identity.
  */
-export const NON_RETRYABLE_ERRORS = ["DUPLICATE_IDENTITY", "ACCOUNT_ALREADY_VERIFIED", "CONTRACT_PAUSED"] as const
+export const NON_RETRYABLE_ERRORS = [
+  "DUPLICATE_IDENTITY",
+  "ACCOUNT_ALREADY_VERIFIED",
+  "CONTRACT_PAUSED",
+  "VERIFICATION_REJECTED",
+] as const
 
 export type NonRetryableErrorCode = (typeof NON_RETRYABLE_ERRORS)[number]
 
@@ -76,6 +83,14 @@ export function isNonRetryableError(errorCode: string | null | undefined): boole
   return (
     errorCode !== null && errorCode !== undefined && NON_RETRYABLE_ERRORS.includes(errorCode as NonRetryableErrorCode)
   )
+}
+
+/**
+ * Check if an error code indicates verification is on hold.
+ * Hold errors show a dedicated "under review" step.
+ */
+export function isHoldError(errorCode: string | null | undefined): boolean {
+  return errorCode === "VERIFICATION_ON_HOLD"
 }
 
 // ============================================================================
@@ -130,9 +145,9 @@ export function createVerificationError(
 
 /**
  * Map contract/storage error messages to error codes.
- * Used to translate low-level errors to user-facing codes.
+ * Returns null for unknown errors to allow webhook retries.
  */
-export function mapContractErrorToCode(errorMessage: string): VerificationErrorCode {
+export function mapContractErrorToCode(errorMessage: string): VerificationErrorCode | null {
   const message = errorMessage.toLowerCase()
 
   if (message.includes("sumsub applicant already used") || message.includes("already registered")) {
@@ -155,11 +170,8 @@ export function mapContractErrorToCode(errorMessage: string): VerificationErrorC
     return "NEAR_SIGNATURE_INVALID"
   }
 
-  if (message.includes("sumsub") || message.includes("applicant") || message.includes("user context data")) {
-    return "VERIFICATION_FAILED"
-  }
-
-  return "STORAGE_FAILED"
+  // Unknown contract/storage error - allow webhook retry
+  return null
 }
 
 // ============================================================================
@@ -178,8 +190,12 @@ export function getErrorTitle(errorCode: string | null | undefined): string {
       return "Account Already Verified"
     case "CONTRACT_PAUSED":
       return "Verification Unavailable"
-    case "SUMSUB_VERIFICATION_REJECTED":
+    case "VERIFICATION_ON_HOLD":
+      return "Verification Under Review"
+    case "VERIFICATION_REJECTED":
       return "Verification Rejected"
+    case "VERIFICATION_RETRY":
+      return "Documents Need Resubmission"
     default:
       return "Verification Failed"
   }
@@ -204,8 +220,12 @@ export function getErrorMessage(errorCode: string | null | undefined, fallbackMe
       return "This NEAR account is already verified. Connect a different account to continue."
     case "CONTRACT_PAUSED":
       return "Verification is temporarily unavailable. Please try again later."
-    case "SUMSUB_VERIFICATION_REJECTED":
-      return "Your identity verification was not approved. Please ensure your documents are clear and valid."
+    case "VERIFICATION_ON_HOLD":
+      return "Your documents are being reviewed by our team. This typically takes a few hours."
+    case "VERIFICATION_REJECTED":
+      return "Your verification could not be approved. Please contact support if you believe this is an error."
+    case "VERIFICATION_RETRY":
+      return "Please resubmit your documents with clearer images. Ensure your ID is fully visible and not blurry."
     default:
       // Check if it's a known error code from the schema
       if (errorCode in VERIFICATION_ERROR_MESSAGES) {

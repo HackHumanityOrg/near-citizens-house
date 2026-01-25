@@ -13,7 +13,6 @@ import {
 import type { TransformedVerification } from "@/lib/schemas/verification-contract"
 import { verificationDb } from "@/lib/contracts/verification/client"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
-import { createGetVerificationsContext, createCheckIsVerifiedContext } from "@/lib/logger"
 
 export type VerificationResult = {
   signatureValid: boolean
@@ -133,47 +132,15 @@ const getCachedVerifications = unstable_cache(
  * NEAR signature verification happens server-side.
  */
 export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
-  const ctx = createGetVerificationsContext()
-  ctx.setMany({
-    action: "getVerificationsWithStatus",
-    page,
-    pageSize,
-    verificationsRequested: pageSize,
-  })
-
   // Validate input parameters with safeParse
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) {
-    ctx.set("outcome", "validation_error")
-    ctx.emit("warn")
     return { accounts: [], total: 0 }
   }
 
   try {
-    const result = await getCachedVerifications(params.data)
-
-    ctx.set("verificationsReturned", result.accounts.length)
-    ctx.set("totalVerifications", result.total)
-
-    // Compute signature verification stats from results
-    const totalAccounts = result.accounts.length
-    let sigSucceeded = 0
-    for (const v of result.accounts) {
-      if (v.verification.signatureValid) sigSucceeded++
-    }
-
-    // Signature verification stats
-    ctx.set("signatureVerificationAttempted", totalAccounts)
-    ctx.set("signatureVerificationSucceeded", sigSucceeded)
-    ctx.set("signatureVerificationFailed", totalAccounts - sigSucceeded)
-
-    ctx.set("outcome", "success")
-    ctx.emit("info")
-
-    return result
+    return await getCachedVerifications(params.data)
   } catch {
-    ctx.set("outcome", "error")
-    ctx.emit("error")
     return { accounts: [], total: 0 }
   }
 }
@@ -183,33 +150,15 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
  * Used by the UI to skip verification steps for already-verified accounts.
  */
 export async function checkIsVerified(nearAccountId: NearAccountId): Promise<boolean> {
-  const ctx = createCheckIsVerifiedContext()
-  ctx.setMany({
-    action: "checkIsVerified",
-    nearAccountId,
-  })
-
   // Runtime validation for security (server actions can receive arbitrary input)
   const parsed = nearAccountIdSchema.safeParse(nearAccountId)
   if (!parsed.success) {
-    ctx.set("outcome", "validation_error")
-    ctx.emit("warn")
     return false
   }
 
   try {
-    ctx.startTimer("contractCall")
-    const isVerified = await verificationDb.isVerified(parsed.data)
-    ctx.endTimer("contractCall")
-
-    ctx.set("isVerified", isVerified)
-    ctx.set("outcome", isVerified ? "verified" : "not_verified")
-    ctx.emit("info")
-
-    return isVerified
+    return await verificationDb.isVerified(parsed.data)
   } catch {
-    ctx.set("outcome", "error")
-    ctx.emit("error")
     return false
   }
 }

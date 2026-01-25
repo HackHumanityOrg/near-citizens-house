@@ -1,18 +1,19 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { type NearSignatureData } from "@/lib"
 import { trackEvent } from "@/lib/analytics"
-import { checkIsVerified } from "@/app/citizens/actions"
 import {
   sumsubTokenResponseSchema,
   type SumSubWebSdkProps,
   type SumSubWebSdkPayload,
   type SumSubApplicantStatusChangedPayload,
+  type VerificationStatusResponse,
 } from "@/lib/schemas"
 import { Loader2, Info, Ban, Check, Shield } from "lucide-react"
 import { StarPattern } from "../icons/star-pattern"
+import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
 
 // Dynamic import of SumSub WebSDK to avoid SSR issues
 // The @sumsub/websdk-react package doesn't ship TypeScript definitions
@@ -41,11 +42,44 @@ interface Step2SumSubProps {
 
 export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubProps) {
   const [verificationStatus, setVerificationStatus] = useState<
-    "loading" | "ready" | "verifying" | "polling" | "success" | "error"
+    "loading" | "ready" | "verifying" | "polling" | "manual_review" | "success" | "error"
   >("loading")
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const confirmationInProgressRef = useRef(false)
+
+  // Debug mode state override
+  const handleDebugStateChange = useCallback(
+    (state: string) => {
+      const validStates = ["loading", "ready", "verifying", "polling", "manual_review", "success", "error"] as const
+      if (validStates.includes(state as (typeof validStates)[number])) {
+        setVerificationStatus(state as (typeof validStates)[number])
+        // If switching to ready or verifying, set a mock token
+        if ((state === "ready" || state === "verifying") && !accessToken) {
+          setAccessToken("debug-token")
+        }
+        // If success, trigger the onSuccess callback
+        if (state === "success") {
+          onSuccess()
+        }
+      }
+    },
+    [accessToken, onSuccess],
+  )
+
+  // Register with debug context
+  const debugStates = useMemo(
+    () => ["loading", "ready", "verifying", "polling", "manual_review", "success", "error"],
+    [],
+  )
+
+  useDebugRegistration({
+    id: "step2-sumsub",
+    name: "Step 2: SumSub",
+    availableStates: debugStates,
+    currentState: verificationStatus,
+    onStateChange: handleDebugStateChange,
+  })
 
   // Fetch access token on mount
   const fetchAccessToken = useCallback(async (): Promise<string> => {
@@ -128,7 +162,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
     }
   }, [fetchAccessToken])
 
-  // Poll for backend status confirmation by checking contract directly
+  // Poll for backend status confirmation by checking status endpoint
   const confirmBackendStatus = useCallback(async () => {
     const maxPolls = 60 // 2 minutes at 2s interval
     const pollIntervalMs = 2000
@@ -141,18 +175,89 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
 
     for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
       try {
-        const isVerified = await checkIsVerified(nearSignature.accountId)
-        if (isVerified) {
-          confirmationInProgressRef.current = false
-          setVerificationStatus("success")
-          onSuccess()
-          return
+        const response = await fetch(
+          `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
+        )
+        const data: VerificationStatusResponse = await response.json()
+
+        switch (data.status) {
+          case "APPROVED":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("success")
+            onSuccess()
+            return
+
+          case "ON_HOLD":
+            // Stop polling, show manual review message
+            trackEvent({
+              domain: "verification",
+              action: "manual_review_shown",
+              accountId: nearSignature.accountId,
+            })
+            confirmationInProgressRef.current = false
+            setVerificationStatus("manual_review")
+            return
+
+          case "REJECTED":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError("Verification was rejected. Please contact support.", "VERIFICATION_REJECTED")
+            return
+
+          case "RETRY":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError(data.moderationComment || "Please try again with clearer documents.", "VERIFICATION_RETRY")
+            return
+
+          case "DUPLICATE_IDENTITY":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError("This identity has already been used.", "DUPLICATE_IDENTITY")
+            return
+
+          case "ACCOUNT_ALREADY_VERIFIED":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError("This account is already verified.", "ACCOUNT_ALREADY_VERIFIED")
+            return
+
+          case "CONTRACT_PAUSED":
+            confirmationInProgressRef.current = false
+            setVerificationStatus("error")
+            onError("Verification is temporarily unavailable.", "CONTRACT_PAUSED")
+            return
+
+          case "NOT_FOUND":
+            // Continue polling - still waiting for webhook
+            break
         }
       } catch {
         // Network error, continue polling
       }
 
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+    }
+
+    // Timeout - check one more time for ON_HOLD status
+    try {
+      const finalResponse = await fetch(
+        `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
+      )
+      const finalData: VerificationStatusResponse = await finalResponse.json()
+
+      if (finalData.status === "ON_HOLD") {
+        trackEvent({
+          domain: "verification",
+          action: "manual_review_shown",
+          accountId: nearSignature.accountId,
+        })
+        confirmationInProgressRef.current = false
+        setVerificationStatus("manual_review")
+        return
+      }
+    } catch {
+      // Ignore final check errors
     }
 
     // Timeout
@@ -164,7 +269,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
     })
     confirmationInProgressRef.current = false
     setVerificationStatus("error")
-    onError("Verification is taking longer than expected. Please try again.", "TIMEOUT")
+    onError("Verification is taking longer than expected. Please check back later.", "TIMEOUT")
   }, [nearSignature.accountId, onSuccess, onError])
 
   // Handle SumSub SDK messages
@@ -339,6 +444,26 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
                     <div className="mt-[16px] flex items-center gap-[8px] text-[14px] text-[#757575] dark:text-[#a3a3a3]">
                       <Loader2 className="h-[16px] w-[16px] animate-spin" />
                       <span className="font-fk-grotesk">Finalizing verification on-chain...</span>
+                    </div>
+                  )}
+
+                  {verificationStatus === "manual_review" && (
+                    <div className="mt-[24px] p-[20px] bg-[#fff7e6] dark:bg-[#3d3520] border border-[#ffd591] dark:border-[#a67c00] rounded-[12px]">
+                      <div className="flex items-start gap-[12px]">
+                        <Info className="h-[20px] w-[20px] text-[#d48806] flex-shrink-0 mt-[2px]" />
+                        <div className="flex flex-col gap-[8px]">
+                          <span className="font-fk-grotesk font-medium text-[16px] text-[#000] dark:text-white">
+                            Verification Under Review
+                          </span>
+                          <p className="font-fk-grotesk text-[14px] text-[#595959] dark:text-[#a3a3a3]">
+                            Your documents are being reviewed by our team. This typically takes a few hours. You&apos;ll
+                            receive confirmation once your verification is complete.
+                          </p>
+                          <p className="font-fk-grotesk text-[14px] text-[#595959] dark:text-[#a3a3a3]">
+                            You can safely close this page and return later.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
