@@ -281,6 +281,8 @@ export interface SumSubApplicantStatusChangedPayload {
   reviewStatus?: string
   reviewResult?: {
     reviewAnswer?: ReviewAnswer
+    reviewRejectType?: ReviewRejectType
+    rejectLabels?: string[]
   }
   autoChecked?: boolean
 }
@@ -374,6 +376,8 @@ export interface SumSubWebSdkConfig {
   documentDefinitions?: Record<string, unknown>
   /** Auto-select document definitions */
   autoSelectDocumentDefinitions?: boolean
+  /** Enable controlled back navigation */
+  controlledNavigationBack?: boolean
 }
 
 /**
