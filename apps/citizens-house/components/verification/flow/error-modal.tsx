@@ -7,14 +7,33 @@ import { getErrorTitle, getErrorMessage, isNonRetryableError, type VerificationE
 
 type ErrorStage = "wallet_connect" | "message_sign" | "qr_scan" | "polling" | "unknown"
 
+/**
+ * Map error codes to their verification stage.
+ * Uses explicit mapping instead of string matching for reliability.
+ */
+const ERROR_STAGE_MAP: Partial<Record<VerificationErrorCode, ErrorStage>> = {
+  // Message signing errors
+  NEAR_SIGNATURE_INVALID: "message_sign",
+  SIGNATURE_EXPIRED: "message_sign",
+  SIGNATURE_TIMESTAMP_INVALID: "message_sign",
+  NONCE_ALREADY_USED: "message_sign",
+
+  // Polling/timeout errors
+  TIMEOUT: "polling",
+  VERIFICATION_ON_HOLD: "polling",
+  VERIFICATION_REJECTED: "polling",
+  VERIFICATION_RETRY: "polling",
+  DUPLICATE_IDENTITY: "polling",
+  ACCOUNT_ALREADY_VERIFIED: "polling",
+  CONTRACT_PAUSED: "polling",
+
+  // Token fetch errors map to unknown since they're pre-verification
+  TOKEN_FETCH_FAILED: "unknown",
+}
+
 function determineErrorStage(errorCode?: VerificationErrorCode): ErrorStage {
   if (!errorCode) return "unknown"
-  const code = errorCode.toUpperCase()
-  if (code.includes("WALLET") || code.includes("CONNECT")) return "wallet_connect"
-  if (code.includes("SIGN") || code.includes("SIGNATURE")) return "message_sign"
-  if (code.includes("QR") || code.includes("SCAN")) return "qr_scan"
-  if (code.includes("TIMEOUT") || code.includes("POLL") || code.includes("EXPIRED")) return "polling"
-  return "unknown"
+  return ERROR_STAGE_MAP[errorCode] ?? "unknown"
 }
 
 interface ErrorModalProps {

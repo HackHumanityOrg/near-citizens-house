@@ -58,6 +58,15 @@ const verificationWalletConnectFailedEventSchema = z
   })
   .strict()
 
+const verificationWalletConnectSucceededEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("wallet_connect_succeeded"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
 // Message signing lifecycle
 const verificationSignStartedEventSchema = z
   .object({
@@ -98,11 +107,43 @@ const verificationAlreadyVerifiedEventSchema = z
   })
   .strict()
 
+// Token fetch lifecycle
+const verificationTokenFetchStartedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_fetch_started"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationTokenFetchSucceededEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_fetch_succeeded"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    durationMs: z.number(),
+  })
+  .strict()
+
+const verificationTokenFetchFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_fetch_failed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    errorCode: z.string(),
+    durationMs: z.number(),
+  })
+  .strict()
+
 // Callback flow (contract polling)
 const verificationCallbackLoadedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("callback_loaded"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -111,6 +152,7 @@ const verificationCallbackPollingStartedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("callback_polling_started"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -119,6 +161,7 @@ const verificationCallbackResultEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("callback_result"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
     status: z.enum(["success", "error", "expired", "timeout"]),
     pollCount: z.number(),
@@ -148,6 +191,7 @@ const verificationPollingStartedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("polling_started"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -156,6 +200,7 @@ const verificationPollingTimeoutEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("polling_timeout"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
     pollCount: z.number(),
   })
@@ -165,6 +210,7 @@ const verificationManualReviewShownEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("manual_review_shown"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -174,6 +220,7 @@ const verificationSumsubSdkLoadedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("sumsub_sdk_loaded"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -182,6 +229,7 @@ const verificationSumsubMessageEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("sumsub_message"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
     messageType: z.string(),
   })
@@ -191,8 +239,50 @@ const verificationSumsubErrorEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("sumsub_error"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
+  })
+  .strict()
+
+// Granular SumSub SDK events for better signal-to-noise
+const sumsubReviewAnswerSchema = z.enum(["GREEN", "RED", "YELLOW"])
+
+const verificationSumsubReadyEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_ready"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationSumsubStepStartedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_step_started"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    stepType: z.string(),
+  })
+  .strict()
+
+const verificationSumsubStepCompletedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_step_completed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    stepType: z.string(),
+  })
+  .strict()
+
+const verificationSumsubSubmittedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_submitted"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
   })
   .strict()
 
@@ -201,8 +291,9 @@ const verificationSumsubRejectedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("sumsub_rejected"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
-    reviewAnswer: z.string(),
+    reviewAnswer: sumsubReviewAnswerSchema,
   })
   .strict()
 
@@ -279,12 +370,17 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   // Client-side events - wallet connection
   verificationWalletConnectStartedEventSchema,
   verificationWalletConnectFailedEventSchema,
+  verificationWalletConnectSucceededEventSchema,
   // Client-side events - message signing
   verificationSignStartedEventSchema,
   verificationSignCompletedEventSchema,
   verificationSignFailedEventSchema,
   // Client-side events - already verified
   verificationAlreadyVerifiedEventSchema,
+  // Client-side events - token fetch
+  verificationTokenFetchStartedEventSchema,
+  verificationTokenFetchSucceededEventSchema,
+  verificationTokenFetchFailedEventSchema,
   // Client-side events - polling
   verificationPollingStartedEventSchema,
   verificationPollingTimeoutEventSchema,
@@ -293,6 +389,10 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationSumsubSdkLoadedEventSchema,
   verificationSumsubMessageEventSchema,
   verificationSumsubErrorEventSchema,
+  verificationSumsubReadyEventSchema,
+  verificationSumsubStepStartedEventSchema,
+  verificationSumsubStepCompletedEventSchema,
+  verificationSumsubSubmittedEventSchema,
   verificationSumsubRejectedEventSchema,
   // Client-side events - callback
   verificationCallbackLoadedEventSchema,

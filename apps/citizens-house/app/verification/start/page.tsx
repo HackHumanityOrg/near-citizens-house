@@ -114,6 +114,9 @@ function VerificationStartContent() {
   const [errorCode, setErrorCode] = useState<VerificationErrorCode | null>(null)
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
   const hasTrackedFlowStarted = useRef(false)
+  const hasTrackedAlreadyVerified = useRef(false)
+  const hasTrackedWalletConnected = useRef(false)
+  const lastAccountIdRef = useRef<string | null>(null)
   const [debugModeActive, setDebugModeActive] = useState(false)
   const [debugOverrideConnected, setDebugOverrideConnected] = useState<boolean | null>(null)
 
@@ -234,6 +237,24 @@ function VerificationStartContent() {
   }, [])
 
   useEffect(() => {
+    if (!isConnected) {
+      lastAccountIdRef.current = null
+      hasTrackedAlreadyVerified.current = false
+      hasTrackedWalletConnected.current = false
+      return
+    }
+
+    if (accountId && lastAccountIdRef.current && lastAccountIdRef.current !== accountId) {
+      hasTrackedAlreadyVerified.current = false
+      hasTrackedWalletConnected.current = false
+    }
+
+    if (accountId) {
+      lastAccountIdRef.current = accountId
+    }
+  }, [accountId, isConnected])
+
+  useEffect(() => {
     // Skip auto state management when debug mode is controlling the state
     if (debugModeActive) return
 
@@ -247,7 +268,16 @@ function VerificationStartContent() {
       return
     }
 
-    if (currentStep === VerificationProgressStep.NotConnected) {
+    if (currentStep === VerificationProgressStep.NotConnected && accountId) {
+      if (!hasTrackedWalletConnected.current) {
+        hasTrackedWalletConnected.current = true
+        trackEvent({
+          domain: "verification",
+          action: "wallet_connect_succeeded",
+          platform: getPlatform(),
+          accountId,
+        })
+      }
       setCurrentStep(VerificationProgressStep.WalletConnected)
     }
   }, [isConnected, currentStep, nearSignature, accountId, debugModeActive])
@@ -261,13 +291,16 @@ function VerificationStartContent() {
       try {
         const isVerified = await checkIsVerified(accountId)
         if (isVerified) {
-          // Track already_verified event
-          trackEvent({
-            domain: "verification",
-            action: "already_verified",
-            platform: getPlatform(),
-            accountId,
-          })
+          // Track already_verified event (guard against double tracking)
+          if (!hasTrackedAlreadyVerified.current) {
+            hasTrackedAlreadyVerified.current = true
+            trackEvent({
+              domain: "verification",
+              action: "already_verified",
+              platform: getPlatform(),
+              accountId,
+            })
+          }
 
           // Skip to success step
           setCurrentStep(VerificationProgressStep.VerificationComplete)
@@ -358,12 +391,16 @@ function VerificationStartContent() {
     try {
       const isVerified = await checkIsVerified(accountId)
       if (isVerified) {
-        trackEvent({
-          domain: "verification",
-          action: "already_verified",
-          platform,
-          accountId,
-        })
+        // Track already_verified event (guard against double tracking)
+        if (!hasTrackedAlreadyVerified.current) {
+          hasTrackedAlreadyVerified.current = true
+          trackEvent({
+            domain: "verification",
+            action: "already_verified",
+            platform,
+            accountId,
+          })
+        }
         setCurrentStep(VerificationProgressStep.VerificationComplete)
         return
       }

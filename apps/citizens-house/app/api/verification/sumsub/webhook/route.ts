@@ -212,6 +212,13 @@ export async function POST(request: NextRequest) {
       return apiError("WEBHOOK_PAYLOAD_INVALID", "User ID mismatch", 400)
     }
 
+    // Track proof submission (metadata received and validated)
+    await trackServerEvent(accountId, {
+      domain: "verification",
+      action: "proof_submitted",
+      accountId,
+    })
+
     // Validate signature data format (timestamp format, nonce format, public key format)
     const formatCheck = validateSignatureData(
       {
@@ -269,6 +276,13 @@ export async function POST(request: NextRequest) {
 
       return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error, 400)
     }
+
+    // Track proof validation (signature verified cryptographically)
+    await trackServerEvent(accountId, {
+      domain: "verification",
+      action: "proof_validated",
+      accountId,
+    })
 
     // Verify the public key is a full-access key
     const keyCheck = await hasFullAccessKey(accountId, nearMetadata.near_public_key)
