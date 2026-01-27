@@ -551,9 +551,13 @@ function VerificationStartContent() {
             errorCode={errorCode || undefined}
             errorMessage={errorMessage || undefined}
             isConnected={isConnected}
+            accountId={accountId || undefined}
             onDisconnect={() => {
               disconnect()
               router.push("/")
+            }}
+            onStatusRecovered={() => {
+              setCurrentStep(VerificationProgressStep.VerificationComplete)
             }}
           />
         )}
@@ -564,9 +568,13 @@ function VerificationStartContent() {
             errorCode={errorCode}
             errorMessage={errorMessage || undefined}
             isConnected={isConnected}
+            accountId={accountId || undefined}
             onDisconnect={() => {
               disconnect()
               router.push("/")
+            }}
+            onStatusRecovered={() => {
+              setCurrentStep(VerificationProgressStep.VerificationComplete)
             }}
           />
         )}

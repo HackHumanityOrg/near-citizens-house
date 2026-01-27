@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { Clock, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getErrorTitle, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
@@ -9,17 +10,49 @@ interface StepHoldProps {
   errorCode?: VerificationErrorCode
   errorMessage?: string
   isConnected?: boolean
+  accountId?: string
   onDisconnect: () => void
+  onStatusRecovered?: () => void
 }
 
 export function StepHold({
   errorCode = "VERIFICATION_ON_HOLD",
   errorMessage,
   isConnected,
+  accountId,
   onDisconnect,
+  onStatusRecovered,
 }: StepHoldProps) {
   const title = getErrorTitle(errorCode)
   const message = getErrorMessage(errorCode, errorMessage)
+
+  // Store callback in ref to avoid restarting interval on callback changes
+  const onStatusRecoveredRef = useRef(onStatusRecovered)
+  useEffect(() => {
+    onStatusRecoveredRef.current = onStatusRecovered
+  }, [onStatusRecovered])
+
+  // Poll for status recovery (manual approval, webhook arrived late, etc.)
+  useEffect(() => {
+    if (!accountId || !onStatusRecoveredRef.current) return
+
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/verification/status?accountId=${encodeURIComponent(accountId)}`)
+        const data = await response.json()
+        if (data.state === "approved") {
+          onStatusRecoveredRef.current?.()
+        }
+      } catch {
+        // Ignore errors, will retry
+      }
+    }
+
+    // Check immediately, then every 30 seconds
+    checkStatus()
+    const interval = setInterval(checkStatus, 30000)
+    return () => clearInterval(interval)
+  }, [accountId])
 
   return (
     <div className="w-full" data-testid="hold-section">
