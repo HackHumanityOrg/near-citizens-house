@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { Button } from "@near-citizens/ui"
-import { trackEvent } from "@/lib/analytics"
+import { trackEvent, getPlatform } from "@/lib/analytics"
 import { getErrorTitle, getErrorMessage, isNonRetryableError, type VerificationErrorCode } from "@/lib/schemas/errors"
 
 type ErrorStage = "wallet_connect" | "message_sign" | "qr_scan" | "polling" | "unknown"
@@ -40,11 +40,12 @@ interface ErrorModalProps {
   isOpen: boolean
   errorMessage?: string
   errorCode?: VerificationErrorCode
+  accountId?: string
   onClose: () => void
   onRetry: () => void
 }
 
-export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }: ErrorModalProps) {
+export function ErrorModal({ isOpen, errorMessage, errorCode, accountId, onClose, onRetry }: ErrorModalProps) {
   const hasTrackedErrorShown = useRef(false)
   const lastErrorCode = useRef<VerificationErrorCode | undefined>(undefined)
 
@@ -64,10 +65,12 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
     trackEvent({
       domain: "verification",
       action: "error_shown",
-      errorCode: errorCode || "unknown",
+      errorCode: errorCode || "UNKNOWN",
       stage: determineErrorStage(errorCode),
+      platform: getPlatform(),
+      accountId: accountId || undefined,
     })
-  }, [isOpen, errorCode])
+  }, [isOpen, errorCode, accountId])
 
   // Close on Escape key
   useEffect(() => {
@@ -80,7 +83,9 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
           trackEvent({
             domain: "verification",
             action: "error_abandoned",
-            errorCode: errorCode || "unknown",
+            errorCode: errorCode || "UNKNOWN",
+            platform: getPlatform(),
+            accountId: accountId || undefined,
           })
         }
         onClose()
@@ -89,7 +94,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
 
     document.addEventListener("keydown", handleEscape)
     return () => document.removeEventListener("keydown", handleEscape)
-  }, [isOpen, onClose, errorCode])
+  }, [isOpen, onClose, errorCode, accountId])
 
   if (!isOpen) return null
 
@@ -105,7 +110,9 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
       trackEvent({
         domain: "verification",
         action: "error_abandoned",
-        errorCode: errorCode || "unknown",
+        errorCode: errorCode || "UNKNOWN",
+        platform: getPlatform(),
+        accountId: accountId || undefined,
       })
     }
     onClose()
@@ -170,7 +177,9 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
                 trackEvent({
                   domain: "verification",
                   action: "error_retry_clicked",
-                  errorCode: errorCode || "unknown",
+                  errorCode: errorCode || "UNKNOWN",
+                  platform: getPlatform(),
+                  accountId: accountId || undefined,
                 })
                 onRetry()
               }}

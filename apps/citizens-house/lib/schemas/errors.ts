@@ -43,6 +43,9 @@ export const verificationErrorCodeSchema = z.enum([
   // Client-side error codes
   "TIMEOUT",
   "TOKEN_FETCH_FAILED",
+  "UNKNOWN", // Fallback when error context is lost
+  "INVALID_RESPONSE", // API response parsing failed
+  "NETWORK_ERROR", // Network request failed
 ])
 
 export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
@@ -51,7 +54,7 @@ export type VerificationErrorCode = z.infer<typeof verificationErrorCodeSchema>
 // Status Subsets (for verification state)
 // ==========================================================================
 
-export const verificationStatusErrorCodes = [
+const verificationStatusErrorCodes = [
   "VERIFICATION_ON_HOLD",
   "VERIFICATION_REJECTED",
   "VERIFICATION_RETRY",
@@ -60,7 +63,7 @@ export const verificationStatusErrorCodes = [
   "CONTRACT_PAUSED",
 ] as const satisfies ReadonlyArray<VerificationErrorCode>
 
-export const verificationStatusFailureCodes = [
+const verificationStatusFailureCodes = [
   "VERIFICATION_REJECTED",
   "VERIFICATION_RETRY",
   "DUPLICATE_IDENTITY",
@@ -72,15 +75,14 @@ export const verificationStatusErrorCodeSchema = z.enum(verificationStatusErrorC
 export type VerificationStatusErrorCode = z.infer<typeof verificationStatusErrorCodeSchema>
 
 export const verificationStatusFailureCodeSchema = z.enum(verificationStatusFailureCodes)
-export type VerificationStatusFailureCode = z.infer<typeof verificationStatusFailureCodeSchema>
 
 // ============================================================================
 // Error Categories & Definitions
 // ============================================================================
 
-export type ErrorCategory = "retryable" | "hold" | "non-retryable" | "internal"
+type ErrorCategory = "retryable" | "hold" | "non-retryable" | "internal"
 
-export interface ErrorDefinition {
+interface ErrorDefinition {
   code: VerificationErrorCode
   title: string
   description: string
@@ -92,7 +94,7 @@ export interface ErrorDefinition {
  * Single source of truth for all verification errors.
  * Each error has a title, description, category, and API message.
  */
-export const VERIFICATION_ERRORS = {
+const VERIFICATION_ERRORS = {
   // Signature validation - retryable
   NEAR_SIGNATURE_INVALID: {
     code: "NEAR_SIGNATURE_INVALID",
@@ -236,6 +238,27 @@ export const VERIFICATION_ERRORS = {
     category: "retryable",
     apiMessage: "Failed to initialize verification",
   },
+  UNKNOWN: {
+    code: "UNKNOWN",
+    title: "Verification Failed",
+    description: "An unexpected error occurred. Please try again.",
+    category: "retryable",
+    apiMessage: "Unknown error",
+  },
+  INVALID_RESPONSE: {
+    code: "INVALID_RESPONSE",
+    title: "Connection Error",
+    description: "Received an invalid response from the server. Please try again.",
+    category: "retryable",
+    apiMessage: "Invalid response from server",
+  },
+  NETWORK_ERROR: {
+    code: "NETWORK_ERROR",
+    title: "Connection Error",
+    description: "Unable to connect to the server. Please check your internet connection and try again.",
+    category: "retryable",
+    apiMessage: "Network request failed",
+  },
 } as const satisfies Record<VerificationErrorCode, ErrorDefinition>
 
 /**
@@ -270,13 +293,13 @@ export function isHoldError(errorCode: string | null | undefined): boolean {
 /**
  * Validation issue schema for structured error responses.
  */
-export const validationIssueSchema = z.object({
+const validationIssueSchema = z.object({
   path: z.array(z.union([z.string(), z.number()])),
   message: z.string(),
   code: z.string().optional(),
 })
 
-export type ValidationIssue = z.infer<typeof validationIssueSchema>
+type ValidationIssue = z.infer<typeof validationIssueSchema>
 
 /**
  * Verification error response schema.
@@ -290,7 +313,7 @@ export const verificationErrorResponseSchema = z.object({
   issues: z.array(validationIssueSchema).optional(),
 })
 
-export type VerificationErrorResponse = z.infer<typeof verificationErrorResponseSchema>
+type VerificationErrorResponse = z.infer<typeof verificationErrorResponseSchema>
 
 // Legacy type alias for backward compatibility
 export type VerificationError = VerificationErrorResponse

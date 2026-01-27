@@ -16,6 +16,7 @@ import {
   updateApplicantMetadata,
   getApplicantByExternalUserId,
 } from "@/lib/providers/sumsub-provider"
+import { clearVerificationStatus } from "@/lib/verification-status"
 import { reserveSignatureNonce } from "@/lib/nonce-store"
 import { env } from "@/lib/schemas/env"
 import { verificationTokenRequestSchema, verificationTokenResponseSchema } from "@/lib/schemas/api/verification"
@@ -148,6 +149,11 @@ export async function POST(request: NextRequest) {
       // If applicant already exists (409 Conflict), fetch it
       if (error instanceof Error && error.message.includes("409")) {
         applicant = await getApplicantByExternalUserId(externalUserId)
+
+        // Clear stale rejection status from previous attempt
+        // This prevents resubmitting users from seeing a flash of the old rejection screen
+        await clearVerificationStatus(externalUserId)
+
         logEvent({
           event: "sumsub_applicant_exists",
           level: "info",

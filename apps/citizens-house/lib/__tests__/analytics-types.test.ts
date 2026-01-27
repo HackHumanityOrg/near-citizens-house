@@ -21,9 +21,25 @@ describe("Analytics Event Type Safety", () => {
         accountId: "alice.near",
         pollCount: 5,
       })
-      trackEvent({ domain: "verification", action: "error_shown", errorCode: "E001", stage: "wallet_connect" })
-      trackEvent({ domain: "verification", action: "error_retry_clicked", errorCode: "E001" })
-      trackEvent({ domain: "verification", action: "error_abandoned", errorCode: "E001" })
+      trackEvent({
+        domain: "verification",
+        action: "error_shown",
+        errorCode: "TOKEN_FETCH_FAILED",
+        stage: "wallet_connect",
+        platform: "desktop",
+      })
+      trackEvent({
+        domain: "verification",
+        action: "error_retry_clicked",
+        errorCode: "TOKEN_FETCH_FAILED",
+        platform: "desktop",
+      })
+      trackEvent({
+        domain: "verification",
+        action: "error_abandoned",
+        errorCode: "TOKEN_FETCH_FAILED",
+        platform: "desktop",
+      })
       trackEvent({ domain: "verification", action: "proof_submitted", accountId: "alice.near" })
       trackEvent({ domain: "verification", action: "proof_validated", accountId: "alice.near" })
       trackEvent({
@@ -31,7 +47,7 @@ describe("Analytics Event Type Safety", () => {
         action: "stored_onchain",
         accountId: "alice.near",
       })
-      trackEvent({ domain: "verification", action: "rejected", reason: "invalid", errorCode: "E002" })
+      trackEvent({ domain: "verification", action: "rejected", reason: "invalid", errorCode: "VERIFICATION_REJECTED" })
       expect(true).toBe(true)
     })
 
@@ -60,7 +76,7 @@ describe("Analytics Event Type Safety", () => {
         action: "token_fetch_failed",
         platform: "desktop",
         accountId: "alice.near",
-        errorCode: "E001",
+        errorCode: "NETWORK_ERROR",
         durationMs: 500,
       })
       expect(true).toBe(true)

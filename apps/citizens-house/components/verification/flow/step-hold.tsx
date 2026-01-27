@@ -34,6 +34,20 @@ export function StepHold({
     onStatusRecoveredRef.current = onStatusRecovered
   }, [onStatusRecovered])
 
+  // Track hold page displayed on mount
+  const hasTrackedDisplay = useRef(false)
+  useEffect(() => {
+    if (!hasTrackedDisplay.current && accountId) {
+      hasTrackedDisplay.current = true
+      trackEvent({
+        domain: "verification",
+        action: "hold_page_displayed",
+        platform: getPlatform(),
+        accountId,
+      })
+    }
+  }, [accountId])
+
   // Poll for status recovery (manual approval, webhook arrived late, etc.)
   useEffect(() => {
     if (!accountId || !onStatusRecoveredRef.current) return
@@ -53,8 +67,15 @@ export function StepHold({
           })
           onStatusRecoveredRef.current?.()
         }
-      } catch {
-        // Ignore errors, will retry
+      } catch (err) {
+        // Track polling errors
+        trackEvent({
+          domain: "verification",
+          action: "hold_polling_failed",
+          platform: getPlatform(),
+          accountId,
+          errorMessage: err instanceof Error ? err.message : "Unknown error",
+        })
       }
     }
 
@@ -63,6 +84,19 @@ export function StepHold({
     const interval = setInterval(checkStatus, 30000)
     return () => clearInterval(interval)
   }, [accountId])
+
+  // Handle disconnect with tracking
+  const handleDisconnect = () => {
+    if (accountId) {
+      trackEvent({
+        domain: "verification",
+        action: "hold_disconnect_clicked",
+        platform: getPlatform(),
+        accountId,
+      })
+    }
+    onDisconnect()
+  }
 
   return (
     <div className="w-full" data-testid="hold-section">
@@ -132,7 +166,7 @@ export function StepHold({
               {isConnected && (
                 <>
                   <Button
-                    onClick={onDisconnect}
+                    onClick={handleDisconnect}
                     variant="outline"
                     className="h-[48px] px-[24px] py-[14px] border-black dark:border-white text-[#040404] dark:text-white font-medium rounded-[4px]"
                     data-testid="disconnect-wallet-button-hold"

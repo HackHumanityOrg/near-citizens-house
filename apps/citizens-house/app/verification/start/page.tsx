@@ -305,8 +305,16 @@ function VerificationStartContent() {
           // Skip to success step
           setCurrentStep(VerificationProgressStep.VerificationComplete)
         }
-      } catch {
-        // Failed to check verification status, continue with flow
+      } catch (err) {
+        // Track verification check failures
+        trackEvent({
+          domain: "verification",
+          action: "verification_check_failed",
+          platform: getPlatform(),
+          accountId,
+          errorMessage: err instanceof Error ? err.message : "Unknown error",
+        })
+        // Continue with verification flow
       } finally {
         setIsCheckingVerification(false)
       }
@@ -581,6 +589,7 @@ function VerificationStartContent() {
         isOpen={isErrorModalOpen}
         errorMessage={errorMessage || undefined}
         errorCode={errorCode || undefined}
+        accountId={accountId || undefined}
         onClose={() => setIsErrorModalOpen(false)}
         onRetry={handleRetry}
       />

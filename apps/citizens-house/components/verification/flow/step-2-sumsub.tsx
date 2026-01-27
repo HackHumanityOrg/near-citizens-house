@@ -230,15 +230,23 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       const token = await fetchAccessToken()
       setAccessToken(token)
       return token
-    } catch {
+    } catch (err) {
+      // Track token refresh failures
+      trackEvent({
+        domain: "verification",
+        action: "token_refresh_failed",
+        platform: getPlatform(),
+        accountId: nearSignature.accountId,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      })
       // Return empty string on failure - SDK will handle the error
       return ""
     }
-  }, [fetchAccessToken])
+  }, [fetchAccessToken, nearSignature.accountId])
 
   // Poll for backend status confirmation by checking status endpoint
   const confirmBackendStatus = useCallback(async () => {
-    const maxPolls = 60 // 2 minutes at 2s interval
+    const maxPolls = 150 // 5 minutes at 2s interval
     const pollIntervalMs = 2000
     const platform = getPlatform()
     const controller = new AbortController()
@@ -280,6 +288,13 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
 
           switch (data.state) {
             case "approved":
+              trackEvent({
+                domain: "verification",
+                action: "polling_approved",
+                platform,
+                accountId: nearSignature.accountId,
+                source: "webhook",
+              })
               confirmationInProgressRef.current = false
               setVerificationStatus("success")
               onSuccess()
@@ -298,6 +313,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
               return
 
             case "failed":
+              trackEvent({
+                domain: "verification",
+                action: "sumsub_rejected",
+                platform,
+                accountId: nearSignature.accountId,
+                reviewAnswer: "RED",
+                source: "webhook",
+              })
               confirmationInProgressRef.current = false
               setVerificationStatus("error")
               onError(data.errorCode)
@@ -312,6 +335,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           if (error instanceof Error && error.name === "AbortError") {
             return
           }
+          // Track network errors during polling
+          trackEvent({
+            domain: "verification",
+            action: "polling_network_error",
+            platform,
+            accountId: nearSignature.accountId,
+            errorMessage: error instanceof Error ? error.message : "Unknown error",
+          })
           // Network error, continue polling
         }
 
@@ -360,6 +391,13 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         confirmationInProgressRef.current = false
 
         if (latestReviewAnswer === "GREEN") {
+          trackEvent({
+            domain: "verification",
+            action: "polling_approved",
+            platform,
+            accountId: nearSignature.accountId,
+            source: "timeout_fallback",
+          })
           setVerificationStatus("success")
           onSuccess()
           return
@@ -377,6 +415,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         }
 
         if (latestReviewAnswer === "RED") {
+          trackEvent({
+            domain: "verification",
+            action: "sumsub_rejected",
+            platform,
+            accountId: nearSignature.accountId,
+            reviewAnswer: "RED",
+            source: "timeout_fallback",
+          })
           setVerificationStatus("error")
           const errorCode = latestReviewRejectType === "RETRY" ? "VERIFICATION_RETRY" : "VERIFICATION_REJECTED"
           onError(errorCode)
@@ -456,6 +502,12 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
 
       // Handle different message types from SumSub SDK
       if (type === "idCheck.onApplicantLoaded") {
+        trackEvent({
+          domain: "verification",
+          action: "sumsub_applicant_loaded",
+          platform,
+          accountId: nearSignature.accountId,
+        })
         setVerificationStatus("verifying")
       }
 
@@ -473,16 +525,9 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         if (reviewAnswer) {
           latestReviewAnswerRef.current = reviewAnswer
           latestReviewRejectTypeRef.current = status?.reviewResult?.reviewRejectType ?? null
-
-          if (reviewAnswer === "RED") {
-            trackEvent({
-              domain: "verification",
-              action: "sumsub_rejected",
-              platform,
-              accountId: nearSignature.accountId,
-              reviewAnswer: "RED",
-            })
-          }
+          // Don't track rejection here - WebSDK may return stale status from previous review.
+          // Track rejection only after webhook/polling confirms the actual result.
+          // See: https://docs.sumsub.com/docs/receive-verification-results
         }
 
         // Track the raw WebSDK status for analytics

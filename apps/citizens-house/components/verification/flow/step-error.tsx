@@ -34,6 +34,21 @@ export function StepError({
     onStatusRecoveredRef.current = onStatusRecovered
   }, [onStatusRecovered])
 
+  // Track error page displayed on mount
+  const hasTrackedDisplay = useRef(false)
+  useEffect(() => {
+    if (!hasTrackedDisplay.current && accountId) {
+      hasTrackedDisplay.current = true
+      trackEvent({
+        domain: "verification",
+        action: "error_page_displayed",
+        platform: getPlatform(),
+        accountId,
+        errorCode,
+      })
+    }
+  }, [accountId, errorCode])
+
   // Poll for status recovery (manual approval, webhook arrived late, etc.)
   useEffect(() => {
     if (!accountId || !onStatusRecoveredRef.current) return
@@ -53,8 +68,15 @@ export function StepError({
           })
           onStatusRecoveredRef.current?.()
         }
-      } catch {
-        // Ignore errors, will retry
+      } catch (err) {
+        // Track polling errors
+        trackEvent({
+          domain: "verification",
+          action: "error_polling_failed",
+          platform: getPlatform(),
+          accountId,
+          errorMessage: err instanceof Error ? err.message : "Unknown error",
+        })
       }
     }
 
@@ -63,6 +85,19 @@ export function StepError({
     const interval = setInterval(checkStatus, 30000)
     return () => clearInterval(interval)
   }, [accountId])
+
+  // Handle disconnect with tracking
+  const handleDisconnect = () => {
+    if (accountId) {
+      trackEvent({
+        domain: "verification",
+        action: "error_disconnect_clicked",
+        platform: getPlatform(),
+        accountId,
+      })
+    }
+    onDisconnect()
+  }
 
   return (
     <div className="w-full" data-testid="error-section">
@@ -132,7 +167,7 @@ export function StepError({
               {isConnected && (
                 <>
                   <Button
-                    onClick={onDisconnect}
+                    onClick={handleDisconnect}
                     variant="outline"
                     className="h-[48px] px-[24px] py-[14px] border-black dark:border-white text-[#040404] dark:text-white font-medium rounded-[4px]"
                     data-testid="disconnect-wallet-button-error"

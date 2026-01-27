@@ -12,6 +12,7 @@
  * ```
  */
 import { z } from "zod"
+import { verificationErrorCodeSchema } from "./errors"
 import { nearAccountIdSchema } from "./near"
 
 // =============================================================================
@@ -133,7 +134,7 @@ const verificationTokenFetchFailedEventSchema = z
     action: z.literal("token_fetch_failed"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
-    errorCode: z.string(),
+    errorCode: verificationErrorCodeSchema,
     durationMs: z.number(),
   })
   .strict()
@@ -296,7 +297,8 @@ const verificationSumsubSubmittedEventSchema = z
   })
   .strict()
 
-// Immediate rejection from SumSub SDK (e.g., duplicate identity detection)
+// Rejection confirmed by webhook or timeout fallback
+// source: "webhook" = confirmed by backend status polling, "timeout_fallback" = polling timed out, using WebSDK's last known status
 const verificationSumsubRejectedEventSchema = z
   .object({
     ...verificationEventBase,
@@ -304,6 +306,7 @@ const verificationSumsubRejectedEventSchema = z
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     reviewAnswer: sumsubReviewAnswerSchema,
+    source: z.enum(["webhook", "timeout_fallback"]),
   })
   .strict()
 
@@ -319,12 +322,35 @@ const verificationSumsubStatusReceivedEventSchema = z
   })
   .strict()
 
+// Applicant loaded in WebSDK
+const verificationSumsubApplicantLoadedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_applicant_loaded"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+// Polling confirmed approval
+const verificationPollingApprovedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("polling_approved"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    source: z.enum(["webhook", "timeout_fallback"]),
+  })
+  .strict()
+
 const verificationErrorShownEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("error_shown"),
-    errorCode: z.string(),
+    errorCode: verificationErrorCodeSchema,
     stage: z.enum(["wallet_connect", "message_sign", "qr_scan", "polling", "unknown"]),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema.optional(),
   })
   .strict()
 
@@ -332,7 +358,9 @@ const verificationErrorRetryClickedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("error_retry_clicked"),
-    errorCode: z.string(),
+    errorCode: verificationErrorCodeSchema,
+    platform: platformSchema,
+    accountId: nearAccountIdSchema.optional(),
   })
   .strict()
 
@@ -340,7 +368,105 @@ const verificationErrorAbandonedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("error_abandoned"),
-    errorCode: z.string(),
+    errorCode: verificationErrorCodeSchema,
+    platform: platformSchema,
+    accountId: nearAccountIdSchema.optional(),
+  })
+  .strict()
+
+// Polling network error (during step-2-sumsub confirmation polling)
+const verificationPollingNetworkErrorEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("polling_network_error"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    errorMessage: z.string(),
+  })
+  .strict()
+
+// Token refresh failed (when SDK token expires)
+const verificationTokenRefreshFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_refresh_failed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    errorMessage: z.string(),
+  })
+  .strict()
+
+// Error page displayed (user lands on error page)
+const verificationErrorPageDisplayedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("error_page_displayed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    errorCode: verificationErrorCodeSchema,
+  })
+  .strict()
+
+// Hold page displayed (user lands on hold page)
+const verificationHoldPageDisplayedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("hold_page_displayed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+// Disconnect from error state
+const verificationErrorDisconnectClickedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("error_disconnect_clicked"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+// Disconnect from hold state
+const verificationHoldDisconnectClickedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("hold_disconnect_clicked"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+// Error page polling failed
+const verificationErrorPollingFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("error_polling_failed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    errorMessage: z.string(),
+  })
+  .strict()
+
+// Hold page polling failed
+const verificationHoldPollingFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("hold_polling_failed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    errorMessage: z.string(),
+  })
+  .strict()
+
+// Verification check failed (when checkIsVerified() fails)
+const verificationCheckFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("verification_check_failed"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    errorMessage: z.string(),
   })
   .strict()
 
@@ -379,7 +505,7 @@ const verificationRejectedEventSchema = z
     action: z.literal("rejected"),
     accountId: nearAccountIdSchema.optional(),
     reason: z.string(),
-    errorCode: z.string(),
+    errorCode: verificationErrorCodeSchema,
   })
   .strict()
 
@@ -407,6 +533,7 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationPollingTimeoutEventSchema,
   verificationManualReviewShownEventSchema,
   verificationStatusRecoveredEventSchema,
+  verificationPollingNetworkErrorEventSchema,
   // Client-side events - SumSub SDK
   verificationSumsubSdkLoadedEventSchema,
   verificationSumsubMessageEventSchema,
@@ -417,6 +544,9 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationSumsubSubmittedEventSchema,
   verificationSumsubRejectedEventSchema,
   verificationSumsubStatusReceivedEventSchema,
+  verificationSumsubApplicantLoadedEventSchema,
+  verificationPollingApprovedEventSchema,
+  verificationTokenRefreshFailedEventSchema,
   // Client-side events - callback
   verificationCallbackLoadedEventSchema,
   verificationCallbackPollingStartedEventSchema,
@@ -428,6 +558,15 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationErrorShownEventSchema,
   verificationErrorRetryClickedEventSchema,
   verificationErrorAbandonedEventSchema,
+  verificationErrorPageDisplayedEventSchema,
+  verificationErrorDisconnectClickedEventSchema,
+  verificationErrorPollingFailedEventSchema,
+  // Client-side events - hold page
+  verificationHoldPageDisplayedEventSchema,
+  verificationHoldDisconnectClickedEventSchema,
+  verificationHoldPollingFailedEventSchema,
+  // Client-side events - verification check
+  verificationCheckFailedEventSchema,
   // Server-side events
   verificationProofSubmittedEventSchema,
   verificationProofValidatedEventSchema,
