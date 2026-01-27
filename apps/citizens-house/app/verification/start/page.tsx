@@ -556,9 +556,7 @@ function VerificationStartContent() {
               disconnect()
               router.push("/")
             }}
-            onStatusRecovered={() => {
-              setCurrentStep(VerificationProgressStep.VerificationComplete)
-            }}
+            onStatusRecovered={handleVerificationSuccess}
           />
         )}
 
@@ -573,9 +571,7 @@ function VerificationStartContent() {
               disconnect()
               router.push("/")
             }}
-            onStatusRecovered={() => {
-              setCurrentStep(VerificationProgressStep.VerificationComplete)
-            }}
+            onStatusRecovered={handleVerificationSuccess}
           />
         )}
       </div>

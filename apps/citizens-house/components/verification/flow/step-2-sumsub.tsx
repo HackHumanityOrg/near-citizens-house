@@ -5,7 +5,12 @@ import dynamic from "next/dynamic"
 import { type NearSignatureData } from "@/lib"
 import { trackEvent, getPlatform } from "@/lib/analytics"
 import { verificationTokenResponseSchema, verificationStatusResponseSchema } from "@/lib/schemas/api/verification"
-import { VERIFICATION_ERRORS, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
+import {
+  verificationErrorResponseSchema,
+  verificationErrorCodeSchema,
+  getErrorMessage,
+  type VerificationErrorCode,
+} from "@/lib/schemas/errors"
 import { Loader2, Info, Ban, Check, Shield } from "lucide-react"
 import { StarPattern } from "../icons/star-pattern"
 import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
@@ -118,12 +123,13 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       })
 
       if (!response.ok) {
-        // Parse error JSON to get specific error code
+        // Parse and validate error response
         let errorCode: VerificationErrorCode = "TOKEN_FETCH_FAILED"
         try {
           const errorData = await response.json()
-          if (errorData?.code && errorData.code in VERIFICATION_ERRORS) {
-            errorCode = errorData.code as VerificationErrorCode
+          const parsed = verificationErrorResponseSchema.safeParse(errorData)
+          if (parsed.success) {
+            errorCode = parsed.data.code
           }
         } catch {
           // Not JSON, use default error code
@@ -165,8 +171,9 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       return parsed.data.token
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to initialize verification"
-      // Only track if not already tracked (error codes from VERIFICATION_ERRORS are already tracked above)
-      if (!(message in VERIFICATION_ERRORS) && message !== "Invalid token response") {
+      // Only track if not already tracked (valid error codes are already tracked above)
+      const isKnownErrorCode = verificationErrorCodeSchema.safeParse(message).success
+      if (!isKnownErrorCode && message !== "Invalid token response") {
         trackEvent({
           domain: "verification",
           action: "token_fetch_failed",
@@ -200,8 +207,9 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       } catch (err) {
         if (mounted) {
           const message = err instanceof Error ? err.message : "TOKEN_FETCH_FAILED"
-          // Check if the message is actually an error code (thrown from fetchAccessToken)
-          const errorCode = message in VERIFICATION_ERRORS ? (message as VerificationErrorCode) : "TOKEN_FETCH_FAILED"
+          // Check if the message is actually a valid error code (thrown from fetchAccessToken)
+          const parsed = verificationErrorCodeSchema.safeParse(message)
+          const errorCode: VerificationErrorCode = parsed.success ? parsed.data : "TOKEN_FETCH_FAILED"
           setTokenError(getErrorMessage(errorCode))
           setVerificationStatus("error")
           onError(errorCode)

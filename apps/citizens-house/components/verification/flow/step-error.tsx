@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { X, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getErrorTitle, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
+import { verificationStatusResponseSchema } from "@/lib/schemas/api/verification"
 import { StarPattern } from "../icons/star-pattern"
 
 interface StepErrorProps {
@@ -40,7 +41,8 @@ export function StepError({
       try {
         const response = await fetch(`/api/verification/status?accountId=${encodeURIComponent(accountId)}`)
         const data = await response.json()
-        if (data.state === "approved") {
+        const parsed = verificationStatusResponseSchema.safeParse(data)
+        if (parsed.success && parsed.data.state === "approved") {
           onStatusRecoveredRef.current?.()
         }
       } catch {

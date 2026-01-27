@@ -264,34 +264,36 @@ export function isHoldError(errorCode: string | null | undefined): boolean {
 }
 
 // ============================================================================
-// Validation Issues Schema
+// Error Response Schema
 // ============================================================================
 
 /**
- * Validation issue for structured error responses.
- * Allows API to return detailed field-level validation errors.
+ * Validation issue schema for structured error responses.
  */
-export interface ValidationIssue {
-  path: (string | number)[]
-  message: string
-  code?: string
-}
+export const validationIssueSchema = z.object({
+  path: z.array(z.union([z.string(), z.number()])),
+  message: z.string(),
+  code: z.string().optional(),
+})
 
-// ============================================================================
-// Error Helpers
-// ============================================================================
+export type ValidationIssue = z.infer<typeof validationIssueSchema>
 
 /**
- * Verification error response type.
- * Matches the error variant in verifyResponseSchema (api.ts).
+ * Verification error response schema.
+ * Used to validate API error responses on both server and client.
  */
-export interface VerificationError {
-  status: "error"
-  result: false
-  code: VerificationErrorCode
-  reason: string
-  issues?: ValidationIssue[]
-}
+export const verificationErrorResponseSchema = z.object({
+  status: z.literal("error"),
+  result: z.literal(false),
+  code: verificationErrorCodeSchema,
+  reason: z.string(),
+  issues: z.array(validationIssueSchema).optional(),
+})
+
+export type VerificationErrorResponse = z.infer<typeof verificationErrorResponseSchema>
+
+// Legacy type alias for backward compatibility
+export type VerificationError = VerificationErrorResponse
 
 /**
  * Create a typed verification error response.
