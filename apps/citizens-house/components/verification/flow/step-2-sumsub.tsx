@@ -13,6 +13,8 @@ import {
   type SumSubWebSdkProps,
   type SumSubWebSdkPayload,
   type SumSubApplicantStatusChangedPayload,
+  type SumSubReviewAnswer,
+  type SumSubReviewRejectType,
 } from "./sumsub-websdk.types"
 import { verificationStepStates, type VerificationStepState } from "./verification-step-state"
 
@@ -46,6 +48,18 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const confirmationInProgressRef = useRef(false)
+  const isMountedRef = useRef(true)
+  const pollingAbortControllerRef = useRef<AbortController | null>(null)
+  const latestReviewAnswerRef = useRef<SumSubReviewAnswer | null>(null)
+  const latestReviewRejectTypeRef = useRef<SumSubReviewRejectType | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      pollingAbortControllerRef.current?.abort()
+    }
+  }, [])
 
   // Debug mode state override
   const handleDebugStateChange = useCallback(
@@ -219,99 +233,165 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
     const maxPolls = 60 // 2 minutes at 2s interval
     const pollIntervalMs = 2000
     const platform = getPlatform()
+    const controller = new AbortController()
+    pollingAbortControllerRef.current?.abort()
+    pollingAbortControllerRef.current = controller
 
-    trackEvent({
-      domain: "verification",
-      action: "polling_started",
-      platform,
-      accountId: nearSignature.accountId,
-    })
-
-    for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
-      try {
-        const response = await fetch(
-          `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
-        )
-        const rawData = await response.json()
-        const parsed = verificationStatusResponseSchema.safeParse(rawData)
-        if (!parsed.success) {
-          console.error("Invalid status response", parsed.error)
-          // Continue polling on invalid response
-          await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
-          continue
-        }
-        const data = parsed.data
-
-        switch (data.state) {
-          case "approved":
-            confirmationInProgressRef.current = false
-            setVerificationStatus("success")
-            onSuccess()
-            return
-
-          case "hold":
-            // Route to StepHold via onError callback
-            trackEvent({
-              domain: "verification",
-              action: "manual_review_shown",
-              platform,
-              accountId: nearSignature.accountId,
-            })
-            confirmationInProgressRef.current = false
-            onError(data.errorCode)
-            return
-
-          case "failed":
-            confirmationInProgressRef.current = false
-            setVerificationStatus("error")
-            onError(data.errorCode)
-            return
-
-          case "pending":
-            // Continue polling - still waiting for webhook
-            break
-        }
-      } catch {
-        // Network error, continue polling
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
-    }
-
-    // Timeout - check one more time for hold status
     try {
-      const finalResponse = await fetch(
-        `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
-      )
-      const finalRawData = await finalResponse.json()
-      const finalParsed = verificationStatusResponseSchema.safeParse(finalRawData)
+      trackEvent({
+        domain: "verification",
+        action: "polling_started",
+        platform,
+        accountId: nearSignature.accountId,
+      })
 
-      if (finalParsed.success && finalParsed.data.state === "hold") {
-        trackEvent({
-          domain: "verification",
-          action: "manual_review_shown",
-          platform,
-          accountId: nearSignature.accountId,
-        })
-        confirmationInProgressRef.current = false
-        onError(finalParsed.data.errorCode)
-        return
+      for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
+        // Check if still mounted before each poll
+        if (!isMountedRef.current) {
+          controller.abort()
+          return
+        }
+
+        try {
+          const response = await fetch(
+            `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
+            { signal: controller.signal },
+          )
+          const rawData = await response.json()
+          const parsed = verificationStatusResponseSchema.safeParse(rawData)
+          if (!parsed.success) {
+            console.error("Invalid status response", parsed.error)
+            // Continue polling on invalid response
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+            continue
+          }
+          const data = parsed.data
+
+          // Check mounted before each state update
+          if (!isMountedRef.current) return
+
+          switch (data.state) {
+            case "approved":
+              confirmationInProgressRef.current = false
+              setVerificationStatus("success")
+              onSuccess()
+              return
+
+            case "hold":
+              // Route to StepHold via onError callback
+              trackEvent({
+                domain: "verification",
+                action: "manual_review_shown",
+                platform,
+                accountId: nearSignature.accountId,
+              })
+              confirmationInProgressRef.current = false
+              onError(data.errorCode)
+              return
+
+            case "failed":
+              confirmationInProgressRef.current = false
+              setVerificationStatus("error")
+              onError(data.errorCode)
+              return
+
+            case "pending":
+              // Continue polling - still waiting for webhook
+              break
+          }
+        } catch (error) {
+          // Check if abort caused the error
+          if (error instanceof Error && error.name === "AbortError") {
+            return
+          }
+          // Network error, continue polling
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
       }
-    } catch {
-      // Ignore final check errors
-    }
 
-    // Timeout
-    trackEvent({
-      domain: "verification",
-      action: "polling_timeout",
-      platform,
-      accountId: nearSignature.accountId,
-      pollCount: maxPolls,
-    })
-    confirmationInProgressRef.current = false
-    setVerificationStatus("error")
-    onError("TIMEOUT")
+      // Final check with mounted guard
+      if (!isMountedRef.current) return
+
+      // Timeout - check one more time for hold status
+      try {
+        const finalResponse = await fetch(
+          `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
+          { signal: controller.signal },
+        )
+        const finalRawData = await finalResponse.json()
+        const finalParsed = verificationStatusResponseSchema.safeParse(finalRawData)
+
+        if (!isMountedRef.current) return
+
+        if (finalParsed.success && finalParsed.data.state === "hold") {
+          trackEvent({
+            domain: "verification",
+            action: "manual_review_shown",
+            platform,
+            accountId: nearSignature.accountId,
+          })
+          confirmationInProgressRef.current = false
+          onError(finalParsed.data.errorCode)
+          return
+        }
+      } catch (error) {
+        // Check if abort caused the error
+        if (error instanceof Error && error.name === "AbortError") {
+          return
+        }
+        // Ignore final check errors
+      }
+
+      if (!isMountedRef.current) return
+
+      const latestReviewAnswer = latestReviewAnswerRef.current
+      const latestReviewRejectType = latestReviewRejectTypeRef.current
+
+      if (latestReviewAnswer) {
+        confirmationInProgressRef.current = false
+
+        if (latestReviewAnswer === "GREEN") {
+          setVerificationStatus("success")
+          onSuccess()
+          return
+        }
+
+        if (latestReviewAnswer === "YELLOW") {
+          trackEvent({
+            domain: "verification",
+            action: "manual_review_shown",
+            platform,
+            accountId: nearSignature.accountId,
+          })
+          onError("VERIFICATION_ON_HOLD")
+          return
+        }
+
+        if (latestReviewAnswer === "RED") {
+          setVerificationStatus("error")
+          const errorCode = latestReviewRejectType === "RETRY" ? "VERIFICATION_RETRY" : "VERIFICATION_REJECTED"
+          onError(errorCode)
+          return
+        }
+      }
+
+      // Timeout
+      trackEvent({
+        domain: "verification",
+        action: "polling_timeout",
+        platform,
+        accountId: nearSignature.accountId,
+        pollCount: maxPolls,
+      })
+      confirmationInProgressRef.current = false
+      setVerificationStatus("error")
+      onError("TIMEOUT")
+    } finally {
+      if (pollingAbortControllerRef.current === controller) {
+        pollingAbortControllerRef.current = null
+      }
+    }
   }, [nearSignature.accountId, onSuccess, onError])
 
   // Handle SumSub SDK messages
@@ -371,7 +451,10 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         setVerificationStatus("verifying")
       }
 
-      // Applicant submitted their documents or status changed - handle based on review result
+      // Applicant submitted their documents or status changed - start polling for webhook status
+      // Use webhook as source of truth; WebSDK reviewAnswer is only a timeout fallback.
+      // See: https://docs.sumsub.com/docs/receive-verification-results
+      // "We may send several final webhooks, so be prepared to change the applicant status accordingly"
       if (
         type === "idCheck.onApplicantSubmitted" ||
         type === "idCheck.applicantStatus" ||
@@ -379,78 +462,31 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       ) {
         const status = payload as SumSubApplicantStatusChangedPayload | undefined
         const reviewAnswer = status?.reviewResult?.reviewAnswer
-
-        // Handle immediate rejection from SumSub (duplicate detection, etc.)
-        // Brief poll for webhook status to get specific error code (VERIFICATION_RETRY, DUPLICATE_IDENTITY, etc.)
-        if (reviewAnswer === "RED") {
-          trackEvent({
-            domain: "verification",
-            action: "sumsub_rejected",
-            platform,
-            accountId: nearSignature.accountId,
-            reviewAnswer,
-          })
-
-          // Brief poll (3 attempts, 2s each = 6s max) for webhook status with more details
-          let specificError: VerificationErrorCode = "VERIFICATION_REJECTED"
-          for (let i = 0; i < 3; i++) {
-            await new Promise((r) => setTimeout(r, 2000))
-            try {
-              const response = await fetch(
-                `/api/verification/status?accountId=${encodeURIComponent(nearSignature.accountId)}`,
-              )
-              const data = await response.json()
-              const parsed = verificationStatusResponseSchema.safeParse(data)
-              if (parsed.success) {
-                if (parsed.data.state === "failed" || parsed.data.state === "hold") {
-                  specificError = parsed.data.errorCode
-                  break
-                }
-              }
-            } catch {
-              /* continue polling */
-            }
-          }
-
-          confirmationInProgressRef.current = false
-          setVerificationStatus("error")
-          onError(specificError)
-          return
+        if (reviewAnswer) {
+          latestReviewAnswerRef.current = reviewAnswer
+          latestReviewRejectTypeRef.current = status?.reviewResult?.reviewRejectType ?? null
         }
 
-        // Handle manual review needed
-        if (reviewAnswer === "YELLOW") {
-          trackEvent({
-            domain: "verification",
-            action: "sumsub_rejected",
-            platform,
-            accountId: nearSignature.accountId,
-            reviewAnswer,
-          })
-          trackEvent({
-            domain: "verification",
-            action: "manual_review_shown",
-            platform,
-            accountId: nearSignature.accountId,
-          })
-          confirmationInProgressRef.current = false
-          onError("VERIFICATION_ON_HOLD")
-          return
-        }
+        // Track the raw WebSDK status for analytics
+        trackEvent({
+          domain: "verification",
+          action: "sumsub_status_received",
+          platform,
+          accountId: nearSignature.accountId,
+          reviewAnswer: reviewAnswer ?? "none",
+          reviewStatus: status?.reviewStatus ?? "none",
+        })
 
-        // Only poll for GREEN results or when reviewStatus is "completed" without a clear answer
-        // The "reviewStatus completed without reviewAnswer" case handles edge cases where
-        // SumSub sends completion without explicit answer (legacy behavior)
-        if (reviewAnswer === "GREEN" || (status?.reviewStatus === "completed" && !reviewAnswer)) {
-          if (!confirmationInProgressRef.current) {
-            confirmationInProgressRef.current = true
-            setVerificationStatus("polling")
-            void confirmBackendStatus()
-          }
+        // Always poll for webhook-confirmed status
+        // confirmBackendStatus() handles all outcomes: approved, hold, failed, timeout
+        if (!confirmationInProgressRef.current) {
+          confirmationInProgressRef.current = true
+          setVerificationStatus("polling")
+          void confirmBackendStatus()
         }
       }
     },
-    [nearSignature.accountId, confirmBackendStatus, onError],
+    [nearSignature.accountId, confirmBackendStatus],
   )
 
   // Handle SumSub SDK errors

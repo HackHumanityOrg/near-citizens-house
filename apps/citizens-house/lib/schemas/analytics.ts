@@ -297,6 +297,18 @@ const verificationSumsubRejectedEventSchema = z
   })
   .strict()
 
+// Raw WebSDK status received - for analytics tracking (not trusted as final source of truth)
+const verificationSumsubStatusReceivedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("sumsub_status_received"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    reviewAnswer: z.string(),
+    reviewStatus: z.string(),
+  })
+  .strict()
+
 const verificationErrorShownEventSchema = z
   .object({
     ...verificationEventBase,
@@ -394,6 +406,7 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationSumsubStepCompletedEventSchema,
   verificationSumsubSubmittedEventSchema,
   verificationSumsubRejectedEventSchema,
+  verificationSumsubStatusReceivedEventSchema,
   // Client-side events - callback
   verificationCallbackLoadedEventSchema,
   verificationCallbackPollingStartedEventSchema,
