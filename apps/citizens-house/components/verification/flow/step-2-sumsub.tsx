@@ -473,6 +473,16 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         if (reviewAnswer) {
           latestReviewAnswerRef.current = reviewAnswer
           latestReviewRejectTypeRef.current = status?.reviewResult?.reviewRejectType ?? null
+
+          if (reviewAnswer === "RED") {
+            trackEvent({
+              domain: "verification",
+              action: "sumsub_rejected",
+              platform,
+              accountId: nearSignature.accountId,
+              reviewAnswer: "RED",
+            })
+          }
         }
 
         // Track the raw WebSDK status for analytics

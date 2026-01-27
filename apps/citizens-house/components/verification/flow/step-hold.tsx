@@ -5,6 +5,7 @@ import { Clock, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getErrorTitle, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
 import { verificationStatusResponseSchema } from "@/lib/schemas/api/verification"
+import { trackEvent, getPlatform } from "@/lib/analytics"
 import { StarPattern } from "../icons/star-pattern"
 
 interface StepHoldProps {
@@ -43,6 +44,13 @@ export function StepHold({
         const data = await response.json()
         const parsed = verificationStatusResponseSchema.safeParse(data)
         if (parsed.success && parsed.data.state === "approved") {
+          trackEvent({
+            domain: "verification",
+            action: "status_recovered",
+            platform: getPlatform(),
+            accountId,
+            recoveredFrom: "hold",
+          })
           onStatusRecoveredRef.current?.()
         }
       } catch {

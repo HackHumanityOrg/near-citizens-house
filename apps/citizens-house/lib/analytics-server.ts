@@ -12,7 +12,6 @@
  *   domain: "verification",
  *   action: "stored_onchain",
  *   accountId: "alice.near",
- *   attestationType: "passport",
  * })
  * ```
  */

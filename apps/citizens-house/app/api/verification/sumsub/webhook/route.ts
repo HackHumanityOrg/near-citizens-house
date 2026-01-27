@@ -355,7 +355,6 @@ export async function POST(request: NextRequest) {
         domain: "verification",
         action: "stored_onchain",
         accountId,
-        attestationType: "sumsub_id_verification",
       })
 
       // Revalidate verifications cache

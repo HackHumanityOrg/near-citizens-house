@@ -81,6 +81,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
     trackEvent({
       domain: "verification",
       action: "success_disconnect_clicked",
+      platform: getPlatform(),
       accountId,
     })
     onDisconnect?.()

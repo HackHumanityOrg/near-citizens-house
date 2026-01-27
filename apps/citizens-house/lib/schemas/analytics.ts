@@ -175,7 +175,6 @@ const verificationSuccessDisplayedEventSchema = z
     action: z.literal("success_displayed"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
-    attestationType: z.string().optional(),
   })
   .strict()
 
@@ -183,6 +182,7 @@ const verificationSuccessDisconnectClickedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("success_disconnect_clicked"),
+    platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
   .strict()
@@ -212,6 +212,16 @@ const verificationManualReviewShownEventSchema = z
     action: z.literal("manual_review_shown"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationStatusRecoveredEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("status_recovered"),
+    platform: platformSchema,
+    accountId: nearAccountIdSchema,
+    recoveredFrom: z.enum(["hold", "error"]),
   })
   .strict()
 
@@ -359,7 +369,6 @@ const verificationStoredOnchainEventSchema = z
     ...verificationEventBase,
     action: z.literal("stored_onchain"),
     accountId: nearAccountIdSchema,
-    attestationType: z.string(),
     nationality: z.string().optional(),
   })
   .strict()
@@ -397,6 +406,7 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationPollingStartedEventSchema,
   verificationPollingTimeoutEventSchema,
   verificationManualReviewShownEventSchema,
+  verificationStatusRecoveredEventSchema,
   // Client-side events - SumSub SDK
   verificationSumsubSdkLoadedEventSchema,
   verificationSumsubMessageEventSchema,

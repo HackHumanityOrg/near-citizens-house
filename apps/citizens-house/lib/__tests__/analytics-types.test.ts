@@ -30,7 +30,6 @@ describe("Analytics Event Type Safety", () => {
         domain: "verification",
         action: "stored_onchain",
         accountId: "alice.near",
-        attestationType: "passport",
       })
       trackEvent({ domain: "verification", action: "rejected", reason: "invalid", errorCode: "E002" })
       expect(true).toBe(true)
