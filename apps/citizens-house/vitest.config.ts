@@ -26,6 +26,8 @@ export default defineConfig({
       "@near-citizens/ui": path.resolve(__dirname, "./components/ui"),
       // Mock server-only to be a no-op in tests (it throws in non-RSC contexts)
       "server-only": path.resolve(__dirname, "./lib/__tests__/__mocks__/server-only.ts"),
+      // Mock posthog-js to prevent tests from sending real analytics events
+      "posthog-js": path.resolve(__dirname, "./lib/__tests__/__mocks__/posthog-js.ts"),
     },
   },
 })
