@@ -115,9 +115,7 @@ describe("Analytics Event Type Safety", () => {
     it("accepts valid citizens events", () => {
       trackEvent({ domain: "citizens", action: "details_viewed", viewedAccountId: "alice.near" })
       trackEvent({ domain: "citizens", action: "signature_verify_opened", viewedAccountId: "alice.near" })
-      trackEvent({ domain: "citizens", action: "proof_verify_opened", viewedAccountId: "alice.near" })
       trackEvent({ domain: "citizens", action: "copied_to_clipboard", viewedAccountId: "bob.near", field: "hash" })
-      trackEvent({ domain: "citizens", action: "file_downloaded", viewedAccountId: "bob.near", fileType: "proof" })
       trackEvent({
         domain: "citizens",
         action: "external_verifier_opened",

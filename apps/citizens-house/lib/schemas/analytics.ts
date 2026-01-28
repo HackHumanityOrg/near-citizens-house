@@ -139,36 +139,6 @@ const verificationTokenFetchFailedEventSchema = z
   })
   .strict()
 
-// Callback flow (contract polling)
-const verificationCallbackLoadedEventSchema = z
-  .object({
-    ...verificationEventBase,
-    action: z.literal("callback_loaded"),
-    platform: platformSchema,
-    accountId: nearAccountIdSchema,
-  })
-  .strict()
-
-const verificationCallbackPollingStartedEventSchema = z
-  .object({
-    ...verificationEventBase,
-    action: z.literal("callback_polling_started"),
-    platform: platformSchema,
-    accountId: nearAccountIdSchema,
-  })
-  .strict()
-
-const verificationCallbackResultEventSchema = z
-  .object({
-    ...verificationEventBase,
-    action: z.literal("callback_result"),
-    platform: platformSchema,
-    accountId: nearAccountIdSchema,
-    status: z.enum(["success", "error", "expired", "timeout"]),
-    pollCount: z.number(),
-  })
-  .strict()
-
 // Success page
 const verificationSuccessDisplayedEventSchema = z
   .object({
@@ -547,10 +517,6 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationSumsubApplicantLoadedEventSchema,
   verificationPollingApprovedEventSchema,
   verificationTokenRefreshFailedEventSchema,
-  // Client-side events - callback
-  verificationCallbackLoadedEventSchema,
-  verificationCallbackPollingStartedEventSchema,
-  verificationCallbackResultEventSchema,
   // Client-side events - success
   verificationSuccessDisplayedEventSchema,
   verificationSuccessDisconnectClickedEventSchema,
@@ -596,29 +562,12 @@ const citizensSignatureVerifyOpenedEventSchema = z
   })
   .strict()
 
-const citizensProofVerifyOpenedEventSchema = z
-  .object({
-    ...citizensEventBase,
-    action: z.literal("proof_verify_opened"),
-    viewedAccountId: nearAccountIdSchema,
-  })
-  .strict()
-
 const citizensCopiedToClipboardEventSchema = z
   .object({
     ...citizensEventBase,
     action: z.literal("copied_to_clipboard"),
     viewedAccountId: nearAccountIdSchema,
     field: z.enum(["hash", "publicKey", "signature"]),
-  })
-  .strict()
-
-const citizensFileDownloadedEventSchema = z
-  .object({
-    ...citizensEventBase,
-    action: z.literal("file_downloaded"),
-    viewedAccountId: nearAccountIdSchema,
-    fileType: z.enum(["proof", "public_signals", "verification_key"]),
   })
   .strict()
 
@@ -635,9 +584,7 @@ const citizensExternalVerifierOpenedEventSchema = z
 const citizensEventSchema = z.discriminatedUnion("action", [
   citizensDetailsViewedEventSchema,
   citizensSignatureVerifyOpenedEventSchema,
-  citizensProofVerifyOpenedEventSchema,
   citizensCopiedToClipboardEventSchema,
-  citizensFileDownloadedEventSchema,
   citizensExternalVerifierOpenedEventSchema,
 ])
 
