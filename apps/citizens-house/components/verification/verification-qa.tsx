@@ -19,21 +19,12 @@ const faqs = [
           made on a "one person = one vote" basis.
         </p>
         <p className="mb-4">
-          Verification creates a{" "}
-          <a
-            href="https://en.wikipedia.org/wiki/Zero-knowledge_proof"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            zero-knowledge proof
-          </a>{" "}
-          linking your NEAR account to a unique human identity. The proof is generated through the{" "}
-          <a href="https://self.xyz" target="_blank" rel="noopener noreferrer" className="underline">
-            Self app
+          Verification links your NEAR account to a unique human identity through{" "}
+          <a href="https://sumsub.com/id-verification/" target="_blank" rel="noopener noreferrer" className="underline">
+            SumSub
           </a>
-          , which verifies that you hold a unique biometric identity document and shares proof of that with Citizens
-          House, without revealing your identity to anyone.
+          , a leading identity verification provider. The verification process confirms that you hold a valid identity
+          document and that you are the person depicted in it.
         </p>
         <p className="mb-4">
           Each real-world identity can only be linked to a single NEAR account, and each NEAR account can only be linked
@@ -66,13 +57,16 @@ const faqs = [
             sign messages with
           </li>
           <li>
-            <strong>Have a biometric ID</strong> - You must possess a biometric ID document that can be verified using
-            the Self app
+            <strong>Have a valid ID document</strong> - You must possess an ID document (e.g. passport, national ID card,
+            driving license or residence permit) that can be verified using SumSub
+          </li>
+          <li>
+            <strong>Be at least 16 years old</strong> - SumSub can only process the personal data of people aged 16 and over
           </li>
         </ol>
         <p className="mb-4">
-          There are no additional restrictions based on NEAR account age or history, date of birth, nationality, country
-          of residence, any sanctions lists, or anything else.
+          There are no additional restrictions based on NEAR account age or history, nationality, country
+          of residence, sanctions lists, or anything else.
         </p>
         <p className="mb-4">Each person can create one NEAR Verified Account linked to one unique identity document.</p>
         <p>
@@ -86,65 +80,23 @@ const faqs = [
     question: "What sort of ID document can I use?",
     answer: (
       <>
-        <p className="mb-4">You can use any biometric ID document that can be verified using the Self app:</p>
+        <p className="mb-4">You can use any government-issued ID document of more than 14,000 document types supported by SumSub, which include:</p>
         <ul className="list-disc pl-6 mb-4 space-y-2">
           <li>
-            A{" "}
-            <a
-              href="https://en.wikipedia.org/wiki/Biometric_passport"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              biometric passport
-            </a>{" "}
-            issued by any of 125 countries (
-            <a
-              href="https://docs.self.xyz/use-self/self-map-countries-list"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              list
-            </a>{" "}
-            |{" "}
-            <a href="https://map.self.xyz/" target="_blank" rel="noopener noreferrer" className="underline">
-              map
-            </a>
-            )
+            Passports
           </li>
           <li>
-            An{" "}
-            <a
-              href="https://self.xyz/blog/self-now-supports-eu-id-scanning-for-identity-verification"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              EU-standard biometric national ID card
-            </a>{" "}
-            issued from any of the 27 EU countries
+            National ID cards
           </li>
           <li>
-            An{" "}
-            <a
-              href="https://docs.self.xyz/document-specification/aadhaar"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              Aadhaar national ID card
-            </a>{" "}
-            in India
+            Driving licenses
+          </li>
+          <li>
+            Residence permits
           </li>
         </ul>
         <p>
-          The{" "}
-          <a href="https://self.xyz" target="_blank" rel="noopener noreferrer" className="underline">
-            Self app
-          </a>{" "}
-          is compatible with iOS 15.1+ and Android 7.0+ and relies on your device's camera and NFC reader to verify your
-          ID document.
+          The verification process requires you to upload photos of your ID document and complete a liveness check (a selfie) to confirm you are the person shown on the document.
         </p>
       </>
     ),
@@ -155,28 +107,23 @@ const faqs = [
     answer: (
       <>
         <p className="mb-4">
-          Yes. The verification system uses zero-knowledge proofs, meaning your identity is verified without revealing
-          personal information publicly. No personally identifiable information (PII) is collected or retained beyond
-          what's necessary for verification.
+          Your identity is verified by SumSub, a leading identity verification provider that processes your data in accordance with strict privacy and data protection regulations.
         </p>
-        <p className="mb-4">Your data are handled with strict privacy protections.</p>
-        <p className="mb-4">Self's architecture prevents disclosure of personal details.</p>
         <p className="mb-6">
-          The only information disclosed from your document to Citizens House is your nationality, which we record for
-          analytics and fraud-prevention purposes. This does not get published on-chain.
+          Citizens House does not receive or store your personal identity information. We only receive confirmation that verification was successful and a unique identifier that prevents duplicate verifications.
         </p>
 
         <p className="font-medium mb-2">What we verify:</p>
         <ol className="list-decimal pl-6 mb-4 space-y-1">
           <li>That you control a NEAR account</li>
-          <li>That your identity meets the eligibility criteria</li>
+          <li>That you have completed identity verification</li>
           <li>That you are a unique person (preventing duplicate verifications)</li>
         </ol>
 
         <p className="font-medium mb-2">What we store:</p>
         <ol className="list-decimal pl-6 mb-4 space-y-1">
           <li>Your NEAR account ID</li>
-          <li>Your verification proof (stored on-chain as a zero-knowledge proof)</li>
+          <li>A unique verification identifier (stored on-chain)</li>
         </ol>
 
         <p className="font-medium mb-2">What we share:</p>
@@ -199,8 +146,8 @@ const faqs = [
             Privacy Policy
           </a>{" "}
           and the{" "}
-          <a href="https://self.xyz/privacy" target="_blank" rel="noopener noreferrer" className="underline">
-            Self Privacy Notice
+          <a href="https://sumsub.com/privacy-notice-service/" target="_blank" rel="noopener noreferrer" className="underline">
+            SumSub Privacy Notice
           </a>
           .
         </p>
