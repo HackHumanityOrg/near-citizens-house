@@ -26,7 +26,7 @@ export default function TermsPage() {
             Terms of Use
           </h1>
           <p className="text-[22px] leading-[30px] font-fk-grotesk font-normal text-black dark:text-white text-center">
-            Last updated: January 7, 2026
+            Last updated: January 27, 2026
           </p>
         </div>
       </section>
@@ -94,6 +94,9 @@ export default function TermsPage() {
                 By using the Services, you represent and warrant that you:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
+                <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
+                  Are at least sixteen (16) years of age and have legal capacity to enter into these Terms;
+                </li>
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                   Control the blockchain wallet that you connect to the Services;
                 </li>
