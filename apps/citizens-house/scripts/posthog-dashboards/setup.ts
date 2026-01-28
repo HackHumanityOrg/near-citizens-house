@@ -16,8 +16,6 @@
 
 import { createPostHogClient } from "./api-client"
 import { allDashboards } from "./dashboards"
-import { allActions } from "./actions"
-import type { DashboardDefinition } from "./schemas"
 
 // ANSI color codes for output
 const colors = {
@@ -136,44 +134,6 @@ async function verifySetup(): Promise<boolean> {
 }
 
 /**
- * Replace action names with action IDs in a dashboard definition
- */
-function resolveActionIds(dashboard: DashboardDefinition, actionMap: Map<string, number>): DashboardDefinition {
-  return {
-    ...dashboard,
-    tiles: dashboard.tiles.map((tile) => {
-      if (tile.type !== "insight") return tile
-
-      // Skip if using query format (action IDs are hardcoded)
-      // or if filters is not defined
-      if (!tile.insight.filters) return tile
-
-      const events = tile.insight.filters.events
-      if (!events) return tile
-
-      return {
-        ...tile,
-        insight: {
-          ...tile.insight,
-          filters: {
-            ...tile.insight.filters,
-            events: events.map((event) => {
-              if (event.type === "actions" && typeof event.id === "string") {
-                const actionId = actionMap.get(event.id)
-                if (actionId) {
-                  return { ...event, id: String(actionId) }
-                }
-              }
-              return event
-            }),
-          },
-        },
-      }
-    }),
-  }
-}
-
-/**
  * Create dashboard
  */
 async function createDashboard(options: { dryRun?: boolean; skipExisting?: boolean } = {}): Promise<void> {
@@ -192,10 +152,6 @@ async function createDashboard(options: { dryRun?: boolean; skipExisting?: boole
   logInfo(`Tiles: ${dashboard.tiles.length}`)
 
   if (dryRun) {
-    logInfo(`Would create ${allActions.length} actions:`)
-    for (const action of allActions) {
-      logInfo(`  - Action: ${action.name} (${action.steps.length} events with OR logic)`)
-    }
     logInfo(`Would create dashboard with ${dashboard.tiles.length} tiles:`)
     for (const tile of dashboard.tiles) {
       if (tile.type === "text") {
@@ -209,27 +165,20 @@ async function createDashboard(options: { dryRun?: boolean; skipExisting?: boole
 
   try {
     const client = createPostHogClient()
+    const result = await client.createCompleteDashboard(dashboard, {
+      skipExisting,
+      replaceExisting: !skipExisting, // Replace by default unless skipExisting is set
+    })
 
-    // Step 1: Create actions first (they combine events with OR logic)
-    const actionMap = new Map<string, number>()
-    if (allActions.length > 0) {
-      log(`\n${colors.blue}Creating actions...${colors.reset}`)
-      for (const action of allActions) {
-        const created = await client.getOrCreateAction(action)
-        actionMap.set(action.name, created.id)
-        logSuccess(`Action: ${created.name} (ID: ${created.id})`)
-      }
+    if (result.replaced) {
+      logSuccess(`Replaced dashboard: ${result.dashboard.name} (ID: ${result.dashboard.id})`)
+    } else if (result.insights.length === 0 && result.textTiles.length === 0) {
+      logInfo(`Dashboard already exists, skipped`)
+    } else {
+      logSuccess(`Created dashboard: ${result.dashboard.name} (ID: ${result.dashboard.id})`)
     }
-
-    // Step 2: Resolve action names to IDs in the dashboard definition
-    const resolvedDashboard = resolveActionIds(dashboard, actionMap)
-
-    // Step 3: Create the dashboard with resolved action IDs
-    const result = await client.createCompleteDashboard(resolvedDashboard, { skipExisting })
-
-    logSuccess(`Created dashboard: ${result.dashboard.name} (ID: ${result.dashboard.id})`)
-    logInfo(`  Created ${result.insights.length} insights`)
-    logInfo(`  Created ${result.textTiles.length} text tiles`)
+    logInfo(`  ${result.insights.length} insights`)
+    logInfo(`  ${result.textTiles.length} text tiles`)
   } catch (error) {
     logError(`Failed to create dashboard: ${error}`)
   }
