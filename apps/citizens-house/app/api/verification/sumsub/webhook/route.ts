@@ -17,14 +17,30 @@ import { getRedisClient } from "@/lib/redis"
 import { trackServerEvent } from "@/lib/analytics-server"
 import { getSigningMessage, getSigningRecipient, verifyNearSignature, validateSignatureData } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
-import { logEvent } from "@/lib/logger"
 import { sumsubWebhookPayloadSchema, applicantMetadataSchema } from "@/lib/schemas/providers/sumsub"
-import { type NearAccountId } from "@/lib/schemas/near"
+import { type NearAccountId, nearAccountIdSchema } from "@/lib/schemas/near"
 import { mapContractErrorToCode, type VerificationErrorCode } from "@/lib/schemas"
 import { verificationStatusErrorCodeSchema } from "@/lib/schemas/errors"
 import { setVerificationStatus, clearVerificationStatus } from "@/lib/verification-status"
 import { apiError, apiSuccess, webhookAck } from "@/lib/api/response"
 import { statusOkResponseSchema } from "@/lib/schemas/api/response"
+
+/**
+ * Optimistically parse externalUserId (NEAR account ID) from raw webhook body.
+ * Used for analytics tracking on errors that occur before full schema validation.
+ */
+function tryParseExternalUserId(rawBody: string): string | undefined {
+  try {
+    const body = JSON.parse(rawBody)
+    const externalUserId = body?.externalUserId
+    if (typeof externalUserId === "string" && nearAccountIdSchema.safeParse(externalUserId).success) {
+      return externalUserId
+    }
+  } catch {
+    // Ignore parsing errors
+  }
+  return undefined
+}
 
 // Initialize Redis for backend key pool
 let redisInitialized = false
@@ -45,19 +61,26 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("x-payload-digest") || request.headers.get("x-signature")
     const algorithm = request.headers.get("x-payload-digest-alg") || "HMAC_SHA256_HEX"
 
+    // Optimistically parse externalUserId for analytics on early errors
+    const optimisticAccountId = tryParseExternalUserId(rawBody)
+
     if (!signature) {
-      logEvent({
-        event: "sumsub_webhook_missing_signature",
-        level: "warn",
+      await trackServerEvent(optimisticAccountId ?? "anonymous", {
+        domain: "verification",
+        action: "webhook_auth_failed",
+        reason: "missing_signature",
+        accountId: optimisticAccountId,
       })
       return apiError("WEBHOOK_SIGNATURE_INVALID", "Missing signature header", 401)
     }
 
     // Verify webhook signature (supports SHA256, SHA512, SHA1 based on algorithm header)
     if (!verifyWebhookSignature(rawBody, signature, algorithm)) {
-      logEvent({
-        event: "sumsub_webhook_invalid_signature",
-        level: "warn",
+      await trackServerEvent(optimisticAccountId ?? "anonymous", {
+        domain: "verification",
+        action: "webhook_auth_failed",
+        reason: "invalid_signature",
+        accountId: optimisticAccountId,
       })
       return apiError("WEBHOOK_SIGNATURE_INVALID", undefined, 401)
     }
@@ -67,10 +90,11 @@ export async function POST(request: NextRequest) {
     const parseResult = sumsubWebhookPayloadSchema.safeParse(body)
 
     if (!parseResult.success) {
-      logEvent({
-        event: "sumsub_webhook_invalid_payload",
-        level: "warn",
+      await trackServerEvent(optimisticAccountId ?? "anonymous", {
+        domain: "verification",
+        action: "webhook_parse_failed",
         errors: JSON.stringify(parseResult.error.issues),
+        accountId: optimisticAccountId,
       })
       return apiError("WEBHOOK_PAYLOAD_INVALID")
     }
@@ -78,9 +102,9 @@ export async function POST(request: NextRequest) {
     const payload = parseResult.data
     applicantId = payload.applicantId
 
-    logEvent({
-      event: "sumsub_webhook_received",
-      level: "info",
+    await trackServerEvent(payload.externalUserId ?? applicantId, {
+      domain: "verification",
+      action: "webhook_received",
       type: payload.type,
       applicantId,
       externalUserId: payload.externalUserId ?? "",
@@ -93,9 +117,9 @@ export async function POST(request: NextRequest) {
       if (externalUserId) {
         await setVerificationStatus(externalUserId, "VERIFICATION_ON_HOLD")
       } else {
-        logEvent({
-          event: "sumsub_webhook_missing_external_user_id",
-          level: "warn",
+        await trackServerEvent(applicantId, {
+          domain: "verification",
+          action: "webhook_missing_user_id",
           applicantId,
         })
       }
@@ -111,10 +135,11 @@ export async function POST(request: NextRequest) {
     // Check if verification was approved
     const reviewAnswer = payload.reviewResult?.reviewAnswer
     if (reviewAnswer !== "GREEN") {
-      logEvent({
-        event: "sumsub_webhook_not_approved",
-        level: "info",
+      await trackServerEvent(payload.externalUserId ?? applicantId, {
+        domain: "verification",
+        action: "webhook_not_approved",
         applicantId,
+        accountId: payload.externalUserId as NearAccountId | undefined,
         reviewAnswer: reviewAnswer ?? "unknown",
         rejectLabels: JSON.stringify(payload.reviewResult?.rejectLabels ?? []),
       })
@@ -125,17 +150,17 @@ export async function POST(request: NextRequest) {
         if (externalUserId) {
           await setVerificationStatus(externalUserId, "VERIFICATION_ON_HOLD")
         } else {
-          logEvent({
-            event: "sumsub_webhook_missing_external_user_id",
-            level: "warn",
+          await trackServerEvent(applicantId, {
+            domain: "verification",
+            action: "webhook_missing_user_id",
             applicantId,
           })
         }
-        logEvent({
-          event: "sumsub_webhook_pending_review",
-          level: "info",
+        await trackServerEvent(externalUserId ?? applicantId, {
+          domain: "verification",
+          action: "webhook_pending_review",
           applicantId,
-          reviewAnswer: "YELLOW",
+          accountId: externalUserId as NearAccountId | undefined,
         })
         return webhookAck("Verification pending review")
       }
@@ -150,12 +175,11 @@ export async function POST(request: NextRequest) {
           const { checkIsVerified } = await import("@/app/citizens/actions")
           const isVerified = await checkIsVerified(externalUserId as NearAccountId)
           if (isVerified) {
-            logEvent({
-              event: "sumsub_webhook_late_rejection_after_approval",
-              level: "warn",
+            await trackServerEvent(externalUserId, {
+              domain: "verification",
+              action: "webhook_late_rejection",
               applicantId,
-              accountId: externalUserId,
-              rejectLabels: JSON.stringify(payload.reviewResult?.rejectLabels ?? []),
+              accountId: externalUserId as NearAccountId,
             })
             // Don't update Redis - on-chain approval stands
             return webhookAck("Late rejection logged (already approved on-chain)")
@@ -187,11 +211,12 @@ export async function POST(request: NextRequest) {
 
     const metadataResult = applicantMetadataSchema.safeParse(metadata)
     if (!metadataResult.success) {
-      logEvent({
-        event: "sumsub_webhook_missing_metadata",
-        level: "error",
+      await trackServerEvent(payload.externalUserId ?? applicantId, {
+        domain: "verification",
+        action: "webhook_validation_failed",
+        reason: "missing_metadata",
         applicantId,
-        missingFields: metadataResult.error.issues.map((i) => i.path.join(".")).join(", "),
+        accountId: payload.externalUserId as NearAccountId | undefined,
       })
       return apiError("MISSING_NEAR_METADATA")
     }
@@ -202,12 +227,12 @@ export async function POST(request: NextRequest) {
 
     // Security: Verify externalUserId matches metadata to prevent request tampering
     if (payload.externalUserId && payload.externalUserId !== accountId) {
-      logEvent({
-        event: "sumsub_webhook_user_mismatch",
-        level: "error",
+      await trackServerEvent(applicantId, {
+        domain: "verification",
+        action: "webhook_validation_failed",
+        reason: "user_mismatch",
         applicantId,
-        externalUserId: payload.externalUserId,
-        metadataAccountId: accountId,
+        accountId,
       })
       return apiError("WEBHOOK_PAYLOAD_INVALID", "User ID mismatch", 400)
     }
@@ -231,13 +256,13 @@ export async function POST(request: NextRequest) {
 
     if (!formatCheck.valid) {
       const code = (formatCheck.errorCode as VerificationErrorCode) ?? "NEAR_SIGNATURE_INVALID"
-      logEvent({
-        event: "sumsub_webhook_invalid_format",
-        level: "warn",
+      await trackServerEvent(accountId, {
+        domain: "verification",
+        action: "webhook_validation_failed",
+        reason: "signature_format",
         applicantId,
         accountId,
-        error: formatCheck.error ?? "Unknown validation error",
-        errorCode: code,
+        errorMessage: formatCheck.error,
       })
 
       return apiError(code, formatCheck.error, 400)
@@ -249,10 +274,12 @@ export async function POST(request: NextRequest) {
     try {
       recipient = getSigningRecipient()
     } catch {
-      logEvent({
-        event: "sumsub_webhook_missing_config",
-        level: "error",
+      await trackServerEvent(accountId, {
+        domain: "verification",
+        action: "webhook_config_error",
         applicantId,
+        configKey: "signing_recipient",
+        accountId,
       })
       return apiError("BACKEND_NOT_CONFIGURED", "Missing signing recipient")
     }
@@ -266,12 +293,13 @@ export async function POST(request: NextRequest) {
     )
 
     if (!signatureCheck.valid) {
-      logEvent({
-        event: "sumsub_webhook_signature_invalid",
-        level: "warn",
+      await trackServerEvent(accountId, {
+        domain: "verification",
+        action: "webhook_validation_failed",
+        reason: "signature_crypto",
         applicantId,
         accountId,
-        error: signatureCheck.error ?? "Unknown error",
+        errorMessage: signatureCheck.error,
       })
 
       return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error, 400)
@@ -287,15 +315,17 @@ export async function POST(request: NextRequest) {
     // Verify the public key is a full-access key
     const keyCheck = await hasFullAccessKey(accountId, nearMetadata.near_public_key)
     if (!keyCheck.isFullAccess) {
-      logEvent({
-        event: "sumsub_webhook_not_full_access",
-        level: "warn",
+      const errorMsg = keyCheck.error ?? "Invalid public key"
+      await trackServerEvent(accountId, {
+        domain: "verification",
+        action: "webhook_validation_failed",
+        reason: "key_not_full_access",
         applicantId,
         accountId,
-        error: keyCheck.error ?? "Unknown key validation error",
+        errorMessage: errorMsg,
       })
 
-      return apiError("NEAR_SIGNATURE_INVALID", keyCheck.error ?? "Invalid public key", 400)
+      return apiError("NEAR_SIGNATURE_INVALID", errorMsg, 400)
     }
 
     // NOTE: Nonce is reserved in token API with 24h TTL to cover SumSub's full retry window.
@@ -304,10 +334,12 @@ export async function POST(request: NextRequest) {
 
     // Verify backend wallet is configured
     if (!NEAR_SERVER_CONFIG.backendAccountId || !NEAR_SERVER_CONFIG.backendPrivateKey) {
-      logEvent({
-        event: "sumsub_webhook_missing_backend_config",
-        level: "error",
+      await trackServerEvent(accountId, {
+        domain: "verification",
+        action: "webhook_config_error",
         applicantId,
+        configKey: "backend_signer",
+        accountId,
       })
       return apiError("BACKEND_NOT_CONFIGURED")
     }
@@ -340,13 +372,6 @@ export async function POST(request: NextRequest) {
         userContextData,
       })
 
-      logEvent({
-        event: "sumsub_webhook_stored_onchain",
-        level: "info",
-        applicantId,
-        accountId,
-      })
-
       // Clear any intermediate status from Redis now that we're on-chain
       await clearVerificationStatus(accountId)
 
@@ -366,13 +391,13 @@ export async function POST(request: NextRequest) {
       const errCode = mapContractErrorToCode(errorMsg)
       const errorCodeForLog = errCode ?? "UNKNOWN"
 
-      logEvent({
-        event: "sumsub_webhook_storage_failed",
-        level: "error",
+      await trackServerEvent(accountId, {
+        domain: "verification",
+        action: "webhook_storage_failed",
         applicantId,
         accountId,
-        error: errorMsg,
         errorCode: errorCodeForLog,
+        errorMessage: errorMsg,
       })
 
       if (errCode === "ACCOUNT_ALREADY_VERIFIED") {
@@ -405,12 +430,12 @@ export async function POST(request: NextRequest) {
       return apiError("STORAGE_FAILED", errorMsg)
     }
   } catch (error) {
-    logEvent({
-      event: "sumsub_webhook_error",
-      level: "error",
-      applicantId: applicantId ?? "unknown",
-      accountId: accountId ?? "unknown",
-      error: error instanceof Error ? error.message : "Unknown error",
+    await trackServerEvent(accountId ?? applicantId ?? "anonymous", {
+      domain: "verification",
+      action: "webhook_error",
+      applicantId,
+      accountId,
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
     })
 
     return apiError("STORAGE_FAILED", error instanceof Error ? error.message : "Internal server error")

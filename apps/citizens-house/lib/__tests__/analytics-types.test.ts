@@ -47,7 +47,13 @@ describe("Analytics Event Type Safety", () => {
         action: "stored_onchain",
         accountId: "alice.near",
       })
-      trackEvent({ domain: "verification", action: "rejected", reason: "invalid", errorCode: "VERIFICATION_REJECTED" })
+      trackEvent({
+        domain: "verification",
+        action: "rejected",
+        accountId: "alice.near",
+        reason: "invalid",
+        errorCode: "VERIFICATION_REJECTED",
+      })
       expect(true).toBe(true)
     })
 

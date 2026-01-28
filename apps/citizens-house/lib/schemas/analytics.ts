@@ -38,6 +38,7 @@ const verificationCtaClickedEventSchema = z
     action: z.literal("cta_clicked"),
     platform: platformSchema,
     isConnected: z.boolean(),
+    accountId: nearAccountIdSchema.optional(),
   })
   .strict()
 
@@ -472,9 +473,190 @@ const verificationRejectedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal("rejected"),
-    accountId: nearAccountIdSchema.optional(),
+    accountId: nearAccountIdSchema,
     reason: z.string(),
     errorCode: verificationErrorCodeSchema,
+  })
+  .strict()
+
+// Token route events (7 new schemas)
+
+const verificationTokenValidationFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_validation_failed"),
+    accountId: nearAccountIdSchema,
+    reason: z.enum(["signature_format", "signature_crypto", "key_not_full_access", "nonce_replay"]),
+    errorCode: verificationErrorCodeSchema.optional(),
+    errorMessage: z.string().optional(),
+  })
+  .strict()
+
+const verificationTokenConfigErrorEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_config_error"),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationTokenAlreadyVerifiedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_already_verified"),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationTokenApplicantReusedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_applicant_reused"),
+    accountId: nearAccountIdSchema,
+    applicantId: z.string(),
+  })
+  .strict()
+
+const verificationTokenMetadataStoredEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_metadata_stored"),
+    accountId: nearAccountIdSchema,
+    applicantId: z.string(),
+  })
+  .strict()
+
+const verificationTokenGeneratedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_generated"),
+    accountId: nearAccountIdSchema,
+    applicantId: z.string(),
+  })
+  .strict()
+
+const verificationTokenErrorEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("token_error"),
+    accountId: nearAccountIdSchema.optional(),
+    errorMessage: z.string(),
+  })
+  .strict()
+
+// Webhook route events (11 new schemas)
+
+const verificationWebhookAuthFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_auth_failed"),
+    reason: z.enum(["missing_signature", "invalid_signature"]),
+    accountId: nearAccountIdSchema.optional(),
+  })
+  .strict()
+
+const verificationWebhookParseFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_parse_failed"),
+    errors: z.string(),
+    accountId: nearAccountIdSchema.optional(),
+  })
+  .strict()
+
+const verificationWebhookReceivedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_received"),
+    type: z.string(),
+    applicantId: z.string(),
+    externalUserId: z.string(),
+    reviewStatus: z.string(),
+  })
+  .strict()
+
+const verificationWebhookMissingUserIdEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_missing_user_id"),
+    applicantId: z.string(),
+  })
+  .strict()
+
+const verificationWebhookNotApprovedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_not_approved"),
+    applicantId: z.string(),
+    accountId: nearAccountIdSchema.optional(),
+    reviewAnswer: z.string(),
+    rejectLabels: z.string(),
+  })
+  .strict()
+
+const verificationWebhookPendingReviewEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_pending_review"),
+    applicantId: z.string(),
+    accountId: nearAccountIdSchema.optional(),
+  })
+  .strict()
+
+const verificationWebhookLateRejectionEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_late_rejection"),
+    applicantId: z.string(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationWebhookValidationFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_validation_failed"),
+    reason: z.enum([
+      "missing_metadata",
+      "user_mismatch",
+      "signature_format",
+      "signature_crypto",
+      "key_not_full_access",
+    ]),
+    applicantId: z.string(),
+    accountId: nearAccountIdSchema.optional(),
+    errorMessage: z.string().optional(),
+  })
+  .strict()
+
+const verificationWebhookConfigErrorEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_config_error"),
+    applicantId: z.string(),
+    configKey: z.enum(["signing_recipient", "backend_signer"]),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const verificationWebhookStorageFailedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_storage_failed"),
+    applicantId: z.string(),
+    accountId: nearAccountIdSchema,
+    errorCode: z.string(),
+    errorMessage: z.string(),
+  })
+  .strict()
+
+const verificationWebhookErrorEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal("webhook_error"),
+    applicantId: z.string().optional(),
+    accountId: nearAccountIdSchema.optional(),
+    errorMessage: z.string(),
   })
   .strict()
 
@@ -537,6 +719,26 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationProofValidatedEventSchema,
   verificationStoredOnchainEventSchema,
   verificationRejectedEventSchema,
+  // Server-side token route events
+  verificationTokenValidationFailedEventSchema,
+  verificationTokenConfigErrorEventSchema,
+  verificationTokenAlreadyVerifiedEventSchema,
+  verificationTokenApplicantReusedEventSchema,
+  verificationTokenMetadataStoredEventSchema,
+  verificationTokenGeneratedEventSchema,
+  verificationTokenErrorEventSchema,
+  // Server-side webhook route events
+  verificationWebhookAuthFailedEventSchema,
+  verificationWebhookParseFailedEventSchema,
+  verificationWebhookReceivedEventSchema,
+  verificationWebhookMissingUserIdEventSchema,
+  verificationWebhookNotApprovedEventSchema,
+  verificationWebhookPendingReviewEventSchema,
+  verificationWebhookLateRejectionEventSchema,
+  verificationWebhookValidationFailedEventSchema,
+  verificationWebhookConfigErrorEventSchema,
+  verificationWebhookStorageFailedEventSchema,
+  verificationWebhookErrorEventSchema,
 ])
 
 // =============================================================================

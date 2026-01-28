@@ -22,7 +22,7 @@ export function VerificationCtaButton({
   testId = "connect-wallet-button",
 }: VerificationCtaButtonProps) {
   const router = useRouter()
-  const { isConnected, connect, isLoading } = useNearWallet()
+  const { isConnected, accountId, connect, isLoading } = useNearWallet()
   const label = isConnected ? labelConnected : labelDisconnected
 
   // Track connection attempts initiated from this CTA
@@ -71,6 +71,7 @@ export function VerificationCtaButton({
       action: "cta_clicked",
       platform: getPlatform(),
       isConnected: true,
+      accountId: accountId || undefined,
     })
   }
 
