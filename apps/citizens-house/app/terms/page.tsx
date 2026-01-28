@@ -26,7 +26,7 @@ export default function TermsPage() {
             Terms of Use
           </h1>
           <p className="text-[22px] leading-[30px] font-fk-grotesk font-normal text-black dark:text-white text-center">
-            Last updated: January 7, 2026
+            Last updated: January 27, 2026
           </p>
         </div>
       </section>
