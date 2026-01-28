@@ -5,7 +5,7 @@ import { StarPattern } from "@/components/verification/icons/star-pattern"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@near-citizens/ui"
 
 const LAST_UPDATED_DATES = {
-  privacy: "January 7, 2026",
+  privacy: "January 27, 2026",
   "eu-uk": "January 6, 2026",
 }
 
