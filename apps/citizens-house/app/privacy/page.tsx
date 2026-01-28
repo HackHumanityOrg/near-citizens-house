@@ -169,6 +169,31 @@ function PrivacyPolicyContent() {
         </div>
       </section>
 
+      {/* Children under the Age of Sixteen */}
+      <section className="flex flex-col gap-[16px] w-full">
+        <h2 className="text-[24px] leading-[32px] md:text-[30px] md:leading-[36px] font-fk-grotesk font-medium text-black dark:text-white">
+          Children under the Age of Sixteen (16)
+        </h2>
+        <div className="flex flex-col gap-[16px] opacity-[0.88]">
+          <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
+            The Website, the Apps and the Tools are not intended for children under sixteen (16) years of age. No one
+            under age sixteen (16) may provide any personal information to us or our service providers or on or through
+            the Website, the Apps and the Tools. We and our service providers do not knowingly or intentionally collect
+            personal information from children under the age of sixteen (16). If you are under sixteen (16), do not
+            use or provide any information on or through the Website, the Apps and the Tools, or register on the
+            Website, the Apps, or the Tools, or use any of the interactive or public comment features of this Website,
+            the Apps or the Tools or provide any information about yourself to us or our service providers, including
+            your name, address, telephone number, email address, or any screen name or user name you may use.
+          </p>
+          <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
+            If we or our service providers learn we have collected or received personal information from a child under
+            sixteen (16) years of age, we will delete that information. If you believe we or our service providers
+            might have any information from or about a child under the age of sixteen (16), please report this
+            information at info@citizenshouse.org
+          </p>
+        </div>
+      </section>
+
       {/* Information We and Our Service Providers MAY Collect */}
       <section className="flex flex-col gap-[16px] w-full">
         <h2 className="text-[24px] leading-[32px] md:text-[30px] md:leading-[36px] font-fk-grotesk font-medium text-black dark:text-white">
