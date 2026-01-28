@@ -161,7 +161,7 @@ export function VerificationHero() {
                       Verify Identity
                     </h3>
                     <p className="text-[16px] leading-[28px] text-[#8e8e93] font-fk-grotesk font-normal">
-                      Use the Self mobile app to generate proof of your Passport or other biometric ID document
+                      Upload your ID document and pass a liveness check to verify your unique identity
                     </p>
                   </div>
                 </div>
@@ -205,7 +205,7 @@ export function VerificationHero() {
                   </h3>
                 </div>
                 <p className="text-[16px] leading-[28px] text-[#8e8e93] dark:text-[#8a8f98] font-fk-grotesk font-normal">
-                  Use the Self mobile app to generate proof of your Passport or other biometric ID document
+                  Upload your ID document and pass a liveness check to verify your unique identity
                 </p>
               </div>
             </div>
