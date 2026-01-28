@@ -1,6 +1,6 @@
 # Product Requirements Document: Citizens House Voting
 
-**Version:** 0.2.2
+**Version:** 0.2.3
 **Date:** 2026-01-19
 **Status:** Draft
 **Owner:** Dan Cunningham
@@ -56,8 +56,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - The Verified Accounts contract remains the source of truth for verification.
 - Contract account will be funded for baseline storage.
 - **Storage model**:
-  - **Proposals**: Require a bond (default 1 NEAR). Bond is returned on cancel/fail; retained on success to cover permanent storage.
-  - **Votes**: Require a deposit covering actual storage cost (computed via `env::storage_usage()` delta). Excess is refunded directly to the caller.
+  - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Bond covers storage for the proposal and votes. Bond is only refunded if the proposal fails to be created (snapshot callback failure or pending expiry). Bond is NOT refunded on success, failure, or cancellation.
+  - **Votes**: Before recording a vote, the contract checks if available balance can cover storage (using `env::account_balance()`, `env::storage_usage()`, `env::storage_byte_cost()`). If sufficient, no deposit required. If insufficient, voter must attach deposit (~0.0015 NEAR). This creates a "free until bond exhausted" model.
   - **Admin operations**: Use `assert_one_yocto()`. Storage cost is minimal and absorbed by contract.
 
 **NEAR execution model considerations**
@@ -97,7 +97,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Quorum count uses `ceil((snapshot_verified_count * quorum_bps) / 10_000)`.
 - **Passing condition**: Quorum met and `yes_votes >= no_votes` (ties pass).
 - **Finalize preconditions**: Finalize is only allowed for `Active` proposals; calls for `Pending`, `Cancelled`, `Succeeded`, or `Failed` must be rejected.
-- **Pending expiry**: If a proposal remains `Pending` past `created_at + voting_period_secs`, it auto-expires to `Failed` and bond is refunded to creator.
+- **Pending expiry**: If a proposal remains `Pending` past `created_at + voting_period_secs`, it auto-expires to `Failed` and bond is refunded to creator (creation failure).
 - **Blocklisting**: Prevents future voting. For Active proposals, votes from accounts blocklisted before finalize are excluded from both quorum participation and yes/no tallies. Blocklisting does not alter results of finalized proposals.
 - **Zero snapshot**: If `snapshot_verified_count == 0`, the proposal auto-fails at finalization (quorum cannot be met).
 - **Config updates**: Blocked while any proposal is Pending or Active.
@@ -113,15 +113,20 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
    - Contract calls Verified Accounts to fetch `verified_count` (snapshot).
    - Callback finalizes proposal to Active and stores snapshot count; it must not change `created_at` or `ends_at`.
    - Snapshot count may include accounts verified between proposal creation and callback completion; this slightly raises quorum and is acceptable.
-   - On failure (snapshot call fails or pending expiry), bond is refunded to creator.
+   - On callback failure (snapshot call fails), bond is refunded to creator.
+   - On pending expiry (proposal remains Pending past `created_at + voting_period_secs`), bond is refunded to creator.
+   - If proposal transitions to Active, bond is never refunded regardless of final outcome (success, failure, or cancellation).
 
 2. **Vote (verified-only)**
    - Contract checks if proposal is Active and within voting window.
    - Contract checks blocklist.
+   - Contract checks available storage balance:
+     - If contract has sufficient balance → no deposit required
+     - If contract lacks balance → voter must attach deposit (revert if insufficient)
    - Contract records a pending vote lock per proposal (`pending_votes` keyed by `(proposal_id, account_id)`) to prevent duplicate submissions.
    - Contract calls Verified Accounts `get_verification` (summary).
    - Callback re-checks status/time/blocklist, enforces `verified_at <= proposal.created_at`, and records vote if valid.
-   - On failure, deposit is refunded to voter and pending lock is cleared.
+   - On failure, pending lock is cleared and any attached deposit is refunded.
    - Finalization excludes votes from accounts blocklisted before finalize.
 
 3. **Finalize**
@@ -134,8 +139,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
    - If a proposal auto-expired while Pending, finalize returns an expired error.
 
 4. **Cancel (admin-only)**
-   - If Active and not finalized, proposal becomes Cancelled and bond is refunded to creator.
-   - Refunds are applied after clearing any pending locks.
+   - If Active and not finalized, proposal becomes Cancelled. Bond is NOT refunded.
+   - Pending locks are cleared.
 
 ---
 
@@ -148,7 +153,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - `admins: Vec<AccountId>` (must include at least one)
   - `quorum_bps: u16` (default 700)
   - `voting_period_secs: u64` (default 14 days)
-  - `proposal_bond: U128` (default 1 NEAR)
+  - `min_proposal_bond: U128` (default 1 NEAR) — minimum bond; proposers may attach more
 - Must set `paused = false`.
 
 ### 10.2 Admin Management
@@ -163,12 +168,12 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 - **create_proposal(title, author, description)**: Admin-only.
   - Validates length limits (see Section 12).
-  - Requires attached bond (configurable, default 1 NEAR).
-  - Stores `creator = predecessor_account_id()` for refunds and auditability.
+  - Requires attached bond (minimum configurable, default 1 NEAR; proposer may attach more).
+  - Stores `creator = predecessor_account_id()` for auditability.
   - Stores pending proposal with `created_at = now` and `ends_at = created_at + voting_period_secs`.
   - Initiates async call to fetch snapshot; callback activates proposal.
-  - On failure, bond is refunded to creator.
-- **cancel_proposal(proposal_id)**: Admin-only; only if not finalized. Bond is refunded to creator.
+  - Bond is only refunded if snapshot callback fails. Once proposal is Active, bond is never refunded.
+- **cancel_proposal(proposal_id)**: Admin-only; only if not finalized. Bond is NOT refunded.
 - **finalize_proposal(proposal_id)**: Public; only after `ends_at` and when not paused.
   - Only valid for `Active` proposals.
   - Excludes votes from accounts blocklisted before finalize.
@@ -182,12 +187,15 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **cast_vote(proposal_id, choice)**: Verified-only (verified before proposal creation), not blocklisted.
   - `choice` is `Yes` or `No`. One vote per proposal per account.
   - Requires active proposal within `[created_at, ends_at]`.
-  - Requires attached deposit; actual storage cost charged, excess refunded.
+  - **Storage check**: Contract checks available balance vs estimated vote storage cost.
+    - If sufficient balance: no deposit required.
+    - If insufficient: requires attached deposit (~0.0015 NEAR); excess refunded after storage delta is computed.
   - Async `get_verification` callback enforces `verified_at <= proposal.created_at`.
   - Pending vote lock prevents concurrent submissions; cleared on callback.
-  - On failure, deposit is refunded to voter.
+  - On failure, pending lock is cleared and any deposit is refunded.
 - **has_voted(proposal_id, account_id)** view — O(1) lookup.
 - **get_vote(proposal_id, account_id)** view — O(1) lookup.
+- **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX.
 - **Note**: No on-chain `list_votes`. For vote enumeration, use an indexer (NEAR Lake, QueryAPI) to query `vote_cast` events. This avoids storage duplication and scales to 10,000+ votes.
 
 ### 10.5 Reject List
@@ -208,10 +216,11 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Uses `assert_one_yocto()`.
 - **update_verified_accounts_contract(new_contract)**: Admin-only; blocked while any proposal is Pending or Active.
   - Uses `assert_one_yocto()`.
-- **update_proposal_bond(new_bond)**: Admin-only; blocked while any proposal is Pending or Active.
-  - Must be > 0.
+- **update_min_proposal_bond(new_min)**: Admin-only; blocked while any proposal is Pending or Active.
+  - Must be >= 1 NEAR.
+  - This sets the minimum; proposers may attach more.
   - Uses `assert_one_yocto()`.
-- **get_config()** view: Returns current configuration including `quorum_bps`, `voting_period_secs`, `verified_accounts_contract`, and `proposal_bond`.
+- **get_config()** view: Returns current configuration including `quorum_bps`, `voting_period_secs`, `verified_accounts_contract`, and `min_proposal_bond`.
 
 ### 10.7 Pause Controls
 
@@ -257,6 +266,12 @@ All collections use `near_sdk::store` (not the deprecated `near_sdk::collections
 - `admins: IterableSet<AccountId>` — iteration needed for `list_admins`
 - `blocklist: IterableSet<AccountId>` — iteration needed for `list_blocklist`
 
+```rust
+/// Conservative estimate of vote storage size in bytes
+/// Includes: key (u64 + AccountId) + value (Vote struct) + serialization overhead
+const ESTIMATED_VOTE_BYTES: u64 = 150;
+```
+
 ### 11.4 Storage Keys
 
 Use an enum with `BorshStorageKey` to ensure unique prefixes:
@@ -299,7 +314,7 @@ Event names and payloads:
 - `admin_removed`: `{ account_id, removed_by }`
 - `blocklist_added`: `{ account_id, added_by }`
 - `blocklist_removed`: `{ account_id, removed_by }`
-- `config_updated`: `{ quorum_bps, voting_period_secs, verified_accounts_contract, proposal_bond, updated_by }`
+- `config_updated`: `{ quorum_bps, voting_period_secs, verified_accounts_contract, min_proposal_bond, updated_by }`
 - `paused`: `{ paused_by }`
 - `unpaused`: `{ unpaused_by }`
 
@@ -312,14 +327,14 @@ Event names and payloads:
 - **Private callbacks**: Mark callbacks `#[private]`, verify `promise_results_count`, and handle `promise_result` errors.
 - **Async safety**: Treat cross-contract calls as asynchronous; only finalize proposal/vote state in callbacks.
 - **Vote race protection**: Record a pending vote lock before the async call to prevent concurrent submissions; clear on failure. Lock is enforced per proposal and per account.
-- **Callback refunds**: If a cross-contract call fails or a vote/proposal is not recorded, refund attached deposits directly to the original caller in the callback.
+- **Callback refunds**: If a cross-contract call fails or a vote/proposal is not recorded: (1) for proposals, refund bond only if proposal never became Active; (2) for votes, refund any attached deposit to the voter.
 - **Callback gas safety**: Reserve gas for refund + cleanup logic; callbacks must not call external contracts.
 - **Callback robustness**: Handle errors explicitly and avoid panicking in callbacks; ensure sufficient gas for refunds and cleanup. Minimum gas budgets: snapshot callback 20 Tgas, vote callback 30 Tgas.
 - **Callback cleanup order**: Clear pending locks, then apply state changes, then process refunds if needed.
 - **Reentrancy safety**: Avoid any exploitable intermediate state between call and callback.
 - **Fail fast**: Validate inputs early (lengths, roles, status) and return clear errors.
 - **Overflow checks**: Enable `overflow-checks = true` in `Cargo.toml`.
-- **Storage security**: Follow storage model in Section 5. Compute deltas via `env::storage_usage()` before/after state changes. Limit text sizes and enforce pagination to prevent DoS.
+- **Storage security**: Follow storage model in Section 5. Limit text sizes and enforce pagination to prevent DoS. Use `env::storage_byte_cost()` for accurate storage cost calculations. When vote deposit is required (bond exhausted), compute storage delta and refund excess.
 - **Access key hygiene**: Avoid full-access keys on the contract account after deployment to prevent `#[private]` bypass.
 - **Upgrade access**: Admin-only upgrades must be protected by `predecessor_account_id` and 1 yoctoⓃ.
 - **Unique storage prefixes**: Ensure all collections have unique storage keys/prefixes.
@@ -382,7 +397,8 @@ Event names and payloads:
   - Contract paused
   - Config locked due to active proposals
   - Already voted / vote already pending
-  - Insufficient deposit (for votes) or bond (for proposals)
+  - Insufficient bond (for proposals)
+  - Insufficient deposit when vote requires payment (contract balance exhausted)
   - Invalid parameters
   - Callback failures (including JSON deserialization errors)
 
@@ -404,8 +420,12 @@ Event names and payloads:
   - Proposal creation, cancellation, finalization, and list_proposals pagination.
   - Vote counting, quorum, and tie handling.
   - Vote pending lock and double-submit prevention.
-  - Vote deposit calculation and direct refund behavior.
-  - Proposal bond and refund behavior on cancel/fail.
+  - Proposal bond coverage: verify votes are free when contract has sufficient balance.
+  - Vote deposit required: verify deposit is required when contract balance is exhausted.
+  - Deposit refund: verify excess deposit is refunded after storage delta computed.
+  - Bond refunded on creation failure: snapshot callback fail OR pending expiry.
+  - Bond NOT refunded on cancel, fail, or success (Active proposals).
+  - `is_vote_free` view method returns correct state.
   - Config updates blocked while proposals are Active.
   - Blocklist behavior and list_blocklist pagination.
   - Pause/unpause behavior, including finalize blocked while paused.
