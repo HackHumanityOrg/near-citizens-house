@@ -12,44 +12,45 @@ describe("Analytics Event Type Safety", () => {
   describe("valid events compile correctly", () => {
     it("accepts valid verification events", () => {
       // These should all compile without errors
-      trackEvent({ domain: "verification", action: "flow_started", platform: "desktop" })
-      trackEvent({ domain: "verification", action: "polling_started", platform: "desktop", accountId: "alice.near" })
+      trackEvent({ domain: "verification", action: "flow_start", platform: "desktop" })
+      trackEvent({ domain: "verification", action: "polling_start", platform: "desktop", accountId: "alice.near" })
       trackEvent({
         domain: "verification",
         action: "polling_timeout",
         platform: "desktop",
         accountId: "alice.near",
         pollCount: 5,
+        pollDurationMs: 1000,
       })
       trackEvent({
         domain: "verification",
-        action: "error_shown",
+        action: "error_modal_view",
         errorCode: "TOKEN_FETCH_FAILED",
         stage: "wallet_connect",
         platform: "desktop",
       })
       trackEvent({
         domain: "verification",
-        action: "error_retry_clicked",
+        action: "error_modal_retry_click",
         errorCode: "TOKEN_FETCH_FAILED",
         platform: "desktop",
       })
       trackEvent({
         domain: "verification",
-        action: "error_abandoned",
+        action: "error_modal_abandon",
         errorCode: "TOKEN_FETCH_FAILED",
         platform: "desktop",
       })
-      trackEvent({ domain: "verification", action: "proof_submitted", accountId: "alice.near" })
-      trackEvent({ domain: "verification", action: "proof_validated", accountId: "alice.near" })
+      trackEvent({ domain: "verification", action: "proof_submit", accountId: "alice.near" })
+      trackEvent({ domain: "verification", action: "proof_validate", accountId: "alice.near" })
       trackEvent({
         domain: "verification",
-        action: "stored_onchain",
+        action: "onchain_store_success",
         accountId: "alice.near",
       })
       trackEvent({
         domain: "verification",
-        action: "rejected",
+        action: "onchain_store_reject",
         accountId: "alice.near",
         reason: "invalid",
         errorCode: "VERIFICATION_REJECTED",
@@ -60,26 +61,26 @@ describe("Analytics Event Type Safety", () => {
     it("accepts new wallet and token events", () => {
       trackEvent({
         domain: "verification",
-        action: "wallet_connect_succeeded",
+        action: "wallet_connect_success",
         platform: "desktop",
         accountId: "alice.near",
       })
       trackEvent({
         domain: "verification",
-        action: "token_fetch_started",
+        action: "token_fetch_start",
         platform: "desktop",
         accountId: "alice.near",
       })
       trackEvent({
         domain: "verification",
-        action: "token_fetch_succeeded",
+        action: "token_fetch_success",
         platform: "desktop",
         accountId: "alice.near",
         durationMs: 500,
       })
       trackEvent({
         domain: "verification",
-        action: "token_fetch_failed",
+        action: "token_fetch_fail",
         platform: "desktop",
         accountId: "alice.near",
         errorCode: "NETWORK_ERROR",
@@ -97,21 +98,21 @@ describe("Analytics Event Type Safety", () => {
       })
       trackEvent({
         domain: "verification",
-        action: "sumsub_step_started",
+        action: "sumsub_step_start",
         platform: "desktop",
         accountId: "alice.near",
         stepType: "IDENTITY",
       })
       trackEvent({
         domain: "verification",
-        action: "sumsub_step_completed",
+        action: "sumsub_step_complete",
         platform: "desktop",
         accountId: "alice.near",
         stepType: "IDENTITY",
       })
       trackEvent({
         domain: "verification",
-        action: "sumsub_submitted",
+        action: "sumsub_submit",
         platform: "desktop",
         accountId: "alice.near",
       })
@@ -188,19 +189,24 @@ describe("Analytics Event Type Safety", () => {
 
     it("rejects missing required properties", () => {
       // @ts-expect-error - missing required 'platform' property
-      trackEvent({ domain: "verification", action: "flow_started" })
+      trackEvent({ domain: "verification", action: "flow_start" })
       expect(true).toBe(true)
     })
 
     it("requires platform on updated events", () => {
       // @ts-expect-error - missing required 'platform' property
-      trackEvent({ domain: "verification", action: "sumsub_sdk_loaded", accountId: "alice.near" })
+      trackEvent({ domain: "verification", action: "sumsub_sdk_load", accountId: "alice.near" })
       // @ts-expect-error - missing required 'platform' property
-      trackEvent({ domain: "verification", action: "polling_started", accountId: "alice.near" })
+      trackEvent({ domain: "verification", action: "polling_start", accountId: "alice.near" })
       // @ts-expect-error - missing required 'platform' property
-      trackEvent({ domain: "verification", action: "manual_review_shown", accountId: "alice.near" })
+      trackEvent({ domain: "verification", action: "manual_review_view", accountId: "alice.near" })
       // @ts-expect-error - missing required 'platform' property
-      trackEvent({ domain: "verification", action: "sumsub_message", accountId: "alice.near", messageType: "test" })
+      trackEvent({
+        domain: "verification",
+        action: "sumsub_message_receive",
+        accountId: "alice.near",
+        messageType: "test",
+      })
       expect(true).toBe(true)
     })
 
@@ -213,13 +219,13 @@ describe("Analytics Event Type Safety", () => {
 
     it("rejects invalid enum values", () => {
       // @ts-expect-error - tablet is not a valid platform
-      trackEvent({ domain: "verification", action: "flow_started", platform: "tablet" })
+      trackEvent({ domain: "verification", action: "flow_start", platform: "tablet" })
       expect(true).toBe(true)
     })
 
     it("rejects invalid domain", () => {
       // @ts-expect-error - invalid is not a valid domain
-      trackEvent({ domain: "invalid", action: "flow_started", platform: "desktop" })
+      trackEvent({ domain: "invalid", action: "flow_start", platform: "desktop" })
       expect(true).toBe(true)
     })
 

@@ -51,7 +51,7 @@ export function VerificationCtaButton({
   const handleConnect = async () => {
     trackEvent({
       domain: "verification",
-      action: "cta_clicked",
+      action: "cta_click",
       platform: getPlatform(),
       isConnected: false,
     })
@@ -68,7 +68,7 @@ export function VerificationCtaButton({
   const handleConnectedClick = () => {
     trackEvent({
       domain: "verification",
-      action: "cta_clicked",
+      action: "cta_click",
       platform: getPlatform(),
       isConnected: true,
       accountId: accountId || undefined,

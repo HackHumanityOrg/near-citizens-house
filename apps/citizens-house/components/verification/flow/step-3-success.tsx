@@ -48,14 +48,14 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
   // Opacity fades in quickly once pathLength starts (prevents initial flash)
   const checkmarkOpacity = useTransform(pathLength, [0, 0.05, 0.15], [0, 0, 1])
 
-  // Track success_displayed on mount
+  // Track success_view on mount
   useEffect(() => {
     if (hasTrackedDisplay.current) return
     hasTrackedDisplay.current = true
 
     trackEvent({
       domain: "verification",
-      action: "success_displayed",
+      action: "success_view",
       platform: getPlatform(),
       accountId,
     })
@@ -80,7 +80,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
   const handleDisconnect = () => {
     trackEvent({
       domain: "verification",
-      action: "success_disconnect_clicked",
+      action: "success_disconnect_click",
       platform: getPlatform(),
       accountId,
     })

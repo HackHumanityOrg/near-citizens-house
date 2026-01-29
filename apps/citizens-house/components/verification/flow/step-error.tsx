@@ -41,7 +41,7 @@ export function StepError({
       hasTrackedDisplay.current = true
       trackEvent({
         domain: "verification",
-        action: "error_page_displayed",
+        action: "error_page_view",
         platform: getPlatform(),
         accountId,
         errorCode,
@@ -61,7 +61,7 @@ export function StepError({
         if (parsed.success && parsed.data.state === "approved") {
           trackEvent({
             domain: "verification",
-            action: "status_recovered",
+            action: "status_recover",
             platform: getPlatform(),
             accountId,
             recoveredFrom: "error",
@@ -72,7 +72,7 @@ export function StepError({
         // Track polling errors
         trackEvent({
           domain: "verification",
-          action: "error_polling_failed",
+          action: "error_polling_fail",
           platform: getPlatform(),
           accountId,
           errorMessage: err instanceof Error ? err.message : "Unknown error",
@@ -91,7 +91,7 @@ export function StepError({
     if (accountId) {
       trackEvent({
         domain: "verification",
-        action: "error_disconnect_clicked",
+        action: "error_page_disconnect_click",
         platform: getPlatform(),
         accountId,
       })

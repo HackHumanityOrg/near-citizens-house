@@ -22,7 +22,8 @@ npx tsx scripts/posthog-dashboards/setup.ts clean
 ## What Gets Created
 
 **Dashboard: Verification Analytics**
-- Verification Funnel (8 steps: flow_started → cta_clicked → wallet_connect_succeeded → sign_completed → sumsub_sdk_loaded → sumsub_submitted → stored_onchain → success_displayed)
+
+- Verification Funnel (8 steps: flow_start → cta_click → wallet_connect_success → sign_success → sumsub_sdk_load → sumsub_submit → onchain_store_success → success_view)
 - User Paths (granular verification events showing user journey)
 - Key metrics (total, this week, conversion rate, daily trend)
 - Rejection Reasons (pie chart)

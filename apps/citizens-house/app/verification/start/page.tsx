@@ -224,14 +224,14 @@ function VerificationStartContent() {
     }
   }, [currentStep, isConnected])
 
-  // Track flow_started event once on component mount
+  // Track flow_start event once on component mount
   useEffect(() => {
     if (hasTrackedFlowStarted.current) return
     hasTrackedFlowStarted.current = true
 
     trackEvent({
       domain: "verification",
-      action: "flow_started",
+      action: "flow_start",
       platform: getPlatform(),
     })
   }, [])
@@ -273,7 +273,7 @@ function VerificationStartContent() {
         hasTrackedWalletConnected.current = true
         trackEvent({
           domain: "verification",
-          action: "wallet_connect_succeeded",
+          action: "wallet_connect_success",
           platform: getPlatform(),
           accountId,
         })
@@ -296,7 +296,7 @@ function VerificationStartContent() {
             hasTrackedAlreadyVerified.current = true
             trackEvent({
               domain: "verification",
-              action: "already_verified",
+              action: "already_verified_detect",
               platform: getPlatform(),
               accountId,
             })
@@ -309,7 +309,7 @@ function VerificationStartContent() {
         // Track verification check failures
         trackEvent({
           domain: "verification",
-          action: "verification_check_failed",
+          action: "verification_check_fail",
           platform: getPlatform(),
           accountId,
           errorMessage: err instanceof Error ? err.message : "Unknown error",
@@ -369,7 +369,7 @@ function VerificationStartContent() {
 
     trackEvent({
       domain: "verification",
-      action: "wallet_connect_started",
+      action: "wallet_connect_start",
       platform,
     })
 
@@ -380,7 +380,7 @@ function VerificationStartContent() {
       const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet"
       trackEvent({
         domain: "verification",
-        action: "wallet_connect_failed",
+        action: "wallet_connect_fail",
         platform,
         errorMessage,
       })
@@ -404,7 +404,7 @@ function VerificationStartContent() {
           hasTrackedAlreadyVerified.current = true
           trackEvent({
             domain: "verification",
-            action: "already_verified",
+            action: "already_verified_detect",
             platform,
             accountId,
           })
@@ -418,7 +418,7 @@ function VerificationStartContent() {
 
     trackEvent({
       domain: "verification",
-      action: "sign_started",
+      action: "sign_start",
       platform,
       accountId,
     })
@@ -435,9 +435,10 @@ function VerificationStartContent() {
 
       trackEvent({
         domain: "verification",
-        action: "sign_completed",
+        action: "sign_success",
         platform,
         accountId,
+        verificationAttemptId: signature.nonce,
       })
 
       setNearSignature(signature)
@@ -452,7 +453,7 @@ function VerificationStartContent() {
 
       trackEvent({
         domain: "verification",
-        action: "sign_failed",
+        action: "sign_fail",
         platform,
         accountId,
         errorMessage: message,

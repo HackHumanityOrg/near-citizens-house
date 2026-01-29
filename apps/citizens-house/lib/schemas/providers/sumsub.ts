@@ -17,6 +17,7 @@ const reviewResultSchema = z.object({
   reviewAnswer: reviewAnswerSchema,
   reviewRejectType: reviewRejectTypeSchema.optional(),
   rejectLabels: z.array(z.string()).optional(),
+  buttonIds: z.array(z.string()).optional(),
   reviewResult: z.string().optional(),
   moderationComment: z.string().optional(),
   clientComment: z.string().optional(),
@@ -30,11 +31,14 @@ export const sumsubWebhookPayloadSchema = z.object({
   levelName: z.string().optional(),
   externalUserId: z.string(),
   externalUserIdType: z.string().optional(),
+  applicantType: z.string().optional(),
   reviewResult: reviewResultSchema.optional(),
   reviewStatus: z.string().optional(),
+  reviewMode: z.string().optional(),
   createdAtMs: z.string().optional(),
   createdAt: z.string().optional(),
   sandboxMode: z.boolean().optional(),
+  clientId: z.string().optional(),
 })
 
 export type SumSubWebhookPayload = z.infer<typeof sumsubWebhookPayloadSchema>

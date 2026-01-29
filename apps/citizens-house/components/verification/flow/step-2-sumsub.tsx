@@ -55,8 +55,11 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
   const confirmationInProgressRef = useRef(false)
   const isMountedRef = useRef(true)
   const pollingAbortControllerRef = useRef<AbortController | null>(null)
+  const applicantIdRef = useRef<string | null>(null)
   const latestReviewAnswerRef = useRef<SumSubReviewAnswer | null>(null)
   const latestReviewRejectTypeRef = useRef<SumSubReviewRejectType | null>(null)
+  const latestRejectLabelsRef = useRef<string[] | null>(null)
+  const verificationAttemptId = nearSignature.nonce
 
   // Cleanup on unmount
   useEffect(() => {
@@ -102,9 +105,10 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
 
     trackEvent({
       domain: "verification",
-      action: "token_fetch_started",
+      action: "token_fetch_start",
       platform,
       accountId: nearSignature.accountId,
+      verificationAttemptId,
     })
 
     try {
@@ -136,11 +140,12 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         }
         trackEvent({
           domain: "verification",
-          action: "token_fetch_failed",
+          action: "token_fetch_fail",
           platform,
           accountId: nearSignature.accountId,
           errorCode,
           durationMs: Date.now() - startTime,
+          verificationAttemptId,
         })
         throw new Error(errorCode)
       }
@@ -151,21 +156,23 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       if (!parsed.success) {
         trackEvent({
           domain: "verification",
-          action: "token_fetch_failed",
+          action: "token_fetch_fail",
           platform,
           accountId: nearSignature.accountId,
           errorCode: "INVALID_RESPONSE",
           durationMs: Date.now() - startTime,
+          verificationAttemptId,
         })
         throw new Error("Invalid token response")
       }
 
       trackEvent({
         domain: "verification",
-        action: "token_fetch_succeeded",
+        action: "token_fetch_success",
         platform,
         accountId: nearSignature.accountId,
         durationMs: Date.now() - startTime,
+        verificationAttemptId,
       })
 
       return parsed.data.token
@@ -176,16 +183,17 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       if (!isKnownErrorCode && message !== "Invalid token response") {
         trackEvent({
           domain: "verification",
-          action: "token_fetch_failed",
+          action: "token_fetch_fail",
           platform,
           accountId: nearSignature.accountId,
           errorCode: "NETWORK_ERROR",
           durationMs: Date.now() - startTime,
+          verificationAttemptId,
         })
       }
       throw new Error(message)
     }
-  }, [nearSignature])
+  }, [nearSignature, verificationAttemptId])
 
   // Initial token fetch
   useEffect(() => {
@@ -199,9 +207,10 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           setVerificationStatus("ready")
           trackEvent({
             domain: "verification",
-            action: "sumsub_sdk_loaded",
+            action: "sumsub_sdk_load",
             platform: getPlatform(),
             accountId: nearSignature.accountId,
+            verificationAttemptId,
           })
         }
       } catch (err) {
@@ -222,7 +231,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
     return () => {
       mounted = false
     }
-  }, [fetchAccessToken, nearSignature.accountId, onError])
+  }, [fetchAccessToken, nearSignature.accountId, onError, verificationAttemptId])
 
   // Token refresh handler for SumSub SDK
   const handleExpirationRefresh = useCallback(async (): Promise<string> => {
@@ -234,21 +243,24 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       // Track token refresh failures
       trackEvent({
         domain: "verification",
-        action: "token_refresh_failed",
+        action: "token_refresh_fail",
         platform: getPlatform(),
         accountId: nearSignature.accountId,
         errorMessage: err instanceof Error ? err.message : "Unknown error",
+        verificationAttemptId,
       })
       // Return empty string on failure - SDK will handle the error
       return ""
     }
-  }, [fetchAccessToken, nearSignature.accountId])
+  }, [fetchAccessToken, nearSignature.accountId, verificationAttemptId])
 
   // Poll for backend status confirmation by checking status endpoint
   const confirmBackendStatus = useCallback(async () => {
     const maxPolls = 150 // 5 minutes at 2s interval
     const pollIntervalMs = 2000
     const platform = getPlatform()
+    const pollStart = Date.now()
+    let lastStatusState: string | undefined
     const controller = new AbortController()
     pollingAbortControllerRef.current?.abort()
     pollingAbortControllerRef.current = controller
@@ -256,9 +268,10 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
     try {
       trackEvent({
         domain: "verification",
-        action: "polling_started",
+        action: "polling_start",
         platform,
         accountId: nearSignature.accountId,
+        verificationAttemptId,
       })
 
       for (let pollCount = 0; pollCount < maxPolls; pollCount++) {
@@ -282,6 +295,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
             continue
           }
           const data = parsed.data
+          lastStatusState = data.state
 
           // Check mounted before each state update
           if (!isMountedRef.current) return
@@ -290,10 +304,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
             case "approved":
               trackEvent({
                 domain: "verification",
-                action: "polling_approved",
+                action: "polling_approve",
                 platform,
                 accountId: nearSignature.accountId,
                 source: "webhook",
+                pollCount: pollCount + 1,
+                pollDurationMs: Date.now() - pollStart,
+                lastStatusState,
+                verificationAttemptId,
               })
               confirmationInProgressRef.current = false
               setVerificationStatus("success")
@@ -304,9 +322,13 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
               // Route to StepHold via onError callback
               trackEvent({
                 domain: "verification",
-                action: "manual_review_shown",
+                action: "manual_review_view",
                 platform,
                 accountId: nearSignature.accountId,
+                pollCount: pollCount + 1,
+                pollDurationMs: Date.now() - pollStart,
+                lastStatusState,
+                verificationAttemptId,
               })
               confirmationInProgressRef.current = false
               onError(data.errorCode)
@@ -315,11 +337,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
             case "failed":
               trackEvent({
                 domain: "verification",
-                action: "sumsub_rejected",
+                action: "sumsub_review_reject",
                 platform,
                 accountId: nearSignature.accountId,
                 reviewAnswer: "RED",
+                reviewRejectType: latestReviewRejectTypeRef.current ?? undefined,
+                rejectLabels: latestRejectLabelsRef.current ?? undefined,
                 source: "webhook",
+                verificationAttemptId,
               })
               confirmationInProgressRef.current = false
               setVerificationStatus("error")
@@ -338,10 +363,11 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           // Track network errors during polling
           trackEvent({
             domain: "verification",
-            action: "polling_network_error",
+            action: "polling_network_fail",
             platform,
             accountId: nearSignature.accountId,
             errorMessage: error instanceof Error ? error.message : "Unknown error",
+            verificationAttemptId,
           })
           // Network error, continue polling
         }
@@ -364,11 +390,16 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         if (!isMountedRef.current) return
 
         if (finalParsed.success && finalParsed.data.state === "hold") {
+          lastStatusState = finalParsed.data.state
           trackEvent({
             domain: "verification",
-            action: "manual_review_shown",
+            action: "manual_review_view",
             platform,
             accountId: nearSignature.accountId,
+            pollCount: maxPolls,
+            pollDurationMs: Date.now() - pollStart,
+            lastStatusState,
+            verificationAttemptId,
           })
           confirmationInProgressRef.current = false
           onError(finalParsed.data.errorCode)
@@ -386,6 +417,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
 
       const latestReviewAnswer = latestReviewAnswerRef.current
       const latestReviewRejectType = latestReviewRejectTypeRef.current
+      const latestRejectLabels = latestRejectLabelsRef.current
 
       if (latestReviewAnswer) {
         confirmationInProgressRef.current = false
@@ -393,10 +425,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         if (latestReviewAnswer === "GREEN") {
           trackEvent({
             domain: "verification",
-            action: "polling_approved",
+            action: "polling_approve",
             platform,
             accountId: nearSignature.accountId,
             source: "timeout_fallback",
+            pollCount: maxPolls,
+            pollDurationMs: Date.now() - pollStart,
+            lastStatusState,
+            verificationAttemptId,
           })
           setVerificationStatus("success")
           onSuccess()
@@ -406,9 +442,13 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         if (latestReviewAnswer === "YELLOW") {
           trackEvent({
             domain: "verification",
-            action: "manual_review_shown",
+            action: "manual_review_view",
             platform,
             accountId: nearSignature.accountId,
+            pollCount: maxPolls,
+            pollDurationMs: Date.now() - pollStart,
+            lastStatusState,
+            verificationAttemptId,
           })
           onError("VERIFICATION_ON_HOLD")
           return
@@ -417,11 +457,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         if (latestReviewAnswer === "RED") {
           trackEvent({
             domain: "verification",
-            action: "sumsub_rejected",
+            action: "sumsub_review_reject",
             platform,
             accountId: nearSignature.accountId,
             reviewAnswer: "RED",
+            reviewRejectType: latestReviewRejectType ?? undefined,
+            rejectLabels: latestRejectLabels ?? undefined,
             source: "timeout_fallback",
+            verificationAttemptId,
           })
           setVerificationStatus("error")
           const errorCode = latestReviewRejectType === "RETRY" ? "VERIFICATION_RETRY" : "VERIFICATION_REJECTED"
@@ -437,6 +480,9 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         platform,
         accountId: nearSignature.accountId,
         pollCount: maxPolls,
+        pollDurationMs: Date.now() - pollStart,
+        lastStatusState,
+        verificationAttemptId,
       })
       confirmationInProgressRef.current = false
       setVerificationStatus("error")
@@ -446,7 +492,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         pollingAbortControllerRef.current = null
       }
     }
-  }, [nearSignature.accountId, onSuccess, onError])
+  }, [nearSignature.accountId, onSuccess, onError, verificationAttemptId])
 
   // Handle SumSub SDK messages
   const handleMessage = useCallback(
@@ -461,52 +507,63 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
             action: "sumsub_ready",
             platform,
             accountId: nearSignature.accountId,
+            verificationAttemptId,
           })
           break
         case "idCheck.onStepInitiated":
           trackEvent({
             domain: "verification",
-            action: "sumsub_step_started",
+            action: "sumsub_step_start",
             platform,
             accountId: nearSignature.accountId,
             stepType: (payload as { idDocSetType?: string })?.idDocSetType ?? "unknown",
+            verificationAttemptId,
           })
           break
         case "idCheck.onStepCompleted":
           trackEvent({
             domain: "verification",
-            action: "sumsub_step_completed",
+            action: "sumsub_step_complete",
             platform,
             accountId: nearSignature.accountId,
             stepType: (payload as { idDocSetType?: string })?.idDocSetType ?? "unknown",
+            verificationAttemptId,
           })
           break
         case "idCheck.onApplicantSubmitted":
           trackEvent({
             domain: "verification",
-            action: "sumsub_submitted",
+            action: "sumsub_submit",
             platform,
             accountId: nearSignature.accountId,
+            verificationAttemptId,
           })
           break
         default:
           // Fallback for unknown types (backward compatible)
           trackEvent({
             domain: "verification",
-            action: "sumsub_message",
+            action: "sumsub_message_receive",
             platform,
             accountId: nearSignature.accountId,
             messageType: type,
+            verificationAttemptId,
           })
       }
 
       // Handle different message types from SumSub SDK
       if (type === "idCheck.onApplicantLoaded") {
+        const applicantId = (payload as { applicantId?: string })?.applicantId
+        if (applicantId) {
+          applicantIdRef.current = applicantId
+        }
         trackEvent({
           domain: "verification",
-          action: "sumsub_applicant_loaded",
+          action: "sumsub_applicant_load",
           platform,
           accountId: nearSignature.accountId,
+          applicantId: applicantId || "unknown",
+          verificationAttemptId,
         })
         setVerificationStatus("verifying")
       }
@@ -522,9 +579,12 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       ) {
         const status = payload as SumSubApplicantStatusChangedPayload | undefined
         const reviewAnswer = status?.reviewResult?.reviewAnswer
+        const reviewRejectType = status?.reviewResult?.reviewRejectType
+        const rejectLabels = status?.reviewResult?.rejectLabels
         if (reviewAnswer) {
           latestReviewAnswerRef.current = reviewAnswer
-          latestReviewRejectTypeRef.current = status?.reviewResult?.reviewRejectType ?? null
+          latestReviewRejectTypeRef.current = reviewRejectType ?? null
+          latestRejectLabelsRef.current = rejectLabels ?? null
           // Don't track rejection here - WebSDK may return stale status from previous review.
           // Track rejection only after webhook/polling confirms the actual result.
           // See: https://docs.sumsub.com/docs/receive-verification-results
@@ -533,11 +593,14 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         // Track the raw WebSDK status for analytics
         trackEvent({
           domain: "verification",
-          action: "sumsub_status_received",
+          action: "sumsub_status_receive",
           platform,
           accountId: nearSignature.accountId,
-          reviewAnswer: reviewAnswer ?? "none",
-          reviewStatus: status?.reviewStatus ?? "none",
+          reviewAnswer,
+          reviewStatus: status?.reviewStatus,
+          reviewRejectType,
+          rejectLabels,
+          verificationAttemptId,
         })
 
         // Always poll for webhook-confirmed status
@@ -549,7 +612,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         }
       }
     },
-    [nearSignature.accountId, confirmBackendStatus],
+    [nearSignature.accountId, confirmBackendStatus, verificationAttemptId],
   )
 
   // Handle SumSub SDK errors
@@ -557,15 +620,16 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
     (error: Error) => {
       trackEvent({
         domain: "verification",
-        action: "sumsub_error",
+        action: "sumsub_error_receive",
         platform: getPlatform(),
         accountId: nearSignature.accountId,
         errorMessage: error.message,
+        verificationAttemptId,
       })
       // Don't immediately fail - SDK might recover
       console.error("SumSub SDK error:", error)
     },
-    [nearSignature.accountId],
+    [nearSignature.accountId, verificationAttemptId],
   )
 
   return (

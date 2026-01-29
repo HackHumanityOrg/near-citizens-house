@@ -41,12 +41,13 @@ export function StepHold({
       hasTrackedDisplay.current = true
       trackEvent({
         domain: "verification",
-        action: "hold_page_displayed",
+        action: "hold_page_view",
         platform: getPlatform(),
         accountId,
+        errorCode,
       })
     }
-  }, [accountId])
+  }, [accountId, errorCode])
 
   // Poll for status recovery (manual approval, webhook arrived late, etc.)
   useEffect(() => {
@@ -60,7 +61,7 @@ export function StepHold({
         if (parsed.success && parsed.data.state === "approved") {
           trackEvent({
             domain: "verification",
-            action: "status_recovered",
+            action: "status_recover",
             platform: getPlatform(),
             accountId,
             recoveredFrom: "hold",
@@ -71,7 +72,7 @@ export function StepHold({
         // Track polling errors
         trackEvent({
           domain: "verification",
-          action: "hold_polling_failed",
+          action: "hold_polling_fail",
           platform: getPlatform(),
           accountId,
           errorMessage: err instanceof Error ? err.message : "Unknown error",
@@ -90,7 +91,7 @@ export function StepHold({
     if (accountId) {
       trackEvent({
         domain: "verification",
-        action: "hold_disconnect_clicked",
+        action: "hold_page_disconnect_click",
         platform: getPlatform(),
         accountId,
       })

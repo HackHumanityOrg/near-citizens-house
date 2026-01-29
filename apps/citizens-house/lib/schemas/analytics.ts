@@ -8,7 +8,7 @@
  * @example
  * ```ts
  * import { trackEvent } from "@/lib/analytics"
- * trackEvent({ domain: "verification", action: "flow_started", platform: "desktop" })
+ * trackEvent({ domain: "verification", action: "flow_start", platform: "desktop" })
  * ```
  */
 import { z } from "zod"
@@ -19,14 +19,17 @@ import { nearAccountIdSchema } from "./near"
 // Domain: Verification (Client-Side)
 // =============================================================================
 
-const verificationEventBase = { domain: z.literal("verification") } as const
+const verificationEventBase = {
+  domain: z.literal("verification"),
+  verificationAttemptId: z.string().optional(),
+} as const
 
 const platformSchema = z.enum(["desktop", "mobile"])
 
 const verificationFlowStartedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("flow_started"),
+    action: z.literal("flow_start"),
     platform: platformSchema,
   })
   .strict()
@@ -35,7 +38,7 @@ const verificationFlowStartedEventSchema = z
 const verificationCtaClickedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("cta_clicked"),
+    action: z.literal("cta_click"),
     platform: platformSchema,
     isConnected: z.boolean(),
     accountId: nearAccountIdSchema.optional(),
@@ -46,7 +49,7 @@ const verificationCtaClickedEventSchema = z
 const verificationWalletConnectStartedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("wallet_connect_started"),
+    action: z.literal("wallet_connect_start"),
     platform: platformSchema,
   })
   .strict()
@@ -54,7 +57,7 @@ const verificationWalletConnectStartedEventSchema = z
 const verificationWalletConnectFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("wallet_connect_failed"),
+    action: z.literal("wallet_connect_fail"),
     platform: platformSchema,
     errorMessage: z.string(),
   })
@@ -63,7 +66,7 @@ const verificationWalletConnectFailedEventSchema = z
 const verificationWalletConnectSucceededEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("wallet_connect_succeeded"),
+    action: z.literal("wallet_connect_success"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -73,7 +76,7 @@ const verificationWalletConnectSucceededEventSchema = z
 const verificationSignStartedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sign_started"),
+    action: z.literal("sign_start"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -82,7 +85,7 @@ const verificationSignStartedEventSchema = z
 const verificationSignCompletedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sign_completed"),
+    action: z.literal("sign_success"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -91,7 +94,7 @@ const verificationSignCompletedEventSchema = z
 const verificationSignFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sign_failed"),
+    action: z.literal("sign_fail"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
@@ -103,7 +106,7 @@ const verificationSignFailedEventSchema = z
 const verificationAlreadyVerifiedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("already_verified"),
+    action: z.literal("already_verified_detect"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -113,7 +116,7 @@ const verificationAlreadyVerifiedEventSchema = z
 const verificationTokenFetchStartedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_fetch_started"),
+    action: z.literal("token_fetch_start"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -122,7 +125,7 @@ const verificationTokenFetchStartedEventSchema = z
 const verificationTokenFetchSucceededEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_fetch_succeeded"),
+    action: z.literal("token_fetch_success"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     durationMs: z.number(),
@@ -132,7 +135,7 @@ const verificationTokenFetchSucceededEventSchema = z
 const verificationTokenFetchFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_fetch_failed"),
+    action: z.literal("token_fetch_fail"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorCode: verificationErrorCodeSchema,
@@ -144,7 +147,7 @@ const verificationTokenFetchFailedEventSchema = z
 const verificationSuccessDisplayedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("success_displayed"),
+    action: z.literal("success_view"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -153,7 +156,7 @@ const verificationSuccessDisplayedEventSchema = z
 const verificationSuccessDisconnectClickedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("success_disconnect_clicked"),
+    action: z.literal("success_disconnect_click"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -162,7 +165,7 @@ const verificationSuccessDisconnectClickedEventSchema = z
 const verificationPollingStartedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("polling_started"),
+    action: z.literal("polling_start"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -175,22 +178,27 @@ const verificationPollingTimeoutEventSchema = z
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     pollCount: z.number(),
+    pollDurationMs: z.number(),
+    lastStatusState: z.string().optional(),
   })
   .strict()
 
 const verificationManualReviewShownEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("manual_review_shown"),
+    action: z.literal("manual_review_view"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
+    pollCount: z.number().optional(),
+    pollDurationMs: z.number().optional(),
+    lastStatusState: z.string().optional(),
   })
   .strict()
 
 const verificationStatusRecoveredEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("status_recovered"),
+    action: z.literal("status_recover"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     recoveredFrom: z.enum(["hold", "error"]),
@@ -201,7 +209,7 @@ const verificationStatusRecoveredEventSchema = z
 const verificationSumsubSdkLoadedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_sdk_loaded"),
+    action: z.literal("sumsub_sdk_load"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -210,7 +218,7 @@ const verificationSumsubSdkLoadedEventSchema = z
 const verificationSumsubMessageEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_message"),
+    action: z.literal("sumsub_message_receive"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     messageType: z.string(),
@@ -220,7 +228,7 @@ const verificationSumsubMessageEventSchema = z
 const verificationSumsubErrorEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_error"),
+    action: z.literal("sumsub_error_receive"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
@@ -229,6 +237,7 @@ const verificationSumsubErrorEventSchema = z
 
 // Granular SumSub SDK events for better signal-to-noise
 const sumsubReviewAnswerSchema = z.enum(["GREEN", "RED", "YELLOW"])
+const sumsubReviewRejectTypeSchema = z.enum(["RETRY", "FINAL"])
 
 const verificationSumsubReadyEventSchema = z
   .object({
@@ -242,7 +251,7 @@ const verificationSumsubReadyEventSchema = z
 const verificationSumsubStepStartedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_step_started"),
+    action: z.literal("sumsub_step_start"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     stepType: z.string(),
@@ -252,7 +261,7 @@ const verificationSumsubStepStartedEventSchema = z
 const verificationSumsubStepCompletedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_step_completed"),
+    action: z.literal("sumsub_step_complete"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     stepType: z.string(),
@@ -262,7 +271,7 @@ const verificationSumsubStepCompletedEventSchema = z
 const verificationSumsubSubmittedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_submitted"),
+    action: z.literal("sumsub_submit"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -273,10 +282,12 @@ const verificationSumsubSubmittedEventSchema = z
 const verificationSumsubRejectedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_rejected"),
+    action: z.literal("sumsub_review_reject"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     reviewAnswer: sumsubReviewAnswerSchema,
+    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
+    rejectLabels: z.array(z.string()).optional(),
     source: z.enum(["webhook", "timeout_fallback"]),
   })
   .strict()
@@ -285,11 +296,13 @@ const verificationSumsubRejectedEventSchema = z
 const verificationSumsubStatusReceivedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_status_received"),
+    action: z.literal("sumsub_status_receive"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
-    reviewAnswer: z.string(),
-    reviewStatus: z.string(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    reviewStatus: z.string().optional(),
+    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
+    rejectLabels: z.array(z.string()).optional(),
   })
   .strict()
 
@@ -297,9 +310,10 @@ const verificationSumsubStatusReceivedEventSchema = z
 const verificationSumsubApplicantLoadedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("sumsub_applicant_loaded"),
+    action: z.literal("sumsub_applicant_load"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
+    applicantId: z.string(),
   })
   .strict()
 
@@ -307,17 +321,20 @@ const verificationSumsubApplicantLoadedEventSchema = z
 const verificationPollingApprovedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("polling_approved"),
+    action: z.literal("polling_approve"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     source: z.enum(["webhook", "timeout_fallback"]),
+    pollCount: z.number().optional(),
+    pollDurationMs: z.number().optional(),
+    lastStatusState: z.string().optional(),
   })
   .strict()
 
 const verificationErrorShownEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("error_shown"),
+    action: z.literal("error_modal_view"),
     errorCode: verificationErrorCodeSchema,
     stage: z.enum(["wallet_connect", "message_sign", "qr_scan", "polling", "unknown"]),
     platform: platformSchema,
@@ -328,7 +345,7 @@ const verificationErrorShownEventSchema = z
 const verificationErrorRetryClickedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("error_retry_clicked"),
+    action: z.literal("error_modal_retry_click"),
     errorCode: verificationErrorCodeSchema,
     platform: platformSchema,
     accountId: nearAccountIdSchema.optional(),
@@ -338,7 +355,7 @@ const verificationErrorRetryClickedEventSchema = z
 const verificationErrorAbandonedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("error_abandoned"),
+    action: z.literal("error_modal_abandon"),
     errorCode: verificationErrorCodeSchema,
     platform: platformSchema,
     accountId: nearAccountIdSchema.optional(),
@@ -349,7 +366,7 @@ const verificationErrorAbandonedEventSchema = z
 const verificationPollingNetworkErrorEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("polling_network_error"),
+    action: z.literal("polling_network_fail"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
@@ -360,7 +377,7 @@ const verificationPollingNetworkErrorEventSchema = z
 const verificationTokenRefreshFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_refresh_failed"),
+    action: z.literal("token_refresh_fail"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
@@ -371,7 +388,7 @@ const verificationTokenRefreshFailedEventSchema = z
 const verificationErrorPageDisplayedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("error_page_displayed"),
+    action: z.literal("error_page_view"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorCode: verificationErrorCodeSchema,
@@ -382,9 +399,10 @@ const verificationErrorPageDisplayedEventSchema = z
 const verificationHoldPageDisplayedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("hold_page_displayed"),
+    action: z.literal("hold_page_view"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
+    errorCode: verificationErrorCodeSchema.optional(),
   })
   .strict()
 
@@ -392,7 +410,7 @@ const verificationHoldPageDisplayedEventSchema = z
 const verificationErrorDisconnectClickedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("error_disconnect_clicked"),
+    action: z.literal("error_page_disconnect_click"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -402,7 +420,7 @@ const verificationErrorDisconnectClickedEventSchema = z
 const verificationHoldDisconnectClickedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("hold_disconnect_clicked"),
+    action: z.literal("hold_page_disconnect_click"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
   })
@@ -412,7 +430,7 @@ const verificationHoldDisconnectClickedEventSchema = z
 const verificationErrorPollingFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("error_polling_failed"),
+    action: z.literal("error_polling_fail"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
@@ -423,7 +441,7 @@ const verificationErrorPollingFailedEventSchema = z
 const verificationHoldPollingFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("hold_polling_failed"),
+    action: z.literal("hold_polling_fail"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
@@ -434,7 +452,7 @@ const verificationHoldPollingFailedEventSchema = z
 const verificationCheckFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("verification_check_failed"),
+    action: z.literal("verification_check_fail"),
     platform: platformSchema,
     accountId: nearAccountIdSchema,
     errorMessage: z.string(),
@@ -448,34 +466,53 @@ const verificationCheckFailedEventSchema = z
 const verificationProofSubmittedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("proof_submitted"),
+    action: z.literal("proof_submit"),
     accountId: nearAccountIdSchema,
+    applicantId: z.string().optional(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
+    levelName: z.string().optional(),
+    reviewStatus: z.string().optional(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
   })
   .strict()
 
 const verificationProofValidatedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("proof_validated"),
+    action: z.literal("proof_validate"),
     accountId: nearAccountIdSchema,
+    applicantId: z.string().optional(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
+    levelName: z.string().optional(),
+    reviewStatus: z.string().optional(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
   })
   .strict()
 
 const verificationStoredOnchainEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("stored_onchain"),
+    action: z.literal("onchain_store_success"),
     accountId: nearAccountIdSchema,
+    applicantId: z.string().optional(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
+    levelName: z.string().optional(),
+    reviewStatus: z.string().optional(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
   })
   .strict()
 
 const verificationRejectedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("rejected"),
+    action: z.literal("onchain_store_reject"),
     accountId: nearAccountIdSchema,
     reason: z.string(),
     errorCode: verificationErrorCodeSchema,
+    applicantId: z.string().optional(),
   })
   .strict()
 
@@ -484,11 +521,12 @@ const verificationRejectedEventSchema = z
 const verificationTokenValidationFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_validation_failed"),
+    action: z.literal("token_validate_fail"),
     accountId: nearAccountIdSchema,
     reason: z.enum(["signature_format", "signature_crypto", "key_not_full_access", "nonce_replay"]),
     errorCode: verificationErrorCodeSchema.optional(),
     errorMessage: z.string().optional(),
+    levelName: z.string().optional(),
   })
   .strict()
 
@@ -497,6 +535,7 @@ const verificationTokenConfigErrorEventSchema = z
     ...verificationEventBase,
     action: z.literal("token_config_error"),
     accountId: nearAccountIdSchema,
+    levelName: z.string().optional(),
   })
   .strict()
 
@@ -505,33 +544,40 @@ const verificationTokenAlreadyVerifiedEventSchema = z
     ...verificationEventBase,
     action: z.literal("token_already_verified"),
     accountId: nearAccountIdSchema,
+    levelName: z.string().optional(),
   })
   .strict()
 
 const verificationTokenApplicantReusedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_applicant_reused"),
+    action: z.literal("token_applicant_reuse"),
     accountId: nearAccountIdSchema,
     applicantId: z.string(),
+    levelName: z.string().optional(),
+    externalUserId: z.string().optional(),
   })
   .strict()
 
 const verificationTokenMetadataStoredEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_metadata_stored"),
+    action: z.literal("token_metadata_store"),
     accountId: nearAccountIdSchema,
     applicantId: z.string(),
+    levelName: z.string().optional(),
+    externalUserId: z.string().optional(),
   })
   .strict()
 
 const verificationTokenGeneratedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("token_generated"),
+    action: z.literal("token_generate"),
     accountId: nearAccountIdSchema,
     applicantId: z.string(),
+    levelName: z.string().optional(),
+    externalUserId: z.string().optional(),
   })
   .strict()
 
@@ -549,73 +595,112 @@ const verificationTokenErrorEventSchema = z
 const verificationWebhookAuthFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_auth_failed"),
+    action: z.literal("webhook_auth_fail"),
     reason: z.enum(["missing_signature", "invalid_signature"]),
     accountId: nearAccountIdSchema.optional(),
+    applicantId: z.string().optional(),
+    correlationId: z.string().optional(),
   })
   .strict()
 
 const verificationWebhookParseFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_parse_failed"),
+    action: z.literal("webhook_parse_fail"),
     errors: z.string(),
     accountId: nearAccountIdSchema.optional(),
+    applicantId: z.string().optional(),
+    correlationId: z.string().optional(),
   })
   .strict()
 
 const verificationWebhookReceivedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_received"),
+    action: z.literal("webhook_receive"),
     type: z.string(),
     applicantId: z.string(),
-    externalUserId: z.string(),
-    reviewStatus: z.string(),
+    externalUserId: z.string().optional(),
+    reviewStatus: z.string().optional(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
+    rejectLabels: z.array(z.string()).optional(),
+    buttonIds: z.array(z.string()).optional(),
+    moderationComment: z.string().optional(),
+    clientComment: z.string().optional(),
+    levelName: z.string().optional(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
+    reviewMode: z.string().optional(),
+    sandboxMode: z.boolean().optional(),
+    applicantType: z.string().optional(),
+    externalUserIdType: z.string().optional(),
+    clientId: z.string().optional(),
+    createdAtMs: z.string().optional(),
+    createdAt: z.string().optional(),
   })
   .strict()
 
 const verificationWebhookMissingUserIdEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_missing_user_id"),
+    action: z.literal("webhook_user_missing"),
     applicantId: z.string(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
   })
   .strict()
 
 const verificationWebhookNotApprovedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_not_approved"),
+    action: z.literal("webhook_review_reject"),
     applicantId: z.string(),
     accountId: nearAccountIdSchema.optional(),
-    reviewAnswer: z.string(),
-    rejectLabels: z.string(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
+    rejectLabels: z.array(z.string()).optional(),
+    buttonIds: z.array(z.string()).optional(),
+    moderationComment: z.string().optional(),
+    clientComment: z.string().optional(),
+    reviewStatus: z.string().optional(),
+    levelName: z.string().optional(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
   })
   .strict()
 
 const verificationWebhookPendingReviewEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_pending_review"),
+    action: z.literal("webhook_review_hold"),
     applicantId: z.string(),
     accountId: nearAccountIdSchema.optional(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
+    reviewStatus: z.string().optional(),
+    levelName: z.string().optional(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
   })
   .strict()
 
 const verificationWebhookLateRejectionEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_late_rejection"),
+    action: z.literal("webhook_review_late_reject"),
     applicantId: z.string(),
     accountId: nearAccountIdSchema,
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
+    rejectLabels: z.array(z.string()).optional(),
   })
   .strict()
 
 const verificationWebhookValidationFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_validation_failed"),
+    action: z.literal("webhook_validation_fail"),
     reason: z.enum([
       "missing_metadata",
       "user_mismatch",
@@ -626,6 +711,10 @@ const verificationWebhookValidationFailedEventSchema = z
     applicantId: z.string(),
     accountId: nearAccountIdSchema.optional(),
     errorMessage: z.string().optional(),
+    inspectionId: z.string().optional(),
+    correlationId: z.string().optional(),
+    levelName: z.string().optional(),
+    reviewStatus: z.string().optional(),
   })
   .strict()
 
@@ -642,11 +731,13 @@ const verificationWebhookConfigErrorEventSchema = z
 const verificationWebhookStorageFailedEventSchema = z
   .object({
     ...verificationEventBase,
-    action: z.literal("webhook_storage_failed"),
+    action: z.literal("webhook_storage_fail"),
     applicantId: z.string(),
     accountId: nearAccountIdSchema,
     errorCode: z.string(),
     errorMessage: z.string(),
+    reviewStatus: z.string().optional(),
+    reviewAnswer: sumsubReviewAnswerSchema.optional(),
   })
   .strict()
 

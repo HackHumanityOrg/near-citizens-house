@@ -8,13 +8,13 @@
  * import { trackEvent } from "@/lib/analytics"
  *
  * // ✅ Type-safe: domain+action enforced together
- * trackEvent({ domain: "verification", action: "flow_started", platform: "desktop" })
+ * trackEvent({ domain: "verification", action: "flow_start", platform: "desktop" })
  *
  * // ❌ TypeScript error: action "unknown" doesn't exist on domain "verification"
  * trackEvent({ domain: "verification", action: "unknown", platform: "desktop" })
  *
  * // ❌ TypeScript error: 'randomField' does not exist
- * trackEvent({ domain: "verification", action: "flow_started", platform: "desktop", randomField: "y" })
+ * trackEvent({ domain: "verification", action: "flow_start", platform: "desktop", randomField: "y" })
  * ```
  */
 import posthog from "posthog-js"
@@ -25,7 +25,7 @@ export type { AnalyticsEvent } from "./schemas/analytics"
 /**
  * Track a strongly-typed analytics event.
  *
- * Event name is formatted as "domain:action" (e.g., "verification:flow_started").
+ * Event name is formatted as "domain:action" (e.g., "verification:flow_start").
  * Properties (excluding domain/action) are sent as event properties.
  */
 export function trackEvent<T extends AnalyticsEvent>(event: T): void {

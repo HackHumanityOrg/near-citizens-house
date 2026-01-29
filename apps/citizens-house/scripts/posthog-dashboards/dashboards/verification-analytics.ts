@@ -4,49 +4,49 @@ import type { DashboardDefinition } from "../schemas"
  * Verification event names - derived from lib/schemas/analytics.ts
  *
  * Happy path flow:
- * 1. flow_started - User enters verification page
- * 2. cta_clicked - User clicks "Get Verified" button
- * 3. wallet_connect_succeeded - Wallet connected
- * 4. sign_completed - Message signed
- * 5. sumsub_sdk_loaded - SumSub SDK initialized
- * 6. sumsub_submitted - User submitted documents
- * 7. stored_onchain - Server confirmed verification (authoritative)
- * 8. success_displayed - User sees success screen
+ * 1. flow_start - User enters verification page
+ * 2. cta_click - User clicks "Get Verified" button
+ * 3. wallet_connect_success - Wallet connected
+ * 4. sign_success - Message signed
+ * 5. sumsub_sdk_load - SumSub SDK initialized
+ * 6. sumsub_submit - User submitted documents
+ * 7. onchain_store_success - Server confirmed verification (authoritative)
+ * 8. success_view - User sees success screen
  */
 const VERIFICATION_EVENTS = {
   // Flow lifecycle
-  flow_started: "verification:flow_started",
-  cta_clicked: "verification:cta_clicked",
+  flow_start: "verification:flow_start",
+  cta_click: "verification:cta_click",
   // Wallet connection
-  wallet_connect_started: "verification:wallet_connect_started",
-  wallet_connect_succeeded: "verification:wallet_connect_succeeded",
-  wallet_connect_failed: "verification:wallet_connect_failed",
+  wallet_connect_start: "verification:wallet_connect_start",
+  wallet_connect_success: "verification:wallet_connect_success",
+  wallet_connect_fail: "verification:wallet_connect_fail",
   // Message signing
-  sign_started: "verification:sign_started",
-  sign_completed: "verification:sign_completed",
-  sign_failed: "verification:sign_failed",
+  sign_start: "verification:sign_start",
+  sign_success: "verification:sign_success",
+  sign_fail: "verification:sign_fail",
   // Token fetch
-  token_fetch_started: "verification:token_fetch_started",
-  token_fetch_succeeded: "verification:token_fetch_succeeded",
-  token_fetch_failed: "verification:token_fetch_failed",
+  token_fetch_start: "verification:token_fetch_start",
+  token_fetch_success: "verification:token_fetch_success",
+  token_fetch_fail: "verification:token_fetch_fail",
   // SumSub SDK
-  sumsub_sdk_loaded: "verification:sumsub_sdk_loaded",
+  sumsub_sdk_load: "verification:sumsub_sdk_load",
   sumsub_ready: "verification:sumsub_ready",
-  sumsub_submitted: "verification:sumsub_submitted",
-  sumsub_rejected: "verification:sumsub_rejected",
+  sumsub_submit: "verification:sumsub_submit",
+  sumsub_review_reject: "verification:sumsub_review_reject",
   // Polling
-  polling_started: "verification:polling_started",
-  polling_approved: "verification:polling_approved",
+  polling_start: "verification:polling_start",
+  polling_approve: "verification:polling_approve",
   polling_timeout: "verification:polling_timeout",
   // Server-side
-  proof_submitted: "verification:proof_submitted",
-  proof_validated: "verification:proof_validated",
-  stored_onchain: "verification:stored_onchain",
-  rejected: "verification:rejected",
+  proof_submit: "verification:proof_submit",
+  proof_validate: "verification:proof_validate",
+  onchain_store_success: "verification:onchain_store_success",
+  onchain_store_reject: "verification:onchain_store_reject",
   // Success/Error
-  success_displayed: "verification:success_displayed",
-  error_shown: "verification:error_shown",
-  manual_review_shown: "verification:manual_review_shown",
+  success_view: "verification:success_view",
+  error_modal_view: "verification:error_modal_view",
+  manual_review_view: "verification:manual_review_view",
 } as const
 
 /**
@@ -77,21 +77,21 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
             },
             series: [
               // Step 1: User enters verification page
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.flow_started, name: "Flow Started" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.flow_start, name: "Flow Started" },
               // Step 2: User clicks CTA button
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.cta_clicked, name: "CTA Clicked" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.cta_click, name: "CTA Clicked" },
               // Step 3: Wallet connected successfully
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.wallet_connect_succeeded, name: "Wallet Connected" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.wallet_connect_success, name: "Wallet Connected" },
               // Step 4: Message signed
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.sign_completed, name: "Message Signed" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.sign_success, name: "Message Signed" },
               // Step 5: SumSub SDK loaded (ID verification started)
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.sumsub_sdk_loaded, name: "ID Verification Started" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.sumsub_sdk_load, name: "ID Verification Started" },
               // Step 6: User submitted documents to SumSub
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.sumsub_submitted, name: "Documents Submitted" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.sumsub_submit, name: "Documents Submitted" },
               // Step 7: Server confirmed and stored on-chain (authoritative success)
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.stored_onchain, name: "Stored On-chain" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.onchain_store_success, name: "Stored On-chain" },
               // Step 8: User sees success screen
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.success_displayed, name: "Success Displayed" },
+              { kind: "EventsNode", event: VERIFICATION_EVENTS.success_view, name: "Success Displayed" },
             ],
           },
         },
@@ -113,8 +113,8 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           date_from: "-30d",
           // Only custom events (our analytics events)
           include_event_types: ["custom_event"],
-          // Start from flow_started to see the full journey
-          start_point: VERIFICATION_EVENTS.flow_started,
+          // Start from flow_start to see the full journey
+          start_point: VERIFICATION_EVENTS.flow_start,
           // More steps to see granular flow
           step_limit: 10,
           // Exclude all non-verification events and noisy verification events
@@ -131,11 +131,11 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
             "errors:exception_captured",
             // === Noisy verification events ===
             // Exclude repetitive SumSub SDK messages (fires many times)
-            "verification:sumsub_message",
-            "verification:sumsub_status_received",
+            "verification:sumsub_message_receive",
+            "verification:sumsub_status_receive",
             // Exclude server-side events (not visible to user)
-            "verification:proof_submitted",
-            "verification:proof_validated",
+            "verification:proof_submit",
+            "verification:proof_validate",
           ],
         },
       },
@@ -156,7 +156,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           display: "BoldNumber",
           events: [
             {
-              id: VERIFICATION_EVENTS.stored_onchain,
+              id: VERIFICATION_EVENTS.onchain_store_success,
               type: "events",
               name: "Stored On-chain",
               math: "total",
@@ -180,7 +180,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           compare: true,
           events: [
             {
-              id: VERIFICATION_EVENTS.stored_onchain,
+              id: VERIFICATION_EVENTS.onchain_store_success,
               type: "events",
               name: "Stored On-chain",
               math: "total",
@@ -204,13 +204,13 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           formula: "A / B * 100",
           events: [
             {
-              id: VERIFICATION_EVENTS.stored_onchain,
+              id: VERIFICATION_EVENTS.onchain_store_success,
               type: "events",
               name: "Completed (A)",
               math: "total",
             },
             {
-              id: VERIFICATION_EVENTS.flow_started,
+              id: VERIFICATION_EVENTS.flow_start,
               type: "events",
               name: "Started (B)",
               math: "total",
@@ -234,7 +234,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           display: "ActionsLineGraph",
           events: [
             {
-              id: VERIFICATION_EVENTS.stored_onchain,
+              id: VERIFICATION_EVENTS.onchain_store_success,
               type: "events",
               name: "Verifications",
               math: "total",
@@ -259,7 +259,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           display: "ActionsPie",
           events: [
             {
-              id: VERIFICATION_EVENTS.rejected,
+              id: VERIFICATION_EVENTS.onchain_store_reject,
               type: "events",
               name: "Rejected",
               math: "total",
@@ -284,7 +284,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           display: "ActionsPie",
           events: [
             {
-              id: VERIFICATION_EVENTS.success_displayed,
+              id: VERIFICATION_EVENTS.success_view,
               type: "events",
               name: "Success Screen",
               math: "total",

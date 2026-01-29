@@ -64,7 +64,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, accountId, onClose
 
     trackEvent({
       domain: "verification",
-      action: "error_shown",
+      action: "error_modal_view",
       errorCode: errorCode || "UNKNOWN",
       stage: determineErrorStage(errorCode),
       platform: getPlatform(),
@@ -82,7 +82,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, accountId, onClose
         if (!isNonRetryableError(errorCode)) {
           trackEvent({
             domain: "verification",
-            action: "error_abandoned",
+            action: "error_modal_abandon",
             errorCode: errorCode || "UNKNOWN",
             platform: getPlatform(),
             accountId: accountId || undefined,
@@ -109,7 +109,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, accountId, onClose
     if (!isNonRetryable) {
       trackEvent({
         domain: "verification",
-        action: "error_abandoned",
+        action: "error_modal_abandon",
         errorCode: errorCode || "UNKNOWN",
         platform: getPlatform(),
         accountId: accountId || undefined,
@@ -176,7 +176,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, accountId, onClose
               onClick={() => {
                 trackEvent({
                   domain: "verification",
-                  action: "error_retry_clicked",
+                  action: "error_modal_retry_click",
                   errorCode: errorCode || "UNKNOWN",
                   platform: getPlatform(),
                   accountId: accountId || undefined,
