@@ -185,6 +185,11 @@ export async function POST(request: NextRequest) {
 
     // Use NEAR account ID as external user ID in SumSub
     const externalUserId = nearSignature.accountId
+
+    // Clear any stale rejection status from previous attempts
+    // This prevents users from seeing a flash of old rejection when retrying
+    await clearVerificationStatus(nearSignature.accountId)
+
     // Step 1: Create or get existing applicant
     // This guarantees the applicant exists before we try to update metadata
     let applicant: SumSubApplicant
@@ -194,10 +199,6 @@ export async function POST(request: NextRequest) {
       // If applicant already exists (409 Conflict), fetch it
       if (error instanceof Error && error.message.includes("409")) {
         applicant = await getApplicantByExternalUserId(externalUserId)
-
-        // Clear stale rejection status from previous attempt
-        // This prevents resubmitting users from seeing a flash of the old rejection screen
-        await clearVerificationStatus(externalUserId)
 
         await trackServerEvent(nearSignature.accountId, {
           domain: "verification",
