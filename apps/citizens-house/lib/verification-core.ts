@@ -1,0 +1,268 @@
+/**
+ * Pure NEAR signature verification utilities (NEP-413 standard)
+ *
+ * This module contains pure cryptographic functions with NO application config dependencies.
+ * For config-aware functions (like buildSignatureVerificationData), use verification.ts instead.
+ */
+
+import { PublicKey } from "@near-js/crypto"
+import { serialize } from "borsh"
+import { createHash } from "crypto"
+import bs58 from "bs58"
+import {
+  parsedSignatureDataSchema,
+  type ParsedSignatureData,
+  nep413NonceSchema,
+  freshTimestampSchema,
+  nearPublicKeySchema,
+} from "./schemas/near"
+
+/**
+ * NEP-413 payload schema for Borsh binary serialization.
+ *
+ * Note: This is a Borsh schema (not Zod) required by the `borsh` library's serialize() function.
+ * For type validation and TypeScript types, see `nep413PayloadSchema` in schemas/near.ts.
+ * The two schemas define the same structure but serve different purposes:
+ * - Borsh schema: Binary serialization for cryptographic operations
+ * - Zod schema: Runtime validation and TypeScript type inference
+ */
+const Nep413BorshSchema = {
+  struct: {
+    message: "string",
+    nonce: { array: { type: "u8", len: 32 } },
+    recipient: "string",
+    callbackUrl: { option: "string" },
+  },
+}
+
+/**
+ * Computes the NEP-413 message hash that is actually signed by NEAR wallets.
+ *
+ * The hash is computed as: SHA-256(tag || borsh_serialize(payload))
+ * where:
+ *   - tag = 2147484061 (2^31 + 413) as 4-byte little-endian
+ *   - payload = { message, nonce, recipient, callbackUrl: null }
+ *
+ * @param message - The challenge message that was signed
+ * @param nonce - The 32-byte nonce as base64 string
+ * @param recipient - The recipient account ID
+ * @returns The SHA-256 hash as a hex string
+ */
+export function computeNep413Hash(message: string, nonce: string, recipient: string): string {
+  // NEP-413 tag (2^31 + 413)
+  const tag = 2147484061
+  const tagBuffer = Buffer.alloc(4)
+  tagBuffer.writeUInt32LE(tag)
+
+  // Decode base64 nonce to bytes
+  const nonceBytes = Buffer.from(nonce, "base64")
+
+  const payload = {
+    message,
+    nonce: new Uint8Array(nonceBytes),
+    recipient,
+    callbackUrl: null,
+  }
+
+  const payloadBytes = serialize(Nep413BorshSchema, payload)
+  const fullMessage = Buffer.concat([tagBuffer, Buffer.from(payloadBytes)])
+  const hash = createHash("sha256").update(fullMessage).digest()
+
+  return hash.toString("hex")
+}
+
+/**
+ * Extracts the raw Ed25519 public key bytes from a NEAR public key string.
+ *
+ * NEAR public keys are formatted as "ed25519:BASE58_ENCODED_KEY".
+ * This function extracts the raw 32-byte key and returns it as hex.
+ *
+ * @param nearPublicKey - NEAR formatted public key (e.g., "ed25519:ABC...")
+ * @returns The raw 32-byte public key as a hex string
+ */
+export function extractEd25519PublicKeyHex(nearPublicKey: string): string {
+  const base58Part = nearPublicKey.replace("ed25519:", "")
+  const decoded = bs58.decode(base58Part)
+  return Buffer.from(decoded).toString("hex")
+}
+
+/**
+ * Parse userContextData to extract signature data.
+ * Handles both hex-encoded and plain JSON formats.
+ * Returns base64 encoded nonce for consistent handling.
+ */
+export function parseUserContextData(userContextDataRaw: string): ParsedSignatureData | null {
+  try {
+    let jsonString = ""
+
+    if (userContextDataRaw.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(userContextDataRaw)) {
+      jsonString = Buffer.from(userContextDataRaw, "hex").toString("utf8")
+    } else {
+      jsonString = userContextDataRaw
+    }
+
+    jsonString = jsonString.replace(/\0/g, "")
+
+    // Look for the start of the JSON object by finding {"accountId"
+    // (not just {, as binary data may contain { bytes)
+    const jsonStart = jsonString.indexOf('{"accountId"')
+    if (jsonStart === -1) {
+      // Fallback: try to find any valid JSON object start
+      const firstBrace = jsonString.indexOf("{")
+      const lastBrace = jsonString.lastIndexOf("}")
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonString = jsonString.substring(firstBrace, lastBrace + 1)
+      }
+    } else {
+      const lastBrace = jsonString.lastIndexOf("}")
+      if (lastBrace > jsonStart) {
+        jsonString = jsonString.substring(jsonStart, lastBrace + 1)
+      }
+    }
+
+    const data = JSON.parse(jsonString)
+
+    // Validate using Zod schema instead of manual checks
+    const result = parsedSignatureDataSchema.safeParse(data)
+    if (!result.success) {
+      return null
+    }
+
+    return result.data
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Verify NEAR signature using NEP-413 standard.
+ * Matches the contract implementation.
+ *
+ * @param challenge - The message that was signed
+ * @param signature - base64 encoded signature
+ * @param publicKeyStr - ed25519:BASE58 format public key
+ * @param nonce - base64 encoded 32-byte nonce
+ * @param recipient - The recipient account ID
+ */
+export function verifyNearSignature(
+  challenge: string,
+  signature: string,
+  publicKeyStr: string,
+  nonce: string,
+  recipient: string,
+): { valid: boolean; error?: string } {
+  try {
+    // Step 1: NEP-413 tag (2^31 + 413)
+    const tag = 2147484061
+    const tagBuffer = Buffer.alloc(4)
+    tagBuffer.writeUInt32LE(tag)
+
+    // Step 2: Decode base64 nonce to bytes
+    const nonceBytes = Buffer.from(nonce, "base64")
+
+    // Step 3: Create NEP-413 payload
+    const payload = {
+      message: challenge,
+      nonce: new Uint8Array(nonceBytes),
+      recipient,
+      callbackUrl: null,
+    }
+
+    // Borsh serialize the payload
+    const payloadBytes = serialize(Nep413BorshSchema, payload)
+
+    // Step 4: Concatenate tag + payload
+    const fullMessage = Buffer.concat([tagBuffer, Buffer.from(payloadBytes)])
+
+    // Step 5: SHA-256 hash the message
+    const messageHash = createHash("sha256").update(fullMessage).digest()
+
+    // Step 6: Parse public key using @near-js/crypto
+    const publicKey = PublicKey.fromString(publicKeyStr)
+
+    // Step 7: Decode signature from base64
+    const signatureBytes = Buffer.from(signature, "base64")
+
+    // Step 8: Verify with @near-js/crypto PublicKey.verify()
+    const isValid = publicKey.verify(messageHash, signatureBytes)
+
+    if (!isValid) {
+      return { valid: false, error: "Invalid NEAR signature" }
+    }
+
+    return { valid: true }
+  } catch (error) {
+    return { valid: false, error: error instanceof Error ? error.message : "Signature verification failed" }
+  }
+}
+
+// ==================== Signature Validation Helpers ====================
+
+/**
+ * Result of signature data validation.
+ */
+export interface SignatureValidationResult {
+  valid: boolean
+  error?: string
+  errorCode?: string
+}
+
+/**
+ * Validate NEAR signature data using Zod schemas.
+ * Validates timestamp format, nonce format, and public key format.
+ * Timestamp freshness can be skipped for long-lived webhook flows.
+ *
+ * Note: This does NOT verify the cryptographic signature or check RPC for key validity.
+ * Use verifyNearSignature() and hasFullAccessKey() for those checks.
+ */
+export function validateSignatureData(
+  data: {
+    timestamp: number
+    nonce: string
+    publicKey: string
+  },
+  options: { skipFreshness?: boolean } = {},
+): SignatureValidationResult {
+  if (!Number.isFinite(data.timestamp)) {
+    return {
+      valid: false,
+      error: "Invalid timestamp",
+      errorCode: "SIGNATURE_TIMESTAMP_INVALID",
+    }
+  }
+
+  // Validate timestamp freshness
+  if (!options.skipFreshness) {
+    const timestampResult = freshTimestampSchema.safeParse(data.timestamp)
+    if (!timestampResult.success) {
+      const age = Date.now() - data.timestamp
+      return {
+        valid: false,
+        error: age > 0 ? `Signature expired (${Math.round(age / 1000)}s old)` : "Future timestamp",
+        errorCode: age > 0 ? "SIGNATURE_EXPIRED" : "SIGNATURE_TIMESTAMP_INVALID",
+      }
+    }
+  }
+
+  // Validate nonce format
+  const nonceResult = nep413NonceSchema.safeParse(data.nonce)
+  if (!nonceResult.success) {
+    return {
+      valid: false,
+      error: nonceResult.error.issues[0]?.message ?? "Invalid nonce format",
+      errorCode: "NEAR_SIGNATURE_INVALID",
+    }
+  }
+
+  // Validate public key format
+  const pubKeyResult = nearPublicKeySchema.safeParse(data.publicKey)
+  if (!pubKeyResult.success) {
+    return {
+      valid: false,
+      error: pubKeyResult.error.issues[0]?.message ?? "Invalid public key format",
+      errorCode: "NEAR_SIGNATURE_INVALID",
+    }
+  }
+
+  return { valid: true }
+}

@@ -12,7 +12,7 @@ import {
   extractEd25519PublicKeyHex,
   parseUserContextData,
   verifyNearSignature,
-} from "../verification"
+} from "../verification-core"
 
 // ============================================================================
 // Test Data Fixtures
