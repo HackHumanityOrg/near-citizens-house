@@ -746,7 +746,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
                   {verificationStatus === "polling" && (
                     <div className="mt-[16px] flex items-center gap-[8px] text-[14px] text-[#757575] dark:text-[#a3a3a3]">
                       <Loader2 className="h-[16px] w-[16px] animate-spin" />
-                      <span className="font-fk-grotesk">Finalizing verification on-chain...</span>
+                      <span className="font-fk-grotesk">Verifying&hellip; in rare cases, this can take 20–30 minutes. If it takes longer than 30 minutes, please <a href="https://t.me/nearcitizenshouse/6" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-70 transition-opacity">contact us</a>.</span>
                     </div>
                   )}
                 </div>
