@@ -22,7 +22,7 @@
     "cleanup-orphan-accounts": "npx tsx apps/citizens-house/e2e/scripts/cleanup-orphan-accounts.ts",
     "lint": "pnpm --recursive lint",
     "lint:fix": "pnpm --recursive lint:fix",
-    "lint:all": "pnpm run lint && pnpm run lint:contract:verification",
+    "lint:all": "pnpm run lint && pnpm run knip && pnpm run lint:contract:verification",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm --recursive test",
@@ -34,11 +34,11 @@
     "test:report:serve": "allure serve allure-results",
     "clean": "pnpm --recursive --parallel exec rm -rf .next dist node_modules .turbo",
     "clean:contracts": "cd contracts/verified-accounts && cargo clean",
-    "clean:contracts:verification": "cd contracts/verified-accounts && cargo clean"
+    "clean:contracts:verification": "cd contracts/verified-accounts && cargo clean",
+    "knip": "knip"
   },
   "devDependencies": {
     "@checkly/playwright-helpers": "^1.0.4",
-    "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@next/eslint-plugin-next": "^16.1.1",
     "@playwright/test": "^1.57.0",
@@ -49,6 +49,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "knip": "^5.82.1",
     "prettier": "^3.7.4",
     "typescript": "^5",
     "typescript-eslint": "^8.52.0",

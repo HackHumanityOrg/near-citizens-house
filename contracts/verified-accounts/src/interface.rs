@@ -20,10 +20,10 @@ use near_sdk::{ext_contract, AccountId, NearSchema};
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 #[borsh(crate = "near_sdk::borsh")]
 pub enum VersionedVerification {
-    /// V1: Original verification format (current version)
+    /// V1: SumSub-based verification (current version)
     V1(VerificationV1),
     // Future versions append here:
-    // V2(VerificationV2),  // 0x01 - example: adds new field
+    // V2(VerificationV2),
 }
 
 /// Current verification version number.
@@ -77,31 +77,10 @@ impl From<Verification> for VersionedVerification {
 
 // ==================== Data Types ====================
 
-/// Groth16 ZK proof structure (a, b, c points)
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
-#[serde(crate = "near_sdk::serde")]
-#[borsh(crate = "near_sdk::borsh")]
-pub struct ZkProof {
-    pub a: [String; 2],
-    pub b: [[String; 2]; 2],
-    pub c: [String; 2],
-}
-
-/// Self.xyz proof data (ZK proof + public signals)
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
-#[serde(crate = "near_sdk::serde")]
-#[borsh(crate = "near_sdk::borsh")]
-pub struct SelfProofData {
-    /// Groth16 ZK proof (a, b, c points)
-    pub proof: ZkProof,
-    /// Public signals from the circuit (contains nullifier, merkle root, scope, etc.)
-    pub public_signals: Vec<String>,
-}
-
-/// Lightweight verification summary (no proof data).
+/// Lightweight verification summary (no signature data).
 ///
 /// This is the most commonly used return type for cross-contract calls.
-/// It includes all essential verification data without the large ZK proof,
+/// It includes all essential verification data without user context,
 /// keeping gas costs low.
 ///
 /// Note: This type is NOT versioned because it's only used for view responses,
@@ -110,37 +89,27 @@ pub struct SelfProofData {
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationSummary {
-    /// Unique nullifier from the ZK proof (prevents duplicate passport use)
-    pub nullifier: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
-    /// Attestation ID from the identity provider
-    pub attestation_id: u8,
     /// Unix timestamp (nanoseconds) when verification was recorded
     pub verified_at: u64,
 }
 
 // ==================== Versioned Verification Types ====================
 
-/// V1: Original verification format.
+/// V1: SumSub-based verification format (current version).
 ///
-/// This was the first version of the verification structure.
-/// Do NOT modify this struct - create new versions instead.
+/// Uses SumSub KYC verification. SumSub handles identity deduplication
+/// internally, so no applicant ID is stored on-chain.
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[serde(crate = "near_sdk::serde")]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationV1 {
-    /// Unique nullifier from the ZK proof (prevents duplicate passport use)
-    pub nullifier: String,
     /// The NEAR account that was verified
     pub near_account_id: AccountId,
-    /// Attestation ID from the identity provider
-    pub attestation_id: u8,
     /// Unix timestamp (nanoseconds) when verification was recorded
     pub verified_at: u64,
-    /// Self.xyz ZK proof data (for re-verification)
-    pub self_proof: SelfProofData,
-    /// Additional context data from verification flow
+    /// Additional context data from verification flow (contains NEAR signature data)
     pub user_context_data: String,
 }
 
@@ -154,9 +123,7 @@ pub type Verification = VerificationV1;
 impl From<&VerificationV1> for VerificationSummary {
     fn from(v: &VerificationV1) -> Self {
         Self {
-            nullifier: v.nullifier.clone(),
             near_account_id: v.near_account_id.clone(),
-            attestation_id: v.attestation_id,
             verified_at: v.verified_at,
         }
     }
@@ -166,7 +133,6 @@ impl From<&VersionedVerification> for VerificationSummary {
     fn from(v: &VersionedVerification) -> Self {
         match v {
             VersionedVerification::V1(v) => Self::from(v),
-            // Future versions: add conversion here
             // VersionedVerification::V2(v) => Self::from(v),
         }
     }
@@ -206,19 +172,17 @@ pub trait VerifiedAccountsInterface {
     /// This is the most gas-efficient method.
     fn is_verified(&self, account_id: AccountId) -> bool;
 
-    /// Get verification summary (without ZK proof).
+    /// Get verification summary.
     ///
     /// **Use this for:** Most cross-contract calls that need verification details.
-    /// Returns all essential data (nullifier, attestation_id, timestamp)
-    /// without the large ZK proof, keeping gas costs low.
+    /// Returns essential data (account ID, timestamp) keeping gas costs low.
     ///
     /// Returns `None` if the account is not verified.
     fn get_verification(&self, account_id: AccountId) -> Option<VerificationSummary>;
 
-    /// Get full verification record including ZK proof.
+    /// Get full verification record including user context data.
     ///
-    /// **Use this for:** Re-verification, audit trails, proof validation.
-    /// This is the most expensive method due to large proof data (~2.5 KB).
+    /// **Use this for:** Audit trails, detailed verification info.
     ///
     /// Returns `None` if the account is not verified.
     fn get_full_verification(&self, account_id: AccountId) -> Option<Verification>;

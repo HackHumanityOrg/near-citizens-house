@@ -4,22 +4,12 @@ import { useState, useCallback } from "react"
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@near-citizens/ui"
 import { trackEvent } from "@/lib/analytics"
 import { Copy, Check, ExternalLink } from "lucide-react"
-import type { NearAccountId } from "@/lib/schemas"
-
-// Modal-specific type that combines nearSignatureVerification and signature fields from ProofData
-interface NearSignatureData {
-  nep413Hash: string
-  publicKeyHex: string
-  signatureHex: string
-  challenge: string
-  recipient: string
-  accountId: NearAccountId
-}
+import type { SignatureVerificationData } from "@/lib/schemas/verification-signature"
 
 interface NearSignatureVerifyModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  data: NearSignatureData | null
+  data: SignatureVerificationData | null
 }
 
 export function SignatureVerifyModal({ open, onOpenChange, data }: NearSignatureVerifyModalProps) {

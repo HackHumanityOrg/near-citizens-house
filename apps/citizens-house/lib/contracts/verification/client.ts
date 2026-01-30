@@ -18,16 +18,19 @@ import {
   contractVerificationSummarySchema,
   type ContractVerification,
   type ContractVerificationSummary,
-  type ContractSelfProofInput,
   type ContractSignatureInput,
   type VerificationDataWithSignature,
   type TransformedVerification,
 } from "../../schemas/verification-contract"
 
 import type { NearAccountId } from "../../schemas/near"
-import type { Verification, VerificationSummary } from "../../schemas/selfxyz"
 import type { Pagination } from "../../schemas/core"
-import type { IVerificationDatabase, PaginatedVerifications } from "./verification-contract"
+import type {
+  IVerificationDatabase,
+  PaginatedVerifications,
+  Verification,
+  VerificationSummary,
+} from "./verification-contract"
 import { NEAR_SERVER_CONFIG } from "../../config.server"
 import { createRpcProvider } from "../../providers/rpc-provider"
 import { backendKeyPool, setBackendKeyPoolRedis } from "../../backend-key-pool"
@@ -199,8 +202,8 @@ export class NearContractDatabase implements IVerificationDatabase {
    */
   private async storeVerificationImpl(data: VerificationDataWithSignature): Promise<void> {
     try {
-      // Extract NEAR signature data and Self proof from verification data
-      const { signatureData, selfProofData, userContextData, ...verificationData } = data
+      // Extract NEAR signature data from verification data
+      const { signatureData, userContextData, nearAccountId } = data
 
       // Contract now uses Base64VecU8 for binary fields, so we can pass base64 strings directly
       // No need for type conversions - consistent base64 format across all boundaries
@@ -211,12 +214,6 @@ export class NearContractDatabase implements IVerificationDatabase {
         challenge: signatureData.challenge,
         nonce: signatureData.nonce, // already base64 encoded
         recipient: signatureData.recipient,
-      }
-
-      // Convert Self proof data to contract format
-      const selfProof: ContractSelfProofInput = {
-        proof: selfProofData.proof,
-        public_signals: selfProofData.publicSignals,
       }
 
       // Get account with next pooled key (atomic via Redis)
@@ -230,11 +227,8 @@ export class NearContractDatabase implements IVerificationDatabase {
           contractId: this.contractId,
           methodName: "store_verification",
           args: {
-            nullifier: verificationData.nullifier,
-            near_account_id: verificationData.nearAccountId,
-            attestation_id: verificationData.attestationId,
+            near_account_id: nearAccountId,
             signature_data: nearSigData,
-            self_proof: selfProof,
             user_context_data: userContextData,
           },
           gas: "30000000000000", // 30 TGas

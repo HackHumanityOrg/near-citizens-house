@@ -3,7 +3,24 @@
  */
 import { z } from "zod"
 
-export const NEAR_ACCOUNT_PATTERNS = {
+// ==================== Signature Validation Constants ====================
+
+/**
+ * Constants for NEAR signature validation timing.
+ * Used by both token and webhook routes to ensure consistent validation.
+ */
+export const SIGNATURE_VALIDATION = {
+  /** Maximum age of a signature before it's considered expired */
+  MAX_AGE_MS: 10 * 60 * 1000, // 10 minutes
+  /** Tolerance for clock skew between client and server */
+  CLOCK_SKEW_MS: 10 * 1000, // 10 seconds
+  /** Required nonce length in bytes */
+  NONCE_LENGTH_BYTES: 32,
+} as const
+
+// ==================== Account ID Patterns ====================
+
+const NEAR_ACCOUNT_PATTERNS = {
   named: /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/,
   implicit: /^[0-9a-f]{64}$/,
   ethImplicit: /^0x[0-9a-f]{40}$/,
@@ -113,3 +130,71 @@ export const nearAccessKeyResponseSchema = z.object({
 })
 
 export type NearAccessKeyPermission = z.infer<typeof nearAccessKeyPermissionSchema>
+
+// ==================== Signature Validation Schemas ====================
+
+/**
+ * Schema for base64-encoded 32-byte nonce.
+ * NEP-413 signatures require exactly 32 bytes of nonce data.
+ */
+export const nep413NonceSchema = z.string().refine(
+  (val) => {
+    try {
+      const bytes = Buffer.from(val, "base64")
+      return bytes.length === SIGNATURE_VALIDATION.NONCE_LENGTH_BYTES
+    } catch {
+      return false
+    }
+  },
+  { message: `Nonce must be base64-encoded ${SIGNATURE_VALIDATION.NONCE_LENGTH_BYTES} bytes` },
+)
+
+/**
+ * Schema for fresh signature timestamp (within MAX_AGE + CLOCK_SKEW).
+ * Validates that the timestamp is not too old and not in the future (beyond clock skew).
+ */
+export const freshTimestampSchema = z.number().refine(
+  (timestamp) => {
+    const now = Date.now()
+    const age = now - timestamp
+    const { MAX_AGE_MS, CLOCK_SKEW_MS } = SIGNATURE_VALIDATION
+    return age <= MAX_AGE_MS + CLOCK_SKEW_MS && age >= -CLOCK_SKEW_MS
+  },
+  { message: "Signature timestamp expired or in future" },
+)
+
+/**
+ * Schema for NEAR ed25519 public key format.
+ * NEAR public keys are formatted as "ed25519:BASE58_ENCODED_KEY".
+ */
+export const nearPublicKeySchema = z
+  .string()
+  .regex(/^ed25519:[1-9A-HJ-NP-Za-km-z]{43,44}$/, "Invalid NEAR public key format (expected ed25519:BASE58)")
+
+// ==================== RPC Response Types ====================
+
+/**
+ * Access key info from NEAR RPC view_access_key_list response.
+ */
+export interface AccessKeyInfoView {
+  public_key: string
+  access_key: {
+    nonce: number
+    permission:
+      | "FullAccess"
+      | {
+          FunctionCall: {
+            allowance: string | null
+            receiver_id: string
+            method_names: string[]
+          }
+        }
+  }
+}
+
+/**
+ * Access key list from NEAR RPC view_access_key_list response.
+ */
+export interface AccessKeyList {
+  keys: AccessKeyInfoView[]
+}

@@ -8,13 +8,13 @@
  * import { trackEvent } from "@/lib/analytics"
  *
  * // ✅ Type-safe: domain+action enforced together
- * trackEvent({ domain: "verification", action: "flow_started", platform: "desktop" })
+ * trackEvent({ domain: "verification", action: "flow_start", platform: "desktop" })
  *
  * // ❌ TypeScript error: action "unknown" doesn't exist on domain "verification"
  * trackEvent({ domain: "verification", action: "unknown", platform: "desktop" })
  *
  * // ❌ TypeScript error: 'randomField' does not exist
- * trackEvent({ domain: "verification", action: "flow_started", platform: "desktop", randomField: "y" })
+ * trackEvent({ domain: "verification", action: "flow_start", platform: "desktop", randomField: "y" })
  * ```
  */
 import posthog from "posthog-js"
@@ -25,20 +25,13 @@ export type { AnalyticsEvent } from "./schemas/analytics"
 /**
  * Track a strongly-typed analytics event.
  *
- * Event name is formatted as "domain:action" (e.g., "verification:flow_started").
+ * Event name is formatted as "domain:action" (e.g., "verification:flow_start").
  * Properties (excluding domain/action) are sent as event properties.
  */
 export function trackEvent<T extends AnalyticsEvent>(event: T): void {
   const { domain, action, ...properties } = event
   const eventName = `${domain}:${action}`
   posthog.capture(eventName, properties)
-}
-
-/**
- * Check if analytics is enabled (PostHog initialized and consent granted)
- */
-export function isAnalyticsEnabled(): boolean {
-  return typeof window !== "undefined" && posthog.__loaded && !posthog.has_opted_out_capturing()
 }
 
 /**
@@ -74,32 +67,35 @@ export function captureError(
  * Sets both persistent ($set) and once-only ($set_once) properties
  * for verified user cohort analysis.
  *
+ * The user should already be identified via wallet connection.
+ * This call enriches their profile with verification-specific properties.
+ *
  * @param accountId - The NEAR account ID of the verified user
- * @param data - Verification details including attestation type and platform
+ * @param data - Verification details including platform
  */
 export function identifyVerifiedUser(
   accountId: string,
   data: {
-    attestationType?: string
     platform: "desktop" | "mobile"
   },
 ): void {
   const now = new Date().toISOString()
 
-  posthog.identify(accountId, {
-    verification_status: "verified",
-    verification_date: now,
-    attestation_type: data.attestationType ?? "unknown",
-    verification_platform: data.platform,
-  })
-
-  // Set once-only properties (won't overwrite existing values)
-  posthog.capture("$set", {
-    $set_once: {
+  // PostHog identify() signature: identify(distinctId, $set, $set_once)
+  // - Second param ($set): Properties that update on each call
+  // - Third param ($set_once): Properties set only if not already set
+  posthog.identify(
+    accountId,
+    {
+      verification_status: "verified",
+      verification_date: now,
+      verification_platform: data.platform,
+    },
+    {
       first_verification_date: now,
       first_verification_platform: data.platform,
     },
-  })
+  )
 }
 
 /**

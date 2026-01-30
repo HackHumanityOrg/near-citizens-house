@@ -1,6 +1,6 @@
 /**
  * NEAR signature verification utilities (NEP-413 standard)
- * Consolidates NEP-413 hashing, signature verification, and proof building
+ * Consolidates NEP-413 hashing, signature verification, and context parsing
  */
 
 import { PublicKey } from "@near-js/crypto"
@@ -8,27 +8,16 @@ import { serialize } from "borsh"
 import { createHash } from "crypto"
 import bs58 from "bs58"
 import { getSigningMessage, getSigningRecipient } from "./config"
-import { parsedSignatureDataSchema, type ParsedSignatureData } from "./schemas/near"
-import type { ProofData } from "./schemas/verification-contract"
-import type { AttestationId } from "./schemas/selfxyz"
+import {
+  parsedSignatureDataSchema,
+  type ParsedSignatureData,
+  nep413NonceSchema,
+  freshTimestampSchema,
+  nearPublicKeySchema,
+} from "./schemas/near"
 
-/**
- * Attestation type names for display purposes.
- * Self.xyz supports 3 document types: Passport (1), Biometric ID Card (2), Aadhaar (3)
- */
-export const ATTESTATION_TYPE_NAMES: Record<AttestationId, string> = {
-  1: "Passport",
-  2: "Biometric ID Card",
-  3: "Aadhaar",
-}
-
-/**
- * Get human-readable attestation type name.
- * Returns "Unknown" for unrecognized attestation IDs.
- */
-export function getAttestationTypeName(attestationId: AttestationId): string {
-  return ATTESTATION_TYPE_NAMES[attestationId] ?? `Unknown (${attestationId})`
-}
+// Re-export signing helpers for use in API routes
+export { getSigningMessage, getSigningRecipient }
 
 /**
  * NEP-413 payload schema for Borsh binary serialization.
@@ -210,51 +199,92 @@ export function verifyNearSignature(
 }
 
 /**
- * Build proof data object for display in the verification dialog.
+ * Build signature verification data for display purposes.
  */
-export function buildProofData(
-  account: {
-    nullifier: string
-    attestationId: AttestationId
-    verifiedAt: number
-    selfProof: {
-      proof: {
-        a: [string, string]
-        b: [[string, string], [string, string]]
-        c: [string, string]
-      }
-      publicSignals: string[]
-    }
-    userContextData: string
-  },
-  sigData: ParsedSignatureData | null,
-): ProofData | null {
-  if (!sigData) return null
-
+export function buildSignatureVerificationData(sigData: ParsedSignatureData): {
+  nep413Hash: string
+  publicKeyHex: string
+  signatureHex: string
+} {
   const challenge = sigData.challenge ?? getSigningMessage()
   const recipient = sigData.recipient ?? getSigningRecipient()
   const nep413Hash = computeNep413Hash(challenge, sigData.nonce, recipient)
   const publicKeyHex = extractEd25519PublicKeyHex(sigData.publicKey)
 
   return {
-    nullifier: account.nullifier,
-    attestationId: account.attestationId,
-    verifiedAt: account.verifiedAt,
-    zkProof: account.selfProof.proof,
-    publicSignals: account.selfProof.publicSignals,
-    signature: {
-      accountId: sigData.accountId,
-      publicKey: sigData.publicKey,
-      signature: sigData.signature,
-      nonce: sigData.nonce, // already base64 encoded
-      challenge,
-      recipient,
-    },
-    userContextData: account.userContextData,
-    nearSignatureVerification: {
-      nep413Hash,
-      publicKeyHex,
-      signatureHex: Buffer.from(sigData.signature, "base64").toString("hex"),
-    },
+    nep413Hash,
+    publicKeyHex,
+    signatureHex: Buffer.from(sigData.signature, "base64").toString("hex"),
   }
+}
+
+// ==================== Signature Validation Helpers ====================
+
+/**
+ * Result of signature data validation.
+ */
+export interface SignatureValidationResult {
+  valid: boolean
+  error?: string
+  errorCode?: string
+}
+
+/**
+ * Validate NEAR signature data using Zod schemas.
+ * Validates timestamp format, nonce format, and public key format.
+ * Timestamp freshness can be skipped for long-lived webhook flows.
+ *
+ * Note: This does NOT verify the cryptographic signature or check RPC for key validity.
+ * Use verifyNearSignature() and hasFullAccessKey() for those checks.
+ */
+export function validateSignatureData(
+  data: {
+    timestamp: number
+    nonce: string
+    publicKey: string
+  },
+  options: { skipFreshness?: boolean } = {},
+): SignatureValidationResult {
+  if (!Number.isFinite(data.timestamp)) {
+    return {
+      valid: false,
+      error: "Invalid timestamp",
+      errorCode: "SIGNATURE_TIMESTAMP_INVALID",
+    }
+  }
+
+  // Validate timestamp freshness
+  if (!options.skipFreshness) {
+    const timestampResult = freshTimestampSchema.safeParse(data.timestamp)
+    if (!timestampResult.success) {
+      const age = Date.now() - data.timestamp
+      return {
+        valid: false,
+        error: age > 0 ? `Signature expired (${Math.round(age / 1000)}s old)` : "Future timestamp",
+        errorCode: age > 0 ? "SIGNATURE_EXPIRED" : "SIGNATURE_TIMESTAMP_INVALID",
+      }
+    }
+  }
+
+  // Validate nonce format
+  const nonceResult = nep413NonceSchema.safeParse(data.nonce)
+  if (!nonceResult.success) {
+    return {
+      valid: false,
+      error: nonceResult.error.issues[0]?.message ?? "Invalid nonce format",
+      errorCode: "NEAR_SIGNATURE_INVALID",
+    }
+  }
+
+  // Validate public key format
+  const pubKeyResult = nearPublicKeySchema.safeParse(data.publicKey)
+  if (!pubKeyResult.success) {
+    return {
+      valid: false,
+      error: pubKeyResult.error.issues[0]?.message ?? "Invalid public key format",
+      errorCode: "NEAR_SIGNATURE_INVALID",
+    }
+  }
+
+  return { valid: true }
 }

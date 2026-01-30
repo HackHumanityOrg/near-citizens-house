@@ -4,16 +4,11 @@
  * Derived configuration values from validated environment variables.
  * All env vars are accessed via the T3 Env schema in ./schemas/env.ts
  */
-import type { VerificationConfig } from "@selfxyz/core"
 import { env } from "./schemas/env"
 import type { NearAccountId } from "./schemas/near"
 
 // NEAR Network Configuration
 const networkId = env.NEXT_PUBLIC_NEAR_NETWORK
-
-// Self.xyz Network Configuration (independent from NEAR network)
-// This allows using NEAR testnet with Self.xyz mainnet for real passport verification
-const selfNetworkId = env.NEXT_PUBLIC_SELF_NETWORK
 
 // FastNEAR RPC URL
 const getFastNearUrl = () =>
@@ -37,43 +32,9 @@ export const NEAR_CONFIG = {
 // App URL (single app after merge of verification and governance)
 export const APP_URL = env.NEXT_PUBLIC_APP_URL ?? "https://citizenshouse.org"
 
-// Self.xyz Configuration
-// Verification rules are enforced by the backend verifier and contracts.
-// Disclosure requests (like nationality) are frontend-only and returned in discloseOutput.
-const VERIFICATION_CONFIG: VerificationConfig = {
-  excludedCountries: [],
-}
-
-const DISCLOSURE_CONFIG: VerificationConfig & { nationality: boolean } = {
-  ...VERIFICATION_CONFIG,
-  nationality: true, // Request nationality disclosure from passport
-}
-
-export const SELF_VERIFICATION_CONFIG = VERIFICATION_CONFIG
-
-const selfEndpointType: "https" | "staging_https" = selfNetworkId === "mainnet" ? "https" : "staging_https"
-
-export const SELF_CONFIG = {
-  appName: "NEAR Citizens House",
-  scope: "near-citizens-house",
-  // Self.xyz network (independent from NEAR network)
-  networkId: selfNetworkId,
-  get endpoint() {
-    return `${APP_URL}/api/verification/verify`
-  },
-  get deeplinkCallback() {
-    return `${APP_URL}/verification/callback`
-  },
-  endpointType: selfEndpointType,
-  logoBase64: `${APP_URL}/self-logo.png`,
-  // useMockPassport is derived from networkId
-  // testnet = mock passports, mainnet = real passports
-  get useMockPassport() {
-    return this.networkId === "testnet"
-  },
-  // Frontend disclosure config (verification rules + disclosure requests)
-  // Verification rules must match SELF_VERIFICATION_CONFIG on the backend
-  disclosures: DISCLOSURE_CONFIG,
+// SumSub Configuration
+export const SUMSUB_CONFIG = {
+  levelName: env.NEXT_PUBLIC_SUMSUB_LEVEL_NAME,
 }
 
 // UserJot Configuration (Feedback Widget)

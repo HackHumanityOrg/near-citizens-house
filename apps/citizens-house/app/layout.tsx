@@ -29,7 +29,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "NEAR Citizens House",
-  description: "Verify your identity with Self.xyz passport proof and link to your NEAR wallet",
+  description: "Verify your identity and link to your NEAR wallet",
 }
 
 export default function RootLayout({

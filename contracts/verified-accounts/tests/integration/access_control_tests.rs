@@ -1,6 +1,6 @@
 //! Access control tests for verified-accounts contract
 
-use crate::helpers::{init, nonce_to_base64, test_self_proof};
+use crate::helpers::{init, nonce_to_base64};
 use allure_rs::prelude::*;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use near_workspaces::types::NearToken;
@@ -27,9 +27,7 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "test_nullifier",
-            "near_account_id": user.id(),
-            "attestation_id": 1,
+"near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),
@@ -38,7 +36,6 @@ async fn test_unauthorized_store_verification() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()
@@ -154,9 +151,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
     let result_no_deposit = backend
         .call(contract.id(), "store_verification")
         .args_json(json!({
-            "nullifier": "test_nullifier",
-            "near_account_id": user.id(),
-            "attestation_id": 1,
+"near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),
@@ -165,7 +160,6 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()
@@ -186,9 +180,7 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(2))
         .args_json(json!({
-            "nullifier": "test_nullifier",
-            "near_account_id": user.id(),
-            "attestation_id": 1,
+"near_account_id": user.id(),
             "signature_data": {
                 "account_id": user.id(),
                 "signature": BASE64.encode([0u8; 64]),
@@ -197,7 +189,6 @@ async fn test_store_verification_requires_one_yocto() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&[0u8; 32]),
                 "recipient": contract.id()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()

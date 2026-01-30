@@ -37,9 +37,6 @@ mod composability_tests;
 #[path = "unit/input_validation_tests.rs"]
 mod input_validation_tests;
 
-#[path = "unit/proof_validation_tests.rs"]
-mod proof_validation_tests;
-
 #[path = "unit/invariants_tests.rs"]
 mod invariants_tests;
 

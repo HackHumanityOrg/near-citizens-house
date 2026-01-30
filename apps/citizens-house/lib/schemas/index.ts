@@ -5,13 +5,12 @@
  * Import from '@/lib/schemas' or specific modules for tree-shaking.
  */
 
-export * from "./selfxyz"
+export * from "./api/verification"
+export * from "./api/response"
 export * from "./core"
 export * from "./errors"
 export * from "./near"
-export * from "./session"
-export * from "./api"
 export * from "./verification-contract"
+export * from "./verification-signature"
 export * from "./env"
-export * from "./ui"
 export * from "./analytics"

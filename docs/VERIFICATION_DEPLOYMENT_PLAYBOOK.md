@@ -13,7 +13,7 @@ Step-by-step guide to deploy the NEAR Verified Accounts system.
 - Backend wallet keys (`NEAR_ACCOUNT_ID` / `NEAR_PRIVATE_KEY`) must remain active; any funded account can serve as the backend wallet, but this playbook uses a sub-account under `$ROOT`
 - Use reproducible builds (`cargo near build reproducible-wasm`) and record the WASM SHA-256
 - **Never reinitialize on upgrades** - use `without-init-call` flag
-- Rotate contract full-access keys to the Security Council, then delete the deployer key; optionally lock upgrades by removing all full-access keys
+- Rotate contract full-access keys to the multisig, then delete the contract's initial key; optionally lock upgrades by removing all full-access keys
 
 ---
 
@@ -21,17 +21,17 @@ Step-by-step guide to deploy the NEAR Verified Accounts system.
 
 ### Contract pre-deploy
 
-- [ ] Confirm mainnet deployment and a funded deployer account
-- [ ] Decide who controls contract full-access keys (Security Council)
+- [ ] Confirm mainnet deployment and a funded root account
+- [ ] Create a multisig account to own the contract (e.g., `multisig.citizens-house.near`)
 - [ ] Install Docker (required for reproducible builds)
-- [ ] Create deployer, backend wallet, and contract accounts
+- [ ] Create backend wallet and contract sub-accounts
 
 ### Contract post-deploy
 
 - [ ] `get_backend_wallet` returns the backend wallet
 - [ ] Contract SHA-256 matches local WASM build
-- [ ] Backend wallet keys still present (`near account list-keys $BACKEND_WALLET.$ROOT`)
-- [ ] Deployer key removed from contract account (Security Council key retained)
+- [ ] Backend wallet keys present (`near account list-keys $BACKEND_WALLET.$ROOT`)
+- [ ] Contract's initial key removed (multisig key retained)
 
 ---
 
@@ -74,56 +74,35 @@ near x.x.x
 Set these once and use throughout all commands:
 
 ```bash
-# Existing funded mainnet account (top-level)
-ROOT=existing-funded.near
+# Root account (top-level, funded)
+ROOT=citizens-house.near
 
-# Deployer account (sub-account of ROOT; owns the contract account)
-DEPLOYER=deploy.$ROOT
+# Contract account (sub-account of ROOT; hosts the verification contract)
+CONTRACT=verification
 
-# Contract name (will be deployed as $CONTRACT.$DEPLOYER)
-CONTRACT=verification-v1
-
-# Backend wallet name (will be created as $BACKEND_WALLET.$ROOT)
-BACKEND_WALLET=backend-wallet
+# Backend wallet (sub-account of ROOT; used by webapp to sign transactions)
+BACKEND_WALLET=backend
 ```
 
 Account structure (mainnet):
 
 ```
-$ROOT (top-level account, funded)
-├─ $DEPLOYER (sub-account used to deploy/own the contract)
-│  └─ $CONTRACT.$DEPLOYER (verification contract account)
-└─ $BACKEND_WALLET.$ROOT (backend signer wallet)
+citizens-house.near (root account)
+├─ verification.citizens-house.near (verification contract)
+└─ backend.citizens-house.near (backend signer wallet for webapp)
 ```
 
 ---
 
-## Step 0: Create Deployer Account (Mainnet)
+## Step 0: Acquire Root Account (Mainnet)
 
-If you already have a funded mainnet account you want to use as `$DEPLOYER`, skip this step.
-
-Otherwise, create `$DEPLOYER` as a sub-account of `$ROOT`. CLI creation on mainnet is limited to sub-accounts; use a wallet/registrar for a top-level `.near` account:
-
-```bash
-near account create-account fund-myself $DEPLOYER '10 NEAR' \
-  autogenerate-new-keypair save-to-keychain \
-  sign-as $ROOT \
-  network-config mainnet sign-with-keychain send
-```
-
-**Expected output:**
-
-```
-New account "deploy.existing-funded.near" created successfully.
-```
-
-Ensure `$ROOT` has enough NEAR to fund the new account.
+The root account `citizens-house.near` must be created via a wallet or registrar (CLI cannot create top-level `.near` accounts). Ensure it has at least 15 NEAR to fund sub-accounts and cover storage.
 
 ---
 
 ## Step 1: Create Backend Wallet
 
-The backend wallet is the only account authorized to write verification records. It can be any funded mainnet account, but this playbook creates it as a sub-account of `$ROOT` (sibling of the deployer).
+The backend wallet is the only account authorized to write verification records. It can be any funded mainnet account, but this playbook creates it as a sub-account of `$ROOT` (sibling of the contract account).
 
 > **Note:** We use `save-to-legacy-keychain` here (compatible with the JS CLI) so the private key is saved under `~/.near-credentials/...` and can be exported for your backend deployment environment. `save-to-keychain` stores keys in the OS keychain, which is harder to export.
 
@@ -137,7 +116,7 @@ near account create-account fund-myself $BACKEND_WALLET.$ROOT '1 NEAR' \
 **Expected output:**
 
 ```
-New account "backend-wallet.existing-funded.near" created successfully.
+New account "backend.citizens-house.near" created successfully.
 ```
 
 Export the private key:
@@ -156,25 +135,25 @@ cat ~/.near-credentials/mainnet/$BACKEND_WALLET.$ROOT.json
 }
 ```
 
-Save the `private_key` value (starts with `ed25519:`) for your deployment environment.
+Save the `private_key` value (starts with `ed25519:`) for your deployment environment (Vercel secret).
 
 ---
 
 ## Step 2: Create Verification Contract Account
 
-Create as a sub-account of your deployer account:
+Create as a sub-account of the root account:
 
 ```bash
-near account create-account fund-myself $CONTRACT.$DEPLOYER '5 NEAR' \
+near account create-account fund-myself $CONTRACT.$ROOT '5 NEAR' \
   autogenerate-new-keypair save-to-keychain \
-  sign-as $DEPLOYER \
+  sign-as $ROOT \
   network-config mainnet sign-with-keychain send
 ```
 
 **Expected output:**
 
 ```
-New account "verification-v1.deploy.existing-funded.near" created successfully.
+New account "verification.citizens-house.near" created successfully.
 ```
 
 ---
@@ -217,7 +196,7 @@ Save the SHA-256; you will compare it to the on-chain contract hash in Step 4.4.
 ### 4.1 Deploy the WASM
 
 ```bash
-near contract deploy $CONTRACT.$DEPLOYER \
+near contract deploy $CONTRACT.$ROOT \
   use-file target/near/verified_accounts.wasm \
   without-init-call \
   network-config mainnet sign-with-keychain send
@@ -226,17 +205,17 @@ near contract deploy $CONTRACT.$DEPLOYER \
 ### 4.2 Initialize
 
 ```bash
-near contract call-function as-transaction $CONTRACT.$DEPLOYER new \
+near contract call-function as-transaction $CONTRACT.$ROOT new \
   json-args "{\"backend_wallet\":\"$BACKEND_WALLET.$ROOT\"}" \
   prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' \
-  sign-as $CONTRACT.$DEPLOYER \
+  sign-as $CONTRACT.$ROOT \
   network-config mainnet sign-with-keychain send
 ```
 
 ### 4.3 Verify
 
 ```bash
-near contract call-function as-read-only $CONTRACT.$DEPLOYER get_backend_wallet \
+near contract call-function as-read-only $CONTRACT.$ROOT get_backend_wallet \
   json-args '{}' \
   network-config mainnet now
 ```
@@ -244,13 +223,13 @@ near contract call-function as-read-only $CONTRACT.$DEPLOYER get_backend_wallet 
 **Expected output:**
 
 ```
-"backend-wallet.existing-funded.near"
+"backend.citizens-house.near"
 ```
 
 ### 4.4 Verify contract hash
 
 ```bash
-near account view-account-summary $CONTRACT.$DEPLOYER \
+near account view-account-summary $CONTRACT.$ROOT \
   network-config mainnet now
 ```
 
@@ -258,31 +237,34 @@ Check the `Contract (SHA-256 checksum hex)` line matches the hash from Step 3.2.
 
 ### 4.5 Secure contract account keys (recommended)
 
-Rotate the contract account’s full-access keys to the Security Council, then delete the deployer key. This only affects the **contract account**; do **not** delete backend wallet keys used by the web app.
+Rotate the contract account's full-access keys to the multisig, then delete the contract's initial key. This only affects the **contract account**; do **not** delete backend wallet keys used by the web app.
+
+> **Note:** A NEAR multisig is a deployed contract that requires multiple signatures to authorize transactions. To give a multisig control over another account, you add a full-access key that the multisig infrastructure controls.
 
 ```bash
 # List keys
-near account list-keys $CONTRACT.$DEPLOYER network-config mainnet now
+near account list-keys $CONTRACT.$ROOT network-config mainnet now
 
-# Add Security Council full-access key
-near account add-key $CONTRACT.$DEPLOYER \
-  grant-full-access use-manually-provided-public-key <SECURITY_COUNCIL_PUBLIC_KEY> \
+# Add multisig full-access key
+near account add-key $CONTRACT.$ROOT \
+  grant-full-access use-manually-provided-public-key <MULTISIG_PUBLIC_KEY> \
   network-config mainnet sign-with-keychain send
 
-# Delete deployer key (replace with the public key you used to deploy)
-near account delete-keys $CONTRACT.$DEPLOYER \
-  public-keys <DEPLOYER_PUBLIC_KEY> \
+# Delete the contract account's initial key (replace with the public key shown above)
+near account delete-keys $CONTRACT.$ROOT \
+  public-keys <CONTRACT_INITIAL_PUBLIC_KEY> \
   network-config mainnet sign-with-keychain send
 
 # Confirm keys after rotation
-near account list-keys $CONTRACT.$DEPLOYER network-config mainnet now
+near account list-keys $CONTRACT.$ROOT network-config mainnet now
 ```
 
 Rotating the backend wallet account:
 
 ```bash
-near contract call-function as-transaction $CONTRACT.$DEPLOYER update_backend_wallet \
-  json-args '{"new_backend_wallet":"NEW_BACKEND.$ROOT"}' \
+NEW_BACKEND=new-backend  # the new backend wallet account name
+near contract call-function as-transaction $CONTRACT.$ROOT update_backend_wallet \
+  json-args "{\"new_backend_wallet\":\"$NEW_BACKEND.$ROOT\"}" \
   prepaid-gas '30.0 Tgas' attached-deposit '1 yoctoNEAR' \
   sign-as $BACKEND_WALLET.$ROOT \
   network-config mainnet sign-with-keychain send
@@ -296,11 +278,11 @@ If you want to lock upgrades permanently, delete all full-access keys. Since thi
 
 ## Step 5: Verify Deployment
 
-> **⚠️ ENVIRONMENT CHECK**: Confirm `$CONTRACT.$DEPLOYER` and `$BACKEND_WALLET.$ROOT` are on the target network.
+> **⚠️ ENVIRONMENT CHECK**: Confirm `$CONTRACT.$ROOT` and `$BACKEND_WALLET.$ROOT` are on the target network.
 
 ```bash
 # Check contract
-near contract call-function as-read-only $CONTRACT.$DEPLOYER get_verified_count \
+near contract call-function as-read-only $CONTRACT.$ROOT get_verified_count \
   json-args '{}' \
   network-config mainnet now
 ```
@@ -329,7 +311,7 @@ To upgrade without losing state:
 cd contracts/verified-accounts && cargo near build reproducible-wasm
 
 # Deploy WITHOUT init
-near contract deploy $CONTRACT.$DEPLOYER \
+near contract deploy $CONTRACT.$ROOT \
   use-file target/near/verified_accounts.wasm \
   without-init-call \
   network-config mainnet sign-with-keychain send
@@ -339,10 +321,10 @@ near contract deploy $CONTRACT.$DEPLOYER \
 
 ## Rollback (if deployment fails)
 
-Keep the last known good WASM from Step 3.2 so you can redeploy it if needed. If you already removed the deployer key, use the Security Council DAO key to sign the rollback deployment.
+Keep the last known good WASM from Step 3.2 so you can redeploy it if needed. If you already removed the contract's initial key, use the multisig to sign the rollback deployment.
 
 ```bash
-near contract deploy $CONTRACT.$DEPLOYER \
+near contract deploy $CONTRACT.$ROOT \
   use-file <PREVIOUS_WASM_PATH> \
   without-init-call \
   network-config mainnet sign-with-keychain send
@@ -358,12 +340,10 @@ If you need a testnet deployment for staging or mock passports, use the same ste
 
 ```bash
 ROOT=your-account.testnet  # testnet uses .testnet suffix
-DEPLOYER=deploy.$ROOT
-CONTRACT=verification-v1
-BACKEND_WALLET=backend-wallet
+CONTRACT=verification
+BACKEND_WALLET=backend
 ```
 
 - Create the ROOT account with the faucet: `near account create-account sponsor-by-faucet-service $ROOT autogenerate-new-keypair save-to-keychain network-config testnet create`
-- Create DEPLOYER as a sub-account: `near account create-account fund-myself $DEPLOYER '10 NEAR' autogenerate-new-keypair save-to-keychain sign-as $ROOT network-config testnet sign-with-keychain send`
 - Use `network-config testnet` in all commands
 - Testnet tokens: faucet + https://near-faucet.io/

@@ -742,22 +742,33 @@ export class PostHogApiClient {
    */
   async createCompleteDashboard(
     definition: DashboardDefinition,
-    options: { skipExisting?: boolean } = {},
+    options: { skipExisting?: boolean; replaceExisting?: boolean } = {},
   ): Promise<{
     dashboard: DashboardResponse
     insights: InsightResponse[]
     textTiles: DashboardTileResponse[]
+    replaced: boolean
   }> {
+    let replaced = false
+
     // Check if dashboard already exists
-    if (options.skipExisting) {
-      const existing = await this.findDashboardByName(definition.name)
-      if (existing) {
+    const existing = await this.findDashboardByName(definition.name)
+
+    if (existing) {
+      if (options.skipExisting) {
         console.log(`Dashboard "${definition.name}" already exists, skipping`)
         return {
           dashboard: existing,
           insights: [],
           textTiles: [],
+          replaced: false,
         }
+      }
+
+      if (options.replaceExisting) {
+        console.log(`Dashboard "${definition.name}" exists, replacing...`)
+        await this.deleteDashboard(existing.id)
+        replaced = true
       }
     }
 
@@ -796,7 +807,7 @@ export class PostHogApiClient {
       await this.updateInsightLayout(dashboard.id, insightId, layouts)
     }
 
-    return { dashboard, insights, textTiles }
+    return { dashboard, insights, textTiles, replaced }
   }
 
   /**

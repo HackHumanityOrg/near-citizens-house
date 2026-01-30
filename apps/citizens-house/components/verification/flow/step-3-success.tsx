@@ -1,50 +1,69 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Check, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
-import { getAttestationTypeName, type AttestationId, type NearAccountId } from "@/lib"
+import { type NearAccountId } from "@/lib"
 import { trackEvent, getPlatform } from "@/lib/analytics"
 import { StarPattern } from "../icons/star-pattern"
+import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform } from "framer-motion"
 
 interface Step3SuccessProps {
   accountId: NearAccountId
-  attestationId?: AttestationId | null
-  sessionId?: string
   onDisconnect?: () => void
 }
 
 type AnimationPhase = "initial" | "labelsOut" | "merging" | "checkmark" | "complete"
 
-export function Step3Success({ accountId, attestationId, sessionId, onDisconnect }: Step3SuccessProps) {
+export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
   const shouldReduceMotion = useReducedMotion()
-  const attestationLabel = attestationId ? getAttestationTypeName(attestationId) : "Identity Document"
+  const verificationLabel = "ID Verified"
   const [phase, setPhase] = useState<AnimationPhase>(shouldReduceMotion ? "complete" : "initial")
   const hasTrackedDisplay = useRef(false)
+  const [debugModeActive, setDebugModeActive] = useState(false)
+
+  // Debug mode state override
+  const handleDebugStateChange = useCallback((state: string) => {
+    setDebugModeActive(true)
+    const validPhases = ["initial", "labelsOut", "merging", "checkmark", "complete"] as const
+    if (validPhases.includes(state as (typeof validPhases)[number])) {
+      setPhase(state as AnimationPhase)
+    }
+  }, [])
+
+  // Register with debug context
+  const debugStates = useMemo(() => ["initial", "labelsOut", "merging", "checkmark", "complete"], [])
+
+  useDebugRegistration({
+    id: "step3-success",
+    name: "Step 3: Success Animation",
+    availableStates: debugStates,
+    currentState: phase,
+    onStateChange: handleDebugStateChange,
+  })
 
   // Motion value for checkmark path - prevents flash by linking opacity to pathLength
   const pathLength = useMotionValue(0)
   // Opacity fades in quickly once pathLength starts (prevents initial flash)
   const checkmarkOpacity = useTransform(pathLength, [0, 0.05, 0.15], [0, 0, 1])
 
-  // Track success_displayed on mount
+  // Track success_view on mount
   useEffect(() => {
     if (hasTrackedDisplay.current) return
     hasTrackedDisplay.current = true
 
     trackEvent({
       domain: "verification",
-      action: "success_displayed",
+      action: "success_view",
       platform: getPlatform(),
-      sessionId,
       accountId,
-      attestationType: attestationId ? getAttestationTypeName(attestationId) : undefined,
     })
-  }, [accountId, attestationId, sessionId])
+  }, [accountId])
 
   useEffect(() => {
-    if (shouldReduceMotion) {
+    // Skip auto-progression when debug mode is controlling the phase
+    if (shouldReduceMotion || debugModeActive) {
       return
     }
 
@@ -56,12 +75,13 @@ export function Step3Success({ accountId, attestationId, sessionId, onDisconnect
     ]
 
     return () => timers.forEach(clearTimeout)
-  }, [shouldReduceMotion])
+  }, [shouldReduceMotion, debugModeActive])
 
   const handleDisconnect = () => {
     trackEvent({
       domain: "verification",
-      action: "success_disconnect_clicked",
+      action: "success_disconnect_click",
+      platform: getPlatform(),
       accountId,
     })
     onDisconnect?.()
@@ -343,7 +363,7 @@ export function Step3Success({ accountId, attestationId, sessionId, onDisconnect
                       data-testid="attestation-badge-mobile"
                     >
                       <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
-                        {attestationLabel}
+                        {verificationLabel}
                       </span>
                     </div>
                   </div>
@@ -363,7 +383,7 @@ export function Step3Success({ accountId, attestationId, sessionId, onDisconnect
                         data-testid="attestation-badge-desktop"
                       >
                         <span className="font-poppins text-[12px] leading-[1.4] text-verified-badge-text tracking-[0.24px] text-center whitespace-nowrap truncate w-full">
-                          {attestationLabel}
+                          {verificationLabel}
                         </span>
                       </div>
                     </div>

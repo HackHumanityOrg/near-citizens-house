@@ -57,16 +57,17 @@ const faqs = [
             sign messages with
           </li>
           <li>
-            <strong>Have a valid ID document</strong> - You must possess an ID document (e.g. passport, national ID card,
-            driving license or residence permit) that can be verified using SumSub
+            <strong>Have a valid ID document</strong> - You must possess an ID document (e.g. passport, national ID
+            card, driving license or residence permit) that can be verified using SumSub
           </li>
           <li>
-            <strong>Be at least 16 years old</strong> - SumSub can only process the personal data of people aged 16 and over
+            <strong>Be at least 16 years old</strong> - SumSub can only process the personal data of people aged 16 and
+            over
           </li>
         </ol>
         <p className="mb-4">
-          There are no additional restrictions based on NEAR account age or history, nationality, country
-          of residence, sanctions lists, or anything else.
+          There are no additional restrictions based on NEAR account age or history, nationality, country of residence,
+          sanctions lists, or anything else.
         </p>
         <p className="mb-4">Each person can create one NEAR Verified Account linked to one unique identity document.</p>
         <p>
@@ -80,23 +81,19 @@ const faqs = [
     question: "What sort of ID document can I use?",
     answer: (
       <>
-        <p className="mb-4">You can use any government-issued ID document of more than 14,000 document types supported by SumSub, which include:</p>
+        <p className="mb-4">
+          You can use any government-issued ID document of more than 14,000 document types supported by SumSub, which
+          include:
+        </p>
         <ul className="list-disc pl-6 mb-4 space-y-2">
-          <li>
-            Passports
-          </li>
-          <li>
-            National ID cards
-          </li>
-          <li>
-            Driving licenses
-          </li>
-          <li>
-            Residence permits
-          </li>
+          <li>Passports</li>
+          <li>National ID cards</li>
+          <li>Driving licenses</li>
+          <li>Residence permits</li>
         </ul>
         <p>
-          The verification process requires you to upload photos of your ID document and complete a liveness check (a selfie) to confirm you are the person shown on the document.
+          The verification process requires you to upload photos of your ID document and complete a liveness check (a
+          selfie) to confirm you are the person shown on the document.
         </p>
       </>
     ),
@@ -107,10 +104,12 @@ const faqs = [
     answer: (
       <>
         <p className="mb-4">
-          Your identity is verified by SumSub, a leading identity verification provider that processes your data in accordance with strict privacy and data protection regulations.
+          Your identity is verified by SumSub, a leading identity verification provider that processes your data in
+          accordance with strict privacy and data protection regulations.
         </p>
         <p className="mb-6">
-          Citizens House does not receive or store your personal identity information. We only receive confirmation that verification was successful and a unique identifier that prevents duplicate verifications.
+          Citizens House does not receive or store your personal identity information. We only receive confirmation that
+          verification was successful and a unique identifier that prevents duplicate verifications.
         </p>
 
         <p className="font-medium mb-2">What we verify:</p>
@@ -146,7 +145,12 @@ const faqs = [
             Privacy Policy
           </a>{" "}
           and the{" "}
-          <a href="https://sumsub.com/privacy-notice-service/" target="_blank" rel="noopener noreferrer" className="underline">
+          <a
+            href="https://sumsub.com/privacy-notice-service/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
             SumSub Privacy Notice
           </a>
           .

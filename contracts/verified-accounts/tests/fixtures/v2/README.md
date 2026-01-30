@@ -9,18 +9,17 @@ This fixture is used exclusively for **integration testing** of contract upgrade
 The fixture demonstrates:
 
 - Adding `ContractV2` with a new `upgrade_timestamp` field
-- Adding `VerificationV2` with a new `nationality_disclosed` field
 - Lazy migration via `contract_mut()` and `into_current()`
 - Storage key preservation using `std::mem::replace()`
 
 ## Changes from V1
 
-| Component        | V1                 | V2 (Fixture)                       |
-| ---------------- | ------------------ | ---------------------------------- |
-| `ContractV1`     | Current production | Same                               |
-| `ContractV2`     | N/A                | Adds `upgrade_timestamp: u64`      |
-| `VerificationV1` | Current production | Same                               |
-| `VerificationV2` | N/A                | Adds `nationality_disclosed: bool` |
+| Component        | V1                 | V2 (Fixture)                  |
+| ---------------- | ------------------ | ----------------------------- |
+| `ContractV1`     | Current production | Same                          |
+| `ContractV2`     | N/A                | Adds `upgrade_timestamp: u64` |
+| `VerificationV1` | Current production | Same                          |
+| `VerificationV2` | N/A                | Same as V1 (for future use)   |
 
 ## Usage
 
@@ -34,8 +33,15 @@ The fixture is built and used in `tests/integration/versioning_tests.rs` to vali
 ## Building
 
 ```bash
+# Build V1 from main contract (copy to fixtures after building)
+cd contracts/verified-accounts
+cargo near build reproducible-wasm
+cp target/near/verified_accounts.wasm tests/fixtures/v1/
+
+# Build V2 fixture
 cd tests/fixtures/v2
 cargo near build reproducible-wasm
+cp target/near/verified_accounts_v2_fixture.wasm verified_accounts.wasm
 ```
 
 > `reproducible-wasm` builds use the committed source; ensure the repo is clean before building fixtures.

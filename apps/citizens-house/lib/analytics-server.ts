@@ -10,9 +10,8 @@
  *
  * await trackServerEvent("alice.near", {
  *   domain: "verification",
- *   action: "stored_onchain",
+ *   action: "onchain_store_success",
  *   accountId: "alice.near",
- *   attestationType: "passport",
  * })
  * ```
  */

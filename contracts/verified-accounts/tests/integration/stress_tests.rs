@@ -3,7 +3,7 @@
 //! Exercises bulk writes and batch reads under load.
 //! Configure via env vars: STRESS_TOTAL (default 1000), STRESS_BATCH_TOTAL (default 1000)
 
-use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64};
 use allure_rs::prelude::*;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, Contract};
@@ -33,11 +33,8 @@ async fn store_verification(
     backend: &Account,
     contract: &Contract,
     user: &Account,
-    nullifier: &str,
-    attestation_id: u8,
     nonce: [u8; 32],
 ) -> anyhow::Result<()> {
-
     let recipient = contract.id().to_string();
     let (signature, public_key) =
         generate_nep413_signature(user, CHALLENGE_MESSAGE, &nonce, &recipient);
@@ -50,9 +47,7 @@ async fn store_verification(
         .deposit(NearToken::from_yoctonear(1))
         .gas(Gas::from_tgas(100))
         .args_json(json!({
-            "nullifier": nullifier,
             "near_account_id": user.id(),
-            "attestation_id": attestation_id,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -61,7 +56,6 @@ async fn store_verification(
                 "nonce": nonce_base64,
                 "recipient": recipient.clone()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "stress-test"
         }))
         .transact()
@@ -96,9 +90,8 @@ async fn test_stress_bulk_verifications_and_pagination() -> anyhow::Result<()> {
 
     for i in 0..total {
         let user = worker.dev_create_account().await?;
-        let nullifier = format!("stress_nullifier_{:05}", i);
         let nonce = nonce_from_index(i);
-        store_verification(&backend, &contract, &user, &nullifier, 1, nonce).await?;
+        store_verification(&backend, &contract, &user, nonce).await?;
         users.push(user);
 
         let done = i + 1;
@@ -125,7 +118,7 @@ async fn test_stress_bulk_verifications_and_pagination() -> anyhow::Result<()> {
 
     let sample_verified: bool = contract
         .view("is_verified")
-        .args_json(json!({"account_id": users[0].id()}))
+        .args_json(json!({"account_id": users.first().expect("users not empty").id()}))
         .await?
         .json()?;
 
@@ -150,7 +143,10 @@ async fn test_stress_bulk_verifications_and_pagination() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_stress_batch_reads_at_max_limit() -> anyhow::Result<()> {
     let (worker, contract, backend) = init().await?;
-    let total = std::cmp::max(env_usize("STRESS_BATCH_TOTAL", DEFAULT_BATCH_TOTAL), MAX_BATCH_SIZE);
+    let total = std::cmp::max(
+        env_usize("STRESS_BATCH_TOTAL", DEFAULT_BATCH_TOTAL),
+        MAX_BATCH_SIZE,
+    );
     let start = Instant::now();
     let mut account_ids = Vec::with_capacity(total);
 
@@ -158,9 +154,8 @@ async fn test_stress_batch_reads_at_max_limit() -> anyhow::Result<()> {
 
     for i in 0..total {
         let user = worker.dev_create_account().await?;
-        let nullifier = format!("batch_nullifier_{:05}", i);
         let nonce = nonce_from_index(i + 10_000);
-        store_verification(&backend, &contract, &user, &nullifier, 1, nonce).await?;
+        store_verification(&backend, &contract, &user, nonce).await?;
         account_ids.push(user.id().clone());
 
         let done = i + 1;
@@ -174,7 +169,10 @@ async fn test_stress_batch_reads_at_max_limit() -> anyhow::Result<()> {
         assert_eq!(count, total as u32);
     });
 
-    let batch_ids = account_ids[..MAX_BATCH_SIZE].to_vec();
+    let batch_ids = account_ids
+        .get(..MAX_BATCH_SIZE)
+        .expect("total >= MAX_BATCH_SIZE")
+        .to_vec();
 
     let statuses: Vec<bool> = contract
         .view("are_verified")

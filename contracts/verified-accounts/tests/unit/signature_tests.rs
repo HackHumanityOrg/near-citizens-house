@@ -1,8 +1,6 @@
 //! Signature verification tests for verified-accounts contract
 
-use super::helpers::{
-    assert_panic_with, create_signer, create_valid_signature, get_context, test_self_proof,
-};
+use super::helpers::{assert_panic_with, create_signer, create_valid_signature, get_context};
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
 use near_sdk::testing_env;
@@ -42,11 +40,8 @@ fn test_invalid_signature() {
                 };
 
                 contract.store_verification(
-                    "test_nullifier".to_string(),
                     user,
-                    1,
                     sig_data,
-                    test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },
@@ -87,11 +82,8 @@ fn test_invalid_nonce_length() {
                 };
 
                 contract.store_verification(
-                    "test_nullifier".to_string(),
                     user,
-                    1,
                     sig_data,
-                    test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },
@@ -132,11 +124,8 @@ fn test_invalid_signature_length() {
                 };
 
                 contract.store_verification(
-                    "test_nullifier".to_string(),
                     user,
-                    1,
                     sig_data,
-                    test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },
@@ -177,11 +166,8 @@ fn test_nonce_too_long() {
                 };
 
                 contract.store_verification(
-                    "test_nullifier".to_string(),
                     user,
-                    1,
                     sig_data,
-                    test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },
@@ -222,11 +208,8 @@ fn test_signature_too_long() {
                 };
 
                 contract.store_verification(
-                    "test_nullifier".to_string(),
                     user,
-                    1,
                     sig_data,
-                    test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },
@@ -260,21 +243,19 @@ fn test_signature_from_different_key_rejected() {
         "Create signature with other's key but user's public key",
         || {
             let signer_other = create_signer(&other);
-            let mut sig_data =
-                create_valid_signature(&signer_other, &user, "Identify myself", &[9; 32], &accounts(0));
+            let mut sig_data = create_valid_signature(
+                &signer_other,
+                &user,
+                "Identify myself",
+                &[9; 32],
+                &accounts(0),
+            );
             let user_pk = create_signer(&user).public_key();
             sig_data.public_key = user_pk.to_string().parse().unwrap();
 
             assert_panic_with(
                 || {
-                    contract.store_verification(
-                        "nullifier_wrong_key".to_string(),
-                        user.clone(),
-                        1,
-                        sig_data,
-                        test_self_proof(),
-                        "ctx".to_string(),
-                    );
+                    contract.store_verification(user.clone(), sig_data, "ctx".to_string());
                 },
                 "Invalid NEAR signature - NEP-413 verification failed",
             );
@@ -308,14 +289,7 @@ fn test_signature_wrong_nonce_rejected() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "nullifier_wrong_nonce".to_string(),
-                    user.clone(),
-                    1,
-                    sig_data,
-                    test_self_proof(),
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user.clone(), sig_data, "ctx".to_string());
             },
             "Invalid NEAR signature - NEP-413 verification failed",
         );
@@ -351,14 +325,7 @@ fn test_signature_wrong_recipient_rejected() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "nullifier_wrong_recipient".to_string(),
-                    user.clone(),
-                    1,
-                    sig_data,
-                    test_self_proof(),
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user.clone(), sig_data, "ctx".to_string());
             },
             "Signature recipient must match contract account",
         );
@@ -393,14 +360,7 @@ fn test_signature_wrong_challenge_rejected() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "nullifier_wrong_challenge".to_string(),
-                    user.clone(),
-                    1,
-                    sig_data,
-                    test_self_proof(),
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user.clone(), sig_data, "ctx".to_string());
             },
             "Invalid NEAR signature - NEP-413 verification failed",
         );
@@ -433,14 +393,7 @@ fn test_invalid_signature_contents() {
 
         assert_panic_with(
             || {
-                contract.store_verification(
-                    "tampered".to_string(),
-                    user,
-                    1,
-                    sig_data,
-                    test_self_proof(),
-                    "ctx".to_string(),
-                );
+                contract.store_verification(user, sig_data, "ctx".to_string());
             },
             "Invalid NEAR signature - NEP-413 verification failed",
         );

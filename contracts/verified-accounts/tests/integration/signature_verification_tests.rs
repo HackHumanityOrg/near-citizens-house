@@ -1,8 +1,8 @@
 //! Signature verification tests for verified-accounts contract
 
-use crate::helpers::{generate_nep413_signature, init, nonce_to_base64, test_self_proof};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use crate::helpers::{generate_nep413_signature, init, nonce_to_base64};
 use allure_rs::prelude::*;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use near_workspaces::types::{Gas, NearToken};
 use serde_json::json;
 
@@ -27,9 +27,7 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": invalid_signature_base64, // Invalid signature (all zeros)
@@ -38,7 +36,6 @@ async fn test_invalid_signature_rejected() -> anyhow::Result<()> {
                 "nonce": zero_nonce_base64,
                 "recipient": contract.id()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test"
         }))
         .transact()
@@ -79,9 +76,7 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "valid_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -90,7 +85,6 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "test_context"
         }))
         .gas(Gas::from_tgas(100))
@@ -133,95 +127,6 @@ async fn test_valid_signature_verification_succeeds() -> anyhow::Result<()> {
 #[allure_suite_label("Verified Accounts Integration Tests")]
 #[allure_sub_suite("Signature Verification")]
 #[allure_severity("critical")]
-#[allure_tags("integration", "security", "nullifier")]
-#[allure_description(
-    "Verifies that duplicate nullifiers are rejected to prevent double-verification."
-)]
-#[allure_test]
-#[tokio::test]
-async fn test_duplicate_nullifier_rejected() -> anyhow::Result<()> {
-    let (worker, contract, backend) = init().await?;
-    let user1 = worker.dev_create_account().await?;
-    let user2 = worker.dev_create_account().await?;
-
-    // Generate valid signatures for both users
-    let nonce1: [u8; 32] = [1u8; 32];
-    let nonce2: [u8; 32] = [2u8; 32];
-    let challenge = "Identify myself";
-    let recipient = contract.id().to_string();
-
-    let (signature1, public_key1) =
-        generate_nep413_signature(&user1, challenge, &nonce1, &recipient);
-    let (signature2, public_key2) =
-        generate_nep413_signature(&user2, challenge, &nonce2, &recipient);
-
-    // First verification should succeed
-    let first_result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "nullifier": "duplicate_test_nullifier",
-            "near_account_id": user1.id(),
-            "attestation_id": 1,
-            "signature_data": {
-                "account_id": user1.id(),
-                "signature": signature1,
-                "public_key": public_key1,
-                "challenge": challenge,
-                "nonce": nonce_to_base64(&nonce1),
-                "recipient": recipient.clone()
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context1"
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    step("Verify first verification succeeds", || {
-        assert!(
-            first_result.is_success(),
-            "First verification failed: {:?}",
-            first_result.failures()
-        );
-    });
-
-    // Second verification with same nullifier should fail
-    let result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "nullifier": "duplicate_test_nullifier", // Same nullifier!
-            "near_account_id": user2.id(),
-            "attestation_id": 2,
-            "signature_data": {
-                "account_id": user2.id(),
-                "signature": signature2,
-                "public_key": public_key2,
-                "challenge": challenge,
-                "nonce": nonce_to_base64(&nonce2),
-                "recipient": recipient.clone()
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context2"
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    step("Verify duplicate nullifier is rejected", || {
-        assert!(result.is_failure());
-        let failure_msg = format!("{:?}", result.failures());
-        assert!(failure_msg.contains("Nullifier already used"));
-    });
-
-    Ok(())
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Integration Tests")]
-#[allure_sub_suite("Signature Verification")]
-#[allure_severity("critical")]
 #[allure_tags("integration", "security", "duplicate")]
 #[allure_description("Verifies that an already verified account cannot be verified again.")]
 #[allure_test]
@@ -246,9 +151,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "first_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature1,
@@ -257,7 +160,6 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce1),
                 "recipient": recipient.clone()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "context1"
         }))
         .gas(Gas::from_tgas(100))
@@ -277,9 +179,7 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "second_nullifier", // Different nullifier
             "near_account_id": user.id(),    // Same account!
-            "attestation_id": 2,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature2,
@@ -288,7 +188,6 @@ async fn test_account_already_verified_rejected() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce2),
                 "recipient": recipient.clone()
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "context2"
         }))
         .gas(Gas::from_tgas(100))
@@ -331,9 +230,7 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
         .call(contract.id(), "store_verification")
         .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
-            "nullifier": "data_test_nullifier",
             "near_account_id": user.id(),
-            "attestation_id": 1,
             "signature_data": {
                 "account_id": user.id(),
                 "signature": signature,
@@ -342,7 +239,6 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
                 "nonce": nonce_to_base64(&nonce),
                 "recipient": recipient
             },
-            "self_proof": test_self_proof(),
             "user_context_data": "custom_context_data"
         }))
         .gas(Gas::from_tgas(100))
@@ -366,10 +262,6 @@ async fn test_get_full_verification_returns_data() -> anyhow::Result<()> {
 
     step("Verify get_full_verification returns correct data", || {
         // Verify the returned data
-        assert_eq!(
-            account_data.get("attestation_id"),
-            Some(&serde_json::json!(1))
-        );
         assert_eq!(
             account_data.get("user_context_data"),
             Some(&serde_json::json!("custom_context_data"))
@@ -410,9 +302,7 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
             .call(contract.id(), "store_verification")
             .deposit(NearToken::from_yoctonear(1))
             .args_json(json!({
-                "nullifier": format!("pagination_nullifier_{}", i),
                 "near_account_id": user.id(),
-                "attestation_id": (i + 1),
                 "signature_data": {
                     "account_id": user.id(),
                     "signature": signature,
@@ -421,7 +311,6 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
                     "nonce": nonce_to_base64(&nonce),
                     "recipient": recipient
                 },
-                "self_proof": test_self_proof(),
                 "user_context_data": format!("context_{}", i)
             }))
             .gas(Gas::from_tgas(100))
@@ -465,99 +354,6 @@ async fn test_list_verifications_pagination() -> anyhow::Result<()> {
     step("Verify second page returns 1 item", || {
         assert_eq!(page2.len(), 1);
     });
-
-    Ok(())
-}
-
-#[allure_parent_suite("Near Citizens House")]
-#[allure_suite_label("Verified Accounts Integration Tests")]
-#[allure_sub_suite("Signature Verification")]
-#[allure_severity("normal")]
-#[allure_tags("integration", "verification", "attestation")]
-#[allure_description("Test 2.6.5: Verifies that the same attestation_id can be used for different accounts (not a unique constraint).")]
-#[allure_test]
-#[tokio::test]
-async fn test_allow_same_attestation_id_different_accounts() -> anyhow::Result<()> {
-    let (worker, contract, backend) = init().await?;
-    let user1 = worker.dev_create_account().await?;
-    let user2 = worker.dev_create_account().await?;
-
-    // Generate valid signatures for both users
-    let nonce1: [u8; 32] = [3u8; 32];
-    let nonce2: [u8; 32] = [4u8; 32];
-    let challenge = "Identify myself";
-    let recipient = contract.id().to_string();
-
-    let (signature1, public_key1) =
-        generate_nep413_signature(&user1, challenge, &nonce1, &recipient);
-    let (signature2, public_key2) =
-        generate_nep413_signature(&user2, challenge, &nonce2, &recipient);
-
-    // First verification with attestation_id 1
-    let first_result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "nullifier": "attestation_test_nullifier_1",
-            "near_account_id": user1.id(),
-            "attestation_id": 1,  // Same attestation_id
-            "signature_data": {
-                "account_id": user1.id(),
-                "signature": signature1,
-                "public_key": public_key1,
-                "challenge": challenge,
-                "nonce": nonce_to_base64(&nonce1),
-                "recipient": recipient.clone()
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context1"
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    step("Verify first verification succeeds", || {
-        assert!(
-            first_result.is_success(),
-            "First verification failed: {:?}",
-            first_result.failures()
-        );
-    });
-
-    // Second verification with same attestation_id but different account
-    let result = backend
-        .call(contract.id(), "store_verification")
-        .deposit(NearToken::from_yoctonear(1))
-        .args_json(json!({
-            "nullifier": "attestation_test_nullifier_2",  // Different nullifier
-            "near_account_id": user2.id(),                 // Different account
-            "attestation_id": 1,                         // Same attestation_id!
-            "signature_data": {
-                "account_id": user2.id(),
-                "signature": signature2,
-                "public_key": public_key2,
-                "challenge": challenge,
-                "nonce": nonce_to_base64(&nonce2),
-                "recipient": recipient.clone()
-            },
-            "self_proof": test_self_proof(),
-            "user_context_data": "context2"
-        }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?;
-
-    step(
-        "Verify same attestation_id for different accounts is allowed",
-        || {
-            // Should succeed - attestation_id is not a unique constraint
-            assert!(
-                result.is_success(),
-                "Same attestation_id for different accounts should be allowed. Failures: {:?}",
-                result.failures()
-            );
-        },
-    );
 
     Ok(())
 }

@@ -1,28 +1,27 @@
 "use client"
 
-import { useState, useEffect, useRef, Suspense } from "react"
+import { useState, useEffect, useRef, Suspense, useCallback, useMemo } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
-import {
-  useNearWallet,
-  CONSTANTS,
-  statusResponseSchema,
-  getAttestationTypeName,
-  type NearSignatureData,
-  type AttestationId,
-} from "@/lib"
+import { useNearWallet, CONSTANTS, type NearSignatureData } from "@/lib"
 import { trackEvent, getPlatform, identifyVerifiedUser } from "@/lib/analytics"
 import { checkIsVerified } from "@/app/citizens/actions"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
-import { Step2QrScan } from "../../../components/verification/flow/step-2-qr-scan"
+import { Step2SumSub } from "../../../components/verification/flow/step-2-sumsub"
 import { Step3Success } from "../../../components/verification/flow/step-3-success"
+import { StepError } from "../../../components/verification/flow/step-error"
+import { StepHold } from "../../../components/verification/flow/step-hold"
 import { ErrorModal } from "../../../components/verification/flow/error-modal"
+import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
+import { isNonRetryableError, isHoldError, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
 
 enum VerificationProgressStep {
   NotConnected = "not_connected",
   WalletConnected = "wallet_connected",
   MessageSigned = "message_signed",
   VerificationComplete = "verification_complete",
+  Hold = "hold",
+  Error = "error",
 }
 
 function Skeleton({ className = "" }: { className?: string }) {
@@ -109,28 +108,156 @@ function VerificationStartContent() {
   // State management
   const [currentStep, setCurrentStep] = useState<VerificationProgressStep>(VerificationProgressStep.NotConnected)
   const [nearSignature, setNearSignature] = useState<NearSignatureData | null>(null)
-  const [attestationId, setAttestationId] = useState<AttestationId | null>(null)
-  const [sessionId] = useState<string>(() => crypto.randomUUID())
   const [isSigning, setIsSigning] = useState(false)
   const [isCheckingVerification, setIsCheckingVerification] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [errorCode, setErrorCode] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<VerificationErrorCode | null>(null)
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
   const hasTrackedFlowStarted = useRef(false)
+  const hasTrackedAlreadyVerified = useRef(false)
+  const hasTrackedWalletConnected = useRef(false)
+  const lastAccountIdRef = useRef<string | null>(null)
+  const [debugModeActive, setDebugModeActive] = useState(false)
+  const [debugOverrideConnected, setDebugOverrideConnected] = useState<boolean | null>(null)
 
-  // Track flow_started event once on component mount
+  // Effective isConnected - uses debug override when debug mode is active
+  const effectiveIsConnected = debugModeActive && debugOverrideConnected !== null ? debugOverrideConnected : isConnected
+
+  // Debug mode state override
+  const handleDebugStateChange = useCallback(
+    (state: string) => {
+      setDebugModeActive(true)
+      setCurrentStep(state as VerificationProgressStep)
+
+      // Override isConnected based on the state
+      if (state === VerificationProgressStep.NotConnected) {
+        setDebugOverrideConnected(false)
+      } else {
+        setDebugOverrideConnected(true)
+      }
+
+      // If switching to MessageSigned, create a mock signature
+      if (state === VerificationProgressStep.MessageSigned && !nearSignature) {
+        setNearSignature({
+          accountId: accountId || "debug.testnet",
+          signature: "debug-signature",
+          publicKey: "ed25519:debug-public-key",
+          nonce: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", // base64-encoded 32 bytes
+          timestamp: Date.now(),
+          challenge: "Sign this message to verify ownership of your NEAR wallet.",
+          recipient: "citizens-house",
+        })
+      }
+    },
+    [accountId, nearSignature],
+  )
+
+  // Register with debug context
+  const debugStates = useMemo(() => Object.values(VerificationProgressStep), [])
+
+  const debugControls = useMemo(
+    () => [
+      {
+        label: "Reset to Real State",
+        action: () => {
+          setDebugModeActive(false)
+          setDebugOverrideConnected(null)
+          setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
+          setNearSignature(null)
+          setErrorMessage(null)
+          setErrorCode(null)
+          setIsErrorModalOpen(false)
+        },
+      },
+    ],
+    [isConnected],
+  )
+
+  useDebugRegistration({
+    id: "verification-progress",
+    name: "Verification Progress",
+    availableStates: debugStates,
+    currentState: currentStep,
+    onStateChange: handleDebugStateChange,
+    additionalControls: debugControls,
+  })
+
+  // Listen for debug error trigger events
+  useEffect(() => {
+    const handleDebugTriggerError = (
+      event: CustomEvent<{ type: "retryable" | "non-retryable" | "hold"; code: VerificationErrorCode }>,
+    ) => {
+      const { type, code } = event.detail
+      setErrorMessage(`Debug: ${code}`)
+      setErrorCode(code)
+
+      if (type === "hold") {
+        setIsErrorModalOpen(false)
+        setDebugModeActive(true)
+        setCurrentStep(VerificationProgressStep.Hold)
+      } else if (type === "non-retryable") {
+        setIsErrorModalOpen(false)
+        setDebugModeActive(true)
+        setCurrentStep(VerificationProgressStep.Error)
+      } else {
+        setIsErrorModalOpen(true)
+      }
+    }
+
+    const handleDebugClearErrors = () => {
+      setErrorMessage(null)
+      setErrorCode(null)
+      setIsErrorModalOpen(false)
+      // If we're on the error or hold step, go back to the appropriate step
+      if (currentStep === VerificationProgressStep.Error || currentStep === VerificationProgressStep.Hold) {
+        setDebugModeActive(false)
+        setDebugOverrideConnected(null)
+        setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
+      }
+    }
+
+    window.addEventListener("debug:trigger-error", handleDebugTriggerError as EventListener)
+    window.addEventListener("debug:clear-errors", handleDebugClearErrors)
+    return () => {
+      window.removeEventListener("debug:trigger-error", handleDebugTriggerError as EventListener)
+      window.removeEventListener("debug:clear-errors", handleDebugClearErrors)
+    }
+  }, [currentStep, isConnected])
+
+  // Track flow_start event once on component mount
   useEffect(() => {
     if (hasTrackedFlowStarted.current) return
     hasTrackedFlowStarted.current = true
 
     trackEvent({
       domain: "verification",
-      action: "flow_started",
+      action: "flow_start",
       platform: getPlatform(),
     })
   }, [])
 
   useEffect(() => {
+    if (!isConnected) {
+      lastAccountIdRef.current = null
+      hasTrackedAlreadyVerified.current = false
+      hasTrackedWalletConnected.current = false
+      return
+    }
+
+    if (accountId && lastAccountIdRef.current && lastAccountIdRef.current !== accountId) {
+      hasTrackedAlreadyVerified.current = false
+      hasTrackedWalletConnected.current = false
+    }
+
+    if (accountId) {
+      lastAccountIdRef.current = accountId
+    }
+  }, [accountId, isConnected])
+
+  useEffect(() => {
+    // Skip auto state management when debug mode is controlling the state
+    if (debugModeActive) return
+
     if (!isConnected) {
       if (currentStep !== VerificationProgressStep.NotConnected) {
         setCurrentStep(VerificationProgressStep.NotConnected)
@@ -141,10 +268,19 @@ function VerificationStartContent() {
       return
     }
 
-    if (currentStep === VerificationProgressStep.NotConnected) {
+    if (currentStep === VerificationProgressStep.NotConnected && accountId) {
+      if (!hasTrackedWalletConnected.current) {
+        hasTrackedWalletConnected.current = true
+        trackEvent({
+          domain: "verification",
+          action: "wallet_connect_success",
+          platform: getPlatform(),
+          accountId,
+        })
+      }
       setCurrentStep(VerificationProgressStep.WalletConnected)
     }
-  }, [isConnected, currentStep, nearSignature, accountId, sessionId])
+  }, [isConnected, currentStep, nearSignature, accountId, debugModeActive])
 
   // Check if already verified on mount
   useEffect(() => {
@@ -155,19 +291,30 @@ function VerificationStartContent() {
       try {
         const isVerified = await checkIsVerified(accountId)
         if (isVerified) {
-          // Track already_verified event
-          trackEvent({
-            domain: "verification",
-            action: "already_verified",
-            platform: getPlatform(),
-            accountId,
-          })
+          // Track already_verified event (guard against double tracking)
+          if (!hasTrackedAlreadyVerified.current) {
+            hasTrackedAlreadyVerified.current = true
+            trackEvent({
+              domain: "verification",
+              action: "already_verified_detect",
+              platform: getPlatform(),
+              accountId,
+            })
+          }
 
           // Skip to success step
           setCurrentStep(VerificationProgressStep.VerificationComplete)
         }
-      } catch {
-        // Failed to check verification status, continue with flow
+      } catch (err) {
+        // Track verification check failures
+        trackEvent({
+          domain: "verification",
+          action: "verification_check_fail",
+          platform: getPlatform(),
+          accountId,
+          errorMessage: err instanceof Error ? err.message : "Unknown error",
+        })
+        // Continue with verification flow
       } finally {
         setIsCheckingVerification(false)
       }
@@ -176,40 +323,33 @@ function VerificationStartContent() {
     checkVerification()
   }, [accountId])
 
-  // Handle URL params from callback (mobile flow)
+  // Handle URL params from callback
   useEffect(() => {
     const status = searchParams?.get("status")
-    const sessionIdParam = searchParams?.get("sessionId")
+    const accountIdParam = searchParams?.get("accountId")
     const errorParam = searchParams?.get("error")
     const errorCodeParam = searchParams?.get("errorCode")
     let handled = false
 
-    if (status === "success" && sessionIdParam) {
-      // Verification successful from mobile flow
+    if (status === "success" && accountIdParam) {
+      // Verification successful
       setCurrentStep(VerificationProgressStep.VerificationComplete)
-      void (async () => {
-        try {
-          const response = await fetch(`/api/verification/status?sessionId=${encodeURIComponent(sessionIdParam)}`)
-          if (response.ok) {
-            const data = await response.json()
-            // Validate response shape for defense-in-depth
-            const parsed = statusResponseSchema.safeParse(data)
-            if (parsed.success && parsed.data.status === "success") {
-              setAttestationId(parsed.data.attestationId ?? null)
-            }
-          }
-        } catch {
-          // Failed to fetch attestation status, continue without it
-        }
-      })()
       handled = true
     } else if (status === "error") {
-      // Verification failed from mobile flow
+      // Verification failed
       const message = errorParam || "Verification failed. Please try again."
       setErrorMessage(message)
-      setErrorCode(errorCodeParam)
-      setIsErrorModalOpen(true)
-      setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
+      // Cast to VerificationErrorCode - backend validates error codes before sending
+      setErrorCode(errorCodeParam as VerificationErrorCode | null)
+      // Route to appropriate step based on error type
+      if (errorCodeParam && isHoldError(errorCodeParam)) {
+        setCurrentStep(VerificationProgressStep.Hold)
+      } else if (errorCodeParam && isNonRetryableError(errorCodeParam)) {
+        setCurrentStep(VerificationProgressStep.Error)
+      } else {
+        setIsErrorModalOpen(true)
+        setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
+      }
       handled = true
     }
 
@@ -229,7 +369,7 @@ function VerificationStartContent() {
 
     trackEvent({
       domain: "verification",
-      action: "wallet_connect_started",
+      action: "wallet_connect_start",
       platform,
     })
 
@@ -240,7 +380,7 @@ function VerificationStartContent() {
       const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet"
       trackEvent({
         domain: "verification",
-        action: "wallet_connect_failed",
+        action: "wallet_connect_fail",
         platform,
         errorMessage,
       })
@@ -255,11 +395,31 @@ function VerificationStartContent() {
 
     const platform = getPlatform()
 
+    // Re-check if already verified before signing (prevents race conditions)
+    try {
+      const isVerified = await checkIsVerified(accountId)
+      if (isVerified) {
+        // Track already_verified event (guard against double tracking)
+        if (!hasTrackedAlreadyVerified.current) {
+          hasTrackedAlreadyVerified.current = true
+          trackEvent({
+            domain: "verification",
+            action: "already_verified_detect",
+            platform,
+            accountId,
+          })
+        }
+        setCurrentStep(VerificationProgressStep.VerificationComplete)
+        return
+      }
+    } catch {
+      // Continue with signing if check fails - the token endpoint will also check
+    }
+
     trackEvent({
       domain: "verification",
-      action: "sign_started",
+      action: "sign_start",
       platform,
-      sessionId,
       accountId,
     })
 
@@ -275,10 +435,10 @@ function VerificationStartContent() {
 
       trackEvent({
         domain: "verification",
-        action: "sign_completed",
+        action: "sign_success",
         platform,
-        sessionId,
         accountId,
+        verificationAttemptId: signature.nonce,
       })
 
       setNearSignature(signature)
@@ -293,9 +453,8 @@ function VerificationStartContent() {
 
       trackEvent({
         domain: "verification",
-        action: "sign_failed",
+        action: "sign_fail",
         platform,
-        sessionId,
         accountId,
         errorMessage: message,
         wasUserRejection,
@@ -309,42 +468,48 @@ function VerificationStartContent() {
   }
 
   // Handle verification success
-  const handleVerificationSuccess = (verifiedAttestationId?: AttestationId) => {
+  const handleVerificationSuccess = () => {
     // Identify verified user for PostHog segmentation
     if (accountId) {
       identifyVerifiedUser(accountId, {
-        attestationType: verifiedAttestationId ? getAttestationTypeName(verifiedAttestationId) : undefined,
         platform: getPlatform(),
       })
     }
 
     setErrorMessage(null)
-    setAttestationId(verifiedAttestationId ?? null)
     setCurrentStep(VerificationProgressStep.VerificationComplete)
     toast.success("Successfully Verified Identity.")
   }
 
   // Handle verification error
-  const handleVerificationError = (error: string, code?: string) => {
-    setErrorMessage(error)
-    setErrorCode(code || null)
-    setIsErrorModalOpen(true)
+  const handleVerificationError = (code: VerificationErrorCode) => {
+    setErrorCode(code)
+    setErrorMessage(getErrorMessage(code))
+
+    // Route to appropriate step based on error type
+    if (isHoldError(code)) {
+      setCurrentStep(VerificationProgressStep.Hold)
+    } else if (isNonRetryableError(code)) {
+      setCurrentStep(VerificationProgressStep.Error)
+    } else {
+      setIsErrorModalOpen(true)
+    }
   }
 
   // Handle retry from error modal
   const handleRetry = () => {
-    // Determine error context before resetting state
-    const wasSigningError = currentStep === VerificationProgressStep.WalletConnected
+    // Reset debug mode on retry to use real wallet state
+    setDebugModeActive(false)
+    setDebugOverrideConnected(null)
 
     setIsErrorModalOpen(false)
     setErrorMessage(null)
     setErrorCode(null)
     setNearSignature(null)
-    setAttestationId(null)
     setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
 
-    // Auto-retry signing only for signing errors
-    if (wasSigningError && isConnected) {
+    // Always auto-trigger signing for retryable errors (button is labeled "Sign Message")
+    if (isConnected) {
       handleSignMessage()
     }
   }
@@ -353,7 +518,6 @@ function VerificationStartContent() {
   const handleDisconnect = () => {
     disconnect()
     setNearSignature(null)
-    setAttestationId(null)
     setErrorMessage(null)
     setCurrentStep(VerificationProgressStep.NotConnected)
   }
@@ -366,8 +530,8 @@ function VerificationStartContent() {
         {(currentStep === VerificationProgressStep.NotConnected ||
           currentStep === VerificationProgressStep.WalletConnected) && (
           <Step1WalletSignature
-            accountId={accountId}
-            isConnected={isConnected}
+            accountId={effectiveIsConnected ? accountId : null}
+            isConnected={effectiveIsConnected}
             isLoading={isLoading || isCheckingVerification}
             isSigning={isSigning}
             onConnect={handleConnect}
@@ -376,11 +540,10 @@ function VerificationStartContent() {
           />
         )}
 
-        {/* Step 2: QR Scan */}
+        {/* Step 2: SumSub Verification */}
         {currentStep === VerificationProgressStep.MessageSigned && nearSignature && (
-          <Step2QrScan
+          <Step2SumSub
             nearSignature={nearSignature}
-            sessionId={sessionId}
             onSuccess={handleVerificationSuccess}
             onError={handleVerificationError}
           />
@@ -388,11 +551,36 @@ function VerificationStartContent() {
 
         {/* Step 3: Success */}
         {currentStep === VerificationProgressStep.VerificationComplete && accountId && (
-          <Step3Success
-            accountId={accountId}
-            attestationId={attestationId}
-            sessionId={sessionId}
-            onDisconnect={handleDisconnect}
+          <Step3Success accountId={accountId} onDisconnect={handleDisconnect} />
+        )}
+
+        {/* Hold Step: Verification under review */}
+        {currentStep === VerificationProgressStep.Hold && (
+          <StepHold
+            errorCode={errorCode || undefined}
+            errorMessage={errorMessage || undefined}
+            isConnected={isConnected}
+            accountId={accountId || undefined}
+            onDisconnect={() => {
+              disconnect()
+              router.push("/")
+            }}
+            onStatusRecovered={handleVerificationSuccess}
+          />
+        )}
+
+        {/* Error Step: Non-retryable errors */}
+        {currentStep === VerificationProgressStep.Error && errorCode && (
+          <StepError
+            errorCode={errorCode}
+            errorMessage={errorMessage || undefined}
+            isConnected={isConnected}
+            accountId={accountId || undefined}
+            onDisconnect={() => {
+              disconnect()
+              router.push("/")
+            }}
+            onStatusRecovered={handleVerificationSuccess}
           />
         )}
       </div>
@@ -402,6 +590,7 @@ function VerificationStartContent() {
         isOpen={isErrorModalOpen}
         errorMessage={errorMessage || undefined}
         errorCode={errorCode || undefined}
+        accountId={accountId || undefined}
         onClose={() => setIsErrorModalOpen(false)}
         onRetry={handleRetry}
       />

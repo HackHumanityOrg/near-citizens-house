@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "exclude": ["exports", "types", "unresolved"],
+  "workspaces": {
+    ".": {
+      "entry": ["checkly.config.ts", "checkly/**/*.{ts,check.ts}"],
+      "ignoreBinaries": ["rustup", "allure", "tsx"]
+    },
+    "apps/citizens-house": {
+      "entry": ["scripts/*.ts"],
+      "project": ["**/*.{ts,tsx}", "!e2e/**"],
+      "ignore": ["**/*.d.ts", "components/ui/**"],
+      "ignoreDependencies": ["tailwindcss", "tw-animate-css", "buffer", "postcss-load-config"]
+    }
+  }
+}

@@ -1,8 +1,7 @@
 //! Pause/Unpause tests for verified-accounts contract
 
 use super::helpers::{
-    assert_panic_with, get_context, parse_event, test_self_proof, ContractPausedEvent,
-    ContractUnpausedEvent,
+    assert_panic_with, get_context, parse_event, ContractPausedEvent, ContractUnpausedEvent,
 };
 use allure_rs::prelude::*;
 use near_sdk::test_utils::{accounts, get_logs};
@@ -159,11 +158,8 @@ fn test_store_verification_when_paused() {
                 };
 
                 contract.store_verification(
-                    "test_nullifier".to_string(),
                     user,
-                    1,
                     sig_data,
-                    test_self_proof(),
                     "test_user_context_data".to_string(),
                 );
             },

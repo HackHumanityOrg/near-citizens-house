@@ -8,7 +8,7 @@
 
 use allure_rs::prelude::*;
 use verified_accounts::interface::VerificationV1;
-use verified_accounts::{SelfProofData, StorageKey, VersionedVerification, ZkProof};
+use verified_accounts::{StorageKey, VersionedVerification};
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Unit Tests")]
@@ -22,32 +22,24 @@ Verifies that StorageKey enum discriminants remain constant across contract vers
 These discriminants are used as storage prefixes for NEAR SDK collections.
 
 ## Why This Matters
-- If StorageKey::Nullifiers changes from 0x00 to 0x01, all existing nullifiers become orphaned
+- If StorageKey::Accounts changes from 0x00 to 0x01, all existing verifications become orphaned
 - This is a **silent data corruption** bug - contract deploys but data is lost
 - Borsh uses enum declaration order to assign discriminants (0x00, 0x01, 0x02...)
 
 ## Expected Values
-- Nullifiers: 0x00
-- Accounts: 0x01
+- Accounts: 0x00
 "#
 )]
 #[allure_test]
 #[test]
 fn test_storage_key_discriminants_are_stable() {
     // Serialize each variant and check the discriminant byte (first byte)
-    let nullifiers_bytes =
-        near_sdk::borsh::to_vec(&StorageKey::Nullifiers).expect("Nullifiers should serialize");
     let accounts_bytes =
         near_sdk::borsh::to_vec(&StorageKey::Accounts).expect("Accounts should serialize");
 
     assert_eq!(
-        nullifiers_bytes.first().copied(),
-        Some(0x00),
-        "StorageKey::Nullifiers discriminant changed! This will corrupt nullifier data."
-    );
-    assert_eq!(
         accounts_bytes.first().copied(),
-        Some(0x01),
+        Some(0x00),
         "StorageKey::Accounts discriminant changed! This will corrupt verification data."
     );
 }
@@ -75,21 +67,8 @@ Verifies that VersionedVerification enum discriminants remain constant for recor
 fn test_versioned_verification_discriminants_are_stable() {
     // Create a minimal V1 verification for testing
     let v1 = VersionedVerification::V1(VerificationV1 {
-        nullifier: "test".to_string(),
         near_account_id: "test.near".parse().expect("valid account"),
-        attestation_id: 1,
         verified_at: 0,
-        self_proof: SelfProofData {
-            proof: ZkProof {
-                a: ["0".to_string(), "0".to_string()],
-                b: [
-                    ["0".to_string(), "0".to_string()],
-                    ["0".to_string(), "0".to_string()],
-                ],
-                c: ["0".to_string(), "0".to_string()],
-            },
-            public_signals: vec![],
-        },
         user_context_data: String::new(),
     });
     let v1_bytes = near_sdk::borsh::to_vec(&v1).expect("V1 should serialize");

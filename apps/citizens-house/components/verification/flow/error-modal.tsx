@@ -2,32 +2,52 @@
 
 import { useEffect, useRef } from "react"
 import { Button } from "@near-citizens/ui"
-import { trackEvent } from "@/lib/analytics"
-import { getErrorTitle, getErrorMessage, isNonRetryableError } from "@/lib/schemas/errors"
+import { trackEvent, getPlatform } from "@/lib/analytics"
+import { getErrorTitle, getErrorMessage, isNonRetryableError, type VerificationErrorCode } from "@/lib/schemas/errors"
 
 type ErrorStage = "wallet_connect" | "message_sign" | "qr_scan" | "polling" | "unknown"
 
-function determineErrorStage(errorCode?: string): ErrorStage {
+/**
+ * Map error codes to their verification stage.
+ * Uses explicit mapping instead of string matching for reliability.
+ */
+const ERROR_STAGE_MAP: Partial<Record<VerificationErrorCode, ErrorStage>> = {
+  // Message signing errors
+  NEAR_SIGNATURE_INVALID: "message_sign",
+  SIGNATURE_EXPIRED: "message_sign",
+  SIGNATURE_TIMESTAMP_INVALID: "message_sign",
+  NONCE_ALREADY_USED: "message_sign",
+
+  // Polling/timeout errors
+  TIMEOUT: "polling",
+  VERIFICATION_ON_HOLD: "polling",
+  VERIFICATION_REJECTED: "polling",
+  VERIFICATION_RETRY: "polling",
+  DUPLICATE_IDENTITY: "polling",
+  ACCOUNT_ALREADY_VERIFIED: "polling",
+  CONTRACT_PAUSED: "polling",
+
+  // Token fetch errors map to unknown since they're pre-verification
+  TOKEN_FETCH_FAILED: "unknown",
+}
+
+function determineErrorStage(errorCode?: VerificationErrorCode): ErrorStage {
   if (!errorCode) return "unknown"
-  const code = errorCode.toUpperCase()
-  if (code.includes("WALLET") || code.includes("CONNECT")) return "wallet_connect"
-  if (code.includes("SIGN") || code.includes("SIGNATURE")) return "message_sign"
-  if (code.includes("QR") || code.includes("SCAN")) return "qr_scan"
-  if (code.includes("TIMEOUT") || code.includes("POLL") || code.includes("EXPIRED")) return "polling"
-  return "unknown"
+  return ERROR_STAGE_MAP[errorCode] ?? "unknown"
 }
 
 interface ErrorModalProps {
   isOpen: boolean
   errorMessage?: string
-  errorCode?: string
+  errorCode?: VerificationErrorCode
+  accountId?: string
   onClose: () => void
   onRetry: () => void
 }
 
-export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }: ErrorModalProps) {
+export function ErrorModal({ isOpen, errorMessage, errorCode, accountId, onClose, onRetry }: ErrorModalProps) {
   const hasTrackedErrorShown = useRef(false)
-  const lastErrorCode = useRef<string | undefined>(undefined)
+  const lastErrorCode = useRef<VerificationErrorCode | undefined>(undefined)
 
   // Track error_shown when modal opens
   useEffect(() => {
@@ -44,11 +64,13 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
 
     trackEvent({
       domain: "verification",
-      action: "error_shown",
-      errorCode: errorCode || "unknown",
+      action: "error_modal_view",
+      errorCode: errorCode || "UNKNOWN",
       stage: determineErrorStage(errorCode),
+      platform: getPlatform(),
+      accountId: accountId || undefined,
     })
-  }, [isOpen, errorCode])
+  }, [isOpen, errorCode, accountId])
 
   // Close on Escape key
   useEffect(() => {
@@ -60,8 +82,10 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
         if (!isNonRetryableError(errorCode)) {
           trackEvent({
             domain: "verification",
-            action: "error_abandoned",
-            errorCode: errorCode || "unknown",
+            action: "error_modal_abandon",
+            errorCode: errorCode || "UNKNOWN",
+            platform: getPlatform(),
+            accountId: accountId || undefined,
           })
         }
         onClose()
@@ -70,7 +94,7 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
 
     document.addEventListener("keydown", handleEscape)
     return () => document.removeEventListener("keydown", handleEscape)
-  }, [isOpen, onClose, errorCode])
+  }, [isOpen, onClose, errorCode, accountId])
 
   if (!isOpen) return null
 
@@ -85,8 +109,10 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
     if (!isNonRetryable) {
       trackEvent({
         domain: "verification",
-        action: "error_abandoned",
-        errorCode: errorCode || "unknown",
+        action: "error_modal_abandon",
+        errorCode: errorCode || "UNKNOWN",
+        platform: getPlatform(),
+        accountId: accountId || undefined,
       })
     }
     onClose()
@@ -150,8 +176,10 @@ export function ErrorModal({ isOpen, errorMessage, errorCode, onClose, onRetry }
               onClick={() => {
                 trackEvent({
                   domain: "verification",
-                  action: "error_retry_clicked",
-                  errorCode: errorCode || "unknown",
+                  action: "error_modal_retry_click",
+                  errorCode: errorCode || "UNKNOWN",
+                  platform: getPlatform(),
+                  accountId: accountId || undefined,
                 })
                 onRetry()
               }}
