@@ -26,25 +26,12 @@ const monitoringGroup = new CheckGroupV2("citizens-house-monitoring-group", {
   }),
 })
 
-// Environment variables for contract checks
-const contractEnvVars = [
-  {
-    key: "NEAR_CONTRACT_ID",
-    value: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT ?? "verification-v1.hh-testinprod.near",
-  },
-  {
-    key: "NEAR_BACKEND_WALLET",
-    value: process.env.NEAR_ACCOUNT_ID ?? "hh-testinprod.near",
-  },
-  {
-    key: "NEAR_RPC_URL",
-    value: process.env.NEAR_RPC_URL ?? "https://rpc.mainnet.fastnear.com",
-  },
-  {
-    key: "NEARBLOCKS_API_URL",
-    value: process.env.NEARBLOCKS_API_URL ?? "https://api.nearblocks.io",
-  },
-]
+// Environment variables are configured globally in Checkly account settings.
+// Required variables:
+// - NEAR_CONTRACT_ID: The verification contract to monitor
+// - NEAR_BACKEND_WALLET: Expected backend wallet address
+// - NEAR_RPC_URL: NEAR RPC endpoint
+// - NEARBLOCKS_API_URL: NearBlocks API endpoint
 
 // =============================================================================
 // URL Monitor: Website uptime and response time
@@ -68,9 +55,8 @@ export const webAppUptime = new UrlMonitor("citizens-house-uptime", {
 
 // =============================================================================
 // API Check: NEAR RPC availability (lightweight)
+// Note: API checks require URL at deploy time, uses NEAR_RPC_URL env var or default
 // =============================================================================
-const rpcUrl = process.env.NEAR_RPC_URL ?? "https://rpc.mainnet.fastnear.com"
-
 export const rpcHealthCheck = new ApiCheck("near-rpc-health", {
   name: "NEAR RPC Connectivity",
   group: monitoringGroup,
@@ -79,7 +65,7 @@ export const rpcHealthCheck = new ApiCheck("near-rpc-health", {
   maxResponseTime: 5000,
   request: {
     method: "POST",
-    url: rpcUrl,
+    url: "{{NEAR_RPC_URL}}",
     headers: [{ key: "Content-Type", value: "application/json" }],
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -105,7 +91,6 @@ export const contractStateCheck = new MultiStepCheck("near-contract-state", {
   code: {
     entrypoint: path.join(__dirname, "contract-state.spec.ts"),
   },
-  environmentVariables: contractEnvVars,
 })
 
 // =============================================================================
@@ -119,7 +104,6 @@ export const verificationActivityCheck = new MultiStepCheck("near-verification-a
   code: {
     entrypoint: path.join(__dirname, "verification-activity.spec.ts"),
   },
-  environmentVariables: contractEnvVars,
 })
 
 // =============================================================================
@@ -133,7 +117,6 @@ export const securityMonitorCheck = new MultiStepCheck("near-security-monitor", 
   code: {
     entrypoint: path.join(__dirname, "security-monitor.spec.ts"),
   },
-  environmentVariables: contractEnvVars,
 })
 
 // =============================================================================
