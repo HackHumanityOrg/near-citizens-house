@@ -7,7 +7,6 @@ import { ThemeProvider } from "@near-citizens/ui"
 import { UserJotWidget } from "@/lib"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
-import { BetaBanner } from "@/components/layout/beta-banner"
 import { ConsentBanner } from "@/components/layout/consent-banner"
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "./providers"
@@ -29,7 +28,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "NEAR Citizens House",
-  description: "Verify your identity and link to your NEAR wallet",
+  description: "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
 }
 
 export default function RootLayout({
@@ -41,11 +40,10 @@ export default function RootLayout({
     // suppressHydrationWarning required for next-themes - theme stored in localStorage causes hydration mismatch
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased pt-8 flex flex-col min-h-screen bg-white dark:bg-[#181921]`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased flex flex-col min-h-screen bg-white dark:bg-[#181921]`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
-            <BetaBanner />
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
