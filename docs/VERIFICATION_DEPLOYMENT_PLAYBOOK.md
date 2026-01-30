@@ -13,7 +13,7 @@ Step-by-step guide to deploy the NEAR Verified Accounts system.
 - Backend wallet keys (`NEAR_ACCOUNT_ID` / `NEAR_PRIVATE_KEY`) must remain active; any funded account can serve as the backend wallet, but this playbook uses a sub-account under `$ROOT`
 - Use reproducible builds (`cargo near build reproducible-wasm`) and record the WASM SHA-256
 - **Never reinitialize on upgrades** - use `without-init-call` flag
-- Rotate contract full-access keys to the multisig, then delete the root account's key; optionally lock upgrades by removing all full-access keys
+- Rotate contract full-access keys to the multisig, then delete the contract's initial key; optionally lock upgrades by removing all full-access keys
 
 ---
 
@@ -239,6 +239,7 @@ Check the `Contract (SHA-256 checksum hex)` line matches the hash from Step 3.2.
 
 Rotate the contract account's full-access keys to the multisig, then delete the contract's initial key. This only affects the **contract account**; do **not** delete backend wallet keys used by the web app.
 
+> **Note:** A NEAR multisig is a deployed contract that requires multiple signatures to authorize transactions. To give a multisig control over another account, you add a full-access key that the multisig infrastructure controls.
 
 ```bash
 # List keys
@@ -320,7 +321,7 @@ near contract deploy $CONTRACT.$ROOT \
 
 ## Rollback (if deployment fails)
 
-Keep the last known good WASM from Step 3.2 so you can redeploy it if needed. If you already removed the root account's key, use the multisig to sign the rollback deployment.
+Keep the last known good WASM from Step 3.2 so you can redeploy it if needed. If you already removed the contract's initial key, use the multisig to sign the rollback deployment.
 
 ```bash
 near contract deploy $CONTRACT.$ROOT \
