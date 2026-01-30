@@ -7,7 +7,6 @@ import { ThemeProvider } from "@near-citizens/ui"
 import { UserJotWidget } from "@/lib"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
-import { BetaBanner } from "@/components/layout/beta-banner"
 import { ConsentBanner } from "@/components/layout/consent-banner"
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "./providers"
@@ -45,7 +44,6 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
-            <BetaBanner />
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
