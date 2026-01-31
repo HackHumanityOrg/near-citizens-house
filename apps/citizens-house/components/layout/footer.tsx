@@ -47,7 +47,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk"
             >
-              Built by HackHumanity
+              Built by Hack Humanity
             </a>
           </div>
           <span className="text-[14px] leading-[1.2] text-[#040404] dark:text-white tracking-[0.14px]">•</span>
@@ -76,7 +76,7 @@ export function Footer() {
       {/* Desktop Footer - Copyright Section */}
       <div className="hidden md:flex items-center justify-between px-[80px] py-[24px] border-t border-[rgba(0,0,0,0.1)] dark:border-[#2a2c3b]">
         <p className="text-[14px] leading-[14px] text-[#8e8e93] dark:text-[#b3b3b3] font-fk-grotesk">
-          © {new Date().getFullYear()} Hack Humanity.{" "}
+          © {new Date().getFullYear()} NEAR Foundation.{" "}
           <a
             href="https://github.com/HackHumanityOrg/near-citizens-house/blob/main/LICENSE"
             target="_blank"
@@ -123,7 +123,7 @@ export function Footer() {
             rel="noopener noreferrer"
             className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk text-right"
           >
-            Built by HackHumanity
+            Built by Hack Humanity
           </a>
           <a
             href="https://github.com/HackHumanityOrg/near-citizens-house"
@@ -150,7 +150,7 @@ export function Footer() {
       {/* Mobile Footer - Copyright */}
       <div className="flex md:hidden items-center justify-start px-[24px] py-[24px] border-t border-[rgba(0,0,0,0.1)] dark:border-[#2a2c3b]">
         <p className="text-[14px] leading-[14px] text-[#8e8e93] dark:text-[#b3b3b3] font-fk-grotesk">
-          © {new Date().getFullYear()} Hack Humanity.{" "}
+          © {new Date().getFullYear()} NEAR Foundation.{" "}
           <a
             href="https://github.com/HackHumanityOrg/near-citizens-house/blob/main/LICENSE"
             target="_blank"

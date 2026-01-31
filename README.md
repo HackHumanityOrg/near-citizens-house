@@ -2,11 +2,8 @@
 
 [![Tests](https://img.shields.io/endpoint?url=https://hackhumanityorg.github.io/near-citizens-house/test-results.json)](https://github.com/HackHumanityOrg/near-citizens-house/actions)
 [![Allure Report](https://img.shields.io/badge/Allure_Report-View-blueviolet)](https://hackhumanityorg.github.io/near-citizens-house/)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house&root-directory=apps%2Fcitizens-house&env=NEXT_PUBLIC_NEAR_NETWORK,NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,NEXT_PUBLIC_SELF_NETWORK,NEXT_PUBLIC_APP_URL,NEAR_ACCOUNT_ID,NEAR_PRIVATE_KEY,FASTNEAR_API_KEY,CELO_RPC_URL,NEXT_PUBLIC_POSTHOG_KEY,POSTHOG_PERSONAL_API_KEY,POSTHOG_PROJECT_ID,NEXT_PUBLIC_USERJOT_PROJECT_ID,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,REDIS_URL&envDefaults=%7B%22NEXT_PUBLIC_NEAR_NETWORK%22%3A%22mainnet%22%2C%22NEXT_PUBLIC_SELF_NETWORK%22%3A%22mainnet%22%2C%22CELO_RPC_URL%22%3A%22https%3A//forno.celo.org%22%2C%22NEXT_PUBLIC_APP_URL%22%3A%22https%3A//your-app.vercel.app%22%7D&envDescription=Production%20deployment.%20Re-add%20NEAR_PRIVATE_KEY%20as%20Sensitive%20after%20deploy!&envLink=https%3A%2F%2Fgithub.com%2FHackHumanityOrg%2Fnear-citizens-house%2Fblob%2Fmain%2Fdocs%2FVERIFICATION_DEPLOYMENT_PLAYBOOK.md&project-name=near-citizens-house&repository-name=near-citizens-house&integration-ids=oac_4nMvFhFSbAGAK6MU5mUFFILs)
 
 A pnpm workspace monorepo for NEAR governance and identity verification.
-
-Click the Deploy button to deploy your own instance. You'll need to deploy the [smart contracts](./docs/VERIFICATION_DEPLOYMENT_PLAYBOOK.md) first.
 
 ## Project Structure
 
@@ -200,4 +197,4 @@ Questions or issues? Open an issue on [GitHub](https://github.com/HackHumanityOr
 
 ---
 
-**Created by** [HackHumanity](https://hackhumanity.com) • **Powered by** [Self.xyz](https://self.xyz) • **License:** MIT
+**Created by** [Hack Humanity](https://hackhumanity.com) and [NEAR Foundation](https://near.foundation) • Copyright © 2026 NEAR Foundation • **License:** MIT
