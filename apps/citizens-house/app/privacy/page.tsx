@@ -5,8 +5,8 @@ import { StarPattern } from "@/components/verification/icons/star-pattern"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@near-citizens/ui"
 
 const LAST_UPDATED_DATES = {
-  privacy: "31st January, 2026",
-  "eu-uk": "January 6, 2026",
+  privacy: "31st January 2026",
+  "eu-uk": "31st January 2026",
 }
 
 export default function PrivacyPage() {
@@ -713,12 +713,6 @@ function EUUKPrivacyContent() {
               Governance participation data, such as verification status or eligibility indicators.
             </li>
           </ul>
-          <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            <strong>Important clarification:</strong> NEAR Citizens House does not collect or store copies of passports,
-            raw biometric identifiers, biometric templates, or passport chip data. Identity verification is performed by
-            a third-party provider, and NEAR Citizens House receives only confirmation or cryptographic proof of
-            verification status.
-          </p>
         </div>
       </section>
 
@@ -730,8 +724,7 @@ function EUUKPrivacyContent() {
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
             Personal data is collected directly from you when you interact with the Services, and automatically through
-            your use of the Services. Limited verification-related information may also be received from third-party
-            identity verification providers in the form of confirmation or cryptographic proof.
+            your use of the Services.
           </p>
         </div>
       </section>
