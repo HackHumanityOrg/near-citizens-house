@@ -5,8 +5,8 @@ import { StarPattern } from "@/components/verification/icons/star-pattern"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@near-citizens/ui"
 
 const LAST_UPDATED_DATES = {
-  privacy: "January 27, 2026",
-  "eu-uk": "January 6, 2026",
+  privacy: "31st January 2026",
+  "eu-uk": "31st January 2026",
 }
 
 export default function PrivacyPage() {
@@ -91,9 +91,9 @@ function PrivacyPolicyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            NEAR Citizen House (&ldquo;Company&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo; or &ldquo;we&rdquo;) respects
+            NEAR Citizens House (&ldquo;Company&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo; or &ldquo;we&rdquo;) respects
             your privacy and is committed to providing you with information about our and our service providers&apos;
-            data handling practices through this privacy policy. NEAR Citizen House operates a governance participation
+            data handling practices through this privacy policy. NEAR Citizens House operates a governance participation
             and identity verification platform designed to enable verified participation in governance processes within
             the NEAR ecosystem.
           </p>
@@ -103,12 +103,12 @@ function PrivacyPolicyContent() {
             you use any mobile applications to which this policy is posted (collectively, the &ldquo;Apps&rdquo; and
             each, an &ldquo;App&rdquo;), as well as any tools, code or other software made available for download on the
             Website or the Apps (collectively, the &ldquo;Tools&rdquo;). For clarity, &ldquo;Apps&rdquo; and
-            &ldquo;Tools&rdquo; refer only to applications and tools, if any, that are operated by NEAR Citizen House
+            &ldquo;Tools&rdquo; refer only to applications and tools, if any, that are operated by NEAR Citizens House
             and that link to or reference this Privacy Policy.
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
             This privacy policy is part of the Terms of Use applicable to the use of the Website and any related
-            applications or tools operated by NEAR Citizen House. Please review this policy together with the Terms of
+            applications or tools operated by NEAR Citizens House. Please review this policy together with the Terms of
             Use, to understand all of your rights and obligations, and how we operate the Website, the Apps and the
             Tools.
           </p>
@@ -117,7 +117,7 @@ function PrivacyPolicyContent() {
             in the Terms of Use.
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            By using the Website and any related applications or tools operated by NEAR Citizen House, you accept and
+            By using the Website and any related applications or tools operated by NEAR Citizens House, you accept and
             agree to be bound and abide by this privacy policy and the Terms of Use. If you do not want to agree to this
             privacy policy or the Terms of Use, you must not access or use the Website and any related applications or
             tools.
@@ -151,7 +151,7 @@ function PrivacyPolicyContent() {
               providers); or
             </li>
             <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-              Any third party not operated or controlled by NEAR Citizen House, including third-party websites,
+              Any third party not operated or controlled by NEAR Citizens House, including third-party websites,
               applications, or services, even if linked from the Website.
             </li>
           </ul>
@@ -268,10 +268,6 @@ function PrivacyPolicyContent() {
               When you contact our or our service providers&apos; customer service agents, if available.
             </li>
           </ul>
-          <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            NEAR Citizen House does not collect or store copies of passports, raw biometric identifiers, or passport
-            chip data. Identity verification is performed by a third-party provider as described below.
-          </p>
         </div>
       </section>
 
@@ -282,18 +278,8 @@ function PrivacyPolicyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            NEAR Citizen House uses a third-party identity verification provider to enable users to prove that they are
-            a unique human being for governance participation.
-          </p>
-          <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            Identity verification may involve scanning a passport or other biometric identity document using a
-            third-party mobile application. This process generates a cryptographic or zero-knowledge proof confirming
-            identity attributes without revealing or storing the underlying document.
-          </p>
-          <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            NEAR Citizen House does not receive, store, or process raw biometric data or passport images. Users are
-            subject to the privacy policy of the third-party identity verification provider when completing identity
-            verification.
+            Identity verification is performed by independent third-party providers, and carried out in accordance
+            with NEAR Foundation&apos;s internal policies and procedures.
           </p>
         </div>
       </section>
@@ -678,12 +664,12 @@ function EUUKPrivacyContent() {
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
             This European Union and United Kingdom Privacy Addendum (&ldquo;EU/UK Addendum&rdquo;) to this Privacy
-            Policy applies only to individuals who access or use the NEAR Citizen House website, applications, or
+            Policy applies only to individuals who access or use the NEAR Citizens House website, applications, or
             related tools (collectively, the &ldquo;Services&rdquo;) from the European Economic Area
             (&ldquo;EEA&rdquo;), Switzerland, or the United Kingdom.
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            This EU/UK Addendum supplements the NEAR Citizen House Privacy Policy and applies solely to the processing
+            This EU/UK Addendum supplements the NEAR Citizens House Privacy Policy and applies solely to the processing
             of personal data subject to the EU General Data Protection Regulation (&ldquo;GDPR&rdquo;) and the UK GDPR.
             In the event of a conflict, this Addendum controls for EU/UK users.
           </p>
@@ -697,7 +683,7 @@ function EUUKPrivacyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            For purposes of the GDPR and UK GDPR, NEAR Citizen House is the data controller with respect to personal
+            For purposes of the GDPR and UK GDPR, NEAR Citizens House is the data controller with respect to personal
             data processed through the Services.
           </p>
         </div>
@@ -710,7 +696,7 @@ function EUUKPrivacyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            As described in the main Privacy Policy, NEAR Citizen House processes limited categories of personal data,
+            As described in the main Privacy Policy, NEAR Citizens House processes limited categories of personal data,
             which may include:
           </p>
           <ul className="list-disc pl-6 flex flex-col gap-[8px]">
@@ -727,12 +713,6 @@ function EUUKPrivacyContent() {
               Governance participation data, such as verification status or eligibility indicators.
             </li>
           </ul>
-          <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            <strong>Important clarification:</strong> NEAR Citizen House does not collect or store copies of passports,
-            raw biometric identifiers, biometric templates, or passport chip data. Identity verification is performed by
-            a third-party provider, and NEAR Citizen House receives only confirmation or cryptographic proof of
-            verification status.
-          </p>
         </div>
       </section>
 
@@ -744,8 +724,7 @@ function EUUKPrivacyContent() {
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
             Personal data is collected directly from you when you interact with the Services, and automatically through
-            your use of the Services. Limited verification-related information may also be received from third-party
-            identity verification providers in the form of confirmation or cryptographic proof.
+            your use of the Services.
           </p>
         </div>
       </section>
@@ -809,7 +788,7 @@ function EUUKPrivacyContent() {
             </li>
           </ul>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            NEAR Citizen House does not use personal data for behavioral advertising or commercial profiling.
+            NEAR Citizens House does not use personal data for behavioral advertising or commercial profiling.
           </p>
         </div>
       </section>
@@ -821,7 +800,7 @@ function EUUKPrivacyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            NEAR Citizen House does not engage in automated decision-making or profiling that produces legal or
+            NEAR Citizens House does not engage in automated decision-making or profiling that produces legal or
             similarly significant effects on individuals within the meaning of Article 22 of the GDPR.
           </p>
         </div>
@@ -930,7 +909,7 @@ function EUUKPrivacyContent() {
             Email: info@citizenshouse.org
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            Subject line: &ldquo;EU/UK Privacy Rights &ndash; NEAR Citizen House&rdquo;
+            Subject line: &ldquo;EU/UK Privacy Rights &ndash; NEAR Citizens House&rdquo;
           </p>
         </div>
       </section>
