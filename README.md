@@ -197,4 +197,4 @@ Questions or issues? Open an issue on [GitHub](https://github.com/HackHumanityOr
 
 ---
 
-**Created by** [HackHumanity](https://hackhumanity.com) • **Powered by** [Self.xyz](https://self.xyz) • **License:** MIT
+**Created by** [Hack Humanity](https://hackhumanity.com) and [NEAR Foundation](https://near.foundation) • Copyright © 2026 NEAR Foundation • **License:** MIT
