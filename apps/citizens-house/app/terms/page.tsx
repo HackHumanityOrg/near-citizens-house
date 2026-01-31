@@ -26,7 +26,7 @@ export default function TermsPage() {
             Terms of Use
           </h1>
           <p className="text-[22px] leading-[30px] font-fk-grotesk font-normal text-black dark:text-white text-center">
-            Last updated: January 27, 2026
+            Last updated: 31st January 2026
           </p>
         </div>
       </section>
@@ -41,13 +41,13 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Welcome to NEAR Citizen House (&ldquo;NEAR Citizen House&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or
+                Welcome to NEAR Citizens House (&ldquo;NEAR Citizens House&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or
                 &ldquo;our&rdquo;), an initiative operated by NEAR Foundation (&ldquo;Operator&rdquo;).
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of the NEAR Citizen House website
+                These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of the NEAR Citizens House website
                 located at https://citizenshouse.org and any related applications, interfaces, or tools operated by NEAR
-                Citizen House (collectively, the &ldquo;Services&rdquo;).
+                Foundation (collectively, the &ldquo;Services&rdquo;).
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 By accessing, browsing, or using the Services, or by clicking &ldquo;accept&rdquo; where presented, you
@@ -110,6 +110,10 @@ export default function TermsPage() {
                   Will not attempt to bypass, spoof, reuse, or manipulate identity verification mechanisms;
                 </li>
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
+                  Are not a resident, citizen, or located in any jurisdiction subject to comprehensive sanctions imposed
+                  by the United States, the United Kingdom, the European Union, or the United Nations;
+                </li>
+                <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                   Will not use virtual private networks (VPNs), proxies, automation, scripts, bots, or other technical
                   means to circumvent eligibility, jurisdictional, or verification restrictions;
                 </li>
@@ -136,7 +140,7 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House provides a platform designed to:
+                NEAR Citizens House provides a platform designed to:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -151,7 +155,7 @@ export default function TermsPage() {
                 </li>
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House does not:
+                NEAR Citizens House does not:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -174,12 +178,8 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Identity verification is performed by independent third-party providers. NEAR Citizen House does not
-                review identity documents, store biometric data, or access passport images.
-              </p>
-              <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Verification may involve the generation of cryptographic or zero-knowledge proofs confirming identity
-                attributes. NEAR Citizen House receives only confirmation of verification status or related proofs.
+                Identity verification is performed by independent third-party providers, and carried out in accordance
+                with NEAR Foundation&apos;s internal policies and procedures.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 Verification status:
@@ -196,12 +196,12 @@ export default function TermsPage() {
                 </li>
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Verification is a condition of access, not a right. NEAR Citizen House may modify, suspend, or revoke
+                Verification is a condition of access, not a right. NEAR Citizens House may modify, suspend, or revoke
                 verification status at any time in its reasonable discretion, including to protect the integrity of
                 governance processes or to comply with legal obligations.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House may change, replace, or supplement Verification Providers at any time. Any such
+                NEAR Citizens House may change, replace, or supplement Verification Providers at any time. Any such
                 change may require users to re-verify, update verification information, or satisfy new verification
                 requirements. Prior verification through a former provider does not guarantee continued access or
                 eligibility.
@@ -223,7 +223,7 @@ export default function TermsPage() {
                 and may change over time.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House:
+                NEAR Citizens House:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -241,7 +241,7 @@ export default function TermsPage() {
                 requirements, or security concerns.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House does not control governance decisions or outcomes, does not guarantee continued
+                NEAR Citizens House does not control governance decisions or outcomes, does not guarantee continued
                 access or participation rights, and makes no representation that any governance participation will
                 result in a binding, final, or enforceable outcome. Governance participation facilitated through the
                 Services may be delayed, invalidated, reversed, or rendered ineffective due to governance decisions,
@@ -261,7 +261,7 @@ export default function TermsPage() {
                 responsible for safeguarding your wallet credentials.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House never has access to your private keys and cannot initiate transactions on your
+                NEAR Citizens House never has access to your private keys and cannot initiate transactions on your
                 behalf.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -321,7 +321,7 @@ export default function TermsPage() {
                 </li>
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House reserves the right to investigate suspected violations of these Terms and to
+                NEAR Citizens House reserves the right to investigate suspected violations of these Terms and to
                 cooperate with governance bodies, auditors, regulators, or law enforcement authorities where reasonably
                 necessary to protect the integrity, fairness, or legality of governance participation, subject to
                 applicable law and our Privacy Policy.
@@ -336,7 +336,7 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                The Services may integrate or link to third-party tools, wallets, or services. NEAR Citizen House does
+                The Services may integrate or link to third-party tools, wallets, or services. NEAR Citizens House does
                 not control and is not responsible for third-party services or their availability, accuracy, or
                 security.
               </p>
@@ -344,7 +344,7 @@ export default function TermsPage() {
                 Your use of third-party services is at your own risk and subject to their terms.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House does not endorse, guarantee, or assume responsibility for any third-party services.
+                NEAR Citizens House does not endorse, guarantee, or assume responsibility for any third-party services.
               </p>
             </div>
           </section>
@@ -376,7 +376,7 @@ export default function TermsPage() {
                 </li>
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House does not guarantee uninterrupted access, successful verification, or continued
+                NEAR Citizens House does not guarantee uninterrupted access, successful verification, or continued
                 eligibility. The Services may be experimental, under development, or subject to change. Features,
                 eligibility requirements, or verification mechanisms may be modified, removed, or discontinued at any
                 time, without notice.
@@ -392,7 +392,7 @@ export default function TermsPage() {
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 The Services and all related content, including text, graphics, user interfaces, logos, software, and
-                underlying code, are owned by or licensed to NEAR Citizen House and are protected by intellectual
+                underlying code, are owned by or licensed to NEAR Citizens House and are protected by intellectual
                 property laws.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -409,7 +409,7 @@ export default function TermsPage() {
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 If you submit feedback, suggestions, or other non-confidential information regarding the Services, you
-                grant NEAR Citizen House a worldwide, perpetual, irrevocable, royalty-free license to use, modify, and
+                grant NEAR Citizens House a worldwide, perpetual, irrevocable, royalty-free license to use, modify, and
                 incorporate such feedback for any purpose without compensation or attribution.
               </p>
             </div>
@@ -451,12 +451,12 @@ export default function TermsPage() {
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 The Services are provided on an &ldquo;AS IS&rdquo; and &ldquo;AS AVAILABLE&rdquo; basis, to the maximum
-                extent permitted by applicable law. NEAR Citizen House makes no warranties of any kind, express or
+                extent permitted by applicable law. NEAR Citizens House makes no warranties of any kind, express or
                 implied, including warranties of accuracy, availability, reliability, merchantability, fitness for a
                 particular purpose, or non-infringement.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Without limiting the foregoing, NEAR Citizen House does not warrant that:
+                Without limiting the foregoing, NEAR Citizens House does not warrant that:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -476,7 +476,7 @@ export default function TermsPage() {
                 </li>
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House does not guarantee availability of the Services at any specific time or location and
+                NEAR Citizens House does not guarantee availability of the Services at any specific time or location and
                 is not responsible for failures or actions of third-party providers.
               </p>
             </div>
@@ -489,14 +489,14 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                To the maximum extent permitted by law, NEAR Citizen House shall not be liable for any indirect,
+                To the maximum extent permitted by law, NEAR Citizens House shall not be liable for any indirect,
                 incidental, consequential, special, exemplary, or punitive damages, including without limitation damages
                 for loss of access, loss of eligibility, loss of participation rights, loss of data, loss of reputation,
                 loss of opportunity, or loss of expected governance outcomes, arising out of or relating to your use of,
                 inability to use, or reliance on the Services.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Without limiting the foregoing, NEAR Citizen House shall not be liable for any damages arising from or
+                Without limiting the foregoing, NEAR Citizens House shall not be liable for any damages arising from or
                 related to:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
@@ -523,11 +523,11 @@ export default function TermsPage() {
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 This limitation applies regardless of the legal theory asserted, whether in contract, tort, strict
-                liability, or otherwise, even if NEAR Citizen House has been advised of the possibility of such damages.
+                liability, or otherwise, even if NEAR Citizens House has been advised of the possibility of such damages.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                To the extent that any liability of NEAR Citizen House is not otherwise excluded under these Terms, NEAR
-                Citizen House&apos;s total aggregate liability arising out of or relating to the Services or these Terms
+                To the extent that any liability of NEAR Citizens House is not otherwise excluded under these Terms, NEAR
+                Citizens House&apos;s total aggregate liability arising out of or relating to the Services or these Terms
                 shall not exceed USD 100 (or the equivalent in local currency).
               </p>
             </div>
@@ -540,7 +540,7 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                You agree to defend, indemnify, and hold harmless NEAR Citizen House and its directors, officers,
+                You agree to defend, indemnify, and hold harmless NEAR Citizens House and its directors, officers,
                 employees, contractors, and service providers from and against any and all claims, demands, actions,
                 damages, losses, liabilities, costs, and expenses (including reasonable attorneys&apos; fees) arising
                 out of or relating to:
@@ -569,7 +569,7 @@ export default function TermsPage() {
                 </li>
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House reserves the right, at your expense, to assume the exclusive defense and control of
+                NEAR Citizens House reserves the right, at your expense, to assume the exclusive defense and control of
                 any matter subject to indemnification, and you agree to cooperate fully in such defense.
               </p>
             </div>
@@ -582,7 +582,7 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House may, in its reasonable discretion, suspend, restrict, or terminate your access to all
+                NEAR Citizens House may, in its reasonable discretion, suspend, restrict, or terminate your access to all
                 or any portion of the Services, with or without notice, if we reasonably believe that:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
@@ -614,12 +614,12 @@ export default function TermsPage() {
                 governance processes, or other users.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House shall have no liability to you for any suspension, restriction, or termination of
+                NEAR Citizens House shall have no liability to you for any suspension, restriction, or termination of
                 access, including any resulting loss of eligibility, participation, or governance-related opportunities.
                 Suspension or termination does not relieve you of any obligations incurred prior to such action.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House has no obligation to provide advance notice or an opportunity to cure where immediate
+                NEAR Citizens House has no obligation to provide advance notice or an opportunity to cure where immediate
                 action is reasonably required to protect the Services, governance integrity, or compliance obligations.
               </p>
             </div>
@@ -651,7 +651,7 @@ export default function TermsPage() {
                 action, or jury trial.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Nothing in this section prevents NEAR Citizen House from seeking injunctive or equitable relief in any
+                Nothing in this section prevents NEAR Citizens House from seeking injunctive or equitable relief in any
                 court of competent jurisdiction to protect its intellectual property, security, or governance integrity.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -668,7 +668,7 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                We may modify these Terms at any time in our discretion. Updated Terms will be posted on the Services
+                We may modify these Terms at any time at our discretion. Updated Terms will be posted on the Services
                 with a revised &ldquo;Last updated&rdquo; date. Continued use of the Services after any such changes
                 constitutes acceptance of the revised Terms.
               </p>
@@ -701,7 +701,7 @@ export default function TermsPage() {
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 These Terms, together with the Privacy Policy and any expressly incorporated policies or addenda,
-                constitute the entire agreement between you and NEAR Citizen House regarding the Services and supersede
+                constitute the entire agreement between you and NEAR Citizens House regarding the Services and supersede
                 all prior or contemporaneous understandings, agreements, representations, or communications, whether
                 written or oral. Sections relating to intellectual property, limitations of liability, indemnification,
                 dispute resolution, and any provisions which by their nature should survive termination shall survive
@@ -721,9 +721,9 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Failure by NEAR Citizen House to enforce any provision of these Terms shall not constitute a waiver of
+                Failure by NEAR Citizens House to enforce any provision of these Terms shall not constitute a waiver of
                 that provision or any other provision. Any waiver must be in writing and signed by an authorized
-                representative of NEAR Citizen House.
+                representative of NEAR Citizens House.
               </p>
             </div>
           </section>
@@ -735,7 +735,7 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizen House shall not be liable for any failure or delay resulting from events beyond its
+                NEAR Citizens House shall not be liable for any failure or delay resulting from events beyond its
                 reasonable control, including acts of God, network failures, governmental actions, or third-party
                 outages.
               </p>
@@ -749,7 +749,7 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                You may not assign these Terms without our prior written consent. NEAR Citizen House may assign these
+                You may not assign these Terms without our prior written consent. NEAR Citizens House may assign these
                 Terms in connection with a merger, restructuring, or transfer of assets.
               </p>
             </div>
