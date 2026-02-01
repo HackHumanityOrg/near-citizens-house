@@ -63,7 +63,7 @@ const scheduledMonitoringGroup = new CheckGroupV2("citizens-house-scheduled-moni
 
 // =============================================================================
 // URL Monitor: Website uptime and response time
-// Note: UrlMonitor doesn't support retry strategies, so it's not in the group
+// Note: UrlMonitor doesn't support groups or retry strategies
 // =============================================================================
 export const webAppUptime = new UrlMonitor("citizens-house-uptime", {
   name: "Web App Uptime & Performance",
@@ -93,7 +93,7 @@ export const webAppUptime = new UrlMonitor("citizens-house-uptime", {
 // =============================================================================
 export const rpcHealthCheck = new ApiCheck("near-rpc-health", {
   name: "NEAR RPC Connectivity",
-  // NOTE: Intentionally NOT in monitoringGroup - see comment above
+  // NOTE: Intentionally NOT in a group to prevent Vercel URL substitution
   activated: true,
   muted: false,
   frequency: Frequency.EVERY_5M,
