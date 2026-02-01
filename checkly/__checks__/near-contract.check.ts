@@ -11,14 +11,42 @@ import {
   UrlMonitor,
 } from "checkly/constructs"
 
-// Shared configuration via CheckGroup
-// Allowed regions: eu-central-1, us-east-1, ap-southeast-1, ap-southeast-2
-const monitoringGroup = new CheckGroupV2("citizens-house-monitoring-group", {
-  name: "Citizens House Monitoring",
+// =============================================================================
+// Check Groups
+// =============================================================================
+// We use TWO separate groups to control which checks run during Vercel deployments:
+//
+// 1. deploymentChecksGroup - Linked to Vercel integration
+//    - Web App E2E tests that validate the deployment
+//    - These run on every Vercel preview/production deployment
+//
+// 2. scheduledMonitoringGroup - NOT linked to Vercel integration
+//    - Contract state monitoring, verification activity, security alerts
+//    - These run on a schedule only, not during deployments
+//    - They monitor the NEAR blockchain, not the web app deployment
+// =============================================================================
+
+// Group for checks that should run during Vercel deployments
+const deploymentChecksGroup = new CheckGroupV2("citizens-house-deployment-checks", {
+  name: "Citizens House Deployment Checks",
   activated: true,
   muted: false,
   locations: ["us-east-1", "eu-central-1"],
-  tags: ["near", "citizens-house"],
+  tags: ["near", "citizens-house", "deployment"],
+  retryStrategy: RetryStrategyBuilder.fixedStrategy({
+    baseBackoffSeconds: 30,
+    maxRetries: 2,
+    sameRegion: true,
+  }),
+})
+
+// Group for scheduled monitoring checks (NOT triggered by Vercel deployments)
+const scheduledMonitoringGroup = new CheckGroupV2("citizens-house-scheduled-monitoring", {
+  name: "Citizens House Scheduled Monitoring",
+  activated: true,
+  muted: false,
+  locations: ["us-east-1", "eu-central-1"],
+  tags: ["near", "citizens-house", "scheduled"],
   retryStrategy: RetryStrategyBuilder.fixedStrategy({
     baseBackoffSeconds: 30,
     maxRetries: 2,
@@ -55,17 +83,32 @@ export const webAppUptime = new UrlMonitor("citizens-house-uptime", {
 
 // =============================================================================
 // API Check: NEAR RPC availability (lightweight)
-// Note: API checks require URL at deploy time, uses NEAR_RPC_URL env var or default
+// Uses FastNEAR mainnet RPC endpoint directly.
+//
+// IMPORTANT: This check is NOT in the monitoringGroup to prevent Checkly's
+// Vercel integration from substituting the URL with ENVIRONMENT_URL.
+// The Vercel integration auto-replaces hostnames in API checks within groups
+// linked to deployments, which would cause this check to hit the Vercel app
+// instead of the NEAR RPC endpoint.
 // =============================================================================
 export const rpcHealthCheck = new ApiCheck("near-rpc-health", {
   name: "NEAR RPC Connectivity",
-  group: monitoringGroup,
+  // NOTE: Intentionally NOT in monitoringGroup - see comment above
+  activated: true,
+  muted: false,
   frequency: Frequency.EVERY_5M,
+  locations: ["us-east-1", "eu-central-1"],
+  tags: ["near", "citizens-house", "rpc"],
   degradedResponseTime: 2000,
   maxResponseTime: 5000,
+  retryStrategy: RetryStrategyBuilder.fixedStrategy({
+    baseBackoffSeconds: 30,
+    maxRetries: 2,
+    sameRegion: true,
+  }),
   request: {
     method: "POST",
-    url: "{{NEAR_RPC_URL}}",
+    url: "https://rpc.mainnet.fastnear.com",
     headers: [{ key: "Content-Type", value: "application/json" }],
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -82,10 +125,11 @@ export const rpcHealthCheck = new ApiCheck("near-rpc-health", {
 
 // =============================================================================
 // MultiStepCheck: Contract State (is_paused, backend_wallet, state_version)
+// NOTE: In scheduledMonitoringGroup - runs on schedule, NOT during deployments
 // =============================================================================
 export const contractStateCheck = new MultiStepCheck("near-contract-state", {
   name: "Contract State (Wallet & Paused Status)",
-  group: monitoringGroup,
+  group: scheduledMonitoringGroup,
   runtimeId: "2025.04",
   frequency: Frequency.EVERY_10M,
   code: {
@@ -95,10 +139,11 @@ export const contractStateCheck = new MultiStepCheck("near-contract-state", {
 
 // =============================================================================
 // MultiStepCheck: Verification Activity
+// NOTE: In scheduledMonitoringGroup - runs on schedule, NOT during deployments
 // =============================================================================
 export const verificationActivityCheck = new MultiStepCheck("near-verification-activity", {
   name: "Verification Transactions & Failures",
-  group: monitoringGroup,
+  group: scheduledMonitoringGroup,
   runtimeId: "2025.04",
   frequency: Frequency.EVERY_10M,
   code: {
@@ -108,10 +153,11 @@ export const verificationActivityCheck = new MultiStepCheck("near-verification-a
 
 // =============================================================================
 // MultiStepCheck: Security Monitor (admin method calls)
+// NOTE: In scheduledMonitoringGroup - runs on schedule, NOT during deployments
 // =============================================================================
 export const securityMonitorCheck = new MultiStepCheck("near-security-monitor", {
   name: "Admin Function Activity Alerts",
-  group: monitoringGroup,
+  group: scheduledMonitoringGroup,
   runtimeId: "2025.04",
   frequency: Frequency.EVERY_10M,
   code: {
@@ -128,12 +174,15 @@ export const securityMonitorCheck = new MultiStepCheck("near-security-monitor", 
 // - Citizens page (/citizens) shows verification records
 // - Wallet selector modal appears when clicking connect
 //
+// NOTE: In deploymentChecksGroup - runs during Vercel deployments AND on schedule
+// This is the ONLY check that should run during Vercel deployment checks.
+//
 // Note: Full wallet connection/signing flow is tested in local E2E tests.
 // Cloud browsers have limitations with cross-tab wallet communication.
 // =============================================================================
 export const webAppE2ECheck = new BrowserCheck("citizens-house-e2e", {
   name: "Web App UI Flow (All Routes)",
-  group: monitoringGroup,
+  group: deploymentChecksGroup,
   frequency: Frequency.EVERY_30M,
   code: {
     entrypoint: path.join(__dirname, "webapp-e2e.spec.ts"),

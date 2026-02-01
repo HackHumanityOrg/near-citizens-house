@@ -20,10 +20,18 @@ import { markCheckAsDegraded } from "@checkly/playwright-helpers"
  * URL Configuration:
  * - Uses ENVIRONMENT_URL env var when provided (for Vercel preview deployments)
  * - Falls back to production URL (https://citizenshouse.org) for scheduled checks
+ *
+ * Environment Variables (set in Checkly):
+ * - ENVIRONMENT_URL: Automatically set by Checkly/Vercel integration for preview deploys
+ * - ENVIRONMENT_NAME: "preview" or "production" (set by Checkly/Vercel integration)
+ * - VERCEL_BYPASS_TOKEN: Optional, for bypassing Vercel deployment protection
  */
 
 // Base URL from environment (Vercel integration) or default to production
 const BASE_URL = process.env.ENVIRONMENT_URL || "https://citizenshouse.org"
+
+// Whether this is a preview deployment (for logging purposes)
+const IS_PREVIEW = process.env.ENVIRONMENT_NAME === "preview" || !!process.env.ENVIRONMENT_URL
 
 // Track if we've already marked as degraded (to avoid duplicate marks)
 let markedDegraded = false
@@ -32,10 +40,56 @@ let markedDegraded = false
  * Check if the page is showing maintenance mode.
  * Maintenance mode is detected by the presence of the maintenance-message testid.
  * Note: URL stays the same during maintenance (it's a rewrite, not redirect).
+ *
+ * Detection strategy:
+ * 1. Wait for the page to have some content rendered (identity-verification-tag exists on both pages)
+ * 2. Then check specifically for maintenance-message which only exists on maintenance page
  */
 async function isMaintenanceMode(page: import("@playwright/test").Page): Promise<boolean> {
-  const maintenanceMessage = page.getByTestId("maintenance-message")
-  return maintenanceMessage.isVisible({ timeout: 3000 }).catch(() => false)
+  try {
+    // First, wait for any page content to be ready (this element exists on both normal and maintenance pages)
+    await page.getByTestId("identity-verification-tag").waitFor({ state: "visible", timeout: 15000 })
+
+    // Now check if maintenance-message is present (only on maintenance page)
+    const maintenanceMessage = page.getByTestId("maintenance-message")
+    const isVisible = await maintenanceMessage.isVisible()
+
+    // If not immediately visible, wait a bit for it to appear (in case of slow render)
+    if (!isVisible) {
+      return await maintenanceMessage.isVisible({ timeout: 2000 }).catch(() => false)
+    }
+
+    return true
+  } catch {
+    // If identity-verification-tag isn't found, page might still be loading or errored
+    // Try one more time to look for maintenance-message directly
+    try {
+      return await page.getByTestId("maintenance-message").isVisible({ timeout: 5000 })
+    } catch {
+      return false
+    }
+  }
+}
+
+/**
+ * Mark check as degraded with environment context.
+ * Only marks once per test run to avoid duplicate degradation marks.
+ */
+function markDegraded(reason: string): void {
+  if (markedDegraded) return
+  const envInfo = IS_PREVIEW ? `[Preview: ${BASE_URL}]` : "[Production]"
+  markCheckAsDegraded(`${envInfo} ${reason}`)
+  markedDegraded = true
+}
+
+// Vercel deployment protection bypass for preview deployments
+// Set VERCEL_BYPASS_TOKEN in Checkly environment secrets if using Vercel protection
+if (process.env.VERCEL_BYPASS_TOKEN) {
+  test.use({
+    extraHTTPHeaders: {
+      "x-vercel-protection-bypass": process.env.VERCEL_BYPASS_TOKEN,
+    },
+  })
 }
 
 test.describe("Citizens House Web App E2E", () => {
@@ -44,22 +98,22 @@ test.describe("Citizens House Web App E2E", () => {
       await page.goto(`${BASE_URL}/`, { waitUntil: "domcontentloaded" })
     })
 
-    // Check for maintenance mode first
+    // Check for maintenance mode first (wait for page to be stable)
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      // Verify maintenance page structure
-      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
-      await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
-      if (!markedDegraded) {
-        markCheckAsDegraded("Site is in maintenance mode")
-        markedDegraded = true
-      }
+      await test.step("Verify maintenance page structure", async () => {
+        // Verify maintenance page has expected structure
+        await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+        await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
+        markDegraded("Site is in maintenance mode")
+      })
       return // Pass the test - maintenance mode is expected
     }
 
     // Normal operation - should redirect to /verification
     await test.step("Redirects to verification page", async () => {
-      await expect(page).toHaveURL(/\/verification/)
+      // Wait for redirect to complete (may take a moment for server-side redirect)
+      await expect(page).toHaveURL(/\/verification/, { timeout: 15000 })
     })
 
     await test.step("Verification page loads after redirect", async () => {
@@ -76,14 +130,13 @@ test.describe("Citizens House Web App E2E", () => {
     // Check for maintenance mode first (URL stays /verification but content is maintenance)
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      // Verify maintenance page structure
-      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
-      await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
-      await expect(page.getByTestId("verification-hero-heading")).toBeVisible({ timeout: 10000 })
-      if (!markedDegraded) {
-        markCheckAsDegraded("Site is in maintenance mode")
-        markedDegraded = true
-      }
+      await test.step("Verify maintenance page structure", async () => {
+        // Verify maintenance page has expected structure
+        await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+        await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
+        await expect(page.getByTestId("verification-hero-heading")).toBeVisible({ timeout: 10000 })
+        markDegraded("Site is in maintenance mode")
+      })
       return // Pass the test - maintenance mode is expected
     }
 
@@ -139,11 +192,10 @@ test.describe("Citizens House Web App E2E", () => {
     // Check for maintenance mode (URL stays /verification/start but content is maintenance)
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
-      if (!markedDegraded) {
-        markCheckAsDegraded("Site is in maintenance mode")
-        markedDegraded = true
-      }
+      await test.step("Verify maintenance page structure", async () => {
+        await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+        markDegraded("Site is in maintenance mode")
+      })
       return // Pass the test - maintenance mode is expected
     }
 
@@ -177,11 +229,10 @@ test.describe("Citizens House Web App E2E", () => {
     // Check for maintenance mode (URL stays /citizens but content is maintenance)
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
-      if (!markedDegraded) {
-        markCheckAsDegraded("Site is in maintenance mode")
-        markedDegraded = true
-      }
+      await test.step("Verify maintenance page structure", async () => {
+        await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+        markDegraded("Site is in maintenance mode")
+      })
       return // Pass the test - maintenance mode is expected
     }
 
