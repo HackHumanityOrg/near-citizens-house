@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { markCheckAsDegraded } from "@checkly/playwright-helpers"
 
 /**
  * Citizens House Web App E2E Tests for Checkly
@@ -13,8 +14,8 @@ import { test, expect } from "@playwright/test"
  * - Maintenance mode is controlled via Vercel Edge Config (per-deployment)
  * - When enabled, non-exempt routes are REWRITTEN to /maintenance (URL stays same)
  * - Exempt routes: /privacy, /terms, /maintenance, /_next/*, /api/*, /ingest/*
- * - Tests pass with logged message when maintenance mode is detected (degraded)
- * - Tests fail when elements are missing during normal operation
+ * - Tests mark as DEGRADED when maintenance mode is detected
+ * - Tests FAIL when elements are missing during normal operation
  *
  * URL Configuration:
  * - Uses ENVIRONMENT_URL env var when provided (for Vercel preview deployments)
@@ -23,6 +24,9 @@ import { test, expect } from "@playwright/test"
 
 // Base URL from environment (Vercel integration) or default to production
 const BASE_URL = process.env.ENVIRONMENT_URL || "https://citizenshouse.org"
+
+// Track if we've already marked as degraded (to avoid duplicate marks)
+let markedDegraded = false
 
 /**
  * Check if the page is showing maintenance mode.
@@ -43,10 +47,13 @@ test.describe("Citizens House Web App E2E", () => {
     // Check for maintenance mode first
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
       // Verify maintenance page structure
       await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
       await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
+      if (!markedDegraded) {
+        markCheckAsDegraded("Site is in maintenance mode")
+        markedDegraded = true
+      }
       return // Pass the test - maintenance mode is expected
     }
 
@@ -69,11 +76,14 @@ test.describe("Citizens House Web App E2E", () => {
     // Check for maintenance mode first (URL stays /verification but content is maintenance)
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
       // Verify maintenance page structure
       await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
       await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
       await expect(page.getByTestId("verification-hero-heading")).toBeVisible({ timeout: 10000 })
+      if (!markedDegraded) {
+        markCheckAsDegraded("Site is in maintenance mode")
+        markedDegraded = true
+      }
       return // Pass the test - maintenance mode is expected
     }
 
@@ -129,8 +139,11 @@ test.describe("Citizens House Web App E2E", () => {
     // Check for maintenance mode (URL stays /verification/start but content is maintenance)
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
       await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+      if (!markedDegraded) {
+        markCheckAsDegraded("Site is in maintenance mode")
+        markedDegraded = true
+      }
       return // Pass the test - maintenance mode is expected
     }
 
@@ -164,8 +177,11 @@ test.describe("Citizens House Web App E2E", () => {
     // Check for maintenance mode (URL stays /citizens but content is maintenance)
     const inMaintenance = await isMaintenanceMode(page)
     if (inMaintenance) {
-      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
       await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+      if (!markedDegraded) {
+        markCheckAsDegraded("Site is in maintenance mode")
+        markedDegraded = true
+      }
       return // Pass the test - maintenance mode is expected
     }
 
