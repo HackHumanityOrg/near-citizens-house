@@ -1,48 +1,39 @@
 import { StatusPage, StatusPageService } from "checkly/constructs"
-import {
-  webAppUptime,
-  webAppE2ECheck,
-  rpcHealthCheck,
-  contractStateCheck,
-  verificationActivityCheck,
-  securityMonitorCheck,
-} from "../../../__checks__/near-contract.check"
 
 // =============================================================================
 // Service Definitions
+// =============================================================================
+// StatusPageService only takes a 'name' property.
+// Note: To link checks to services automatically, use 'triggerIncident' on each check.
+// This requires a higher Checkly plan with automated incident management.
+// See: https://www.checklyhq.com/docs/communicate/status-pages/incidents/#incident-automation
 // =============================================================================
 
 // Web Application Services
 const webAppUptimeService = new StatusPageService("citizens-house-uptime-service", {
   name: "Web App Uptime & Performance",
-  checks: [webAppUptime],
 })
 
 const webAppFunctionalityService = new StatusPageService("citizens-house-functionality-service", {
   name: "Web App UI Flow",
-  checks: [webAppE2ECheck],
 })
 
 // NEAR Blockchain Services
 const nearRpcService = new StatusPageService("near-rpc-service", {
   name: "NEAR RPC Connectivity",
-  checks: [rpcHealthCheck],
 })
 
 // Smart Contract Services
 const contractHealthService = new StatusPageService("contract-health-service", {
   name: "Contract State (Wallet & Paused Status)",
-  checks: [contractStateCheck],
 })
 
 const verificationService = new StatusPageService("verification-service", {
   name: "Verification Transactions & Failures",
-  checks: [verificationActivityCheck],
 })
 
 const securityService = new StatusPageService("security-service", {
   name: "Admin Function Activity Alerts",
-  checks: [securityMonitorCheck],
 })
 
 // =============================================================================

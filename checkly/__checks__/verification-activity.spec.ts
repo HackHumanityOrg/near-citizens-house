@@ -50,10 +50,9 @@ test("NEAR verification activity", async ({ request }: { request: APIRequestCont
       return
     }
 
-    const verifiedAtNs = BigInt(latest.verified_at.toString())
-    if (nowNs - verifiedAtNs > DAY_NS) {
-      degradedReasons.push("No new verifications in the last 24 hours")
-    }
+    // Note: We don't flag "no new verifications" as degraded since
+    // it's normal for verification activity to be sporadic
+    const _verifiedAtNs = BigInt(latest.verified_at.toString())
   })
 
   await test.step("Check store_verification receipts on NearBlocks", async () => {
