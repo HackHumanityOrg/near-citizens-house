@@ -26,9 +26,16 @@ export const RPC_RETRY_OPTIONS = {
 }
 
 /**
+ * Get the RPC URL for direct fetch calls
+ */
+export function getRpcUrl(): string {
+  return NEAR_SERVER_CONFIG.rpcUrl
+}
+
+/**
  * Get FastNEAR RPC headers including API key if configured
  */
-function getFastNearHeaders(): Record<string, string> {
+export function getRpcHeaders(): Record<string, string> {
   const headers: Record<string, string> = {}
   if (NEAR_SERVER_CONFIG.rpcApiKey) {
     headers["X-API-Key"] = NEAR_SERVER_CONFIG.rpcApiKey
@@ -44,8 +51,8 @@ function getFastNearHeaders(): Record<string, string> {
  * Create a JsonRpcProvider backed by FastNEAR.
  */
 export function createRpcProvider(): Provider {
-  const rpcUrl = NEAR_SERVER_CONFIG.rpcUrl
-  const headers = getFastNearHeaders()
+  const rpcUrl = getRpcUrl()
+  const headers = getRpcHeaders()
   return new JsonRpcProvider({ url: rpcUrl, headers }, RPC_RETRY_OPTIONS)
 }
 
