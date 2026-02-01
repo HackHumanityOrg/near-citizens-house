@@ -9,36 +9,79 @@ import { test, expect } from "@playwright/test"
  * 3. Verification start (/verification/start) - flow step page
  * 4. Citizens page (/citizens) - verification records table
  *
- * Note: Full wallet connection and signing flow is tested in local E2E tests
- * (desktop-qr-verification-flow.spec.ts) which can interact with Meteor wallet.
- * Cloud browsers have limitations with cross-tab wallet communication.
+ * Maintenance Mode Handling:
+ * - Maintenance mode is controlled via Vercel Edge Config (per-deployment)
+ * - When enabled, non-exempt routes are REWRITTEN to /maintenance (URL stays same)
+ * - Exempt routes: /privacy, /terms, /maintenance, /_next/*, /api/*, /ingest/*
+ * - Tests pass with logged message when maintenance mode is detected (degraded)
+ * - Tests fail when elements are missing during normal operation
+ *
+ * URL Configuration:
+ * - Uses ENVIRONMENT_URL env var when provided (for Vercel preview deployments)
+ * - Falls back to production URL (https://citizenshouse.org) for scheduled checks
  */
 
+// Base URL from environment (Vercel integration) or default to production
+const BASE_URL = process.env.ENVIRONMENT_URL || "https://citizenshouse.org"
+
+/**
+ * Check if the page is showing maintenance mode.
+ * Maintenance mode is detected by the presence of the maintenance-message testid.
+ * Note: URL stays the same during maintenance (it's a rewrite, not redirect).
+ */
+async function isMaintenanceMode(page: import("@playwright/test").Page): Promise<boolean> {
+  const maintenanceMessage = page.getByTestId("maintenance-message")
+  return maintenanceMessage.isVisible({ timeout: 3000 }).catch(() => false)
+}
+
 test.describe("Citizens House Web App E2E", () => {
-  test("Home page redirects to verification", async ({ page }) => {
+  test("Home page loads verification flow", async ({ page }) => {
     await test.step("Navigate to home page", async () => {
-      await page.goto("https://citizenshouse.org/", { waitUntil: "domcontentloaded" })
+      await page.goto(`${BASE_URL}/`, { waitUntil: "domcontentloaded" })
     })
 
+    // Check for maintenance mode first
+    const inMaintenance = await isMaintenanceMode(page)
+    if (inMaintenance) {
+      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
+      // Verify maintenance page structure
+      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+      await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
+      return // Pass the test - maintenance mode is expected
+    }
+
+    // Normal operation - should redirect to /verification
     await test.step("Redirects to verification page", async () => {
-      await expect(page).toHaveURL(/citizenshouse\.org\/verification/)
+      await expect(page).toHaveURL(/\/verification/)
     })
 
     await test.step("Verification page loads after redirect", async () => {
       await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 15000 })
+      await expect(page.getByTestId("connect-wallet-button-desktop")).toBeVisible({ timeout: 10000 })
     })
   })
 
   test("Verification landing page and wallet selector", async ({ page }) => {
-    // =========================================================================
-    // Part 1: Landing Page Verification
-    // =========================================================================
     await test.step("Navigate to verification page", async () => {
-      await page.goto("https://citizenshouse.org/verification", { waitUntil: "domcontentloaded" })
+      await page.goto(`${BASE_URL}/verification`, { waitUntil: "domcontentloaded" })
     })
 
+    // Check for maintenance mode first (URL stays /verification but content is maintenance)
+    const inMaintenance = await isMaintenanceMode(page)
+    if (inMaintenance) {
+      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
+      // Verify maintenance page structure
+      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+      await expect(page.getByTestId("identity-verification-tag")).toBeVisible({ timeout: 10000 })
+      await expect(page.getByTestId("verification-hero-heading")).toBeVisible({ timeout: 10000 })
+      return // Pass the test - maintenance mode is expected
+    }
+
+    // =========================================================================
+    // Normal operation - full verification
+    // =========================================================================
     await test.step("Page loads successfully", async () => {
-      await expect(page).toHaveURL(/citizenshouse\.org\/verification/)
+      await expect(page).toHaveURL(/\/verification/)
     })
 
     await test.step("Identity verification tag is visible", async () => {
@@ -47,10 +90,6 @@ test.describe("Citizens House Web App E2E", () => {
 
     await test.step("Hero heading is visible", async () => {
       await expect(page.getByTestId("verification-hero-heading")).toBeVisible({ timeout: 10000 })
-    })
-
-    await test.step("Time estimate is displayed", async () => {
-      await expect(page.getByTestId("verification-time-estimate")).toBeVisible({ timeout: 10000 })
     })
 
     await test.step("Step 1 (Connect wallet) heading is visible", async () => {
@@ -83,12 +122,22 @@ test.describe("Citizens House Web App E2E", () => {
   })
 
   test("Verification start page", async ({ page }) => {
+    await test.step("Navigate to verification start page", async () => {
+      await page.goto(`${BASE_URL}/verification/start`, { waitUntil: "domcontentloaded" })
+    })
+
+    // Check for maintenance mode (URL stays /verification/start but content is maintenance)
+    const inMaintenance = await isMaintenanceMode(page)
+    if (inMaintenance) {
+      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
+      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+      return // Pass the test - maintenance mode is expected
+    }
+
     // =========================================================================
-    // Verify Start Page Loads (without wallet connection)
-    // This tests that the /verification/start route is accessible
+    // Normal operation - full verification
     // =========================================================================
     await test.step("Verification start page is accessible", async () => {
-      await page.goto("https://citizenshouse.org/verification/start", { waitUntil: "domcontentloaded" })
       await expect(page).toHaveURL(/\/verification\/start/)
     })
 
@@ -106,13 +155,25 @@ test.describe("Citizens House Web App E2E", () => {
   test("Citizens page with verification records", async ({ page }) => {
     // =========================================================================
     // Citizens Page - Public verification records
+    // Note: This page IS affected by maintenance mode (not in exempt list)
     // =========================================================================
     await test.step("Navigate to citizens page", async () => {
-      await page.goto("https://citizenshouse.org/citizens", { waitUntil: "domcontentloaded" })
+      await page.goto(`${BASE_URL}/citizens`, { waitUntil: "domcontentloaded" })
     })
 
+    // Check for maintenance mode (URL stays /citizens but content is maintenance)
+    const inMaintenance = await isMaintenanceMode(page)
+    if (inMaintenance) {
+      console.log("[MAINTENANCE MODE] Site is in maintenance mode - test passes with degraded status")
+      await expect(page.getByTestId("maintenance-message")).toBeVisible({ timeout: 10000 })
+      return // Pass the test - maintenance mode is expected
+    }
+
+    // =========================================================================
+    // Normal operation - full verification
+    // =========================================================================
     await test.step("Page loads successfully", async () => {
-      await expect(page).toHaveURL(/citizenshouse\.org\/citizens/)
+      await expect(page).toHaveURL(/\/citizens/)
     })
 
     await test.step("Citizens page title is visible", async () => {

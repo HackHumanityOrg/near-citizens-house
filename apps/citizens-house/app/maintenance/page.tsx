@@ -64,7 +64,10 @@ export default function MaintenancePage() {
           </div>
 
           {/* Maintenance Message Card */}
-          <div className="relative z-10 bg-white dark:bg-[#191a23] flex items-center justify-center p-[24px] xl:p-[40px] rounded-[24px] shrink-0 w-full max-w-[1000px]">
+          <div
+            data-testid="maintenance-message"
+            className="relative z-10 bg-white dark:bg-[#191a23] flex items-center justify-center p-[24px] xl:p-[40px] rounded-[24px] shrink-0 w-full max-w-[1000px]"
+          >
             <div className="flex flex-col gap-[12px] items-center text-center w-full max-w-[720px]">
               <p className="text-[20px] leading-[28px] text-[#090909] dark:text-white font-fk-grotesk font-medium">
                 Verification is temporarily unavailable.
