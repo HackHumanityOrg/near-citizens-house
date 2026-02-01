@@ -14,18 +14,13 @@ import { logEvent } from "@/lib/logger"
 const REDIS_KEY_PREFIX = "verification:status:"
 const STATUS_TTL_SECONDS = 72 * 60 * 60 // 72 hours
 
-export async function setVerificationStatus(
-  accountId: string,
-  errorCode: VerificationStatusErrorCode,
-  details?: { rejectLabels?: string[]; moderationComment?: string },
-): Promise<void> {
+export async function setVerificationStatus(accountId: string, errorCode: VerificationStatusErrorCode): Promise<void> {
   const redis = await getRedisClient()
   const key = `${REDIS_KEY_PREFIX}${accountId}`
   const value: VerificationStatusRecord = {
     state: errorCode === "VERIFICATION_ON_HOLD" ? "hold" : "failed",
     updatedAt: Date.now(),
     errorCode,
-    ...(details && { details }),
   }
   await redis.set(key, JSON.stringify(value), { EX: STATUS_TTL_SECONDS })
   logEvent({

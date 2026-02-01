@@ -91,11 +91,11 @@ function PrivacyPolicyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            NEAR Citizens House (&ldquo;Company&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo; or &ldquo;we&rdquo;) respects
-            your privacy and is committed to providing you with information about our and our service providers&apos;
-            data handling practices through this privacy policy. NEAR Citizens House operates a governance participation
-            and identity verification platform designed to enable verified participation in governance processes within
-            the NEAR ecosystem.
+            NEAR Citizens House (&ldquo;Company&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo; or &ldquo;we&rdquo;)
+            respects your privacy and is committed to providing you with information about our and our service
+            providers&apos; data handling practices through this privacy policy. NEAR Citizens House operates a
+            governance participation and identity verification platform designed to enable verified participation in
+            governance processes within the NEAR ecosystem.
           </p>
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
             This privacy policy describes the types of information we and our Services Providers may collect from you or
@@ -278,8 +278,8 @@ function PrivacyPolicyContent() {
         </h2>
         <div className="flex flex-col gap-[16px] opacity-[0.88]">
           <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-            Identity verification is performed by independent third-party providers, and carried out in accordance
-            with NEAR Foundation&apos;s internal policies and procedures.
+            Identity verification is performed by independent third-party providers, and carried out in accordance with
+            NEAR Foundation&apos;s internal policies and procedures.
           </p>
         </div>
       </section>

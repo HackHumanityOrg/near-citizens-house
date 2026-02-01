@@ -28,7 +28,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "NEAR Citizens House",
-  description: "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
+  description:
+    "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
 }
 
 export default function RootLayout({

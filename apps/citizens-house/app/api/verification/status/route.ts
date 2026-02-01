@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
             state: "failed" as const,
             updatedAt: redisStatus.updatedAt,
             errorCode: redisStatus.errorCode,
-            ...(redisStatus.details && { details: redisStatus.details }),
           }
     // Validate response shape before returning (defensive)
     const validatedResponse = verificationStatusResponseSchema.safeParse(responseData)
