@@ -240,10 +240,7 @@ export async function POST(request: NextRequest) {
         }
 
         const isRetryable = payload.reviewResult?.reviewRejectType === "RETRY"
-        await setVerificationStatus(externalUserId, isRetryable ? "VERIFICATION_RETRY" : "VERIFICATION_REJECTED", {
-          rejectLabels: payload.reviewResult?.rejectLabels,
-          moderationComment: payload.reviewResult?.moderationComment,
-        })
+        await setVerificationStatus(externalUserId, isRetryable ? "VERIFICATION_RETRY" : "VERIFICATION_REJECTED")
         return webhookAck("Verification rejected")
       }
 

@@ -6,7 +6,6 @@
 import { z } from "zod"
 import { nearSignatureDataSchema } from "../near"
 import { verificationStatusFailureCodeSchema } from "../errors"
-import { verificationStatusDetailsSchema } from "../domain/verification"
 
 // ==============================================================================
 // Token API
@@ -45,7 +44,6 @@ export const verificationStatusResponseSchema = z.discriminatedUnion("state", [
     state: z.literal("failed"),
     updatedAt: z.number(),
     errorCode: verificationStatusFailureCodeSchema,
-    details: verificationStatusDetailsSchema.optional(),
   }),
 ])
 

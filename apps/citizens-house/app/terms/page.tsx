@@ -41,13 +41,13 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                Welcome to NEAR Citizens House (&ldquo;NEAR Citizens House&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or
-                &ldquo;our&rdquo;), an initiative operated by NEAR Foundation (&ldquo;Operator&rdquo;).
+                Welcome to NEAR Citizens House (&ldquo;NEAR Citizens House&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;,
+                or &ldquo;our&rdquo;), an initiative operated by NEAR Foundation (&ldquo;Operator&rdquo;).
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of the NEAR Citizens House website
-                located at https://citizenshouse.org and any related applications, interfaces, or tools operated by NEAR
-                Foundation (collectively, the &ldquo;Services&rdquo;).
+                These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of the NEAR Citizens House
+                website located at https://citizenshouse.org and any related applications, interfaces, or tools operated
+                by NEAR Foundation (collectively, the &ldquo;Services&rdquo;).
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 By accessing, browsing, or using the Services, or by clicking &ldquo;accept&rdquo; where presented, you
@@ -523,12 +523,13 @@ export default function TermsPage() {
               </ul>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
                 This limitation applies regardless of the legal theory asserted, whether in contract, tort, strict
-                liability, or otherwise, even if NEAR Citizens House has been advised of the possibility of such damages.
+                liability, or otherwise, even if NEAR Citizens House has been advised of the possibility of such
+                damages.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                To the extent that any liability of NEAR Citizens House is not otherwise excluded under these Terms, NEAR
-                Citizens House&apos;s total aggregate liability arising out of or relating to the Services or these Terms
-                shall not exceed USD 100 (or the equivalent in local currency).
+                To the extent that any liability of NEAR Citizens House is not otherwise excluded under these Terms,
+                NEAR Citizens House&apos;s total aggregate liability arising out of or relating to the Services or these
+                Terms shall not exceed USD 100 (or the equivalent in local currency).
               </p>
             </div>
           </section>
@@ -582,8 +583,8 @@ export default function TermsPage() {
             </h2>
             <div className="flex flex-col gap-[16px] opacity-[0.88]">
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizens House may, in its reasonable discretion, suspend, restrict, or terminate your access to all
-                or any portion of the Services, with or without notice, if we reasonably believe that:
+                NEAR Citizens House may, in its reasonable discretion, suspend, restrict, or terminate your access to
+                all or any portion of the Services, with or without notice, if we reasonably believe that:
               </p>
               <ul className="list-disc pl-6 flex flex-col gap-[8px]">
                 <li className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
@@ -619,8 +620,9 @@ export default function TermsPage() {
                 Suspension or termination does not relieve you of any obligations incurred prior to such action.
               </p>
               <p className="text-[16px] leading-[28px] font-fk-grotesk font-normal text-[#171717] dark:text-[#e5e5e5]">
-                NEAR Citizens House has no obligation to provide advance notice or an opportunity to cure where immediate
-                action is reasonably required to protect the Services, governance integrity, or compliance obligations.
+                NEAR Citizens House has no obligation to provide advance notice or an opportunity to cure where
+                immediate action is reasonably required to protect the Services, governance integrity, or compliance
+                obligations.
               </p>
             </div>
           </section>
