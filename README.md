@@ -86,7 +86,6 @@ Copy `.env.example` to `.env` and configure the required variables. See `.env.ex
 
 | Script | Description |
 |--------|-------------|
-| `pnpm register-backend-keys` | Register backend wallet keys on contract |
 | `pnpm clean` | Clean build artifacts and node_modules |
 
 ## About Identity Verification
