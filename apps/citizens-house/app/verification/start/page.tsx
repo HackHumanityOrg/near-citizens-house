@@ -364,7 +364,7 @@ function VerificationStartContent() {
   }, [currentStep])
 
   // Handle wallet connection
-  const handleConnect = async () => {
+  const handleConnect = useCallback(async () => {
     const platform = getPlatform()
 
     trackEvent({
@@ -387,10 +387,10 @@ function VerificationStartContent() {
       setErrorMessage("Failed to connect wallet. Please try again.")
       setIsErrorModalOpen(true)
     }
-  }
+  }, [connect])
 
   // Handle message signing
-  const handleSignMessage = async () => {
+  const handleSignMessage = useCallback(async () => {
     if (!accountId) return
 
     const platform = getPlatform()
@@ -465,10 +465,10 @@ function VerificationStartContent() {
     } finally {
       setIsSigning(false)
     }
-  }
+  }, [accountId, signMessage])
 
   // Handle verification success
-  const handleVerificationSuccess = () => {
+  const handleVerificationSuccess = useCallback(() => {
     // Identify verified user for PostHog segmentation
     if (accountId) {
       identifyVerifiedUser(accountId, {
@@ -479,10 +479,10 @@ function VerificationStartContent() {
     setErrorMessage(null)
     setCurrentStep(VerificationProgressStep.VerificationComplete)
     toast.success("Successfully Verified Identity.")
-  }
+  }, [accountId])
 
   // Handle verification error
-  const handleVerificationError = (code: VerificationErrorCode) => {
+  const handleVerificationError = useCallback((code: VerificationErrorCode) => {
     setErrorCode(code)
     setErrorMessage(getErrorMessage(code))
 
@@ -494,10 +494,29 @@ function VerificationStartContent() {
     } else {
       setIsErrorModalOpen(true)
     }
-  }
+  }, [])
+
+  // Handle disconnect
+  const handleDisconnect = useCallback(() => {
+    disconnect()
+    setNearSignature(null)
+    setErrorMessage(null)
+    setCurrentStep(VerificationProgressStep.NotConnected)
+  }, [disconnect])
+
+  // Handle disconnect and navigate to home (for Hold/Error steps)
+  const handleDisconnectAndNavigate = useCallback(() => {
+    disconnect()
+    router.push("/")
+  }, [disconnect, router])
+
+  // Handle closing error modal
+  const handleCloseErrorModal = useCallback(() => {
+    setIsErrorModalOpen(false)
+  }, [])
 
   // Handle retry from error modal
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     // Reset debug mode on retry to use real wallet state
     setDebugModeActive(false)
     setDebugOverrideConnected(null)
@@ -512,15 +531,7 @@ function VerificationStartContent() {
     if (isConnected) {
       handleSignMessage()
     }
-  }
-
-  // Handle disconnect
-  const handleDisconnect = () => {
-    disconnect()
-    setNearSignature(null)
-    setErrorMessage(null)
-    setCurrentStep(VerificationProgressStep.NotConnected)
-  }
+  }, [isConnected, handleSignMessage])
 
   return (
     <div className="min-h-full bg-white dark:bg-black">
@@ -561,10 +572,7 @@ function VerificationStartContent() {
             errorMessage={errorMessage || undefined}
             isConnected={isConnected}
             accountId={accountId || undefined}
-            onDisconnect={() => {
-              disconnect()
-              router.push("/")
-            }}
+            onDisconnect={handleDisconnectAndNavigate}
             onStatusRecovered={handleVerificationSuccess}
           />
         )}
@@ -576,10 +584,7 @@ function VerificationStartContent() {
             errorMessage={errorMessage || undefined}
             isConnected={isConnected}
             accountId={accountId || undefined}
-            onDisconnect={() => {
-              disconnect()
-              router.push("/")
-            }}
+            onDisconnect={handleDisconnectAndNavigate}
             onStatusRecovered={handleVerificationSuccess}
           />
         )}
@@ -591,7 +596,7 @@ function VerificationStartContent() {
         errorMessage={errorMessage || undefined}
         errorCode={errorCode || undefined}
         accountId={accountId || undefined}
-        onClose={() => setIsErrorModalOpen(false)}
+        onClose={handleCloseErrorModal}
         onRetry={handleRetry}
       />
     </div>

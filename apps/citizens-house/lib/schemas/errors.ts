@@ -39,6 +39,7 @@ export const verificationErrorCodeSchema = z.enum([
   "NONCE_ALREADY_USED",
   "BACKEND_NOT_CONFIGURED",
   "STORAGE_FAILED",
+  "APPLICANT_DEACTIVATED",
 
   // Client-side error codes
   "TIMEOUT",
@@ -221,6 +222,13 @@ const VERIFICATION_ERRORS = {
     description: "Something went wrong on our end. Please try again, or contact support if the issue persists.",
     category: "internal",
     apiMessage: "Failed to store verification",
+  },
+  APPLICANT_DEACTIVATED: {
+    code: "APPLICANT_DEACTIVATED",
+    title: "Verification Account Deactivated",
+    description: "Your verification account was deactivated. Please contact support for assistance.",
+    category: "non-retryable",
+    apiMessage: "Verification account deactivated",
   },
 
   // Client-side errors - retryable

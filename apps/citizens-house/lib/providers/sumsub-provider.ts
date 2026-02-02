@@ -278,6 +278,63 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
 }
 
 /**
+ * Parse SumSub error response to extract error details.
+ *
+ * SumSub error format: {"description": "...", "code": 400, "errorCode": 1234, "errorName": "..."}
+ *
+ * @param error - Error from SumSub API call
+ * @returns Parsed error details or null if not a SumSub error
+ */
+export function parseSumSubError(error: unknown): { code: string; message: string; errorName?: string } | null {
+  if (!(error instanceof Error)) return null
+
+  const message = error.message
+
+  // SumSub error format: "SumSub ... failed: STATUS - { ... }" or "Failed to ...: STATUS - ..."
+  const match = message.match(/(\d{3})\s*-\s*(.+)$/)
+  if (!match) return null
+
+  const [, statusCode, responseBody] = match
+
+  // Try to parse JSON response
+  try {
+    const parsed = JSON.parse(responseBody)
+    return {
+      code: statusCode,
+      message: parsed.description || parsed.message || responseBody,
+      errorName: parsed.errorName,
+    }
+  } catch {
+    // Not JSON, use raw body
+    return {
+      code: statusCode,
+      message: responseBody,
+    }
+  }
+}
+
+/**
+ * Check if a SumSub error indicates the applicant is deactivated.
+ *
+ * @param sumsubError - Parsed SumSub error
+ * @returns true if the error indicates a deactivated applicant
+ */
+export function isApplicantDeactivatedError(sumsubError: { message: string; errorName?: string } | null): boolean {
+  if (!sumsubError) return false
+
+  const message = sumsubError.message.toLowerCase()
+  const errorName = sumsubError.errorName?.toLowerCase() || ""
+
+  // Check for various forms of "deactivated" or "inactive" in the error
+  return (
+    message.includes("deactivated") ||
+    message.includes("inactive") ||
+    errorName.includes("deactivated") ||
+    errorName.includes("inactive")
+  )
+}
+
+/**
  * Update applicant metadata.
  *
  * Metadata is stored as key-value pairs on the applicant record.

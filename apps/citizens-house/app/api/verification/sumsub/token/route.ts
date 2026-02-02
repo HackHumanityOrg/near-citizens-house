@@ -15,6 +15,8 @@ import {
   generateAccessToken,
   updateApplicantMetadata,
   getApplicantByExternalUserId,
+  parseSumSubError,
+  isApplicantDeactivatedError,
 } from "@/lib/providers/sumsub-provider"
 import { clearVerificationStatus } from "@/lib/verification-status"
 import { reserveSignatureNonce } from "@/lib/nonce-store"
@@ -236,7 +238,30 @@ export async function POST(request: NextRequest) {
     })
 
     // Step 3: Generate access token for the existing applicant
-    const tokenResponse = await generateAccessToken(externalUserId, levelName)
+    let tokenResponse
+    try {
+      tokenResponse = await generateAccessToken(externalUserId, levelName)
+    } catch (tokenError) {
+      // Check if applicant was deactivated by SumSub
+      const sumsubError = parseSumSubError(tokenError)
+      if (isApplicantDeactivatedError(sumsubError)) {
+        await trackServerEvent(nearSignature.accountId, {
+          domain: "verification",
+          action: "token_applicant_deactivated",
+          accountId: nearSignature.accountId,
+          applicantId: applicant.id,
+          verificationAttemptId,
+          levelName,
+          externalUserId,
+        })
+
+        // Return specific error - user needs to contact support
+        return apiError("APPLICANT_DEACTIVATED")
+      }
+
+      // Re-throw other token generation errors
+      throw tokenError
+    }
 
     await trackServerEvent(nearSignature.accountId, {
       domain: "verification",

@@ -89,6 +89,7 @@ const V = {
   token_config_error: "token_config_error",
   token_already_verified: "token_already_verified",
   token_applicant_reuse: "token_applicant_reuse",
+  token_applicant_deactivated: "token_applicant_deactivated",
   token_metadata_store: "token_metadata_store",
   token_generate: "token_generate",
   token_error: "token_error",
@@ -668,6 +669,17 @@ const verificationTokenApplicantReusedEventSchema = z
   })
   .strict()
 
+const verificationTokenApplicantDeactivatedEventSchema = z
+  .object({
+    ...verificationEventBase,
+    action: z.literal(V.token_applicant_deactivated),
+    accountId: nearAccountIdSchema,
+    applicantId: z.string(),
+    levelName: z.string().optional(),
+    externalUserId: z.string().optional(),
+  })
+  .strict()
+
 const verificationTokenMetadataStoredEventSchema = z
   .object({
     ...verificationEventBase,
@@ -924,6 +936,7 @@ const verificationEventSchema = z.discriminatedUnion("action", [
   verificationTokenConfigErrorEventSchema,
   verificationTokenAlreadyVerifiedEventSchema,
   verificationTokenApplicantReusedEventSchema,
+  verificationTokenApplicantDeactivatedEventSchema,
   verificationTokenMetadataStoredEventSchema,
   verificationTokenGeneratedEventSchema,
   verificationTokenErrorEventSchema,
