@@ -1,4 +1,4 @@
-# Verification Deployment Playbook
+# NEAR Citizens House - Verification Deployment Playbook
 
 Step-by-step guide to deploy the NEAR Verified Accounts system.
 
@@ -69,7 +69,7 @@ near x.x.x
 
 ---
 
-## Environment Variables
+## Local Environment Variables
 
 Set these once and use throughout all commands:
 
@@ -135,7 +135,7 @@ cat ~/.near-credentials/mainnet/$BACKEND_WALLET.$ROOT.json
 }
 ```
 
-Save the `private_key` value (starts with `ed25519:`) for your deployment environment (Vercel secret).
+Save the `private_key` value (starts with `ed25519:`) for your deployment environment (Vercel secret which will be set in Environment variable `NEAR_PRIVATE_KEY`).
 
 ---
 
@@ -235,7 +235,67 @@ near account view-account-summary $CONTRACT.$ROOT \
 
 Check the `Contract (SHA-256 checksum hex)` line matches the hash from Step 3.2.
 
-### 4.5 Secure contract account keys (recommended)
+
+## Step 5: Verify Deployment
+
+> **⚠️ ENVIRONMENT CHECK**: Confirm `$CONTRACT.$ROOT` and `$BACKEND_WALLET.$ROOT` are on the target network.
+
+```bash
+# Check contract
+near contract call-function as-read-only $CONTRACT.$ROOT get_verified_count \
+  json-args '{}' \
+  network-config mainnet now
+```
+
+```bash
+# Check backend wallet keys are still present
+near account list-keys $BACKEND_WALLET.$ROOT network-config mainnet now
+```
+
+**Expected output:**
+
+```
+0
+```
+
+(Returns the number of verified accounts, 0 for fresh deployment)
+
+---
+
+## Step 6: Set secret key environment variable in Vercel
+
+Create NEAR_PRIVATE_KEY environment variable
+
+![CleanShot 2026-01-31 at 20.58.59@2x](https://hackmd.io/_uploads/r1dDUEoLbl.png)
+
+
+---
+
+## Step 7: Production Vercel set up
+
+Set other environment variables correctly:
+
+```
+NEAR_ACCOUNT_ID - backend account name = “backend.citizens-house.near”
+NEAR_PRIVATE_KEY - backend account private key (sensitive)
+NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT - “verification.citizens-house.near”
+NEXT_PUBLIC_NEAR_VOTE_CONTRACT - “vote.citizens-house.near”
+NEXT_PUBLIC_SUMSUB_LEVEL_NAME - “NEAR Verified Accounts (Individuals)”
+```
+
+Turn off Maintenance Mode in Vercel (in Storage)
+
+---
+
+## Step 8: End-to-end test
+
+1. Go to https://www.citizens-house.org and verify the first account
+2. Check SumSub and https://www.citizens-house.org/citizens have the record of the verified account
+3. Once verified, turn on Maintenance Mode in Vercel (in Storage)
+
+---
+
+## Step 9: Secure contract account keys (recommended)
 
 Rotate the contract account's full-access keys to the multisig, then delete the contract's initial key. This only affects the **contract account**; do **not** delete backend wallet keys used by the web app.
 
@@ -276,29 +336,6 @@ If you want to lock upgrades permanently, delete all full-access keys. Since thi
 
 ---
 
-## Step 5: Verify Deployment
-
-> **⚠️ ENVIRONMENT CHECK**: Confirm `$CONTRACT.$ROOT` and `$BACKEND_WALLET.$ROOT` are on the target network.
-
-```bash
-# Check contract
-near contract call-function as-read-only $CONTRACT.$ROOT get_verified_count \
-  json-args '{}' \
-  network-config mainnet now
-```
-
-```bash
-# Check backend wallet keys are still present
-near account list-keys $BACKEND_WALLET.$ROOT network-config mainnet now
-```
-
-**Expected output:**
-
-```
-0
-```
-
-(Returns the number of verified accounts, 0 for fresh deployment)
 
 ---
 
