@@ -100,7 +100,7 @@ Link your real-world identity to your NEAR blockchain wallet using SumSub identi
 If you want to verify your real-world identity for your NEAR wallet, this app provides a secure solution:
 
 1. **Verify Wallet Ownership** - Sign a message with your NEAR wallet to prove you control it
-2. **Complete KYC Verification** - Verify your identity through SumSub (ID document photo + selfie liveness check)
+2. **Complete ID Verification** - Verify your identity through SumSub (ID document photo + selfie liveness check)
 3. **Link to Blockchain** - Your verification status is stored on the NEAR blockchain
 4. **Permanent Record** - Verification stored immutably on the NEAR blockchain
 5. **Public Verification** - Anyone can verify account status without any private data being disclosed publicly
@@ -134,14 +134,14 @@ Once SumSub approves your verification, the result is stored on the NEAR blockch
 ✅ **Verified:**
 
 - You own the NEAR wallet (via cryptographic signature)
-- Your identity was verified by SumSub KYC
+- Your identity was verified by SumSub
 - Your identity hasn't been used to verify another wallet (SumSub deduplication)
 
 ### Privacy & Data Handling
 
 **What SumSub Processes:**
 
-SumSub handles identity verification and receives your ID document photo and selfie for KYC compliance. SumSub manages data retention according to their privacy policy and regulatory requirements.
+SumSub handles identity verification and receives your ID document photo and selfie. SumSub manages data retention according to their privacy policy and regulatory requirements.
 
 **What's Stored On-Chain:**
 
@@ -153,7 +153,7 @@ SumSub handles identity verification and receives your ID document photo and sel
 
 **Defense-in-Depth Security:**
 
-- SumSub backend verifies identity via KYC
+- SumSub backend verifies identity
 - NEAR smart contract independently verifies your wallet signature
 - Both must pass for verification to succeed
 
@@ -166,7 +166,7 @@ Anyone can view the list of verified NEAR accounts without accessing any private
 ## Important Notes
 
 **Privacy Model:**
-Your personal information is processed by SumSub for KYC verification. Only your verification status (not personal data) is stored on the NEAR blockchain.
+Your personal information is processed by SumSub for identity verification. Only your verification status (not personal data) is stored on the NEAR blockchain.
 
 **One Person, One Wallet:**
 SumSub's identity deduplication ensures each person can only verify one NEAR wallet. This prevents Sybil attacks (multiple accounts per person) in applications that require unique identities.
