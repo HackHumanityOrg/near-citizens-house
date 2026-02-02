@@ -47,11 +47,13 @@ Copy `.env.example` to `.env` and configure the required variables. See `.env.ex
 |----------|----------|-------------|
 | `NEXT_PUBLIC_NEAR_NETWORK` | Yes | NEAR network (`testnet` or `mainnet`) |
 | `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | Yes | Verification contract ID |
-| `NEXT_PUBLIC_APP_URL` | Yes | Deployed app URL (for Self.xyz callbacks) |
+| `NEXT_PUBLIC_APP_URL` | Yes | Deployed app URL |
 | `NEAR_ACCOUNT_ID` | Yes | Backend wallet account ID |
 | `NEAR_PRIVATE_KEY` | Yes | Backend wallet private key (server-side only) |
 | `REDIS_URL` | Yes | Redis URL for session storage |
-| `NEXT_PUBLIC_SELF_NETWORK` | Yes | Self.xyz network (`testnet` or `mainnet`) |
+| `SUMSUB_APP_TOKEN` | Yes | SumSub API token |
+| `SUMSUB_SECRET_KEY` | Yes | SumSub secret key |
+| `SUMSUB_WEBHOOK_SECRET` | Yes | SumSub webhook signature secret |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | No | WalletConnect project ID for wallet support |
 | `NEXT_PUBLIC_POSTHOG_KEY` | No | PostHog API key for analytics |
 
@@ -86,22 +88,23 @@ Copy `.env.example` to `.env` and configure the required variables. See `.env.ex
 
 | Script | Description |
 |--------|-------------|
+| `pnpm register-backend-keys` | Register backend wallet keys on contract |
 | `pnpm clean` | Clean build artifacts and node_modules |
 
 ## About Identity Verification
 
-Link your real-world identity to your NEAR blockchain wallet using zero-knowledge proofs. Prove who you are without revealing personal information.
+Link your real-world identity to your NEAR blockchain wallet using SumSub identity verification. Prove you're a unique individual and connect your verified identity to your wallet.
 
 ## What This App Does
 
-If you want to verify your real-world identity for your NEAR wallet while maintaining privacy, this app provides a secure, privacy-preserving solution:
+If you want to verify your real-world identity for your NEAR wallet, this app provides a secure solution:
 
-1. **Verify Your Identity** - Prove you have a valid government-issued ID (passport, biometric ID card, or Aadhaar)
-2. **Protect Your Privacy** - Zero-knowledge proofs ensure no personal data is exposed
-3. **Link to Blockchain** - Cryptographically connect your identity to your NEAR wallet
+1. **Verify Wallet Ownership** - Sign a message with your NEAR wallet to prove you control it
+2. **Complete ID Verification** - Verify your identity through SumSub (ID document photo + selfie liveness check)
+3. **Link to Blockchain** - Your verification status is stored on the NEAR blockchain
 4. **Permanent Record** - Verification stored immutably on the NEAR blockchain
-5. **Public Verification** - Anyone can verify account status without accessing private data
-6. **Sybil Resistance** - Each identity document can only be used once, preventing duplicate accounts
+5. **Public Verification** - Anyone can verify account status without any private data being disclosed publicly
+6. **Sybil Resistance** - SumSub ensures each person can only verify one wallet (identity de-duplication)
 
 ## How It Works
 
@@ -113,79 +116,73 @@ Connect your NEAR wallet using any compatible wallet (Meteor Wallet, MyNearWalle
 
 **Step 2: Sign a Message**
 
-Your wallet will ask you to sign a message identifying you for the verification contract. This cryptographic signature proves you control the wallet address. No transaction is sent, and this is completely free.
+Your wallet will ask you to sign a NEP-413 message. This cryptographic signature proves you control the wallet address. No transaction is sent, and this is completely free.
 
-**Step 3: Scan QR Code with Self App**
+**Step 3: Complete Identity Verification**
 
-A QR code appears on screen. Using the Self mobile app, scan your document's NFC chip and generate a zero-knowledge proof. The proof confirms you have a valid government-issued ID without revealing any personal information like name, date of birth, or document number.
+Complete the SumSub verification flow directly in your browser:
+- Upload a photo of your government-issued ID (Passport, Driver's License, National ID Card, or Residence Permit)
+- Complete a selfie liveness check
+- Wait for instant or manual review (typically seconds to minutes)
 
 **Step 4: Verification Complete**
 
-The app verifies both your wallet signature and identity proof, then stores this verification on the NEAR blockchain. Your identity is now cryptographically linked to your NEAR wallet.
+Once SumSub approves your verification, the result is stored on the NEAR blockchain via webhook. Your identity is now linked to your NEAR wallet.
 
 ### What Gets Verified?
 
 ✅ **Verified:**
 
 - You own the NEAR wallet (via cryptographic signature)
-- You possess a valid government-issued ID (via ZK proof)
-- Your document is authentic and hasn't been used to verify another wallet
+- Your identity was verified by SumSub
+- Your identity hasn't been used to verify another wallet (SumSub deduplication)
 
-❌ **NOT Stored or Revealed:**
+### Privacy & Data Handling
 
-- Your name
-- Date of birth
-- Document number
-- Nationality
-- Photo
-- Any other personal information
+**What SumSub Processes:**
 
-### Privacy & Security
-
-**Zero-Knowledge Proofs:**
-The verification uses advanced cryptography called zero-knowledge proofs. Think of it like proving you're over 18 without showing your ID - you can prove something is true without revealing the underlying data.
+SumSub handles identity verification and receives your ID document photo and selfie. SumSub manages data retention according to their privacy policy and regulatory requirements.
 
 **What's Stored On-Chain:**
 
-- A unique identifier (nullifier) from your document - this prevents the same document from being used twice
-- Your NEAR wallet address
-- Timestamp of verification
-- Type of document used (passport, biometric ID card, or Aadhaar)
-- The ZK proof itself (for independent re-verification)
+- Your NEAR account ID
+- Verification timestamp
+- NEP-413 signature data (proves wallet ownership at time of verification)
+
+**No personal information is stored on the blockchain.** Only your verification status is recorded on-chain.
 
 **Defense-in-Depth Security:**
 
-- Self.xyz backend verifies the identity proof
+- SumSub backend verifies identity
 - NEAR smart contract independently verifies your wallet signature
 - Both must pass for verification to succeed
 
 ## View Verified Accounts
 
-Anyone can view the list of verified NEAR accounts without accessing any private data. Each entry shows the wallet address, document type, and verification timestamp - no personal information is ever revealed.
+Anyone can view the list of verified NEAR accounts without accessing any private data. Each entry shows the wallet address and verification timestamp - no personal information is ever revealed.
 
 **Public Verification List:** `/citizens` route on your deployed instance
 
 ## Important Notes
 
-**Privacy First:**
-Your personal information never leaves your device or the Self.xyz secure enclave. Only cryptographic proofs are transmitted and stored.
+**Privacy Model:**
+Your personal information is processed by SumSub for identity verification. Only your verification status (not personal data) is stored on the NEAR blockchain.
 
-**One Document, One Wallet:**
-Each identity document can only verify one NEAR wallet. This prevents Sybil attacks (multiple accounts per person) in applications that require unique identities.
+**One Person, One Wallet:**
+SumSub's identity deduplication ensures each person can only verify one NEAR wallet. This prevents Sybil attacks (multiple accounts per person) in applications that require unique identities.
 
 **Immutable Verification:**
 Once verified, the record is permanently stored on the NEAR blockchain and cannot be changed or deleted. This provides strong guarantees but means you should verify with the wallet you intend to use long-term.
 
-**Waiting Period:**
-The verification process typically takes 1-2 minutes to complete as it involves:
+**Verification Time:**
+The verification process typically completes within seconds to a few minutes:
 
-- Generating zero-knowledge proofs on your mobile device
-- Backend verification of cryptographic proofs
-- On-chain transaction confirmation
+- Instant approval for clear document photos and liveness checks
+- Manual review may be required for edge cases
 
 ## Resources
 
-- **Self.xyz Protocol** - [https://self.xyz](https://self.xyz) | [Documentation](https://docs.self.xyz)
+- **SumSub** - [https://sumsub.com](https://sumsub.com) | [Documentation](https://docs.sumsub.com)
 - **NEAR Protocol** - [https://near.org](https://near.org) | [Documentation](https://docs.near.org)
 - **NEAR Explorer** - [NearBlocks Testnet](https://testnet.nearblocks.io) | [NearBlocks Mainnet](https://nearblocks.io)
 - **Wallet Selector** - [NEAR Wallet Selector](https://github.com/near/wallet-selector)
@@ -196,4 +193,4 @@ Questions or issues? Open an issue on [GitHub](https://github.com/HackHumanityOr
 
 ---
 
-**Created by** [Hack Humanity](https://hackhumanity.com) and [NEAR Foundation](https://near.foundation) • Copyright © 2026 NEAR Foundation • **License:** MIT
+**Created by** [Hack Humanity](https://hackhumanity.com) and [NEAR Foundation](https://near.foundation) • Copyright © 2026 NEAR Foundation • MIT License
