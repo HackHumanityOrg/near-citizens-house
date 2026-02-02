@@ -1,7 +1,10 @@
 import type { DashboardDefinition } from "../schemas"
+import { VERIFICATION_EVENTS, CITIZENS_EVENTS, CONSENT_EVENTS, ERRORS_EVENTS } from "@/lib/schemas"
 
 /**
- * Verification event names - derived from lib/schemas/analytics.ts
+ * Verification Analytics Dashboard
+ *
+ * Uses event constants from @/lib/schemas/analytics-events (single source of truth).
  *
  * Happy path flow:
  * 1. flow_start - User enters verification page
@@ -13,41 +16,6 @@ import type { DashboardDefinition } from "../schemas"
  * 7. onchain_store_success - Server confirmed verification (authoritative)
  * 8. success_view - User sees success screen
  */
-const VERIFICATION_EVENTS = {
-  // Flow lifecycle
-  flow_start: "verification:flow_start",
-  cta_click: "verification:cta_click",
-  // Wallet connection
-  wallet_connect_start: "verification:wallet_connect_start",
-  wallet_connect_success: "verification:wallet_connect_success",
-  wallet_connect_fail: "verification:wallet_connect_fail",
-  // Message signing
-  sign_start: "verification:sign_start",
-  sign_success: "verification:sign_success",
-  sign_fail: "verification:sign_fail",
-  // Token fetch
-  token_fetch_start: "verification:token_fetch_start",
-  token_fetch_success: "verification:token_fetch_success",
-  token_fetch_fail: "verification:token_fetch_fail",
-  // SumSub SDK
-  sumsub_sdk_load: "verification:sumsub_sdk_load",
-  sumsub_ready: "verification:sumsub_ready",
-  sumsub_submit: "verification:sumsub_submit",
-  sumsub_review_reject: "verification:sumsub_review_reject",
-  // Polling
-  polling_start: "verification:polling_start",
-  polling_approve: "verification:polling_approve",
-  polling_timeout: "verification:polling_timeout",
-  // Server-side
-  proof_submit: "verification:proof_submit",
-  proof_validate: "verification:proof_validate",
-  onchain_store_success: "verification:onchain_store_success",
-  onchain_store_reject: "verification:onchain_store_reject",
-  // Success/Error
-  success_view: "verification:success_view",
-  error_modal_view: "verification:error_modal_view",
-  manual_review_view: "verification:manual_review_view",
-} as const
 
 /**
  * Single high-value dashboard for verification analytics
@@ -121,21 +89,21 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           exclude_events: [
             // === Non-verification domain events ===
             // Citizens domain
-            "citizens:details_viewed",
-            "citizens:signature_verify_opened",
-            "citizens:copied_to_clipboard",
-            "citizens:external_verifier_opened",
+            CITIZENS_EVENTS.details_viewed,
+            CITIZENS_EVENTS.signature_verify_opened,
+            CITIZENS_EVENTS.copied_to_clipboard,
+            CITIZENS_EVENTS.external_verifier_opened,
             // Consent domain
-            "consent:response",
+            CONSENT_EVENTS.response,
             // Errors domain
-            "errors:exception_captured",
+            ERRORS_EVENTS.exception_captured,
             // === Noisy verification events ===
             // Exclude repetitive SumSub SDK messages (fires many times)
-            "verification:sumsub_message_receive",
-            "verification:sumsub_status_receive",
+            VERIFICATION_EVENTS.sumsub_message_receive,
+            VERIFICATION_EVENTS.sumsub_status_receive,
             // Exclude server-side events (not visible to user)
-            "verification:proof_submit",
-            "verification:proof_validate",
+            VERIFICATION_EVENTS.proof_submit,
+            VERIFICATION_EVENTS.proof_validate,
           ],
         },
       },
@@ -207,13 +175,13 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
               id: VERIFICATION_EVENTS.onchain_store_success,
               type: "events",
               name: "Completed (A)",
-              math: "total",
+              math: "dau",
             },
             {
               id: VERIFICATION_EVENTS.flow_start,
               type: "events",
               name: "Started (B)",
-              math: "total",
+              math: "dau",
             },
           ],
         },
@@ -287,7 +255,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
               id: VERIFICATION_EVENTS.success_view,
               type: "events",
               name: "Success Screen",
-              math: "total",
+              math: "dau",
             },
           ],
           breakdown: "platform",
@@ -296,6 +264,33 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
       },
       layouts: {
         sm: { h: 5, w: 6, x: 6, y: 18 },
+      },
+    },
+
+    // Row 5: Geographic distribution (full width)
+    {
+      type: "insight",
+      insight: {
+        name: "Verifications by Country",
+        description: "Geographic distribution of successful verifications",
+        filters: {
+          insight: "TRENDS",
+          date_from: "-30d",
+          display: "WorldMap",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.success_view,
+              type: "events",
+              name: "Verifications",
+              math: "dau",
+            },
+          ],
+          breakdown: "$geoip_country_code",
+          breakdown_type: "event",
+        },
+      },
+      layouts: {
+        sm: { h: 6, w: 12, x: 0, y: 23 },
       },
     },
   ],
