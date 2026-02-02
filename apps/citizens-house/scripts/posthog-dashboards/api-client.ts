@@ -64,6 +64,24 @@ function calculateBackoff(attempt: number, baseDelay: number, maxDelay: number):
 /**
  * API response types
  */
+
+/**
+ * PostHog event as returned from the events API
+ */
+export interface PostHogEvent {
+  uuid: string
+  event: string
+  distinct_id: string
+  properties: Record<string, unknown>
+  timestamp: string
+  created_at: string
+}
+
+interface PaginatedEventsResponse {
+  results: PostHogEvent[]
+  next: string | null
+}
+
 interface DashboardResponse {
   id: number
   name: string
@@ -72,6 +90,19 @@ interface DashboardResponse {
   created_at: string
   deleted: boolean
   tags: string[]
+}
+
+/**
+ * Dashboard response with tile details included
+ * Used when we need to access insights attached to a dashboard
+ */
+interface DashboardWithTiles extends DashboardResponse {
+  tiles: Array<{
+    id: number
+    insight: { id: number } | null
+    text: { body: string } | null
+    layouts: Record<string, unknown>
+  }>
 }
 
 interface InsightResponse {
@@ -304,6 +335,38 @@ export class PostHogApiClient {
   }
 
   /**
+   * Get a dashboard with its tiles included
+   * Used when we need to access insights attached to a dashboard
+   */
+  async getDashboardWithTiles(dashboardId: number): Promise<DashboardWithTiles> {
+    return this.request<DashboardWithTiles>("GET", `/api/projects/${this.projectId}/dashboards/${dashboardId}/`)
+  }
+
+  /**
+   * Delete a dashboard and all its attached insights
+   * This prevents orphaned insights from accumulating when replacing dashboards
+   * @returns Number of insights deleted
+   */
+  async deleteDashboardWithInsights(dashboardId: number): Promise<{ insightsDeleted: number }> {
+    // Get dashboard tiles to find attached insights
+    const dashboard = await this.getDashboardWithTiles(dashboardId)
+
+    // Delete each insight attached to this dashboard
+    let insightsDeleted = 0
+    for (const tile of dashboard.tiles || []) {
+      if (tile.insight?.id) {
+        await this.deleteInsight(tile.insight.id)
+        insightsDeleted++
+      }
+    }
+
+    // Delete the dashboard itself
+    await this.deleteDashboard(dashboardId)
+
+    return { insightsDeleted }
+  }
+
+  /**
    * Find a dashboard by name
    */
   async findDashboardByName(name: string): Promise<DashboardResponse | null> {
@@ -494,10 +557,41 @@ export class PostHogApiClient {
   }
 
   /**
-   * Delete an insight
+   * Delete an insight (soft delete via PATCH)
    */
   async deleteInsight(insightId: number): Promise<void> {
-    await this.request<void>("DELETE", `/api/projects/${this.projectId}/insights/${insightId}/`)
+    await this.request<void>("PATCH", `/api/projects/${this.projectId}/insights/${insightId}/`, {
+      deleted: true,
+    })
+  }
+
+  /**
+   * Delete all insights in the project (handles pagination)
+   * @returns Number of insights deleted
+   */
+  async deleteAllInsights(): Promise<number> {
+    let totalDeleted = 0
+    let hasMore = true
+
+    while (hasMore) {
+      // Fetch a batch of insights (PostHog max is typically 100-250 per page)
+      const insights = await this.listInsights(100)
+      const activeInsights = insights.filter((i) => !i.deleted)
+
+      if (activeInsights.length === 0) {
+        hasMore = false
+        break
+      }
+
+      for (const insight of activeInsights) {
+        await this.deleteInsight(insight.id)
+        totalDeleted++
+      }
+
+      console.log(`Deleted ${totalDeleted} insights so far...`)
+    }
+
+    return totalDeleted
   }
 
   // ==========================================
@@ -767,7 +861,8 @@ export class PostHogApiClient {
 
       if (options.replaceExisting) {
         console.log(`Dashboard "${definition.name}" exists, replacing...`)
-        await this.deleteDashboard(existing.id)
+        const { insightsDeleted } = await this.deleteDashboardWithInsights(existing.id)
+        console.log(`Deleted ${insightsDeleted} old insights`)
         replaced = true
       }
     }
@@ -853,6 +948,72 @@ export class PostHogApiClient {
     } catch {
       return false
     }
+  }
+
+  // ==========================================
+  // Events Query Operations
+  // ==========================================
+
+  /**
+   * Query events from the PostHog events API
+   * @param options Query options
+   * @returns Array of events
+   */
+  async queryEvents(
+    options: {
+      /** Filter events after this ISO timestamp */
+      after?: string
+      /** Filter events before this ISO timestamp */
+      before?: string
+      /** Filter by event name */
+      event?: string
+      /** Maximum number of events to return (handles pagination) */
+      limit?: number
+    } = {},
+  ): Promise<PostHogEvent[]> {
+    const { after, before, event, limit = 1000 } = options
+    const allEvents: PostHogEvent[] = []
+    let cursor: string | null = null
+    const pageSize = Math.min(limit, 100) // PostHog max per page is 100
+
+    do {
+      // Build query params
+      const params = new URLSearchParams()
+      if (after) params.set("after", after)
+      if (before) params.set("before", before)
+      if (event) params.set("event", event)
+      params.set("limit", String(pageSize))
+
+      // Build the URL with cursor if we have one
+      let endpoint = `/api/projects/${this.projectId}/events/?${params.toString()}`
+      if (cursor) {
+        // PostHog returns full URL in next, we need just the path
+        const cursorUrl = new URL(cursor)
+        endpoint = cursorUrl.pathname + cursorUrl.search
+      }
+
+      const response = await this.request<PaginatedEventsResponse>("GET", endpoint)
+      allEvents.push(...response.results)
+      cursor = response.next
+
+      // Stop if we've reached the limit
+      if (allEvents.length >= limit) {
+        break
+      }
+    } while (cursor)
+
+    return allEvents.slice(0, limit)
+  }
+
+  /**
+   * Query events from the last N hours
+   * @param hours Number of hours to look back
+   * @param options Additional query options
+   * @returns Array of events
+   */
+  async queryRecentEvents(hours: number, options: { event?: string; limit?: number } = {}): Promise<PostHogEvent[]> {
+    const after = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
+    return this.queryEvents({ after, ...options })
   }
 }
 
