@@ -27,180 +27,14 @@ import { VERIFICATION_EVENTS, CITIZENS_EVENTS, CONSENT_EVENTS, ERRORS_EVENTS } f
 
 /**
  * Single high-value dashboard for verification analytics
- * Includes: full funnel (client + server events), paths, platform breakdown, and key metrics
+ * Includes: key metrics, full funnel (client + server events), time to complete charts, location and platform breakdown, rejection reasons detail, paths
  */
 export const verificationAnalyticsDashboard: DashboardDefinition = {
   name: "Verification Analytics",
   description: "Core verification metrics: conversion funnel, user paths, platform breakdown, and key metrics",
   tags: ["verification", "analytics"],
   tiles: [
-    // Row 1: Verification Funnel (full width)
-    // Starts and ends with SERVER-SIDE events for reliable tracking.
-    // Client-side steps are OPTIONAL to handle ad blockers (which block ~30% of users).
-    // This ensures we capture ALL verified users while still showing drop-off details.
-    {
-      type: "insight",
-      insight: {
-        name: "Verification Funnel",
-        description:
-          "Conversion funnel from token generation to on-chain verification. Client-side steps are optional to handle ad blockers.",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            // Uses dashboard date range
-            funnelsFilter: {
-              funnelVizType: "steps",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-            },
-            series: [
-              // Step 1: Token generated (SERVER-SIDE, required)
-              // This proves wallet connected + signed (server validates the signature)
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.token_generate,
-                custom_name: "Token Generated (Wallet + Sign verified)",
-              },
-              // Step 2: SumSub SDK loaded (CLIENT-SIDE, optional)
-              // May be blocked by ad blockers
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.sumsub_sdk_load,
-                custom_name: "ID verification started",
-                optionalInFunnel: true,
-              },
-              // Step 3: User submitted documents to SumSub (CLIENT-SIDE, optional)
-              // May be blocked by ad blockers
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.sumsub_submit,
-                custom_name: "ID verification submitted",
-                optionalInFunnel: true,
-              },
-              // Step 4: Server confirmed and stored on-chain (SERVER-SIDE, required)
-              // This is the authoritative success event
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.onchain_store_success,
-                custom_name: "Successfully verified on-chain",
-              },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 6, w: 12, x: 0, y: 0 },
-      },
-    },
-
-    // Row 2: Time to Convert (histogram visualizations)
-    // Uses PostHog's native funnel time_to_convert for bar chart display
-    // All use server-side events for reliable tracking
-    {
-      type: "insight",
-      insight: {
-        name: "Time: Token → Verified",
-        description: "Time from token generation to successful verification",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            funnelsFilter: {
-              funnelVizType: "time_to_convert",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-              binCount: 10,
-            },
-            series: [
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.token_generate,
-                custom_name: "Token Generated",
-              },
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.onchain_store_success,
-                custom_name: "Verified",
-              },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 4, x: 0, y: 6 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Time: ID Start → Verified",
-        description: "Time from ID verification started to verified",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            funnelsFilter: {
-              funnelVizType: "time_to_convert",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-              binCount: 10,
-            },
-            series: [
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.sumsub_sdk_load,
-                custom_name: "ID Verification Started",
-              },
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.onchain_store_success,
-                custom_name: "Verified",
-              },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 4, x: 4, y: 6 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Time: ID Submit → Verified",
-        description: "Time from document submission to verified",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            funnelsFilter: {
-              funnelVizType: "time_to_convert",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-              binCount: 10,
-            },
-            series: [
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.sumsub_submit,
-                custom_name: "Documents Submitted",
-              },
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.onchain_store_success,
-                custom_name: "Verified",
-              },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 4, x: 8, y: 6 },
-      },
-    },
-
-    // Row 3: Key metrics (4 across)
+    // Row 1: Key metrics (4 across)
     // Uses server-side events for reliable counts
     {
       type: "insight",
@@ -320,44 +154,173 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
       },
     },
 
-    // Row 4: Rejection Reasons (full width)
-    // Shows all rejection events with their raw properties
+    // Row 2: Verification Funnel (full width)
+    // Starts and ends with SERVER-SIDE events for reliable tracking.
+    // Client-side steps are OPTIONAL to handle ad blockers (which block ~30% of users).
+    // This ensures we capture ALL verified users while still showing drop-off details.
     {
       type: "insight",
       insight: {
-        name: "Rejection Reasons",
-        description: "Why verifications are rejected (SumSub + contract)",
+        name: "Verification Funnel",
+        description:
+          "Conversion funnel from token generation to on-chain verification. Client-side steps are optional to handle ad blockers.",
         query: {
-          kind: "DataTableNode",
+          kind: "InsightVizNode",
           source: {
-            kind: "HogQLQuery",
-            query: `
-SELECT
-  timestamp,
-  event,
-  distinct_id AS account_id,
-  properties.reviewAnswer AS review_answer,
-  properties.reviewRejectType AS reject_type,
-  properties.rejectLabels AS reject_labels,
-  properties.moderationComment AS moderation_comment,
-  properties.clientComment AS client_comment,
-  properties.errorCode AS error_code,
-  properties.reason AS reason
-FROM events
-WHERE event IN ('${VERIFICATION_EVENTS.webhook_review_reject}', '${VERIFICATION_EVENTS.onchain_store_reject}')
-  AND {filters}
-ORDER BY timestamp DESC
-LIMIT 100
-            `.trim(),
+            kind: "FunnelsQuery",
+            // Uses dashboard date range
+            funnelsFilter: {
+              funnelVizType: "steps",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+            },
+            series: [
+              // Step 1: Token generated (SERVER-SIDE, required)
+              // This proves wallet connected + signed (server validates the signature)
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.token_generate,
+                custom_name: "Token Generated (Wallet + Sign verified)",
+              },
+              // Step 2: SumSub SDK loaded (CLIENT-SIDE, optional)
+              // May be blocked by ad blockers
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.sumsub_sdk_load,
+                custom_name: "ID verification started",
+                optionalInFunnel: true,
+              },
+              // Step 3: User submitted documents to SumSub (CLIENT-SIDE, optional)
+              // May be blocked by ad blockers
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.sumsub_submit,
+                custom_name: "ID verification submitted",
+                optionalInFunnel: true,
+              },
+              // Step 4: Server confirmed and stored on-chain (SERVER-SIDE, required)
+              // This is the authoritative success event
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Successfully verified on-chain",
+              },
+            ],
           },
         },
       },
       layouts: {
-        sm: { h: 5, w: 12, x: 0, y: 15 },
+        sm: { h: 6, w: 12, x: 0, y: 0 },
       },
     },
 
-    // Row 5: Geographic distribution + Platform breakdown
+    // Row 3: Time to Convert (histogram visualizations)
+    // Uses PostHog's native funnel time_to_convert for bar chart display
+    // All use server-side events for reliable tracking
+    {
+      type: "insight",
+      insight: {
+        name: "Time: Token → Verified",
+        description: "Time from token generation to successful verification",
+        query: {
+          kind: "InsightVizNode",
+          source: {
+            kind: "FunnelsQuery",
+            funnelsFilter: {
+              funnelVizType: "time_to_convert",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+              binCount: 10,
+            },
+            series: [
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.token_generate,
+                custom_name: "Token Generated",
+              },
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Verified",
+              },
+            ],
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 4, x: 0, y: 6 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Time: ID Start → Verified",
+        description: "Time from ID verification started to verified",
+        query: {
+          kind: "InsightVizNode",
+          source: {
+            kind: "FunnelsQuery",
+            funnelsFilter: {
+              funnelVizType: "time_to_convert",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+              binCount: 10,
+            },
+            series: [
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.sumsub_sdk_load,
+                custom_name: "ID Verification Started",
+              },
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Verified",
+              },
+            ],
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 4, x: 4, y: 6 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Time: ID Submit → Verified",
+        description: "Time from document submission to verified",
+        query: {
+          kind: "InsightVizNode",
+          source: {
+            kind: "FunnelsQuery",
+            funnelsFilter: {
+              funnelVizType: "time_to_convert",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+              binCount: 10,
+            },
+            series: [
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.sumsub_submit,
+                custom_name: "Documents Submitted",
+              },
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Verified",
+              },
+            ],
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 4, x: 8, y: 6 },
+      },
+    },
+
+    // Row 4: Geographic distribution + Platform breakdown
     {
       type: "insight",
       insight: {
@@ -406,6 +369,43 @@ LIMIT 100
       },
       layouts: {
         sm: { h: 6, w: 4, x: 8, y: 20 },
+      },
+    },
+
+    // Row 5: Rejection Reasons (full width)
+    // Shows all rejection events with their raw properties
+    {
+      type: "insight",
+      insight: {
+        name: "Rejection Reasons",
+        description: "Why verifications are rejected (SumSub + contract)",
+        query: {
+          kind: "DataTableNode",
+          source: {
+            kind: "HogQLQuery",
+            query: `
+SELECT
+  timestamp,
+  event,
+  distinct_id AS account_id,
+  properties.reviewAnswer AS review_answer,
+  properties.reviewRejectType AS reject_type,
+  properties.rejectLabels AS reject_labels,
+  properties.moderationComment AS moderation_comment,
+  properties.clientComment AS client_comment,
+  properties.errorCode AS error_code,
+  properties.reason AS reason
+FROM events
+WHERE event IN ('${VERIFICATION_EVENTS.webhook_review_reject}', '${VERIFICATION_EVENTS.onchain_store_reject}')
+  AND {filters}
+ORDER BY timestamp DESC
+LIMIT 100
+            `.trim(),
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 12, x: 0, y: 15 },
       },
     },
 
