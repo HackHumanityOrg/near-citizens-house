@@ -27,14 +27,134 @@ import { VERIFICATION_EVENTS, CITIZENS_EVENTS, CONSENT_EVENTS, ERRORS_EVENTS } f
 
 /**
  * Single high-value dashboard for verification analytics
- * Includes: full funnel (client + server events), paths, platform breakdown, and key metrics
+ * Includes: key metrics, full funnel (client + server events), time to complete charts, location and platform breakdown, rejection reasons detail, paths
  */
 export const verificationAnalyticsDashboard: DashboardDefinition = {
   name: "Verification Analytics",
   description: "Core verification metrics: conversion funnel, user paths, platform breakdown, and key metrics",
   tags: ["verification", "analytics"],
   tiles: [
-    // Row 1: Verification Funnel (full width)
+    // Row 1: Key metrics (4 across)
+    // Uses server-side events for reliable counts
+    {
+      type: "insight",
+      insight: {
+        name: "Started Flow",
+        description: "Unique users who got a verification token",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.token_generate,
+              type: "events",
+              name: "Started verification",
+              math: "dau",
+            },
+          ],
+        },
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 0, y: 11 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Successful",
+        description: "Verified on-chain",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.onchain_store_success,
+              type: "events",
+              name: "Successful verifications",
+              math: "dau",
+            },
+          ],
+        },
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 3, y: 11 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Rejected",
+        description: "Verification rejected",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          formula: "A + B",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.onchain_store_reject,
+              type: "events",
+              name: "Contract rejections (A)",
+              math: "dau",
+            },
+            {
+              id: VERIFICATION_EVENTS.webhook_review_reject,
+              type: "events",
+              name: "SumSub rejections (B)",
+              math: "dau",
+            },
+          ],
+        },
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 6, y: 11 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Conversion Rate (%)",  
+        description: "Token generated to verification complete",  
+        query: {  
+          kind: "TrendsQuery",  
+          dateRange: {  
+            date_from: null,  // Uses dashboard date range  
+            date_to: null  
+          },  
+          series: [  
+            {  
+              kind: "EventsNode",  
+              event: VERIFICATION_EVENTS.onchain_store_success,  
+              name: "Successfully verified (A)",  
+              math: "dau"  
+            },  
+            {  
+              kind: "EventsNode",  
+              event: VERIFICATION_EVENTS.token_generate,  
+              name: "Token generated (B)",  
+              math: "dau"  
+            }  
+          ],  
+          trendsFilter: {  
+            display: "BoldNumber",  
+            aggregationAxisFormat: "percentage",  
+            decimalPlaces: 0,  
+            formulaNodes: [  
+              {  
+                formula: "A / B * 100"  
+              }  
+            ]  
+          }  
+        }
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 9, y: 11 },
+      },
+    },
+
+    // Row 2: Verification Funnel (full width)
     // Starts and ends with SERVER-SIDE events for reliable tracking.
     // Client-side steps are OPTIONAL to handle ad blockers (which block ~30% of users).
     // This ensures we capture ALL verified users while still showing drop-off details.
@@ -94,7 +214,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
       },
     },
 
-    // Row 2: Time to Convert (histogram visualizations)
+    // Row 3: Time to Convert (histogram visualizations)
     // Uses PostHog's native funnel time_to_convert for bar chart display
     // All use server-side events for reliable tracking
     {
@@ -200,153 +320,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
       },
     },
 
-    // Row 3: Key metrics (4 across)
-    // Uses server-side events for reliable counts
-    {
-      type: "insight",
-      insight: {
-        name: "Started Flow",
-        description: "Unique users who got a verification token",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.token_generate,
-              type: "events",
-              name: "Started verification",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 0, y: 11 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Successful",
-        description: "Verified on-chain",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.onchain_store_success,
-              type: "events",
-              name: "Successful verifications",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 3, y: 11 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Rejected",
-        description: "Verification rejected",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          formula: "A + B",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.onchain_store_reject,
-              type: "events",
-              name: "Contract rejections (A)",
-              math: "dau",
-            },
-            {
-              id: VERIFICATION_EVENTS.webhook_review_reject,
-              type: "events",
-              name: "SumSub rejections (B)",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 6, y: 11 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Conversion Rate (%)",
-        description: "Token generated to verification complete",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          formula: "A / B * 100",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.onchain_store_success,
-              type: "events",
-              name: "Successfully verified (A)",
-              math: "dau",
-            },
-            {
-              id: VERIFICATION_EVENTS.token_generate,
-              type: "events",
-              name: "Token generated (B)",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 9, y: 11 },
-      },
-    },
-
-    // Row 4: Rejection Reasons (full width)
-    // Shows all rejection events with their raw properties
-    {
-      type: "insight",
-      insight: {
-        name: "Rejection Reasons",
-        description: "Why verifications are rejected (SumSub + contract)",
-        query: {
-          kind: "DataTableNode",
-          source: {
-            kind: "HogQLQuery",
-            query: `
-SELECT
-  timestamp,
-  event,
-  distinct_id AS account_id,
-  properties.reviewAnswer AS review_answer,
-  properties.reviewRejectType AS reject_type,
-  properties.rejectLabels AS reject_labels,
-  properties.moderationComment AS moderation_comment,
-  properties.clientComment AS client_comment,
-  properties.errorCode AS error_code,
-  properties.reason AS reason
-FROM events
-WHERE event IN ('${VERIFICATION_EVENTS.webhook_review_reject}', '${VERIFICATION_EVENTS.onchain_store_reject}')
-  AND {filters}
-ORDER BY timestamp DESC
-LIMIT 100
-            `.trim(),
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 12, x: 0, y: 15 },
-      },
-    },
-
-    // Row 5: Geographic distribution + Platform breakdown
+    // Row 4: Geographic distribution + Platform breakdown
     {
       type: "insight",
       insight: {
@@ -395,6 +369,43 @@ LIMIT 100
       },
       layouts: {
         sm: { h: 6, w: 4, x: 8, y: 20 },
+      },
+    },
+
+    // Row 5: Rejection Reasons (full width)
+    // Shows all rejection events with their raw properties
+    {
+      type: "insight",
+      insight: {
+        name: "Rejection Reasons",
+        description: "Why verifications are rejected (SumSub + contract)",
+        query: {
+          kind: "DataTableNode",
+          source: {
+            kind: "HogQLQuery",
+            query: `
+SELECT
+  timestamp,
+  event,
+  distinct_id AS account_id,
+  properties.reviewAnswer AS review_answer,
+  properties.reviewRejectType AS reject_type,
+  properties.rejectLabels AS reject_labels,
+  properties.moderationComment AS moderation_comment,
+  properties.clientComment AS client_comment,
+  properties.errorCode AS error_code,
+  properties.reason AS reason
+FROM events
+WHERE event IN ('${VERIFICATION_EVENTS.webhook_review_reject}', '${VERIFICATION_EVENTS.onchain_store_reject}')
+  AND {filters}
+ORDER BY timestamp DESC
+LIMIT 100
+            `.trim(),
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 12, x: 0, y: 15 },
       },
     },
 
