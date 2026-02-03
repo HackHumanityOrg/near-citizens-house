@@ -69,6 +69,9 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         enable_recording_console_log: true,
         // Consent mode (opt-out behavior)
         opt_out_capturing_by_default: false,
+        // Auto-add session/distinct ID headers to same-origin fetch requests
+        // This enables server-side events to link to session replays
+        __add_tracing_headers: [window.location.hostname],
       })
 
       if (CONSENT_FEATURE_FLAG) {

@@ -205,9 +205,8 @@ async function cleanAll(options: { dryRun?: boolean } = {}): Promise<void> {
   // Delete all insights first (they may be attached to dashboards)
   log(`\n${colors.blue}Deleting insights...${colors.reset}`)
   if (dryRun) {
-    const insights = await client.listInsights(100)
-    const activeInsights = insights.filter((i) => !i.deleted)
-    logInfo(`Would delete ${activeInsights.length}+ insights`)
+    const { results: insights } = await client.listInsights({ limit: 100, deleted: false })
+    logInfo(`Would delete ${insights.length}+ insights`)
   } else {
     const insightsDeleted = await client.deleteAllInsights()
     logSuccess(`Deleted ${insightsDeleted} insights`)

@@ -21,12 +21,25 @@ import { getPostHogServer } from "./providers/posthog-server"
 import type { AnalyticsEvent } from "./schemas/analytics"
 
 /**
+ * Options for server-side event tracking.
+ */
+export interface TrackServerEventOptions {
+  /** Session ID for linking event to session replay */
+  sessionId?: string
+}
+
+/**
  * Track an analytics event from server-side code.
  *
  * @param distinctId - User identifier (NEAR account ID or anonymous ID)
  * @param event - Strongly-typed analytics event
+ * @param options - Optional tracking context (session ID for replay linkage)
  */
-export async function trackServerEvent<T extends AnalyticsEvent>(distinctId: string, event: T): Promise<void> {
+export async function trackServerEvent<T extends AnalyticsEvent>(
+  distinctId: string,
+  event: T,
+  options?: TrackServerEventOptions,
+): Promise<void> {
   const client = getPostHogServer()
   if (!client) return
 
@@ -36,7 +49,11 @@ export async function trackServerEvent<T extends AnalyticsEvent>(distinctId: str
   await client.captureImmediate({
     distinctId,
     event: eventName,
-    properties,
+    properties: {
+      ...properties,
+      // Include session ID if provided (links event to session replay)
+      ...(options?.sessionId && { $session_id: options.sessionId }),
+    },
   })
 }
 

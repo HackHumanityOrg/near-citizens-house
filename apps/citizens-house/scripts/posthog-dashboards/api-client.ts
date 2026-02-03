@@ -394,14 +394,28 @@ export class PostHogApiClient {
   // ==========================================
 
   /**
-   * List all insights in the project
+   * List insights in the project with pagination support
+   * @param options Pagination and filter options
+   * @returns Paginated response with results and next cursor
    */
-  async listInsights(limit = 100): Promise<InsightResponse[]> {
-    const response = await this.request<{ results: InsightResponse[] }>(
+  async listInsights(
+    options: {
+      limit?: number
+      offset?: number
+      deleted?: boolean
+    } = {},
+  ): Promise<{ results: InsightResponse[]; next: string | null; count: number }> {
+    const { limit = 100, offset, deleted } = options
+    const params = new URLSearchParams()
+    params.set("limit", String(limit))
+    if (offset !== undefined) params.set("offset", String(offset))
+    if (deleted !== undefined) params.set("deleted", String(deleted))
+
+    const response = await this.request<{ results: InsightResponse[]; next: string | null; count: number }>(
       "GET",
-      `/api/projects/${this.projectId}/insights/?limit=${limit}`,
+      `/api/projects/${this.projectId}/insights/?${params.toString()}`,
     )
-    return response.results
+    return response
   }
 
   /**
@@ -567,19 +581,20 @@ export class PostHogApiClient {
 
   /**
    * Delete all insights in the project (handles pagination)
+   * Uses deleted=false filter to only fetch active insights, avoiding the issue
+   * where pages of soft-deleted insights could cause early termination.
    * @returns Number of insights deleted
    */
   async deleteAllInsights(): Promise<number> {
     let totalDeleted = 0
-    let hasMore = true
 
-    while (hasMore) {
-      // Fetch a batch of insights (PostHog max is typically 100-250 per page)
-      const insights = await this.listInsights(100)
-      const activeInsights = insights.filter((i) => !i.deleted)
+    // Keep fetching and deleting until no more active insights exist
+    // We always fetch from offset 0 because deleting insights shifts the list
+    while (true) {
+      // Fetch only non-deleted insights to avoid pagination issues with soft-deleted items
+      const { results: activeInsights } = await this.listInsights({ limit: 100, deleted: false })
 
       if (activeInsights.length === 0) {
-        hasMore = false
         break
       }
 
