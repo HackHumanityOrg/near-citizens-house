@@ -287,6 +287,8 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
           insight: "TRENDS",
           // Uses dashboard date range
           display: "BoldNumber",
+          aggregationAxisFormat: "percentage",
+          decimalPlaces: 0,
           formula: "A / B * 100",
           events: [
             {
