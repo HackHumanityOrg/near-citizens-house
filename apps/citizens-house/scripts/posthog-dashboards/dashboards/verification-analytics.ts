@@ -278,39 +278,42 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         sm: { h: 4, w: 3, x: 6, y: 11 },
       },
     },
-    {  
-      name: "Conversion Rate (%)",  
-      description: "Token generated to verification complete",  
-      query: {  
-        kind: "TrendsQuery",  
-        dateRange: {  
-          date_from: null,  // Uses dashboard date range  
-          date_to: null  
-        },  
-        series: [  
-          {  
-            kind: "EventsNode",  
-            event: VERIFICATION_EVENTS.onchain_store_success,  
-            name: "Successfully verified (A)",  
-            math: "dau"  
+    {
+      type: "insight",
+      insight: {
+        name: "Conversion Rate (%)",  
+        description: "Token generated to verification complete",  
+        query: {  
+          kind: "TrendsQuery",  
+          dateRange: {  
+            date_from: null,  // Uses dashboard date range  
+            date_to: null  
           },  
-          {  
-            kind: "EventsNode",  
-            event: VERIFICATION_EVENTS.token_generate,  
-            name: "Token generated (B)",  
-            math: "dau"  
-          }  
-        ],  
-        trendsFilter: {  
-          display: "BoldNumber",  
-          aggregationAxisFormat: "percentage",  
-          decimalPlaces: 0,  
-          formulaNodes: [  
+          series: [  
             {  
-              formula: "A / B * 100"  
+              kind: "EventsNode",  
+              event: VERIFICATION_EVENTS.onchain_store_success,  
+              name: "Successfully verified (A)",  
+              math: "dau"  
+            },  
+            {  
+              kind: "EventsNode",  
+              event: VERIFICATION_EVENTS.token_generate,  
+              name: "Token generated (B)",  
+              math: "dau"  
             }  
-          ]  
-        }  
+          ],  
+          trendsFilter: {  
+            display: "BoldNumber",  
+            aggregationAxisFormat: "percentage",  
+            decimalPlaces: 0,  
+            formulaNodes: [  
+              {  
+                formula: "A / B * 100"  
+              }  
+            ]  
+          }  
+        }
       },
       layouts: {
         sm: { h: 4, w: 3, x: 9, y: 11 },
