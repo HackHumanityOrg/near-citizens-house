@@ -573,17 +573,34 @@ const verificationCheckFailedEventSchema = z
 // Domain: Verification (Server-Side)
 // =============================================================================
 
+/** Shared optional fields from SumSub webhook payload for server-side events */
+const webhookMetaFields = {
+  applicantId: z.string().optional(),
+  inspectionId: z.string().optional(),
+  correlationId: z.string().optional(),
+  levelName: z.string().optional(),
+  reviewStatus: z.string().optional(),
+  reviewAnswer: sumsubReviewAnswerSchema.optional(),
+  reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
+  rejectLabels: z.array(z.string()).optional(),
+  buttonIds: z.array(z.string()).optional(),
+  moderationComment: z.string().optional(),
+  clientComment: z.string().optional(),
+  reviewMode: z.string().optional(),
+  sandboxMode: z.boolean().optional(),
+  applicantType: z.string().optional(),
+  externalUserIdType: z.string().optional(),
+  clientId: z.string().optional(),
+  createdAtMs: z.string().optional(),
+  createdAt: z.string().optional(),
+} as const
+
 const verificationProofSubmittedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal(V.proof_submit),
     accountId: nearAccountIdSchema,
-    applicantId: z.string().optional(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
-    levelName: z.string().optional(),
-    reviewStatus: z.string().optional(),
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -592,12 +609,7 @@ const verificationProofValidatedEventSchema = z
     ...verificationEventBase,
     action: z.literal(V.proof_validate),
     accountId: nearAccountIdSchema,
-    applicantId: z.string().optional(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
-    levelName: z.string().optional(),
-    reviewStatus: z.string().optional(),
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -606,12 +618,7 @@ const verificationStoredOnchainEventSchema = z
     ...verificationEventBase,
     action: z.literal(V.onchain_store_success),
     accountId: nearAccountIdSchema,
-    applicantId: z.string().optional(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
-    levelName: z.string().optional(),
-    reviewStatus: z.string().optional(),
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -622,7 +629,7 @@ const verificationRejectedEventSchema = z
     accountId: nearAccountIdSchema,
     reason: z.string(),
     errorCode: verificationErrorCodeSchema,
-    applicantId: z.string().optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -740,25 +747,8 @@ const verificationWebhookReceivedEventSchema = z
     ...verificationEventBase,
     action: z.literal(V.webhook_receive),
     type: z.string(),
-    applicantId: z.string(),
     externalUserId: z.string().optional(),
-    reviewStatus: z.string().optional(),
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
-    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
-    rejectLabels: z.array(z.string()).optional(),
-    buttonIds: z.array(z.string()).optional(),
-    moderationComment: z.string().optional(),
-    clientComment: z.string().optional(),
-    levelName: z.string().optional(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
-    reviewMode: z.string().optional(),
-    sandboxMode: z.boolean().optional(),
-    applicantType: z.string().optional(),
-    externalUserIdType: z.string().optional(),
-    clientId: z.string().optional(),
-    createdAtMs: z.string().optional(),
-    createdAt: z.string().optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -766,9 +756,7 @@ const verificationWebhookMissingUserIdEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal(V.webhook_user_missing),
-    applicantId: z.string(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -776,18 +764,8 @@ const verificationWebhookNotApprovedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal(V.webhook_review_reject),
-    applicantId: z.string(),
     accountId: nearAccountIdSchema.optional(),
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
-    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
-    rejectLabels: z.array(z.string()).optional(),
-    buttonIds: z.array(z.string()).optional(),
-    moderationComment: z.string().optional(),
-    clientComment: z.string().optional(),
-    reviewStatus: z.string().optional(),
-    levelName: z.string().optional(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -795,14 +773,8 @@ const verificationWebhookPendingReviewEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal(V.webhook_review_hold),
-    applicantId: z.string(),
     accountId: nearAccountIdSchema.optional(),
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
-    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
-    reviewStatus: z.string().optional(),
-    levelName: z.string().optional(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -810,11 +782,8 @@ const verificationWebhookLateRejectionEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal(V.webhook_review_late_reject),
-    applicantId: z.string(),
     accountId: nearAccountIdSchema,
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
-    reviewRejectType: sumsubReviewRejectTypeSchema.optional(),
-    rejectLabels: z.array(z.string()).optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -829,13 +798,9 @@ const verificationWebhookValidationFailedEventSchema = z
       "signature_crypto",
       "key_not_full_access",
     ]),
-    applicantId: z.string(),
     accountId: nearAccountIdSchema.optional(),
     errorMessage: z.string().optional(),
-    inspectionId: z.string().optional(),
-    correlationId: z.string().optional(),
-    levelName: z.string().optional(),
-    reviewStatus: z.string().optional(),
+    ...webhookMetaFields,
   })
   .strict()
 
@@ -853,12 +818,10 @@ const verificationWebhookStorageFailedEventSchema = z
   .object({
     ...verificationEventBase,
     action: z.literal(V.webhook_storage_fail),
-    applicantId: z.string(),
     accountId: nearAccountIdSchema,
     errorCode: z.string(),
     errorMessage: z.string(),
-    reviewStatus: z.string().optional(),
-    reviewAnswer: sumsubReviewAnswerSchema.optional(),
+    ...webhookMetaFields,
   })
   .strict()
 

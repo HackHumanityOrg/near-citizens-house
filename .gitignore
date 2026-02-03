@@ -89,5 +89,7 @@ allure-report/
 allure-history/
 
 .opencode/plans
+docs/.plans/
+
 # next-agents-md
 .next-docs/

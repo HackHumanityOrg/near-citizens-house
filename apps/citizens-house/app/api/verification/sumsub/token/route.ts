@@ -23,7 +23,8 @@ import { reserveSignatureNonce } from "@/lib/nonce-store"
 import { env } from "@/lib/schemas/env"
 import { verificationTokenRequestSchema, verificationTokenResponseSchema } from "@/lib/schemas/api/verification"
 import { type SumSubMetadataItem, type SumSubApplicant } from "@/lib/schemas/providers/sumsub"
-import { trackServerEvent } from "@/lib/analytics-server"
+import { trackServerEvent, type TrackServerEventOptions } from "@/lib/analytics-server"
+import { extractPostHogContext } from "@/lib/api/request-context"
 import { validateSignatureData, verifyNearSignature, getSigningMessage, getSigningRecipient } from "@/lib/verification"
 import { hasFullAccessKey } from "@/lib/verification.server"
 import { apiError, apiSuccess } from "@/lib/api/response"
@@ -52,6 +53,10 @@ function tryParseAccountId(body: unknown): string | undefined {
 }
 
 export async function POST(request: NextRequest) {
+  // Extract PostHog context for session replay linkage
+  const posthogContext = extractPostHogContext(request)
+  const trackingOptions: TrackServerEventOptions = { sessionId: posthogContext.sessionId }
+
   // Parse body early for optimistic accountId extraction in error handling
   let body: unknown
   let optimisticAccountId: string | undefined
@@ -84,16 +89,20 @@ export async function POST(request: NextRequest) {
 
     if (!formatCheck.valid) {
       const code = (formatCheck.errorCode as VerificationErrorCode) ?? "NEAR_SIGNATURE_INVALID"
-      await trackServerEvent(nearSignature.accountId, {
-        domain: "verification",
-        action: "token_validate_fail",
-        accountId: nearSignature.accountId,
-        reason: "signature_format",
-        errorCode: code,
-        errorMessage: formatCheck.error,
-        verificationAttemptId,
-        levelName,
-      })
+      await trackServerEvent(
+        nearSignature.accountId,
+        {
+          domain: "verification",
+          action: "token_validate_fail",
+          accountId: nearSignature.accountId,
+          reason: "signature_format",
+          errorCode: code,
+          errorMessage: formatCheck.error,
+          verificationAttemptId,
+          levelName,
+        },
+        trackingOptions,
+      )
       return apiError(code, formatCheck.error)
     }
 
@@ -103,13 +112,17 @@ export async function POST(request: NextRequest) {
     try {
       recipient = getSigningRecipient()
     } catch {
-      await trackServerEvent(nearSignature.accountId, {
-        domain: "verification",
-        action: "token_config_error",
-        accountId: nearSignature.accountId,
-        verificationAttemptId,
-        levelName,
-      })
+      await trackServerEvent(
+        nearSignature.accountId,
+        {
+          domain: "verification",
+          action: "token_config_error",
+          accountId: nearSignature.accountId,
+          verificationAttemptId,
+          levelName,
+        },
+        trackingOptions,
+      )
       return apiError("BACKEND_NOT_CONFIGURED", "Missing signing recipient")
     }
 
@@ -122,15 +135,19 @@ export async function POST(request: NextRequest) {
     )
 
     if (!signatureCheck.valid) {
-      await trackServerEvent(nearSignature.accountId, {
-        domain: "verification",
-        action: "token_validate_fail",
-        accountId: nearSignature.accountId,
-        reason: "signature_crypto",
-        errorMessage: signatureCheck.error,
-        verificationAttemptId,
-        levelName,
-      })
+      await trackServerEvent(
+        nearSignature.accountId,
+        {
+          domain: "verification",
+          action: "token_validate_fail",
+          accountId: nearSignature.accountId,
+          reason: "signature_crypto",
+          errorMessage: signatureCheck.error,
+          verificationAttemptId,
+          levelName,
+        },
+        trackingOptions,
+      )
       return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error)
     }
 
@@ -138,15 +155,19 @@ export async function POST(request: NextRequest) {
     const keyCheck = await hasFullAccessKey(nearSignature.accountId, nearSignature.publicKey)
     if (!keyCheck.isFullAccess) {
       const errorMsg = keyCheck.error ?? "Public key is not an active full-access key"
-      await trackServerEvent(nearSignature.accountId, {
-        domain: "verification",
-        action: "token_validate_fail",
-        accountId: nearSignature.accountId,
-        reason: "key_not_full_access",
-        errorMessage: errorMsg,
-        verificationAttemptId,
-        levelName,
-      })
+      await trackServerEvent(
+        nearSignature.accountId,
+        {
+          domain: "verification",
+          action: "token_validate_fail",
+          accountId: nearSignature.accountId,
+          reason: "key_not_full_access",
+          errorMessage: errorMsg,
+          verificationAttemptId,
+          levelName,
+        },
+        trackingOptions,
+      )
       return apiError("NEAR_SIGNATURE_INVALID", errorMsg)
     }
 
@@ -154,14 +175,18 @@ export async function POST(request: NextRequest) {
     const NONCE_TTL_SECONDS = 10 * 60 // 10 minutes - matches signature freshness window
     const nonceReserved = await reserveSignatureNonce(nearSignature.accountId, nearSignature.nonce, NONCE_TTL_SECONDS)
     if (!nonceReserved) {
-      await trackServerEvent(nearSignature.accountId, {
-        domain: "verification",
-        action: "token_validate_fail",
-        accountId: nearSignature.accountId,
-        reason: "nonce_replay",
-        verificationAttemptId,
-        levelName,
-      })
+      await trackServerEvent(
+        nearSignature.accountId,
+        {
+          domain: "verification",
+          action: "token_validate_fail",
+          accountId: nearSignature.accountId,
+          reason: "nonce_replay",
+          verificationAttemptId,
+          levelName,
+        },
+        trackingOptions,
+      )
       return apiError("NONCE_ALREADY_USED")
     }
 
@@ -173,13 +198,17 @@ export async function POST(request: NextRequest) {
     const { checkIsVerified } = await import("@/app/citizens/actions")
     const isAlreadyVerified = await checkIsVerified(nearSignature.accountId)
     if (isAlreadyVerified) {
-      await trackServerEvent(nearSignature.accountId, {
-        domain: "verification",
-        action: "token_already_verified",
-        accountId: nearSignature.accountId,
-        verificationAttemptId,
-        levelName,
-      })
+      await trackServerEvent(
+        nearSignature.accountId,
+        {
+          domain: "verification",
+          action: "token_already_verified",
+          accountId: nearSignature.accountId,
+          verificationAttemptId,
+          levelName,
+        },
+        trackingOptions,
+      )
       return apiError("ACCOUNT_ALREADY_VERIFIED")
     }
 
@@ -202,15 +231,19 @@ export async function POST(request: NextRequest) {
       if (error instanceof Error && error.message.includes("409")) {
         applicant = await getApplicantByExternalUserId(externalUserId)
 
-        await trackServerEvent(nearSignature.accountId, {
-          domain: "verification",
-          action: "token_applicant_reuse",
-          accountId: nearSignature.accountId,
-          applicantId: applicant.id,
-          verificationAttemptId,
-          levelName,
-          externalUserId,
-        })
+        await trackServerEvent(
+          nearSignature.accountId,
+          {
+            domain: "verification",
+            action: "token_applicant_reuse",
+            accountId: nearSignature.accountId,
+            applicantId: applicant.id,
+            verificationAttemptId,
+            levelName,
+            externalUserId,
+          },
+          trackingOptions,
+        )
       } else {
         throw error
       }
@@ -227,15 +260,19 @@ export async function POST(request: NextRequest) {
 
     await updateApplicantMetadata(applicant.id, metadata)
 
-    await trackServerEvent(nearSignature.accountId, {
-      domain: "verification",
-      action: "token_metadata_store",
-      accountId: nearSignature.accountId,
-      applicantId: applicant.id,
-      verificationAttemptId,
-      levelName,
-      externalUserId,
-    })
+    await trackServerEvent(
+      nearSignature.accountId,
+      {
+        domain: "verification",
+        action: "token_metadata_store",
+        accountId: nearSignature.accountId,
+        applicantId: applicant.id,
+        verificationAttemptId,
+        levelName,
+        externalUserId,
+      },
+      trackingOptions,
+    )
 
     // Step 3: Generate access token for the existing applicant
     let tokenResponse
@@ -245,15 +282,19 @@ export async function POST(request: NextRequest) {
       // Check if applicant was deactivated by SumSub
       const sumsubError = parseSumSubError(tokenError)
       if (isApplicantDeactivatedError(sumsubError)) {
-        await trackServerEvent(nearSignature.accountId, {
-          domain: "verification",
-          action: "token_applicant_deactivated",
-          accountId: nearSignature.accountId,
-          applicantId: applicant.id,
-          verificationAttemptId,
-          levelName,
-          externalUserId,
-        })
+        await trackServerEvent(
+          nearSignature.accountId,
+          {
+            domain: "verification",
+            action: "token_applicant_deactivated",
+            accountId: nearSignature.accountId,
+            applicantId: applicant.id,
+            verificationAttemptId,
+            levelName,
+            externalUserId,
+          },
+          trackingOptions,
+        )
 
         // Return specific error - user needs to contact support
         return apiError("APPLICANT_DEACTIVATED")
@@ -263,15 +304,19 @@ export async function POST(request: NextRequest) {
       throw tokenError
     }
 
-    await trackServerEvent(nearSignature.accountId, {
-      domain: "verification",
-      action: "token_generate",
-      accountId: nearSignature.accountId,
-      applicantId: applicant.id,
-      verificationAttemptId,
-      levelName,
-      externalUserId,
-    })
+    await trackServerEvent(
+      nearSignature.accountId,
+      {
+        domain: "verification",
+        action: "token_generate",
+        accountId: nearSignature.accountId,
+        applicantId: applicant.id,
+        verificationAttemptId,
+        levelName,
+        externalUserId,
+      },
+      trackingOptions,
+    )
 
     const response = verificationTokenResponseSchema.parse({
       token: tokenResponse.token,
@@ -280,13 +325,17 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess(response)
   } catch (error) {
-    await trackServerEvent(optimisticAccountId ?? "anonymous", {
-      domain: "verification",
-      action: "token_error",
-      accountId: optimisticAccountId,
-      errorMessage: error instanceof Error ? error.message : "Unknown error",
-      verificationAttemptId,
-    })
+    await trackServerEvent(
+      optimisticAccountId ?? "anonymous",
+      {
+        domain: "verification",
+        action: "token_error",
+        accountId: optimisticAccountId,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+        verificationAttemptId,
+      },
+      trackingOptions,
+    )
 
     return apiError("TOKEN_GENERATION_FAILED")
   }

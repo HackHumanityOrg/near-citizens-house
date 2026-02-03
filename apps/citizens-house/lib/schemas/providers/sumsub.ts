@@ -2,6 +2,9 @@
  * SumSub Provider Schemas
  *
  * Provider payloads and API responses from SumSub only.
+ *
+ * @see https://docs.sumsub.com/docs/user-verification-webhooks - Webhook payload documentation
+ * @see https://docs.sumsub.com/reference/about-webhooks - Webhook overview and setup
  */
 import { z } from "zod"
 import { nearAccountIdSchema } from "../near"

@@ -253,8 +253,7 @@ test.describe("Citizens House Web App E2E", () => {
 
     await test.step("Table or empty state is displayed", async () => {
       // Either the table with accounts is shown, or the empty state message
-      const tableHeader = page.getByText(/Showing \d+ of \d+ NEAR Verified Accounts|No verified accounts yet/)
-      await expect(tableHeader).toBeVisible({ timeout: 10000 })
+      await expect(page.getByTestId("verification-records-count")).toBeVisible({ timeout: 10000 })
     })
 
     await test.step("View contract link is visible", async () => {

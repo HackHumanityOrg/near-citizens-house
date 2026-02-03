@@ -102,7 +102,23 @@ export async function POST(request: NextRequest) {
     const payload = parseResult.data
     applicantId = payload.applicantId
 
-    const reviewResult = payload.reviewResult
+    // Extract all webhook fields for consistent usage
+    const {
+      inspectionId,
+      correlationId,
+      levelName,
+      reviewStatus,
+      reviewMode,
+      sandboxMode,
+      applicantType,
+      externalUserIdType,
+      clientId,
+      createdAtMs,
+      createdAt,
+      externalUserId,
+      reviewResult,
+    } = payload
+
     const reviewAnswer = reviewResult?.reviewAnswer
     const reviewRejectType = reviewResult?.reviewRejectType
     const rejectLabels = reviewResult?.rejectLabels
@@ -112,52 +128,42 @@ export async function POST(request: NextRequest) {
 
     const webhookMeta = {
       applicantId,
-      inspectionId: payload.inspectionId,
-      correlationId: payload.correlationId,
-      levelName: payload.levelName,
-      reviewStatus: payload.reviewStatus,
+      inspectionId,
+      correlationId,
+      levelName,
+      reviewStatus,
       reviewAnswer,
       reviewRejectType,
       rejectLabels,
       buttonIds,
       moderationComment,
       clientComment,
-      reviewMode: payload.reviewMode,
-      sandboxMode: payload.sandboxMode,
-      applicantType: payload.applicantType,
-      externalUserIdType: payload.externalUserIdType,
-      clientId: payload.clientId,
-      createdAtMs: payload.createdAtMs,
-      createdAt: payload.createdAt,
+      reviewMode,
+      sandboxMode,
+      applicantType,
+      externalUserIdType,
+      clientId,
+      createdAtMs,
+      createdAt,
     }
 
-    const webhookStatusMeta = {
-      applicantId,
-      inspectionId: payload.inspectionId,
-      correlationId: payload.correlationId,
-      levelName: payload.levelName,
-      reviewStatus: payload.reviewStatus,
-      reviewAnswer,
-    }
-
-    await trackServerEvent(payload.externalUserId ?? applicantId, {
+    await trackServerEvent(externalUserId ?? applicantId, {
       domain: "verification",
       action: "webhook_receive",
       type: payload.type,
-      externalUserId: payload.externalUserId,
+      externalUserId,
       ...webhookMeta,
     })
 
     // Handle applicantOnHold - requires manual review
     if (payload.type === "applicantOnHold") {
-      const externalUserId = payload.externalUserId
       if (externalUserId) {
         await setVerificationStatus(externalUserId, "VERIFICATION_ON_HOLD")
       } else {
         await trackServerEvent(applicantId, {
           domain: "verification",
           action: "webhook_user_missing",
-          applicantId,
+          ...webhookMeta,
         })
       }
       return webhookAck("Status updated to VERIFICATION_ON_HOLD")
@@ -171,54 +177,35 @@ export async function POST(request: NextRequest) {
 
     // Check if verification was approved
     if (reviewAnswer !== "GREEN") {
-      await trackServerEvent(payload.externalUserId ?? applicantId, {
+      await trackServerEvent(externalUserId ?? applicantId, {
         domain: "verification",
         action: "webhook_review_reject",
-        applicantId,
-        accountId: payload.externalUserId as NearAccountId | undefined,
-        reviewAnswer,
-        reviewRejectType,
-        rejectLabels,
-        buttonIds,
-        moderationComment,
-        clientComment,
-        reviewStatus: payload.reviewStatus,
-        levelName: payload.levelName,
-        inspectionId: payload.inspectionId,
-        correlationId: payload.correlationId,
+        ...webhookMeta,
+        accountId: externalUserId as NearAccountId | undefined,
       })
 
       // Handle YELLOW status - needs manual review (VERIFICATION_ON_HOLD)
       if (reviewAnswer === "YELLOW") {
-        const externalUserId = payload.externalUserId
         if (externalUserId) {
           await setVerificationStatus(externalUserId, "VERIFICATION_ON_HOLD")
         } else {
           await trackServerEvent(applicantId, {
             domain: "verification",
             action: "webhook_user_missing",
-            applicantId,
+            ...webhookMeta,
           })
         }
         await trackServerEvent(externalUserId ?? applicantId, {
           domain: "verification",
           action: "webhook_review_hold",
-          applicantId,
+          ...webhookMeta,
           accountId: externalUserId as NearAccountId | undefined,
-          reviewAnswer,
-          reviewRejectType,
-          reviewStatus: payload.reviewStatus,
-          levelName: payload.levelName,
-          inspectionId: payload.inspectionId,
-          correlationId: payload.correlationId,
         })
         return webhookAck("Verification pending review")
       }
 
       // Handle RED status - store rejection info for frontend
       if (reviewAnswer === "RED") {
-        const externalUserId = payload.externalUserId
-
         // Check if already approved on-chain before storing rejection
         // (Late RED can occur after approval, e.g., fraud detection)
         if (externalUserId) {
@@ -228,18 +215,15 @@ export async function POST(request: NextRequest) {
             await trackServerEvent(externalUserId, {
               domain: "verification",
               action: "webhook_review_late_reject",
-              applicantId,
+              ...webhookMeta,
               accountId: externalUserId as NearAccountId,
-              reviewAnswer,
-              reviewRejectType,
-              rejectLabels,
             })
             // Don't update Redis - on-chain approval stands
             return webhookAck("Late rejection logged (already approved on-chain)")
           }
         }
 
-        const isRetryable = payload.reviewResult?.reviewRejectType === "RETRY"
+        const isRetryable = reviewRejectType === "RETRY"
         await setVerificationStatus(externalUserId, isRetryable ? "VERIFICATION_RETRY" : "VERIFICATION_REJECTED")
         return webhookAck("Verification rejected")
       }
@@ -261,16 +245,12 @@ export async function POST(request: NextRequest) {
 
     const metadataResult = applicantMetadataSchema.safeParse(metadata)
     if (!metadataResult.success) {
-      await trackServerEvent(payload.externalUserId ?? applicantId, {
+      await trackServerEvent(externalUserId ?? applicantId, {
         domain: "verification",
         action: "webhook_validation_fail",
         reason: "missing_metadata",
-        applicantId,
-        accountId: payload.externalUserId as NearAccountId | undefined,
-        inspectionId: payload.inspectionId,
-        correlationId: payload.correlationId,
-        levelName: payload.levelName,
-        reviewStatus: payload.reviewStatus,
+        ...webhookMeta,
+        accountId: externalUserId as NearAccountId | undefined,
       })
       return apiError("MISSING_NEAR_METADATA")
     }
@@ -281,18 +261,14 @@ export async function POST(request: NextRequest) {
     const verificationAttemptId = nearMetadata.near_nonce
 
     // Security: Verify externalUserId matches metadata to prevent request tampering
-    if (payload.externalUserId && payload.externalUserId !== accountId) {
+    if (externalUserId && externalUserId !== accountId) {
       await trackServerEvent(applicantId, {
         domain: "verification",
         action: "webhook_validation_fail",
         reason: "user_mismatch",
-        applicantId,
+        ...webhookMeta,
         accountId,
         verificationAttemptId,
-        inspectionId: payload.inspectionId,
-        correlationId: payload.correlationId,
-        levelName: payload.levelName,
-        reviewStatus: payload.reviewStatus,
       })
       return apiError("WEBHOOK_PAYLOAD_INVALID", "User ID mismatch", 400)
     }
@@ -303,7 +279,7 @@ export async function POST(request: NextRequest) {
       action: "proof_submit",
       accountId,
       verificationAttemptId,
-      ...webhookStatusMeta,
+      ...webhookMeta,
     })
 
     // Validate signature data format (timestamp format, nonce format, public key format)
@@ -322,14 +298,10 @@ export async function POST(request: NextRequest) {
         domain: "verification",
         action: "webhook_validation_fail",
         reason: "signature_format",
-        applicantId,
+        ...webhookMeta,
         accountId,
         errorMessage: formatCheck.error,
         verificationAttemptId,
-        inspectionId: payload.inspectionId,
-        correlationId: payload.correlationId,
-        levelName: payload.levelName,
-        reviewStatus: payload.reviewStatus,
       })
 
       return apiError(code, formatCheck.error, 400)
@@ -365,14 +337,10 @@ export async function POST(request: NextRequest) {
         domain: "verification",
         action: "webhook_validation_fail",
         reason: "signature_crypto",
-        applicantId,
+        ...webhookMeta,
         accountId,
         errorMessage: signatureCheck.error,
         verificationAttemptId,
-        inspectionId: payload.inspectionId,
-        correlationId: payload.correlationId,
-        levelName: payload.levelName,
-        reviewStatus: payload.reviewStatus,
       })
 
       return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error, 400)
@@ -384,7 +352,7 @@ export async function POST(request: NextRequest) {
       action: "proof_validate",
       accountId,
       verificationAttemptId,
-      ...webhookStatusMeta,
+      ...webhookMeta,
     })
 
     // Verify the public key is a full-access key
@@ -395,14 +363,10 @@ export async function POST(request: NextRequest) {
         domain: "verification",
         action: "webhook_validation_fail",
         reason: "key_not_full_access",
-        applicantId,
+        ...webhookMeta,
         accountId,
         errorMessage: errorMsg,
         verificationAttemptId,
-        inspectionId: payload.inspectionId,
-        correlationId: payload.correlationId,
-        levelName: payload.levelName,
-        reviewStatus: payload.reviewStatus,
       })
 
       return apiError("NEAR_SIGNATURE_INVALID", errorMsg, 400)
@@ -462,7 +426,7 @@ export async function POST(request: NextRequest) {
         action: "onchain_store_success",
         accountId,
         verificationAttemptId,
-        ...webhookStatusMeta,
+        ...webhookMeta,
       })
 
       // Revalidate verifications cache
@@ -477,13 +441,11 @@ export async function POST(request: NextRequest) {
       await trackServerEvent(accountId, {
         domain: "verification",
         action: "webhook_storage_fail",
-        applicantId,
+        ...webhookMeta,
         accountId,
         errorCode: errorCodeForLog,
         errorMessage: errorMsg,
         verificationAttemptId,
-        reviewStatus: payload.reviewStatus,
-        reviewAnswer,
       })
 
       if (errCode === "ACCOUNT_ALREADY_VERIFIED") {
@@ -504,10 +466,10 @@ export async function POST(request: NextRequest) {
       await trackServerEvent(accountId, {
         domain: "verification",
         action: "onchain_store_reject",
+        ...webhookMeta,
         accountId,
         reason: errorMsg,
         errorCode: errorCodeForLog,
-        applicantId,
         verificationAttemptId,
       })
 

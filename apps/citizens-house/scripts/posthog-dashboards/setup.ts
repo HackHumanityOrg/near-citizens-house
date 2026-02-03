@@ -188,10 +188,10 @@ async function createDashboard(options: { dryRun?: boolean; skipExisting?: boole
 }
 
 /**
- * Delete all existing dashboards
+ * Delete all existing dashboards and insights
  */
 async function cleanAll(options: { dryRun?: boolean } = {}): Promise<void> {
-  logHeader("Cleaning Existing Dashboards")
+  logHeader("Cleaning Existing Dashboards and Insights")
 
   const { dryRun } = options
 
@@ -202,6 +202,17 @@ async function cleanAll(options: { dryRun?: boolean } = {}): Promise<void> {
 
   const client = createPostHogClient()
 
+  // Delete all insights first (they may be attached to dashboards)
+  log(`\n${colors.blue}Deleting insights...${colors.reset}`)
+  if (dryRun) {
+    const { results: insights } = await client.listInsights({ limit: 100, deleted: false })
+    logInfo(`Would delete ${insights.length}+ insights`)
+  } else {
+    const insightsDeleted = await client.deleteAllInsights()
+    logSuccess(`Deleted ${insightsDeleted} insights`)
+  }
+
+  // Delete all dashboards
   log(`\n${colors.blue}Deleting dashboards...${colors.reset}`)
   const dashboards = await client.listDashboards()
   const activeDashboards = dashboards.filter((d) => !d.deleted)
