@@ -7,6 +7,7 @@ import { NEAR_CONFIG } from "@/lib"
 import { trackEvent } from "@/lib/analytics"
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { VerificationDetailsDialog } from "./verification-details-dialog"
+import { MiddleTruncate } from "@/components/ui/middle-truncate"
 import type { VerificationWithStatus } from "@/app/citizens/actions"
 
 interface Props {
@@ -109,15 +110,15 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
               >
                 {/* Mobile Card Layout */}
                 <div className="md:hidden flex flex-col gap-[12px]">
-                  <div className="flex items-center justify-between">
+                  <div className="min-w-0">
                     <a
                       href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-fk-grotesk font-medium text-[14px] leading-[28px] text-[#040404] dark:text-white hover:underline inline-flex items-center gap-[8px]"
+                      className="font-fk-grotesk font-medium text-[14px] leading-[28px] text-[#040404] dark:text-white hover:underline inline-flex items-center gap-[8px] max-w-full"
                     >
-                      {account.nearAccountId}
-                      <ExternalLink className="h-4 w-4 text-[#0f172a] dark:text-white/70" />
+                      <MiddleTruncate text={account.nearAccountId} className="min-w-0" />
+                      <ExternalLink className="h-4 w-4 shrink-0 text-[#0f172a] dark:text-white/70" />
                     </a>
                   </div>
                   <div className="flex items-center justify-between">
@@ -146,14 +147,14 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
                 {/* Desktop Row Layout */}
                 <div className="hidden md:grid items-center w-full grid-cols-[minmax(0,1fr)_180px_240px_77px] gap-[16px]">
                   {/* NEAR Account */}
-                  <div className="flex gap-[8px] items-center min-w-0">
+                  <div className="min-w-0">
                     <a
                       href={NEAR_CONFIG.explorerAccountUrl(account.nearAccountId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-fk-grotesk font-medium text-[16px] leading-[28px] text-[#040404] dark:text-white hover:underline inline-flex items-center gap-[8px] min-w-0 truncate"
+                      className="font-fk-grotesk font-medium text-[16px] leading-[28px] text-[#040404] dark:text-white hover:underline inline-flex items-center gap-[8px] max-w-full"
                     >
-                      <span className="truncate">{account.nearAccountId}</span>
+                      <MiddleTruncate text={account.nearAccountId} className="min-w-0" />
                       <ExternalLink className="h-4 w-4 shrink-0 text-[#0f172a] dark:text-white/70" />
                     </a>
                   </div>
