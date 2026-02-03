@@ -343,20 +343,25 @@ export class PostHogApiClient {
   }
 
   /**
-   * Delete a dashboard and all its attached insights
-   * This prevents orphaned insights from accumulating when replacing dashboards
+   * Delete a dashboard and its exclusive insights (not shared with other dashboards)
+   * This prevents orphaned insights while preserving insights used elsewhere
    * @returns Number of insights deleted
    */
   async deleteDashboardWithInsights(dashboardId: number): Promise<{ insightsDeleted: number }> {
     // Get dashboard tiles to find attached insights
     const dashboard = await this.getDashboardWithTiles(dashboardId)
 
-    // Delete each insight attached to this dashboard
+    // Delete only insights that are exclusive to this dashboard
     let insightsDeleted = 0
     for (const tile of dashboard.tiles || []) {
       if (tile.insight?.id) {
-        await this.deleteInsight(tile.insight.id)
-        insightsDeleted++
+        const insight = await this.getInsight(tile.insight.id)
+        // Only delete if this insight is not attached to any other dashboard
+        const otherDashboards = insight.dashboard_tiles.filter((t) => t.dashboard_id !== dashboardId)
+        if (otherDashboards.length === 0) {
+          await this.deleteInsight(tile.insight.id)
+          insightsDeleted++
+        }
       }
     }
 
@@ -416,6 +421,13 @@ export class PostHogApiClient {
       `/api/projects/${this.projectId}/insights/?${params.toString()}`,
     )
     return response
+  }
+
+  /**
+   * Get a single insight by ID
+   */
+  async getInsight(insightId: number): Promise<InsightResponse> {
+    return this.request<InsightResponse>("GET", `/api/projects/${this.projectId}/insights/${insightId}/`)
   }
 
   /**
