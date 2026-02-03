@@ -56,7 +56,10 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
             </h2>
           </div>
           <div className="flex flex-col gap-[8px] md:flex-row md:items-center md:justify-between w-full">
-            <p className="font-fk-grotesk text-[14px] leading-[14px] text-[#090909] dark:text-neutral-300">
+            <p
+              data-testid="verification-records-count"
+              className="font-fk-grotesk text-[14px] leading-[14px] text-[#090909] dark:text-neutral-300"
+            >
               {accounts.length > 0
                 ? `Showing ${accounts.length} of ${total} NEAR Verified Accounts`
                 : "No verified accounts yet"}
