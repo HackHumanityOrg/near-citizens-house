@@ -83,7 +83,310 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
       },
     },
 
-    // Row 2: Verification User Paths (full width)
+    // Row 2: Time to Convert (histogram visualizations)
+    // Uses PostHog's native funnel time_to_convert for bar chart display
+    {
+      type: "insight",
+      insight: {
+        name: "Time: Wallet → Verified",
+        description: "Time from wallet connection to successful verification",
+        query: {
+          kind: "InsightVizNode",
+          source: {
+            kind: "FunnelsQuery",
+            funnelsFilter: {
+              funnelVizType: "time_to_convert",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+              binCount: 10,
+            },
+            series: [
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.wallet_connect_success,
+                custom_name: "Wallet Connected",
+              },
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Verified",
+              },
+            ],
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 4, x: 0, y: 6 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Time: Signed → Verified",
+        description: "Time from message signed to successful verification",
+        query: {
+          kind: "InsightVizNode",
+          source: {
+            kind: "FunnelsQuery",
+            funnelsFilter: {
+              funnelVizType: "time_to_convert",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+              binCount: 10,
+            },
+            series: [
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.sign_success,
+                custom_name: "Message Signed",
+              },
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Verified",
+              },
+            ],
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 4, x: 4, y: 6 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Time: ID Start → Verified",
+        description: "Time from ID verification started to successful verification",
+        query: {
+          kind: "InsightVizNode",
+          source: {
+            kind: "FunnelsQuery",
+            funnelsFilter: {
+              funnelVizType: "time_to_convert",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+              binCount: 10,
+            },
+            series: [
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.sumsub_sdk_load,
+                custom_name: "ID Verification Started",
+              },
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Verified",
+              },
+            ],
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 4, x: 8, y: 6 },
+      },
+    },
+
+    // Row 3: Key metrics (4 across)
+    {
+      type: "insight",
+      insight: {
+        name: "Unique Visitors",
+        description: "Unique users who connected wallet to verify",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.wallet_connect_success,
+              type: "events",
+              name: "Unique visitors",
+              math: "dau",
+            },
+          ],
+        },
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 0, y: 11 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Successful",
+        description: "Verified on-chain",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.onchain_store_success,
+              type: "events",
+              name: "Successful verifications",
+              math: "dau",
+            },
+          ],
+        },
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 3, y: 11 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Rejected",
+        description: "Verification rejected (SumSub + contract rejections)",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          formula: "A + B",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.onchain_store_reject,
+              type: "events",
+              name: "Contract rejections (A)",
+              math: "dau",
+            },
+            {
+              id: VERIFICATION_EVENTS.webhook_review_reject,
+              type: "events",
+              name: "SumSub rejections (B)",
+              math: "dau",
+            },
+          ],
+        },
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 6, y: 11 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Conversion Rate (%)",
+        description: "Wallet connected to verification complete",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          formula: "A / B * 100",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.onchain_store_success,
+              type: "events",
+              name: "Successfully verified (A)",
+              math: "dau",
+            },
+            {
+              id: VERIFICATION_EVENTS.wallet_connect_success,
+              type: "events",
+              name: "Wallet connected (B)",
+              math: "dau",
+            },
+          ],
+        },
+      },
+      layouts: {
+        sm: { h: 4, w: 3, x: 9, y: 11 },
+      },
+    },
+
+    // Row 4: Rejection Reasons (full width)
+    // Shows all rejection events with their raw properties
+    {
+      type: "insight",
+      insight: {
+        name: "Rejection Reasons",
+        description: "Why verifications are rejected (SumSub + contract)",
+        query: {
+          kind: "DataTableNode",
+          source: {
+            kind: "HogQLQuery",
+            query: `
+SELECT
+  timestamp,
+  event,
+  distinct_id AS account_id,
+  properties.reviewAnswer AS review_answer,
+  properties.reviewRejectType AS reject_type,
+  properties.rejectLabels AS reject_labels,
+  properties.moderationComment AS moderation_comment,
+  properties.clientComment AS client_comment,
+  properties.errorCode AS error_code,
+  properties.reason AS reason
+FROM events
+WHERE event IN ('${VERIFICATION_EVENTS.webhook_review_reject}', '${VERIFICATION_EVENTS.onchain_store_reject}')
+  AND timestamp >= {filters.dateRange.date_from}
+  AND timestamp < {filters.dateRange.date_to}
+ORDER BY timestamp DESC
+LIMIT 100
+            `.trim(),
+          },
+        },
+      },
+      layouts: {
+        sm: { h: 5, w: 12, x: 0, y: 15 },
+      },
+    },
+
+    // Row 5: Geographic distribution + Platform breakdown
+    {
+      type: "insight",
+      insight: {
+        name: "Verifications by Country",
+        description: "Geographic distribution of successful verifications",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "WorldMap",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.success_view,
+              type: "events",
+              name: "Verifications",
+              math: "dau",
+            },
+          ],
+          breakdown: "$geoip_country_code",
+          breakdown_type: "event",
+        },
+      },
+      layouts: {
+        sm: { h: 6, w: 8, x: 0, y: 20 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Verifications by Platform",
+        description: "Desktop vs Mobile breakdown",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "ActionsBarValue",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.success_view,
+              type: "events",
+              name: "Verified successfully",
+              math: "dau",
+            },
+          ],
+          breakdown: "platform",
+          breakdown_type: "event",
+        },
+      },
+      layouts: {
+        sm: { h: 6, w: 4, x: 8, y: 20 },
+      },
+    },
+
+    // Row 6: Verification User Paths (full width, at bottom)
     // Shows verification events starting from wallet connection (consistent distinct_id)
     {
       type: "insight",
@@ -152,272 +455,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 6, w: 12, x: 0, y: 6 },
-      },
-    },
-
-    // Row 3: Key metrics (4 across)
-    {
-      type: "insight",
-      insight: {
-        name: "Unique Visitors",
-        description: "Unique users who connected wallet to verify",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.wallet_connect_success,
-              type: "events",
-              name: "Unique visitors",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 0, y: 12 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Successful",
-        description: "Verified on-chain",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.onchain_store_success,
-              type: "events",
-              name: "Successful verifications",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 3, y: 12 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Rejected",
-        description: "Verification rejected",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.onchain_store_reject,
-              type: "events",
-              name: "Rejected verifications",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 6, y: 12 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Conversion Rate (%)",
-        description: "Wallet connected to verification complete",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "BoldNumber",
-          formula: "A / B * 100",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.onchain_store_success,
-              type: "events",
-              name: "Successfully verified (A)",
-              math: "dau",
-            },
-            {
-              id: VERIFICATION_EVENTS.wallet_connect_success,
-              type: "events",
-              name: "Wallet connected (B)",
-              math: "dau",
-            },
-          ],
-        },
-      },
-      layouts: {
-        sm: { h: 4, w: 3, x: 9, y: 12 },
-      },
-    },
-
-    // Row 4: Rejection Reasons (full width)
-    {
-      type: "insight",
-      insight: {
-        name: "Rejection Reasons",
-        description: "Why verifications are rejected",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "ActionsTable",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.onchain_store_reject,
-              type: "events",
-              name: "Rejected",
-              math: "total",
-            },
-          ],
-          breakdown: "reason",
-          breakdown_type: "event",
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 12, x: 0, y: 16 },
-      },
-    },
-
-    // Row 5: Geographic distribution + Platform breakdown
-    {
-      type: "insight",
-      insight: {
-        name: "Verifications by Country",
-        description: "Geographic distribution of successful verifications",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "WorldMap",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.success_view,
-              type: "events",
-              name: "Verifications",
-              math: "dau",
-            },
-          ],
-          breakdown: "$geoip_country_code",
-          breakdown_type: "event",
-        },
-      },
-      layouts: {
-        sm: { h: 6, w: 8, x: 0, y: 21 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Verifications by Platform",
-        description: "Desktop vs Mobile breakdown",
-        filters: {
-          insight: "TRENDS",
-          // Uses dashboard date range
-          display: "ActionsBarValue",
-          events: [
-            {
-              id: VERIFICATION_EVENTS.success_view,
-              type: "events",
-              name: "Verified successfully",
-              math: "dau",
-            },
-          ],
-          breakdown: "platform",
-          breakdown_type: "event",
-        },
-      },
-      layouts: {
-        sm: { h: 6, w: 4, x: 8, y: 21 },
-      },
-    },
-
-    // Row 6: Time to Convert Funnels (3 across)
-    {
-      type: "insight",
-      insight: {
-        name: "Time: Wallet → Verified",
-        description: "Time from wallet connection to successful verification",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            funnelsFilter: {
-              funnelVizType: "time_to_convert",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-            },
-            series: [
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.wallet_connect_success,
-                custom_name: "Wallet Connected",
-              },
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.onchain_store_success, custom_name: "Verified" },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 4, x: 0, y: 27 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Time: Signed → Verified",
-        description: "Time from message signed to successful verification",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            funnelsFilter: {
-              funnelVizType: "time_to_convert",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-            },
-            series: [
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.sign_success, custom_name: "Message Signed" },
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.onchain_store_success, custom_name: "Verified" },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 4, x: 4, y: 27 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
-        name: "Time: ID Start → Verified",
-        description: "Time from ID verification started to successful verification",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            funnelsFilter: {
-              funnelVizType: "time_to_convert",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-            },
-            series: [
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.sumsub_sdk_load,
-                custom_name: "ID Verification Started",
-              },
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.onchain_store_success, custom_name: "Verified" },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 4, x: 8, y: 27 },
+        sm: { h: 6, w: 12, x: 0, y: 26 },
       },
     },
   ],
