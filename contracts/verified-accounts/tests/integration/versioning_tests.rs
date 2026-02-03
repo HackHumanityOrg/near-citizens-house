@@ -794,7 +794,6 @@ async fn test_upgrade_admin_functions_work() -> anyhow::Result<()> {
 }
 
 // NOTE: The nationality_disclosed test was removed during SumSub migration.
-// The V2 fixture no longer includes this feature as it was specific to Self.xyz.
 
 #[allure_parent_suite("Near Citizens House")]
 #[allure_suite_label("Verified Accounts Integration Tests")]

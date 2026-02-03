@@ -54,8 +54,7 @@ Record versioning avoids expensive batch migrations - old records are upgraded o
 pub struct ContractV2 {
     // All fields from V1
     pub backend_wallet: AccountId,
-    pub nullifiers: LookupSet<String>,
-    pub verifications: UnorderedMap<AccountId, VersionedVerification>,
+    pub verifications: IterableMap<AccountId, VersionedVerification>,
     pub paused: bool,
     // NEW field
     pub my_new_field: u64,
@@ -83,7 +82,6 @@ fn contract_mut(&mut self) -> &mut ContractV2 {
     // Migrate V1 -> V2
     *self = Self::V2(ContractV2 {
         backend_wallet: old_contract.backend_wallet,
-        nullifiers: old_contract.nullifiers,
         verifications: old_contract.verifications,
         paused: old_contract.paused,
         my_new_field: 0,  // Default value for migrated contracts
@@ -107,11 +105,8 @@ fn contract_mut(&mut self) -> &mut ContractV2 {
 // In interface.rs
 pub struct VerificationV2 {
     // All fields from V1
-    pub nullifier: String,
     pub near_account_id: AccountId,
-    pub attestation_id: String,
     pub verified_at: u64,
-    pub self_proof: SelfProofData,
     pub user_context_data: String,
     // NEW field
     pub my_new_field: bool,
@@ -133,11 +128,8 @@ pub enum VersionedVerification {
 pub fn into_current(self) -> VerificationV2 {
     match self {
         Self::V1(v) => VerificationV2 {
-            nullifier: v.nullifier,
             near_account_id: v.near_account_id,
-            attestation_id: v.attestation_id,
             verified_at: v.verified_at,
-            self_proof: v.self_proof,
             user_context_data: v.user_context_data,
             my_new_field: false,  // Default for migrated records
         },
@@ -222,7 +214,7 @@ Tests in `versioning_tests.rs` deploy V1, store data, upgrade to V2, and verify:
 
 - All V1 data remains readable
 - Contract state (paused, backend_wallet) persists
-- Protection mechanisms (nullifiers, signatures) still work
+- Protection mechanisms (signatures) still work
 - New V2 features work correctly
 
 ## Rollback

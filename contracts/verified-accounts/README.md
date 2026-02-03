@@ -1,14 +1,14 @@
 # Verified Accounts Contract
 
-Smart contract for storing Self.xyz passport verification records on NEAR blockchain with on-chain signature verification.
+Smart contract for storing SumSub-based verification records on NEAR blockchain with on-chain signature verification.
 
 ## Features
 
 - **NEAR Signature Verification**: Validates NEP-413 signatures on-chain using `env::ed25519_verify`
 - **Access Control**: Only the backend wallet can write to the contract
-- **Nullifier Tracking**: Prevents duplicate passport registrations
+- **Verification Records**: Stores verification timestamp and user context data
 - **Public Reads**: Anyone can verify account status
-- **Defense in Depth**: Backend verifies Self.xyz proof, contract verifies NEAR signature
+- **Defense in Depth**: Backend verifies SumSub KYC, contract verifies NEAR signature
 
 ## Building
 
@@ -54,16 +54,13 @@ near contract call-function as-transaction CONTRACT_ID new \
 
 ### Write Methods (Backend Only)
 
-**`store_verification`** - Store a verified passport-wallet association with ZK proof
+**`store_verification`** - Store a verified account with NEAR signature verification
 
 ```rust
 pub fn store_verification(
     &mut self,
-    nullifier: String,
     near_account_id: AccountId,
-    attestation_id: String,
     signature_data: NearSignatureData,
-    self_proof: SelfProofData,
     user_context_data: String,
 )
 ```
@@ -73,8 +70,8 @@ pub fn store_verification(
 
 ### Read Methods (Public)
 
-- `get_verification(account_id: AccountId) -> Option<VerificationSummary>` - Verification summary (no ZK proof)
-- `get_full_verification(account_id: AccountId) -> Option<Verification>` - Full record with ZK proof
+- `get_verification(account_id: AccountId) -> Option<VerificationSummary>` - Verification summary (account + timestamp)
+- `get_full_verification(account_id: AccountId) -> Option<Verification>` - Full record with user context data
 - `is_verified(account_id: AccountId) -> bool` - Simple boolean check
 - `get_backend_wallet() -> AccountId` - Get backend wallet address
 - `get_verified_count() -> u32` - Get total verified count
@@ -88,8 +85,7 @@ pub fn store_verification(
 
 1. **Access Control**: `env::predecessor_account_id()` checks ensure only the backend wallet can write
 2. **Signature Verification**: On-chain NEP-413 signature verification prevents spoofing
-3. **Nullifier Protection**: Prevents same passport from being registered multiple times
-4. **Account Protection**: Prevents re-verification of already verified accounts
+3. **Account Protection**: Prevents re-verification of already verified accounts
 
 ### Backend Requirements (Operational)
 
@@ -105,7 +101,7 @@ pub fn store_verification(
 User Frontend (NEAR Wallet)
 ↓ Signs NEP-413 message
 Backend API (/api/verify)
-↓ Verifies Self.xyz proof
+↓ Verifies SumSub KYC
 ↓ Calls contract.store_verification()
 Smart Contract
 ↓ Verifies NEAR signature on-chain
