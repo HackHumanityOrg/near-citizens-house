@@ -1,5 +1,5 @@
 import type { DashboardDefinition } from "../schemas"
-import { VERIFICATION_EVENTS, CITIZENS_EVENTS, CONSENT_EVENTS, ERRORS_EVENTS } from "@/lib/schemas"
+import { VERIFICATION_EVENTS, CITIZENS_EVENTS, CONSENT_EVENTS, ERRORS_EVENTS } from "@/lib/schemas/analytics"
 
 /**
  * Verification Analytics Dashboard
@@ -56,7 +56,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 4, w: 3, x: 0, y: 11 },
+        sm: { h: 4, w: 3, x: 0, y: 0 },
       },
     },
     {
@@ -79,7 +79,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 4, w: 3, x: 3, y: 11 },
+        sm: { h: 4, w: 3, x: 3, y: 0 },
       },
     },
     {
@@ -109,7 +109,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 4, w: 3, x: 6, y: 11 },
+        sm: { h: 4, w: 3, x: 6, y: 0 },
       },
     },
     {
@@ -150,7 +150,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         }
       },
       layouts: {
-        sm: { h: 4, w: 3, x: 9, y: 11 },
+        sm: { h: 4, w: 3, x: 9, y: 0 },
       },
     },
 
@@ -210,7 +210,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 6, w: 12, x: 0, y: 0 },
+        sm: { h: 6, w: 12, x: 0, y: 4 },
       },
     },
 
@@ -248,7 +248,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 5, w: 4, x: 0, y: 6 },
+        sm: { h: 5, w: 4, x: 0, y: 10 },
       },
     },
     {
@@ -282,7 +282,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 5, w: 4, x: 4, y: 6 },
+        sm: { h: 5, w: 4, x: 4, y: 10 },
       },
     },
     {
@@ -316,7 +316,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 5, w: 4, x: 8, y: 6 },
+        sm: { h: 5, w: 4, x: 8, y: 10 },
       },
     },
 
@@ -343,7 +343,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 6, w: 8, x: 0, y: 20 },
+        sm: { h: 6, w: 8, x: 0, y: 15 },
       },
     },
     {
@@ -368,7 +368,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
-        sm: { h: 6, w: 4, x: 8, y: 20 },
+        sm: { h: 6, w: 4, x: 8, y: 15 },
       },
     },
 
@@ -405,7 +405,7 @@ LIMIT 100
         },
       },
       layouts: {
-        sm: { h: 5, w: 12, x: 0, y: 15 },
+        sm: { h: 5, w: 12, x: 0, y: 21 },
       },
     },
 
