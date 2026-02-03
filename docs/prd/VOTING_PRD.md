@@ -1,6 +1,6 @@
 # Product Requirements Document: Citizens House Voting
 
-**Version:** 0.2.3
+**Version:** 0.2.4
 **Date:** 2026-01-19
 **Status:** Draft
 **Owner:** Dan Cunningham
@@ -59,6 +59,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Bond covers storage for the proposal and votes. Bond is only refunded if the proposal fails to be created (snapshot callback failure or pending expiry). Bond is NOT refunded on success, failure, or cancellation.
   - **Votes**: Before recording a vote, the contract checks if available balance can cover storage (using `env::account_balance()`, `env::storage_usage()`, `env::storage_byte_cost()`). If sufficient, no deposit required. If insufficient, voter must attach deposit (~0.0015 NEAR). This creates a "free until bond exhausted" model.
   - **Admin operations**: Use `assert_one_yocto()`. Storage cost is minimal and absorbed by contract.
+  - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` before/after) and return any excess to the voter.
 
 **NEAR execution model considerations**
 
@@ -89,6 +90,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 - **Proposal creation**: Admin-only; admin status is not tied to Verified Accounts.
 - **Start time**: `created_at` is set at the initial create call time (not in the snapshot callback).
+- **Time units**: `created_at` and `ends_at` are in nanoseconds; `voting_period_secs` is in seconds and must be converted to nanoseconds when computing `ends_at` and expiry checks.
 - **Voting eligibility**: Verified accounts only (verified prior to proposal creation), and not blocklisted.
 - **Verification timing**: Accounts must be verified before proposal creation to vote (`verified_at <= created_at`).
 - **Voting period**: Global configurable; default 14 days.
@@ -96,12 +98,13 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **Quorum**: Default 7% of snapshot verified count; configurable (basis points).
   - Quorum count uses `ceil((snapshot_verified_count * quorum_bps) / 10_000)`.
 - **Passing condition**: Quorum met and `yes_votes >= no_votes` (ties pass).
-- **Finalize preconditions**: Finalize is only allowed for `Active` proposals; calls for `Pending`, `Cancelled`, `Succeeded`, or `Failed` must be rejected.
-- **Pending expiry**: If a proposal remains `Pending` past `created_at + voting_period_secs`, it auto-expires to `Failed` and bond is refunded to creator (creation failure).
+- **Finalize preconditions**: Finalize is only allowed for `Active` proposals; calls for `Pending`, `Cancelled`, `Succeeded`, or `Failed` must be rejected. Finalize is blocked while any `pending_votes` exist.
+- **Pending expiry**: If a proposal remains `Pending` past `ends_at` (`created_at + (voting_period_secs * 1_000_000_000)`), it is expired during `finalize` (see lifecycle) and bond is refunded to creator (creation failure).
 - **Blocklisting**: Prevents future voting. For Active proposals, votes from accounts blocklisted before finalize are excluded from both quorum participation and yes/no tallies. Blocklisting does not alter results of finalized proposals.
 - **Zero snapshot**: If `snapshot_verified_count == 0`, the proposal auto-fails at finalization (quorum cannot be met).
 - **Config updates**: Blocked while any proposal is Pending or Active.
 - **Storage funding**: See storage model in Section 5 Assumptions.
+- **Pause semantics**: Pause blocks new create/vote/finalize, but allows cancel and in-flight callbacks to complete.
 
 ---
 
@@ -109,12 +112,12 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 1. **Create (admin-only)**
    - Pending is a transient state between the create call and snapshot callback; proposals should not remain Pending indefinitely.
-   - Contract stores a pending proposal record with `created_at = now` and `ends_at = created_at + voting_period_secs`. Pending expiry uses `created_at + voting_period_secs`.
+   - Contract stores a pending proposal record with `created_at = now` and `ends_at = created_at + (voting_period_secs * 1_000_000_000)`. Pending expiry uses `ends_at`.
    - Contract calls Verified Accounts to fetch `verified_count` (snapshot).
    - Callback finalizes proposal to Active and stores snapshot count; it must not change `created_at` or `ends_at`.
    - Snapshot count may include accounts verified between proposal creation and callback completion; this slightly raises quorum and is acceptable.
    - On callback failure (snapshot call fails), bond is refunded to creator.
-   - On pending expiry (proposal remains Pending past `created_at + voting_period_secs`), bond is refunded to creator.
+   - On pending expiry (proposal remains Pending past `ends_at`), `finalize` marks it Failed and refunds bond to creator.
    - If proposal transitions to Active, bond is never refunded regardless of final outcome (success, failure, or cancellation).
 
 2. **Vote (verified-only)**
@@ -125,18 +128,20 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
      - If contract lacks balance → voter must attach deposit (revert if insufficient)
    - Contract records a pending vote lock per proposal (`pending_votes` keyed by `(proposal_id, account_id)`) to prevent duplicate submissions.
    - Contract calls Verified Accounts `get_verification` (summary).
-   - Callback re-checks status/time/blocklist, enforces `verified_at <= proposal.created_at`, and records vote if valid.
+   - Callback re-checks status/blocklist, enforces `verified_at <= proposal.created_at`, and records vote if valid.
+   - Vote timing uses **submission time**: a vote submitted before `ends_at` is eligible to be recorded even if its callback executes after `ends_at`.
    - On failure, pending lock is cleared and any attached deposit is refunded.
    - Finalization excludes votes from accounts blocklisted before finalize.
 
 3. **Finalize**
    - Anyone can call finalize after `ends_at` when not paused.
+   - Finalize is blocked while any `pending_votes` exist for the proposal.
    - Finalize is only valid for `Active` proposals.
    - Votes from accounts blocklisted before finalize are excluded from quorum participation and yes/no tallies.
    - If `snapshot_verified_count == 0`, proposal fails.
    - Proposal becomes Succeeded or Failed based on quorum and yes/no results.
    - Finalize uses `ends_at` as originally set (pause does not freeze time).
-   - If a proposal auto-expired while Pending, finalize returns an expired error.
+   - If a proposal is Pending and expired, finalize marks it Failed and refunds the bond.
 
 4. **Cancel (admin-only)**
    - If Active and not finalized, proposal becomes Cancelled. Bond is NOT refunded.
@@ -170,15 +175,16 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Validates length limits (see Section 12).
   - Requires attached bond (minimum configurable, default 1 NEAR; proposer may attach more).
   - Stores `creator = predecessor_account_id()` for auditability.
-  - Stores pending proposal with `created_at = now` and `ends_at = created_at + voting_period_secs`.
+  - Stores pending proposal with `created_at = now` and `ends_at = created_at + (voting_period_secs * 1_000_000_000)`.
   - Initiates async call to fetch snapshot; callback activates proposal.
   - Bond is only refunded if snapshot callback fails. Once proposal is Active, bond is never refunded.
-- **cancel_proposal(proposal_id)**: Admin-only; only if not finalized. Bond is NOT refunded.
+  - **cancel_proposal(proposal_id)**: Admin-only; only if not finalized. Bond is NOT refunded. Allowed while paused.
 - **finalize_proposal(proposal_id)**: Public; only after `ends_at` and when not paused.
   - Only valid for `Active` proposals.
+  - Blocked while any `pending_votes` exist for the proposal.
   - Excludes votes from accounts blocklisted before finalize.
   - If `snapshot_verified_count == 0`, proposal fails.
-  - Pending proposals that expired return an error.
+  - Pending proposals that expired are marked Failed and the bond is refunded.
 - **get_proposal(proposal_id)** view.
 - **list_proposals(from_index, limit)** view with pagination, ordered by `created_at` then `id`.
 
@@ -195,7 +201,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - On failure, pending lock is cleared and any deposit is refunded.
 - **has_voted(proposal_id, account_id)** view — O(1) lookup.
 - **get_vote(proposal_id, account_id)** view — O(1) lookup.
-- **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX.
+- **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX; treat as a hint only (balance may change before the vote is recorded).
 - **Note**: No on-chain `list_votes`. For vote enumeration, use an indexer (NEAR Lake, QueryAPI) to query `vote_cast` events. This avoids storage duplication and scales to 10,000+ votes.
 
 ### 10.5 Reject List
@@ -228,6 +234,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Paused state blocks proposal creation, voting, and finalization.
   - Pause does not freeze proposal time: `ends_at` and pending expiry timers continue to advance while paused.
   - Admin config updates and admin/blocklist management remain allowed while paused.
+  - Admin cancellation remains allowed while paused.
+  - In-flight callbacks from pre-pause actions are allowed to complete.
   - View methods remain accessible.
 
 ---
@@ -302,13 +310,13 @@ These limits prevent storage abuse and keep gas costs predictable.
 
 ## 13. Events
 
-Use NEP-297 event format (`EVENT_JSON`) with a dedicated `standard` and `version`. Events must keep payloads minimal (IDs, status, counts) to avoid the 16kb log limit; do not emit full proposal descriptions.
+Use NEP-297 event format (`EVENT_JSON`) with `standard = "citizens-house-vote"` and a dedicated `version`. Events must keep payloads minimal (IDs, status, counts) to avoid the 16kb log limit; do not emit full proposal descriptions.
 
 Event names and payloads:
 
 - `proposal_created`: `{ proposal_id, creator, created_at, ends_at, quorum_bps }`
 - `proposal_cancelled`: `{ proposal_id, cancelled_by }`
-- `proposal_finalized`: `{ proposal_id, status, yes_votes, no_votes, quorum, snapshot_verified_count }`
+- `proposal_finalized`: `{ proposal_id, status, yes_votes, no_votes, quorum, snapshot_verified_count }` where `quorum` is the required vote count (not bps).
 - `vote_cast`: `{ proposal_id, voter, choice, voted_at }`
 - `admin_added`: `{ account_id, added_by }`
 - `admin_removed`: `{ account_id, removed_by }`
@@ -357,7 +365,7 @@ Event names and payloads:
 
 ### 16.1 Contract Interface (from `contracts/verified-accounts/src/interface.rs`)
 
-- `get_verified_count() -> u64`
+- `get_verified_count() -> u32`
 - `get_verification(account_id: AccountId) -> Option<VerificationSummary>`
 - `get_full_verification(account_id: AccountId) -> Option<Verification>`
 - `is_verified(account_id: AccountId) -> bool`
@@ -368,15 +376,16 @@ Event names and payloads:
 ### 16.2 Types
 
 - `VerificationSummary`
-  - `nullifier: String`
   - `near_account_id: AccountId`
-  - `attestation_id: String`
   - `verified_at: u64` (Unix timestamp in nanoseconds)
-- `Verification` (full record with proof data; not required for governance reads)
+- `Verification`
+  - `near_account_id: AccountId`
+  - `verified_at: u64`
+  - `user_context_data: String` (includes NEAR signature data)
 
 ### 16.3 Usage in Governance
 
-- **Snapshot at creation**: Use `get_verified_count()` via async callback; snapshot can include verifications completed before the callback returns.
+- **Snapshot at creation**: Use `get_verified_count()` via async callback; snapshot can include verifications completed before the callback returns. Convert `u32` to `u64` when storing `snapshot_verified_count`.
 - **Vote eligibility**: Use `get_verification(account_id)` and require `verified_at <= proposal.created_at`.
 - **Contract address**: Stored in config and updateable by admin only when no proposal is Pending or Active.
 - **Callback gas**: Snapshot callback uses at least 20 Tgas; vote callback uses at least 30 Tgas.
@@ -394,6 +403,7 @@ Event names and payloads:
   - Blocklisted
   - Proposal not active / expired / finalized
   - Pending proposal expired
+  - Finalize blocked by pending votes
   - Contract paused
   - Config locked due to active proposals
   - Already voted / vote already pending
