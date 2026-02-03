@@ -27,11 +27,11 @@ import { VERIFICATION_EVENTS, CITIZENS_EVENTS, CONSENT_EVENTS, ERRORS_EVENTS } f
 
 /**
  * Single high-value dashboard for verification analytics
- * Includes: key metrics, full funnel (client + server events), time to complete charts, location and platform breakdown, rejection reasons detail, paths
+ * Includes: key metrics, full funnel (client + server events), time to complete charts, location and platform breakdown, rejection reasons detail, user paths
  */
 export const verificationAnalyticsDashboard: DashboardDefinition = {
   name: "Verification Analytics",
-  description: "Core verification metrics: conversion funnel, user paths, platform breakdown, and key metrics",
+  description: "Core verification metrics: key metrics, conversion funnel, location and platform breakdowns, rejection reasons and user paths",
   tags: ["verification", "analytics"],
   tiles: [
     // Row 1: Key metrics (4 across)
@@ -115,39 +115,28 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
     {
       type: "insight",
       insight: {
-        name: "Conversion Rate (%)",  
-        description: "Token generated to verification complete",  
-        query: {  
-          kind: "TrendsQuery",  
-          dateRange: {  
-            date_from: null,  // Uses dashboard date range  
-            date_to: null  
-          },  
-          series: [  
-            {  
-              kind: "EventsNode",  
-              event: VERIFICATION_EVENTS.onchain_store_success,  
-              name: "Successfully verified (A)",  
-              math: "dau"  
-            },  
-            {  
-              kind: "EventsNode",  
-              event: VERIFICATION_EVENTS.token_generate,  
-              name: "Token generated (B)",  
-              math: "dau"  
-            }  
-          ],  
-          trendsFilter: {  
-            display: "BoldNumber",  
-            aggregationAxisFormat: "percentage",  
-            decimalPlaces: 0,  
-            formulaNodes: [  
-              {  
-                formula: "A / B * 100"  
-              }  
-            ]  
-          }  
-        }
+        name: "Conversion Rate (%)",
+        description: "Token generated to verification complete",
+        filters: {
+          insight: "TRENDS",
+          // Uses dashboard date range
+          display: "BoldNumber",
+          formula: "A / B * 100",
+          events: [
+            {
+              id: VERIFICATION_EVENTS.onchain_store_success,
+              type: "events",
+              name: "Successfully verified (A)",
+              math: "dau",
+            },
+            {
+              id: VERIFICATION_EVENTS.token_generate,
+              type: "events",
+              name: "Token generated (B)",
+              math: "dau",
+            },
+          ],
+        },
       },
       layouts: {
         sm: { h: 4, w: 3, x: 9, y: 0 },
