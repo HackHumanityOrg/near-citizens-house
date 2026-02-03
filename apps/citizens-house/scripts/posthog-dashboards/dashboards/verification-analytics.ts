@@ -15,6 +15,12 @@ import { VERIFICATION_EVENTS, CITIZENS_EVENTS, CONSENT_EVENTS, ERRORS_EVENTS } f
  * 6. sumsub_submit - User submitted documents
  * 7. onchain_store_success - Server confirmed verification (authoritative, final step)
  *
+ * Funnel Strategy:
+ * - Start and end with SERVER-SIDE events (token_generate, onchain_store_success)
+ *   to ensure reliable tracking even when client-side events are blocked by ad blockers
+ * - Middle steps (client-side) are marked as OPTIONAL using optionalInFunnel
+ * - This captures 100% of verified users while still showing drop-off for those with tracking
+ *
  * Note: success_view is NOT in funnel because client can render success before
  * the server-side onchain_store_success event is recorded (race condition).
  */
@@ -29,14 +35,15 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
   tags: ["verification", "analytics"],
   tiles: [
     // Row 1: Verification Funnel (full width)
-    // Starts at wallet_connect_success to ensure consistent distinct_id tracking.
-    // Events before wallet connection (cta_click, flow_start) use anonymous IDs
-    // which may not merge correctly with the authenticated accountId.
+    // Starts and ends with SERVER-SIDE events for reliable tracking.
+    // Client-side steps are OPTIONAL to handle ad blockers (which block ~30% of users).
+    // This ensures we capture ALL verified users while still showing drop-off details.
     {
       type: "insight",
       insight: {
         name: "Verification Funnel",
-        description: "Conversion funnel from wallet connection to on-chain verification",
+        description:
+          "Conversion funnel from token generation to on-chain verification. Client-side steps are optional to handle ad blockers.",
         query: {
           kind: "InsightVizNode",
           source: {
@@ -48,27 +55,31 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
               funnelWindowIntervalUnit: "day",
             },
             series: [
-              // Step 1: Wallet connected - first event with accountId as distinct_id
+              // Step 1: Token generated (SERVER-SIDE, required)
+              // This proves wallet connected + signed (server validates the signature)
               {
                 kind: "EventsNode",
-                event: VERIFICATION_EVENTS.wallet_connect_success,
-                custom_name: "Wallet Connected",
+                event: VERIFICATION_EVENTS.token_generate,
+                custom_name: "Token Generated (Wallet + Sign verified)",
               },
-              // Step 2: Message signed
-              { kind: "EventsNode", event: VERIFICATION_EVENTS.sign_success, custom_name: "Message signed" },
-              // Step 3: SumSub SDK loaded (ID verification started)
+              // Step 2: SumSub SDK loaded (CLIENT-SIDE, optional)
+              // May be blocked by ad blockers
               {
                 kind: "EventsNode",
                 event: VERIFICATION_EVENTS.sumsub_sdk_load,
                 custom_name: "ID verification started",
+                optionalInFunnel: true,
               },
-              // Step 4: User submitted documents to SumSub
+              // Step 3: User submitted documents to SumSub (CLIENT-SIDE, optional)
+              // May be blocked by ad blockers
               {
                 kind: "EventsNode",
                 event: VERIFICATION_EVENTS.sumsub_submit,
                 custom_name: "ID verification submitted",
+                optionalInFunnel: true,
               },
-              // Step 5: Server confirmed and stored on-chain (authoritative success)
+              // Step 4: Server confirmed and stored on-chain (SERVER-SIDE, required)
+              // This is the authoritative success event
               {
                 kind: "EventsNode",
                 event: VERIFICATION_EVENTS.onchain_store_success,
@@ -85,11 +96,12 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
 
     // Row 2: Time to Convert (histogram visualizations)
     // Uses PostHog's native funnel time_to_convert for bar chart display
+    // All use server-side events for reliable tracking
     {
       type: "insight",
       insight: {
-        name: "Time: Wallet → Verified",
-        description: "Time from wallet connection to successful verification",
+        name: "Time: Token → Verified",
+        description: "Time from token generation to successful verification",
         query: {
           kind: "InsightVizNode",
           source: {
@@ -103,8 +115,8 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
             series: [
               {
                 kind: "EventsNode",
-                event: VERIFICATION_EVENTS.wallet_connect_success,
-                custom_name: "Wallet Connected",
+                event: VERIFICATION_EVENTS.token_generate,
+                custom_name: "Token Generated",
               },
               {
                 kind: "EventsNode",
@@ -122,42 +134,8 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
     {
       type: "insight",
       insight: {
-        name: "Time: Signed → Verified",
-        description: "Time from message signed to successful verification",
-        query: {
-          kind: "InsightVizNode",
-          source: {
-            kind: "FunnelsQuery",
-            funnelsFilter: {
-              funnelVizType: "time_to_convert",
-              funnelWindowInterval: 7,
-              funnelWindowIntervalUnit: "day",
-              binCount: 10,
-            },
-            series: [
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.sign_success,
-                custom_name: "Message Signed",
-              },
-              {
-                kind: "EventsNode",
-                event: VERIFICATION_EVENTS.onchain_store_success,
-                custom_name: "Verified",
-              },
-            ],
-          },
-        },
-      },
-      layouts: {
-        sm: { h: 5, w: 4, x: 4, y: 6 },
-      },
-    },
-    {
-      type: "insight",
-      insight: {
         name: "Time: ID Start → Verified",
-        description: "Time from ID verification started to successful verification",
+        description: "Time from ID verification started to verified",
         query: {
           kind: "InsightVizNode",
           source: {
@@ -184,25 +162,60 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
         },
       },
       layouts: {
+        sm: { h: 5, w: 4, x: 4, y: 6 },
+      },
+    },
+    {
+      type: "insight",
+      insight: {
+        name: "Time: ID Submit → Verified",
+        description: "Time from document submission to verified",
+        query: {
+          kind: "InsightVizNode",
+          source: {
+            kind: "FunnelsQuery",
+            funnelsFilter: {
+              funnelVizType: "time_to_convert",
+              funnelWindowInterval: 7,
+              funnelWindowIntervalUnit: "day",
+              binCount: 10,
+            },
+            series: [
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.sumsub_submit,
+                custom_name: "Documents Submitted",
+              },
+              {
+                kind: "EventsNode",
+                event: VERIFICATION_EVENTS.onchain_store_success,
+                custom_name: "Verified",
+              },
+            ],
+          },
+        },
+      },
+      layouts: {
         sm: { h: 5, w: 4, x: 8, y: 6 },
       },
     },
 
     // Row 3: Key metrics (4 across)
+    // Uses server-side events for reliable counts
     {
       type: "insight",
       insight: {
-        name: "Unique Visitors",
-        description: "Unique users who connected wallet to verify",
+        name: "Started Flow",
+        description: "Unique users who got a verification token",
         filters: {
           insight: "TRENDS",
           // Uses dashboard date range
           display: "BoldNumber",
           events: [
             {
-              id: VERIFICATION_EVENTS.wallet_connect_success,
+              id: VERIFICATION_EVENTS.token_generate,
               type: "events",
-              name: "Unique visitors",
+              name: "Started verification",
               math: "dau",
             },
           ],
@@ -239,7 +252,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
       type: "insight",
       insight: {
         name: "Rejected",
-        description: "Verification rejected (SumSub + contract rejections)",
+        description: "Verification rejected",
         filters: {
           insight: "TRENDS",
           // Uses dashboard date range
@@ -269,7 +282,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
       type: "insight",
       insight: {
         name: "Conversion Rate (%)",
-        description: "Wallet connected to verification complete",
+        description: "Token generated to verification complete",
         filters: {
           insight: "TRENDS",
           // Uses dashboard date range
@@ -283,9 +296,9 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
               math: "dau",
             },
             {
-              id: VERIFICATION_EVENTS.wallet_connect_success,
+              id: VERIFICATION_EVENTS.token_generate,
               type: "events",
-              name: "Wallet connected (B)",
+              name: "Token generated (B)",
               math: "dau",
             },
           ],
@@ -321,8 +334,7 @@ SELECT
   properties.reason AS reason
 FROM events
 WHERE event IN ('${VERIFICATION_EVENTS.webhook_review_reject}', '${VERIFICATION_EVENTS.onchain_store_reject}')
-  AND timestamp >= {filters.dateRange.date_from}
-  AND timestamp < {filters.dateRange.date_to}
+  AND {filters}
 ORDER BY timestamp DESC
 LIMIT 100
             `.trim(),

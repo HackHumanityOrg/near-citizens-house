@@ -82,6 +82,14 @@ interface PaginatedEventsResponse {
   next: string | null
 }
 
+/**
+ * Dashboard filters including date range
+ */
+export interface DashboardFilters {
+  date_from?: string | null
+  date_to?: string | null
+}
+
 interface DashboardResponse {
   id: number
   name: string
@@ -90,6 +98,7 @@ interface DashboardResponse {
   created_at: string
   deleted: boolean
   tags: string[]
+  filters?: DashboardFilters
 }
 
 /**
@@ -297,11 +306,17 @@ export class PostHogApiClient {
   /**
    * Create a new dashboard
    */
-  async createDashboard(name: string, description?: string, tags?: string[]): Promise<DashboardResponse> {
+  async createDashboard(
+    name: string,
+    description?: string,
+    tags?: string[],
+    filters?: DashboardFilters,
+  ): Promise<DashboardResponse> {
     return this.request<DashboardResponse>("POST", `/api/projects/${this.projectId}/dashboards/`, {
       name,
       description,
       tags,
+      filters,
       pinned: false,
     })
   }
@@ -316,6 +331,7 @@ export class PostHogApiClient {
       description: string
       tags: string[]
       pinned: boolean
+      filters: DashboardFilters
     }>,
   ): Promise<DashboardResponse> {
     return this.request<DashboardResponse>(
@@ -323,6 +339,19 @@ export class PostHogApiClient {
       `/api/projects/${this.projectId}/dashboards/${dashboardId}/`,
       updates,
     )
+  }
+
+  /**
+   * Get the date range filters from an existing dashboard
+   * Returns null if dashboard not found or has no filters
+   */
+  async getDashboardFilters(dashboardId: number): Promise<DashboardFilters | null> {
+    try {
+      const dashboard = await this.getDashboard(dashboardId)
+      return dashboard.filters || null
+    } catch {
+      return null
+    }
   }
 
   /**
@@ -863,14 +892,16 @@ export class PostHogApiClient {
    */
   async createCompleteDashboard(
     definition: DashboardDefinition,
-    options: { skipExisting?: boolean; replaceExisting?: boolean } = {},
+    options: { skipExisting?: boolean; replaceExisting?: boolean; filters?: DashboardFilters } = {},
   ): Promise<{
     dashboard: DashboardResponse
     insights: InsightResponse[]
     textTiles: DashboardTileResponse[]
     replaced: boolean
+    preservedFilters: DashboardFilters | null
   }> {
     let replaced = false
+    let preservedFilters: DashboardFilters | null = options.filters || null
 
     // Check if dashboard already exists
     const existing = await this.findDashboardByName(definition.name)
@@ -883,10 +914,18 @@ export class PostHogApiClient {
           insights: [],
           textTiles: [],
           replaced: false,
+          preservedFilters: existing.filters || null,
         }
       }
 
       if (options.replaceExisting) {
+        // Preserve the existing dashboard's filters before deleting
+        if (!preservedFilters && existing.filters) {
+          preservedFilters = existing.filters
+          console.log(
+            `Preserving existing dashboard filters: date_from=${preservedFilters.date_from}, date_to=${preservedFilters.date_to}`,
+          )
+        }
         console.log(`Dashboard "${definition.name}" exists, replacing...`)
         const { insightsDeleted } = await this.deleteDashboardWithInsights(existing.id)
         console.log(`Deleted ${insightsDeleted} old insights`)
@@ -894,8 +933,13 @@ export class PostHogApiClient {
       }
     }
 
-    // Create the dashboard
-    const dashboard = await this.createDashboard(definition.name, definition.description, definition.tags)
+    // Create the dashboard with preserved filters
+    const dashboard = await this.createDashboard(
+      definition.name,
+      definition.description,
+      definition.tags,
+      preservedFilters || undefined,
+    )
 
     const insights: InsightResponse[] = []
     const textTiles: DashboardTileResponse[] = []
@@ -929,7 +973,7 @@ export class PostHogApiClient {
       await this.updateInsightLayout(dashboard.id, insightId, layouts)
     }
 
-    return { dashboard, insights, textTiles, replaced }
+    return { dashboard, insights, textTiles, replaced, preservedFilters }
   }
 
   /**

@@ -179,6 +179,11 @@ async function createDashboard(options: { dryRun?: boolean; skipExisting?: boole
     }
     logInfo(`  ${result.insights.length} insights`)
     logInfo(`  ${result.textTiles.length} text tiles`)
+    if (result.preservedFilters) {
+      logInfo(
+        `  Preserved filters: date_from=${result.preservedFilters.date_from || "default"}, date_to=${result.preservedFilters.date_to || "default"}`,
+      )
+    }
   } catch (error) {
     logError(`Failed to create dashboard: ${error}`)
   }
