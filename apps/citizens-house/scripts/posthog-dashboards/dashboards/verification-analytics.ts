@@ -73,7 +73,8 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
               id: VERIFICATION_EVENTS.onchain_store_success,
               type: "events",
               name: "Successful verifications",
-              math: "dau",
+              // Uses total rather than dau to count every successful verification, even if a single unique user does more than one
+              math: "total",
             },
           ],
         },
@@ -127,7 +128,8 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
               id: VERIFICATION_EVENTS.onchain_store_success,
               type: "events",
               name: "Successfully verified (A)",
-              math: "dau",
+              // Uses total rather than dau to count every successful verification, even if a single unique user does more than one
+              math: "total",
             },
             {
               id: VERIFICATION_EVENTS.token_generate,
@@ -324,6 +326,7 @@ export const verificationAnalyticsDashboard: DashboardDefinition = {
               id: VERIFICATION_EVENTS.success_view,
               type: "events",
               name: "Verifications",
+              // Uses dau to avoid double counting a single user viewing their successful verification multiple times
               math: "dau",
             },
           ],
