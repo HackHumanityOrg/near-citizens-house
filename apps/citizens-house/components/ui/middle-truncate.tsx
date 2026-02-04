@@ -22,6 +22,12 @@ export function MiddleTruncate({ text, className }: MiddleTruncateProps) {
   // Fixed suffix length of 6 characters (e.g., ".near" or "tnet" from ".testnet")
   const SUFFIX_LENGTH = 6
 
+  // Handle copy event to prevent space being inserted between spans
+  const handleCopy = (e: React.ClipboardEvent) => {
+    e.preventDefault()
+    e.clipboardData.setData("text/plain", text)
+  }
+
   // If text is short enough, no need to split
   if (text.length <= SUFFIX_LENGTH + 3) {
     return (
@@ -35,25 +41,11 @@ export function MiddleTruncate({ text, className }: MiddleTruncateProps) {
   const suffix = text.slice(-SUFFIX_LENGTH)
 
   return (
-    <span
-      className={cn(
-        "inline-flex min-w-0 max-w-full",
-        className
-      )}
-      title={text}
-    >
+    <span className={cn("inline-flex min-w-0 max-w-full", className)} title={text} onCopy={handleCopy}>
       {/* Prefix: shrinks with ellipsis when space is limited */}
-      <span
-        className="shrink overflow-hidden text-ellipsis whitespace-nowrap"
-      >
-        {prefix}
-      </span>
+      <span className="shrink overflow-hidden text-ellipsis whitespace-nowrap">{prefix}</span>
       {/* Suffix: never shrinks, always visible */}
-      <span
-        className="shrink-0 whitespace-nowrap"
-      >
-        {suffix}
-      </span>
+      <span className="shrink-0 whitespace-nowrap">{suffix}</span>
     </span>
   )
 }
