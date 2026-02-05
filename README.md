@@ -19,7 +19,6 @@ near-citizens-house/
 ├── contracts/
 │   ├── verified-accounts/        # Identity verification contract (Rust)
 │   └── governance/               # Governance contract (planned)
-├── checkly/                      # Synthetic monitoring
 └── docs/                         # Documentation
 ```
 

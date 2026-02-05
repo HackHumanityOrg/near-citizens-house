@@ -3,7 +3,6 @@
   "exclude": ["exports", "types", "unresolved"],
   "workspaces": {
     ".": {
-      "entry": ["checkly.config.ts", "checkly/**/*.{ts,check.ts}"],
       "ignoreBinaries": ["rustup", "allure", "tsx"]
     },
     "apps/citizens-house": {
