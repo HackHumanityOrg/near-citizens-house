@@ -326,6 +326,12 @@ Event names and payloads:
 - `paused`: `{ paused_by }`
 - `unpaused`: `{ unpaused_by }`
 
+**Implementation guidance**
+
+- Use `near-sdk-contract-tools` to emit NEP-297 events via the `#[event]` macro or `#[derive(Nep297)]`, which provides `.emit()` and formats `EVENT_JSON` automatically.
+- The macro defaults to `snake_case` naming for struct names or enum variants, which matches the event names above (e.g., `ProposalCreated` -> `proposal_created`).
+- Emit events after state is finalized (e.g., in snapshot/vote callbacks, and after finalize/cancel state transitions), not on request submission.
+
 ---
 
 ## 14. Security Requirements
@@ -470,6 +476,7 @@ Event names and payloads:
 - NEAR sybil: https://docs.near.org/smart-contracts/security/sybil
 - NEAR storage staking: https://docs.near.org/protocol/storage/storage-staking
 - NEP-297 events: https://raw.githubusercontent.com/near/NEPs/master/neps/nep-0297.md
+- near-sdk-contract-tools (NEP-297 event macros): https://github.com/near/near-sdk-contract-tools
 - NEAR storage DoS: https://docs.near.org/smart-contracts/security/storage
 - NEAR access control auditing notes: https://blog.sigmaprime.io/near-accounts-and-access-control.html
 - NEAR storage auditing notes: https://blog.sigmaprime.io/near-storage.html
