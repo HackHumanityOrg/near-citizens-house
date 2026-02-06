@@ -382,7 +382,7 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 - **Pagination limit**: max 100
 
 - **Proposal IDs**: Assigned sequentially starting from 0 via the `next_proposal_id` counter.
-- **Pagination semantics**: `from_index` parameters are 0-based offsets. Note that `IterableMap.skip(n)` is O(n); with few proposals and small admin/blocklists, this is acceptable.
+- **Pagination semantics**: `from_index` parameters are 0-based offsets. Pagination uses `iter().skip(from_index).take(limit)`. The `store::IterableMap` and `store::IterableSet` iterators provide O(1) `nth()` via their internal `Vector`, making `skip(n)` O(1) regardless of offset. Total pagination cost is O(limit). (Note: this O(1) property does NOT hold for `store::UnorderedMap`/`UnorderedSet`, which use `FreeList` internally.)
 - **Voting period bounds**: minimum 86,400 seconds (1 day), maximum 7,776,000 seconds (90 days).
 - **Minimum proposal bond bounds**: minimum 1 NEAR, maximum 100 NEAR.
 - **Quorum bps bounds**: minimum 1, maximum 10,000.
