@@ -24,7 +24,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 ## 3. Goals
 
-- Provide a simple, secure, and auditable governance flow for NEAR Verified Accounts.
+- Provide a simple, secure, and auditable voting flow for NEAR Verified Accounts.
 - Enforce one-person-one-vote using Verified Accounts, with verification checked on-chain.
 - Support text-only proposals (no on-chain execution or token transfers).
 - Allow multiple admins to manage proposals and configuration safely.
@@ -53,6 +53,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 **Assumptions**
 
+- Voting should be available within the same app as Verification was, with the ability to turn each module (Verification, Voting) on or off at any given time
 - The Verified Accounts contract remains the source of truth for verification.
 - Contract account will be funded for baseline storage.
 - **Storage model**:
@@ -83,6 +84,9 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - No unauthorized proposal creation or config changes.
 - On-chain state is queryable and indexable with events.
 - Governance actions complete within expected gas limits.
+- At least 7% of NEAR Verified Accounts vote (hopefully signifantly higher).
+- Voting is concluded within a 2-week time period.
+- We do not need to pause voting e.g. due to any major bugs or security incidents.
 
 ---
 
