@@ -191,7 +191,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - `yes_votes` and `no_votes` are read directly (already adjusted for blocklisted accounts in real-time).
   - Defensive check: if `snapshot_verified_count == 0`, proposal fails with `failure_kind: ZeroSnapshot`. Under normal operation, zero-snapshot proposals are rejected at creation and never reach Active status.
 - **get_proposal(proposal_id)** view.
-- **list_proposals(from_index, limit)** view with pagination, ordered by `id`. IDs are sequential, and IterableMap append-only ordering matches ID order.
+- **list_proposals(from_index, limit)** view with pagination, ordered by `id`. IDs are sequential starting from 0, and `Vector` append-only ordering matches ID order (index = proposal ID).
 
 ### 10.4 Voting
 
@@ -290,8 +290,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 All collections use `near_sdk::store` (not the deprecated `near_sdk::collections`).
 
-- `next_proposal_id: u64` — auto-incrementing counter starting from 0; stored in contract state (not a collection).
-- `proposals: IterableMap<u64, Proposal>` — iteration needed for `list_proposals`; append-only (proposals are never removed from storage)
+- `next_proposal_id: u64` — derived from `self.proposals.len() as u64` (not stored separately). Alternatively, may be stored explicitly in contract state for convenience, but the Vector length is the source of truth.
+- `proposals: Vector<Proposal>` — iteration needed for `list_proposals` and blocklist scanning; append-only (proposals are never removed from storage). The Vector index serves as the proposal ID (sequential from 0), eliminating redundant key storage. `Vector` uses `u32` indices internally (max ~4.29B proposals, sufficient for governance). `next_proposal_id` can be derived from `self.proposals.len() as u64`.
 - `votes: LookupMap<(u64, AccountId), Vote>` — O(1) lookup; no on-chain iteration (use indexer)
 - `pending_votes: LookupMap<(u64, AccountId), PendingVote>` — vote lock during async verification; stores submission context needed by the callback
 - `admins: IterableSet<AccountId>` — iteration needed for `list_admins`
@@ -331,7 +331,7 @@ enum StorageKey {
 
 ### 11.5 Collection Caching and Flush Discipline
 
-`near_sdk::store` collections (`IterableMap`, `IterableSet`, `LookupMap`, `LookupSet`) cache mutations in memory and persist them to storage on `Drop` (via an implicit `flush()`). In `#[near]` contract methods, Rust's ownership guarantees ensure `Drop` runs even on early returns, so individual collection changes are not lost. However, when a method modifies **multiple collections**, an early return after writing to one collection but before writing to another can leave storage in a partially-updated (inconsistent) state.
+`near_sdk::store` collections (`Vector`, `IterableMap`, `IterableSet`, `LookupMap`, `LookupSet`) cache mutations in memory and persist them to storage on `Drop` (via an implicit `flush()`). In `#[near]` contract methods, Rust's ownership guarantees ensure `Drop` runs even on early returns, so individual collection changes are not lost. However, when a method modifies **multiple collections**, an early return after writing to one collection but before writing to another can leave storage in a partially-updated (inconsistent) state.
 
 **Guideline**: In methods that modify two or more collections within the same logical operation, call `.flush()` on each collection immediately after its mutations are complete rather than relying on end-of-method `Drop` ordering. This makes persistence boundaries explicit, improves code reviewability, and guards against future edits that could introduce early-return inconsistencies.
 
@@ -382,7 +382,7 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 - **Pagination limit**: max 100
 
 - **Proposal IDs**: Assigned sequentially starting from 0 via the `next_proposal_id` counter.
-- **Pagination semantics**: `from_index` parameters are 0-based offsets. Pagination uses `iter().skip(from_index).take(limit)`. The `store::IterableMap` and `store::IterableSet` iterators provide O(1) `nth()` via their internal `Vector`, making `skip(n)` O(1) regardless of offset. Total pagination cost is O(limit). (Note: this O(1) property does NOT hold for `store::UnorderedMap`/`UnorderedSet`, which use `FreeList` internally.)
+- **Pagination semantics**: `from_index` parameters are 0-based offsets. For `proposals` (`Vector`), pagination uses range-based indexing: `(from_index..min(len, from_index+limit)).filter_map(|i| self.proposals.get(i))`, giving O(limit) with no skip overhead and no hashing. For `admins` and `blocklist` (`IterableSet`), pagination uses `iter().skip(from_index).take(limit)`; the `IterableSet` iterator provides O(1) `nth()` via its internal `Vector`, making `skip(n)` O(1) regardless of offset. Total pagination cost is O(limit) for all collections.
 - **Voting period bounds**: minimum 86,400 seconds (1 day), maximum 7,776,000 seconds (90 days).
 - **Minimum proposal bond bounds**: minimum 1 NEAR, maximum 100 NEAR.
 - **Quorum bps bounds**: minimum 1, maximum 10,000.
