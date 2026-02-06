@@ -57,10 +57,10 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - The Verified Accounts contract remains the source of truth for verification.
 - Contract account will be funded for baseline storage.
 - **Storage model**:
-  - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Each proposal stores the actual `bond_amount` attached by the proposer (which may exceed `min_proposal_bond`) for refund calculations. Bond covers storage for the proposal and votes. Bond is only refunded if the proposal fails to be created (snapshot callback failure, pending expiry, or cancellation while Pending). Bond is NOT refunded on success, failure, or cancellation of Active proposals.
+  - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Bond covers storage for the proposal and votes. Bond is never refunded regardless of proposal outcome or lifecycle state.
   - **Votes**: Before recording a vote, the contract checks if available balance can cover storage (using `env::account_balance()`, `env::storage_usage()`, `env::storage_byte_cost()`). If sufficient, no deposit required. If insufficient, voter must attach deposit (~0.0015 NEAR). This creates a "free until bond exhausted" model.
   - **Admin operations**: Use `assert_one_yocto()`. Storage cost is minimal and absorbed by contract.
-  - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` after minus before, multiplied by `env::storage_byte_cost()`). The refund follows checks-effects-interactions: record the vote and finalize all state changes first, then compute the storage delta, then verify the contract retains sufficient balance for storage (see Section 14, "Storage balance guard"), then issue the excess refund via `Promise::new(voter).transfer(excess)`.
+  - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` after minus before, multiplied by `env::storage_byte_cost()`). The refund follows checks-effects-interactions: record the vote and finalize all state changes first, then compute the storage delta, then issue the excess refund via `Promise::new(voter).transfer(excess)`.
 
 **NEAR execution model considerations**
 
@@ -103,10 +103,10 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Quorum count uses `ceil((snapshot_verified_count * quorum_bps) / 10_000)`.
 - **Passing condition**: Quorum met and `yes_votes >= no_votes` (ties pass).
 - **Finalize preconditions**: Finalize is only allowed for `Active` proposals; calls for `Pending`, `Cancelled`, `Succeeded`, or `Failed` must be rejected. Finalize is blocked while any `pending_votes` exist for the proposal.
-- **Pending expiry**: If a proposal remains `Pending` past `pending_expires_at` (`created_at + (pending_expiry_secs * 1_000_000_000)`), it is handled by the admin-only `expire_pending_proposal` method (not `finalize`). This marks the proposal as Failed with `failure_kind: PendingExpired` and refunds the bond to the creator. `pending_expiry_secs` is a distinct config parameter from `voting_period_secs`, with a default of 3600 seconds (1 hour), reflecting that Pending is a transient state (normally 1-2 blocks for the snapshot callback).
+- **Pending expiry**: If a proposal remains `Pending` past `pending_expires_at` (`created_at + (pending_expiry_secs * 1_000_000_000)`), it is handled by the admin-only `expire_pending_proposal` method (not `finalize`). This marks the proposal as Failed with `failure_kind: PendingExpired`. `pending_expiry_secs` is a distinct config parameter from `voting_period_secs`, with a default of 3600 seconds (1 hour), reflecting that Pending is a transient state (normally 1-2 blocks for the snapshot callback).
 - **Blocklisting**: Prevents future voting. For Active proposals, votes from blocklisted accounts are excluded via real-time counter adjustment: when `blocklist_account` is called, the contract iterates Active proposals and for each where the account voted, sets the vote's `blocklisted` field to `true` and decrements the proposal's `yes_votes` or `no_votes`. This means `yes_votes` and `no_votes` on the Proposal are always effective tallies. `unblocklist_account` reverses this. At finalize, counters are read directly with no further adjustment needed. Blocklisting does not alter results of finalized proposals.
-- **Zero snapshot**: If the snapshot callback returns `verified_count == 0`, proposal creation fails (bond is refunded, `proposal_creation_failed` event emitted). As a defensive fallback, `finalize` also checks for `snapshot_verified_count == 0` and fails the proposal with `failure_kind: ZeroSnapshot`, though this path should not be reachable in normal operation.
-- **Config updates**: Updates to `voting_period_secs`, `verified_accounts_contract`, and `min_proposal_bond` are blocked while any proposal is Pending or Active. `quorum_bps` and `pending_expiry_secs` may be updated at any time since they are snapshotted per-proposal at creation.
+- **Zero snapshot**: If the snapshot callback returns `verified_count == 0`, proposal creation fails (`proposal_creation_failed` event emitted). As a defensive fallback, `finalize` also checks for `snapshot_verified_count == 0` and fails the proposal with `failure_kind: ZeroSnapshot`, though this path should not be reachable in normal operation.
+- **Config updates**: Updates to `voting_period_secs` and `verified_accounts_contract` are blocked while any proposal is Pending or Active. `quorum_bps`, `pending_expiry_secs`, and `min_proposal_bond` may be updated at any time since they only affect future proposals.
 - **Storage funding**: See storage model in Section 5 Assumptions.
 - **Pause semantics**: Pause blocks new create/vote/finalize, but allows cancel, `expire_pending_proposal`, `clear_stale_pending_vote`, and in-flight callbacks to complete.
 
@@ -120,10 +120,9 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
    - Contract calls Verified Accounts to fetch `verified_count` (snapshot).
    - Callback finalizes proposal to Active and stores snapshot count; it must not change `created_at`, `ends_at`, or `pending_expires_at`.
    - Snapshot count is an upper bound on the eligible voter population. It may include accounts verified in the 1-2 block window between `created_at` (set in the create call) and the `get_verified_count()` cross-contract call (executed in the next block). These accounts cannot vote (`verified_at > created_at`) but are counted in the quorum denominator. At any realistic verification rate, this adds zero additional required quorum votes due to ceiling rounding. This is accepted as policy: the snapshot is conservative (slightly harder to reach quorum) rather than permissive.
-   - On callback failure (snapshot call fails), the snapshot callback must: (1) check that the proposal is still in `Pending` status (checks); (2) update proposal status and clear any pending state (effects); (3) verify sufficient balance remains for storage after refund (see Section 14, "Storage balance guard"); (4) issue bond refund via `Promise::new(creator).transfer(bond_amount)` (interactions). All state mutations complete before the refund transfer promise is created. If the proposal was cancelled between the create call and callback, the callback checks status, finds it Cancelled (bond already refunded by cancel), and aborts without further state changes or refunds.
-   - On callback success, if `get_verified_count()` returned 0, the callback should fail the proposal creation (refund bond) rather than creating an Active proposal that will auto-fail at finalization.
-   - On pending expiry (proposal remains Pending past `pending_expires_at`), an admin calls `expire_pending_proposal` which marks it Failed (with `failure_kind: PendingExpired`) and refunds the bond to the creator.
-   - If proposal transitions to Active, bond is never refunded regardless of final outcome (success, failure, or cancellation).
+   - On callback failure (snapshot call fails), the snapshot callback must: (1) check that the proposal is still in `Pending` status (checks); (2) update proposal status to Failed and emit `proposal_creation_failed` event (effects). If the proposal was cancelled between the create call and callback, the callback checks status, finds it Cancelled, and aborts without further state changes.
+   - On callback success, if `get_verified_count()` returned 0, the callback should fail the proposal creation rather than creating an Active proposal that will auto-fail at finalization.
+   - On pending expiry (proposal remains Pending past `pending_expires_at`), an admin calls `expire_pending_proposal` which marks it Failed (with `failure_kind: PendingExpired`).
 
 2. **Vote (verified-only)**
    - Contract checks if proposal is Active and within voting window.
@@ -150,8 +149,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 4. **Cancel (admin-only)**
    - Requires `assert_one_yocto()` to prevent function-call key abuse.
    - If Active or Pending and not finalized, proposal becomes Cancelled.
-   - Bond is NOT refunded for Active proposals. Bond IS refunded for Pending proposals (creation never completed). The cancel operation itself performs the refund.
-   - If a Pending proposal is cancelled, the snapshot callback (which will still execute per NEAR protocol guarantees) must check the proposal status. If already Cancelled, the callback aborts without state changes or refunds (the cancel operation already handled the refund).
+   - Bond is not refunded.
+   - If a Pending proposal is cancelled, the snapshot callback (which will still execute per NEAR protocol guarantees) must check the proposal status. If already Cancelled, the callback aborts without further state changes.
    - Pending vote locks are cleared.
 
 ---
@@ -185,9 +184,9 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Stores `creator = predecessor_account_id()` for auditability.
   - Stores pending proposal with `created_at = now`, `ends_at = created_at + (voting_period_secs * 1_000_000_000)`, and `pending_expires_at = created_at + (pending_expiry_secs * 1_000_000_000)`.
   - Initiates async call to fetch snapshot; callback activates proposal.
-  - Bond is only refunded if snapshot callback fails, if the proposal is cancelled while Pending, or if it is expired via `expire_pending_proposal`. Once proposal is Active, bond is never refunded.
-- **cancel_proposal(proposal_id)**: Admin-only (`predecessor_account_id()` must be admin); uses `assert_one_yocto()`. Works on both Active and Pending proposals, only if not finalized. Bond is NOT refunded for Active proposals. Bond IS refunded for Pending proposals: the method updates proposal status to Cancelled and finalizes all state changes before verifying sufficient balance for storage (see Section 14, "Storage balance guard") and issuing the bond refund via `Promise::new(creator).transfer(bond_amount)`. Allowed while paused.
-- **expire_pending_proposal(proposal_id)**: Admin-only; only valid for Pending proposals past `pending_expires_at`. Marks proposal as Failed with `failure_kind: PendingExpired`, finalizes all state changes, verifies sufficient balance for storage (see Section 14, "Storage balance guard"), then issues bond refund via `Promise::new(creator).transfer(bond_amount)`. Uses `assert_one_yocto()`. Allowed while paused.
+  - Bond is never refunded regardless of proposal outcome.
+- **cancel_proposal(proposal_id)**: Admin-only (`predecessor_account_id()` must be admin); uses `assert_one_yocto()`. Works on both Active and Pending proposals, only if not finalized. Bond is not refunded. Allowed while paused.
+- **expire_pending_proposal(proposal_id)**: Admin-only; only valid for Pending proposals past `pending_expires_at`. Marks proposal as Failed with `failure_kind: PendingExpired`. Uses `assert_one_yocto()`. Allowed while paused.
 - **clear_stale_pending_vote(proposal_id, account_id)**: Admin-only; removes a stuck `PendingVote` record. Uses `assert_one_yocto()`. This is a safety mechanism for vote callbacks that failed due to insufficient gas, which leaves the `PendingVote` from the initial call permanently set (per NEAR's receipt-level atomicity). If the removed `PendingVote` has a non-zero `voter_deposit`, the deposit is refunded to the voter (`account_id`). Allowed while paused.
 - **finalize_proposal(proposal_id)**: Public; only after `ends_at` and when not paused.
   - Only valid for `Active` proposals. Expired Pending proposals must use `expire_pending_proposal` instead.
@@ -239,7 +238,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Uses `assert_one_yocto()`.
 - **update_verified_accounts_contract(new_contract)**: Admin-only; blocked while any proposal is Pending or Active.
   - Uses `assert_one_yocto()`.
-- **update_min_proposal_bond(new_min)**: Admin-only; blocked while any proposal is Pending or Active.
+- **update_min_proposal_bond(new_min)**: Admin-only. May be updated at any time; only affects future proposals.
   - Must be >= 1 NEAR and <= 100 NEAR.
   - This sets the minimum; proposers may attach more.
   - Uses `assert_one_yocto()`.
@@ -273,12 +272,11 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - `failure_kind: Option<FailureKind>` — set when status becomes Failed. Enum: `QuorumNotMet`, `Rejected`, `PendingExpired`, `ZeroSnapshot`.
 - `quorum_bps: u16`
 - `snapshot_verified_count: u64`
-- `bond_amount: U128` (actual attached bond, for refund calculations)
 - `pending_vote_count: u64` (number of in-flight vote locks for this proposal; incremented when `cast_vote` sets a pending lock, decremented when the vote callback succeeds/fails or when `clear_stale_pending_vote` is called; used by `get_pending_votes_count` view method)
 - `yes_votes: u64` (always effective tally, adjusted in real-time for blocklisted accounts)
 - `no_votes: u64` (always effective tally, adjusted in real-time for blocklisted accounts)
 
-**JSON serialization note**: All `u64` fields above must use `near_sdk::json_types::U64` in JSON-facing types (view responses, event payloads). See Section 11.6 for rationale and implementation guidance. `bond_amount` already uses `U128`.
+**JSON serialization note**: All `u64` fields above must use `near_sdk::json_types::U64` in JSON-facing types (view responses, event payloads). See Section 11.6 for rationale and implementation guidance.
 
 ### 11.2 Vote
 
@@ -347,7 +345,7 @@ enum StorageKey {
 | `unblocklist_account` | `blocklist`, `votes`, `proposals` |
 | `cast_vote` callback | `pending_votes`, `votes`, `proposals` |
 | `cancel_proposal` | `proposals`, `pending_votes` |
-| Snapshot callback | `proposals` (+ bond refund on failure) |
+| Snapshot callback | `proposals` |
 
 ### 11.6 JSON Serialization Safety (U64/U128 Wrappers)
 
@@ -370,7 +368,6 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 | `yes_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
 | `no_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
 | `pending_vote_count` | Low — bounded by snapshot count | Use `U64` for consistency |
-| `bond_amount` | Already wrapped as `U128` | No change needed |
 
 **`get_verified_count() -> u32` from the verified-accounts contract is safe**: `u32` max value is approximately 4.29 x 10^9, well within the JS safe integer range. The governance contract converts this to `u64` for internal storage (`snapshot_verified_count`), but the JSON response must emit it as `U64`.
 
@@ -405,7 +402,7 @@ Event names and payloads:
 - `proposal_created`: `{ proposal_id, creator, created_at, ends_at, pending_expires_at, quorum_bps }` — emitted at initial creation (Pending state).
 - `proposal_activated`: `{ proposal_id, snapshot_verified_count, quorum_required }` — emitted when snapshot callback succeeds and proposal transitions to Active. `quorum_required` is the absolute vote count: `ceil(snapshot_verified_count * quorum_bps / 10_000)`.
 - `proposal_creation_failed`: `{ proposal_id, creator, reason }` — emitted when snapshot callback fails or returns zero count.
-- `proposal_cancelled`: `{ proposal_id, cancelled_by, bond_refunded }`
+- `proposal_cancelled`: `{ proposal_id, cancelled_by }`
 - `proposal_finalized`: `{ proposal_id, status, yes_votes, no_votes, quorum, snapshot_verified_count }` where `quorum` is the required vote count (not bps).
 - `vote_cast`: `{ proposal_id, voter, choice, voted_at }` — `voted_at` is the submission time (from `PendingVote.submitted_at`), not the callback execution time.
 - `admin_added`: `{ account_id, added_by }`
@@ -413,7 +410,6 @@ Event names and payloads:
 - `blocklist_added`: `{ account_id, added_by }`
 - `blocklist_removed`: `{ account_id, removed_by }`
 - `config_updated`: `{ quorum_bps, voting_period_secs, pending_expiry_secs, verified_accounts_contract, min_proposal_bond, updated_by }`
-- `bond_refunded`: `{ proposal_id, recipient, amount, reason }` — emitted on bond refund (callback failure, pending expiry, Pending cancellation).
 - `pending_vote_cleared`: `{ proposal_id, account_id, cleared_by, deposit_refunded }` — emitted when admin clears a stuck pending vote. `deposit_refunded` is the amount returned to the voter (0 if no deposit was attached).
 - `pending_proposal_expired`: `{ proposal_id, expired_by }` — emitted when admin expires a pending proposal.
 - `paused`: `{ paused_by }`
@@ -424,7 +420,7 @@ Event names and payloads:
 - Use the native `#[near(event_json(standard = "citizens-house-vote"))]` attribute macro from `near-sdk` (v5.24+) to define a single `GovernanceEvent` enum with one variant per event type, each annotated with `#[event_version("1.0.0")]`. This provides `.emit()` and formats `EVENT_JSON` automatically.
 - The macro defaults to `snake_case` naming for struct names or enum variants, which matches the event names above (e.g., `ProposalCreated` -> `proposal_created`).
 - Emit events after state is finalized (e.g., in snapshot/vote callbacks, and after finalize/cancel state transitions), not on request submission. Events must be emitted as the **last operation** in callbacks, after all state changes and checks succeed.
-- **Event payload integer types**: All `u64` values in event payloads (e.g., `proposal_id`, `created_at`, `ends_at`, `pending_expires_at`, `voted_at`, `yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`, `quorum_bps`) must be serialized as JSON strings using `U64` to prevent silent precision loss in JavaScript indexer clients. `bond_refunded` amounts use `U128`. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so using `U64`/`U128` types in the event enum variants automatically produces string-encoded integers in the `EVENT_JSON` output. See Section 11.6 for full rationale.
+- **Event payload integer types**: All `u64` values in event payloads (e.g., `proposal_id`, `created_at`, `ends_at`, `pending_expires_at`, `voted_at`, `yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`, `quorum_bps`) must be serialized as JSON strings using `U64` to prevent silent precision loss in JavaScript indexer clients. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so using `U64`/`U128` types in the event enum variants automatically produces string-encoded integers in the `EVENT_JSON` output. See Section 11.6 for full rationale.
 - **Important**: NEAR logs from failed callbacks are visible to indexers even though state changes are rolled back (nearcore processes logs before checking execution success). If a callback emits an event and then panics, indexers see a phantom event for state changes that never persisted. Indexers must verify receipt execution status before trusting events.
 
 ---
@@ -449,19 +445,18 @@ Event names and payloads:
   | `update_voting_period_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `update_pending_expiry_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `update_verified_accounts_contract` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `update_min_proposal_bond` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
+  | `update_min_proposal_bond` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
   | `pause` / `unpause` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `migrate` | `predecessor_account_id()` | Admin check + 1 yoctoNEAR |
   | Snapshot callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Original caller identity read from stored `proposal.creator`. |
   | Vote callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Voter identity passed as callback parameter or read from pending vote lock key `(proposal_id, account_id)`. |
 
 - **Callback identity rule**: In `#[private]` callback methods, `predecessor_account_id()` returns the contract's own account (since the contract called itself via `.then()`). Original caller identity must be passed as a callback parameter or read from stored state. Specifically:
-  - **Snapshot callback**: The proposal creator is read from `proposal.creator` (stored at create time from `predecessor_account_id()` of the `create_proposal` call). Used for bond refund recipient on failure.
+  - **Snapshot callback**: The proposal creator is read from `proposal.creator` (stored at create time from `predecessor_account_id()` of the `create_proposal` call).
   - **Vote callback**: The voter account is passed as a callback parameter or derived from the pending vote lock key `(proposal_id, account_id)`. Used for deposit refund recipient on failure and for recording the vote.
-- **Refund recipient rule**: All refunds return tokens to the `predecessor_account_id()` of the **initiating call** (not the `signer_account_id()`), as stored in contract state at the time of the initiating call:
-  - Bond refunds: recipient is `proposal.creator` (set from `predecessor_account_id()` during `create_proposal`).
+- **Refund recipient rule**: All vote deposit refunds return tokens to the `predecessor_account_id()` of the **initiating call** (not the `signer_account_id()`), as stored in contract state at the time of the initiating call:
   - Vote deposit refunds: recipient is the voter account (set from `predecessor_account_id()` during `cast_vote`, passed to or reconstructed in the callback).
-  - This ensures that when a contract acts as an intermediary (e.g., a multisig calling `create_proposal`), the refund returns to the intermediary contract (the predecessor), not to the human signer behind the transaction.
+  - This ensures that when a contract acts as an intermediary, the refund returns to the intermediary contract (the predecessor), not to the human signer behind the transaction.
 - **One-yocto**: Use `assert_one_yocto()` (from `near_sdk`) on all admin state changes to prevent function-call key abuse. This function asserts exactly 1 yoctoNEAR is attached and must be used with `#[payable]` methods. NEAR function-call access keys cannot attach deposits at the protocol level (`InvalidAccessKeyError::DepositWithFunctionCall`), so requiring any deposit forces Full Access Key usage and wallet confirmation. The following table is a comprehensive checklist of every admin-mutating method:
 
   | Admin-mutating method | `assert_one_yocto()` | Rationale |
@@ -486,15 +481,14 @@ Event names and payloads:
 - **Async safety**: Treat cross-contract calls as asynchronous; only finalize proposal/vote state in callbacks.
 - **Vote race protection**: Record a `PendingVote` (containing `submitted_at`, `choice`, and `voter_deposit`) before the async call to prevent concurrent submissions and preserve submission context; remove on callback completion (success or failure). Lock is enforced per proposal and per account.
 - **Submission timestamp enforcement**: The vote callback must use `pending_vote.submitted_at` (not `env::block_timestamp()`) to enforce the voting deadline (`submitted_at <= proposal.ends_at`). This ensures votes submitted before `ends_at` are accepted even when the callback executes in a later block. The NEAR security checklist recommends recording pre-call state if you need to enforce timing constraints later.
-- **Callback refunds**: If a cross-contract call fails or a vote/proposal is not recorded: (1) for proposals, refund bond only if proposal never became Active; (2) for votes, refund any attached deposit to the voter. Refunds use `Promise::new(recipient).transfer(amount)`, which is a batched action (not a cross-contract call) and does not produce a callback. The contract cannot detect whether the transfer succeeded. If the recipient account no longer exists, the amount is burned by the NEAR protocol. Therefore, all state changes must be finalized before creating the transfer promise, so that a burned refund does not leave the contract in an inconsistent "owed" state. The `bond_refunded` event serves as the audit trail for refund issuance regardless of transfer outcome.
+- **Callback refunds**: If a vote cross-contract call fails, refund any attached deposit to the voter. Refunds use `Promise::new(recipient).transfer(amount)`, which is a batched action (not a cross-contract call) and does not produce a callback. The contract cannot detect whether the transfer succeeded. If the recipient account no longer exists, the amount is burned by the NEAR protocol. Therefore, all state changes must be finalized before creating the transfer promise, so that a burned refund does not leave the contract in an inconsistent "owed" state.
 - **Callback gas safety**: Reserve gas for refund + cleanup logic; callbacks must not call external contracts. `Promise::new(recipient).transfer(amount)` is a batched action (not a cross-contract call) and is permitted in callbacks. However, callbacks must never chain further cross-contract calls via `.then()` after a refund. Gas must be budgeted so that all state mutations and the refund transfer action complete without running out of gas; if a callback exhausts gas before reaching the refund transfer, all state changes in that callback receipt are rolled back.
 - **Callback robustness**: Handle errors explicitly and avoid panicking in callbacks; ensure sufficient gas for refunds and cleanup. Minimum gas budgets: snapshot callback 20 Tgas, vote callback 30 Tgas. Structure callbacks so that all fallible operations (state reads, validation, state writes) complete before creating any `Promise::new().transfer()`. Never panic after creating a transfer promise — if the receipt fails, the promise is discarded and the refund is lost while state is rolled back.
-- **Callback cleanup order (checks-effects-interactions)**: Callbacks must follow this strict sequence: (1) validate callback result and check current state is still expected (checks); (2) read and remove `PendingVote` records (clearing locks and extracting `submitted_at`, `choice`, `voter_deposit`) and apply all state mutations — including deducting tracked bond/deposit amounts, updating proposal/vote status, and updating counters (effects); (3) emit events reflecting the final state; (4) issue refund transfers via `Promise::new(recipient).transfer(amount)` as the final operation (interactions). State must reflect the refund as already issued before the transfer promise is created. This ordering ensures that if the transfer fails and tokens are burned, contract state is not left in an inconsistent "owed" state.
-- **Storage balance guard**: Before issuing any refund transfer, the contract must verify that its remaining balance after the transfer will still cover storage staking costs: `env::account_balance() - refund_amount >= env::storage_usage() * env::storage_byte_cost()`. If this check fails, the refund operation should fail (panic in direct methods, or skip refund and log warning in callbacks) rather than silently short-changing the recipient. This prevents a large bond refund (up to 100 NEAR) from leaving the contract unable to pay for its existing storage, which would cause subsequent state-writing transactions to fail. The contract account must be adequately funded per Section 20 to avoid this scenario in practice.
+- **Callback cleanup order (checks-effects-interactions)**: Callbacks must follow this strict sequence: (1) validate callback result and check current state is still expected (checks); (2) read and remove `PendingVote` records (clearing locks and extracting `submitted_at`, `choice`, `voter_deposit`) and apply all state mutations — including deducting tracked deposit amounts, updating proposal/vote status, and updating counters (effects); (3) emit events reflecting the final state; (4) issue refund transfers via `Promise::new(recipient).transfer(amount)` as the final operation (interactions). State must reflect the refund as already issued before the transfer promise is created. This ordering ensures that if the transfer fails and tokens are burned, contract state is not left in an inconsistent "owed" state.
 - **Reentrancy safety**: Avoid any exploitable intermediate state between call and callback.
 - **Fail fast**: Validate inputs early (lengths, roles, status) and return clear errors.
 - **Overflow checks**: Enable `overflow-checks = true` in `Cargo.toml`.
-- **Storage security**: Follow storage model in Section 5. Limit text sizes and enforce pagination to prevent DoS. Use `env::storage_byte_cost()` for accurate storage cost calculations. When vote deposit is required (bond exhausted), compute storage delta and refund excess.
+- **Storage security**: Follow storage model in Section 5. Limit text sizes and enforce pagination to prevent DoS. Use `env::storage_byte_cost()` for accurate storage cost calculations. When vote deposit is required (contract balance insufficient), compute storage delta and refund excess.
 - **Access key hygiene**: Avoid full-access keys on the contract account after deployment to prevent `#[private]` bypass.
 - **Upgrade access**: Admin-only upgrades must be protected by `predecessor_account_id` and 1 yoctoⓃ.
 - **Unique storage prefixes**: Ensure all collections have unique storage keys/prefixes.
@@ -502,7 +496,7 @@ Event names and payloads:
 - **Pending lock recovery**: Stuck `PendingVote` records (from failed callbacks where the initial call's state persists per NEAR's receipt-level atomicity) must have an admin-accessible recovery mechanism (`clear_stale_pending_vote`) to prevent permanent finalization blockage. Recovery must also refund any `voter_deposit` stored in the pending record.
 - **Event emission ordering**: Events must be emitted after all state changes succeed and before refund transfer promises are created. NEAR's runtime makes logs from panicking callbacks visible to indexers, which could create phantom events if events are emitted before a subsequent panic. Since both event emission and `Promise::new().transfer()` are non-panicking operations, they may safely follow all state mutations without risk of phantom events or rolled-back state.
 - **Verified accounts dependency**: The governance contract's integrity depends on the verified-accounts contract returning truthful data. The verified-accounts contract has its own upgrade path (`migrate()`) and single `backend_wallet` admin. If compromised or upgraded, governance outcomes may be affected. This trust dependency must be documented in deployment procedures.
-- **Zero-snapshot rejection**: The snapshot callback should reject a verified count of 0 at creation time (fail fast, refund bond) rather than allowing the proposal to become Active and auto-fail at finalization.
+- **Zero-snapshot rejection**: The snapshot callback should reject a verified count of 0 at creation time (fail fast) rather than allowing the proposal to become Active and auto-fail at finalization.
 
 ---
 
@@ -551,8 +545,8 @@ Event names and payloads:
 - **Error handling**: If cross-contract call fails, creation/vote must fail cleanly and any `PendingVote` record must be removed (with `voter_deposit` refunded).
 - **Serialization**: Promise results are JSON; parse with `serde_json::from_slice` in callbacks and treat deserialization failures as callback failures.
 - **Verification pause behavior**: Verified Accounts pause only blocks writes; reads remain available, so governance reads may proceed unless governance intentionally blocks them.
-- **Zero-snapshot sanity check**: If `get_verified_count()` returns 0, the snapshot callback should fail the proposal creation (refund bond) rather than creating an Active proposal with `snapshot_verified_count = 0` that will auto-fail at finalization.
-- **Callback status verification**: The snapshot callback must check that the proposal is still in `Pending` status before transitioning to Active. If the proposal was cancelled between the cross-contract call and callback, the callback refunds the bond and aborts.
+- **Zero-snapshot sanity check**: If `get_verified_count()` returns 0, the snapshot callback should fail the proposal creation rather than creating an Active proposal with `snapshot_verified_count = 0` that will auto-fail at finalization.
+- **Callback status verification**: The snapshot callback must check that the proposal is still in `Pending` status before transitioning to Active. If the proposal was cancelled between the cross-contract call and callback, the callback aborts without further state changes.
 - **Trust dependency**: The governance contract trusts that the verified-accounts contract returns accurate data. The verified-accounts contract has its own upgrade path (`migrate()`) and single `backend_wallet` admin. If compromised, it could affect governance outcomes. This dependency should be documented in deployment procedures and operational runbooks.
 
 ---
@@ -603,22 +597,20 @@ Event names and payloads:
   - Proposal bond coverage: verify votes are free when contract has sufficient balance.
   - Vote deposit required: verify deposit is required when contract balance is exhausted.
   - Deposit refund: verify excess deposit is refunded after storage delta computed.
-  - Bond refunded on creation failure: snapshot callback fail, pending expiry, or Pending cancellation.
-  - Bond NOT refunded on cancel, fail, or success (Active proposals).
-  - Bond refunded on Pending cancellation — verifies bond returned when cancelling Pending proposals.
+  - Bond never refunded: verify bond is not refunded on any lifecycle outcome (success, failure, cancellation, pending expiry, callback failure).
   - `is_vote_free` view method returns correct state.
-  - Config update granularity: verify `quorum_bps` and `pending_expiry_secs` can be updated during active proposals; verify `voting_period_secs`, `verified_accounts_contract`, and `min_proposal_bond` are blocked while proposals are Active.
+  - Config update granularity: verify `quorum_bps`, `pending_expiry_secs`, and `min_proposal_bond` can be updated during active proposals; verify `voting_period_secs` and `verified_accounts_contract` are blocked while proposals are Active.
   - Blocklist real-time adjustment: verify that when blocklisting a voter, their vote's `blocklisted` field is set to `true` and proposal `yes_votes`/`no_votes` decremented. Verify unblocklist reverses this. Verify `get_vote()` shows blocklisted status.
   - Blocklist behavior and list_blocklist pagination.
   - Pause/unpause behavior, including finalize blocked while paused.
-  - Snapshot callback with cancelled proposal — verifies callback checks status, refunds bond, and aborts.
+  - Snapshot callback with cancelled proposal — verifies callback checks status and aborts.
   - Stuck pending vote lock — verifies admin can clear it via `clear_stale_pending_vote` and finalization proceeds.
   - Pending vote stores submission context: verify `PendingVote` contains correct `submitted_at`, `choice`, and `voter_deposit` after `cast_vote`.
   - Late callback acceptance: verify a vote submitted before `ends_at` is accepted by the callback even when callback executes after `ends_at` (using stored `submitted_at`).
   - Late submission rejection: verify callback defensively rejects `submitted_at > ends_at` (edge case guard).
   - `voted_at` reflects submission time: verify the recorded Vote's `voted_at` equals `PendingVote.submitted_at`, not the callback's `env::block_timestamp()`.
   - Stale pending vote deposit refund: verify `clear_stale_pending_vote` refunds `voter_deposit` from the stuck `PendingVote`.
-  - `expire_pending_proposal` — verifies admin can expire Pending proposals past `pending_expires_at`, sets `failure_kind: PendingExpired`, refunds bond.
+  - `expire_pending_proposal` — verifies admin can expire Pending proposals past `pending_expires_at`, sets `failure_kind: PendingExpired`.
   - Zero-snapshot rejection — verifies snapshot callback fails proposal creation when `get_verified_count()` returns 0.
   - `failure_kind` field — verifies correct failure reasons set for different failure modes (QuorumNotMet, Rejected, PendingExpired, ZeroSnapshot).
   - Voting period bounds — verifies minimum (86,400s) and maximum (7,776,000s) enforcement.
@@ -627,20 +619,17 @@ Event names and payloads:
   - Pending expiry bounds — verifies minimum (300s) and maximum (86,400s) enforcement.
   - Pending expiry distinct from voting period — verifies that `pending_expires_at` is computed from `pending_expiry_secs` (not `voting_period_secs`), and that `expire_pending_proposal` uses `pending_expires_at` for the expiry check.
   - New view methods: `get_proposal_count`, `get_pending_votes_count`, `get_votes_summary`.
-  - Refund ordering (checks-effects-interactions): verify that proposal status is updated before bond refund transfer in snapshot callback failure, pending expiry, and Pending cancellation paths.
-  - Storage balance guard: verify that refund fails when contract balance minus refund would fall below storage cost; verify operation is retryable after funding.
   - Vote deposit refund ordering: verify that vote is recorded and tallies updated before excess deposit refund on success path; verify pending lock cleared before full deposit refund on failure path.
   - `cancel_proposal` requires one yocto: verify that calling `cancel_proposal` without attaching exactly 1 yoctoNEAR panics.
   - JSON serialization safety: verify that all view methods return `U64`-wrapped integers (not raw `u64`) by checking that JSON output contains string-encoded numbers for timestamp and count fields. Verify that nanosecond timestamps (e.g., `1_700_000_000_000_000_000u64`) round-trip correctly through JSON serialization without precision loss.
   - Event payload types: verify that emitted `EVENT_JSON` payloads serialize `u64` fields as JSON strings (via `U64`), not as raw JSON numbers.
 - Integration tests:
   - Mock Verified Accounts contract for snapshot and is_verified.
-  - Async callbacks and failure paths, including deposit/bond refunds on failure.
+  - Async callbacks and failure paths, including deposit refunds on failure.
   - Event emission for indexer consumption (vote_cast events).
   - Full lifecycle with blocklist exclusion — create proposal, cast votes, blocklist a voter, verify real-time tally adjustment, finalize, verify adjusted results.
   - Concurrent pending votes — multiple voters submit simultaneously, verify locks and finalization behavior.
   - Failed callback gas — simulate callback OOG, verify lock persists, verify admin can clear it.
-  - Storage balance guard under low balance — fund contract minimally, create proposal with large bond, cancel while Pending, verify refund fails, fund contract, retry cancel, verify refund succeeds.
   - Late callback with deposit refund — submit vote before `ends_at`, callback executes after; verify vote recorded with correct `submitted_at` and excess deposit refunded.
   - Stuck pending vote with deposit — simulate callback failure for a vote requiring deposit; verify admin clears stuck `PendingVote` and deposit is refunded to voter.
 
