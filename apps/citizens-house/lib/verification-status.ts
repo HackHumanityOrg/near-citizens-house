@@ -9,7 +9,6 @@ import "server-only"
 import { getRedisClient } from "@/lib/redis"
 import { verificationStatusRecordSchema, type VerificationStatusRecord } from "@/lib/schemas/domain/verification"
 import { type VerificationStatusErrorCode } from "@/lib/schemas/errors"
-import { logEvent } from "@/lib/logger"
 
 const REDIS_KEY_PREFIX = "verification:status:"
 const STATUS_TTL_SECONDS = 72 * 60 * 60 // 72 hours
@@ -23,12 +22,7 @@ export async function setVerificationStatus(accountId: string, errorCode: Verifi
     errorCode,
   }
   await redis.set(key, JSON.stringify(value), { EX: STATUS_TTL_SECONDS })
-  logEvent({
-    event: "verification_status_set",
-    level: "info",
-    accountId,
-    status: errorCode,
-  })
+  console.log("verification_status_set", { accountId, status: errorCode })
 }
 
 export async function getVerificationStatus(accountId: string): Promise<VerificationStatusRecord | null> {
@@ -46,9 +40,5 @@ export async function clearVerificationStatus(accountId: string): Promise<void> 
   const redis = await getRedisClient()
   const key = `${REDIS_KEY_PREFIX}${accountId}`
   await redis.del(key)
-  logEvent({
-    event: "verification_status_cleared",
-    level: "info",
-    accountId,
-  })
+  console.log("verification_status_cleared", { accountId })
 }

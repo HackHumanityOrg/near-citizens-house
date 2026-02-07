@@ -13,7 +13,6 @@ import "server-only"
 
 import crypto from "crypto"
 import { env } from "../schemas/env"
-import { logEvent } from "../logger"
 import {
   sumsubAccessTokenApiResponseSchema,
   sumsubApplicantSchema,
@@ -109,13 +108,7 @@ export async function createApplicant(externalUserId: string, levelName: string)
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_create_applicant_failed",
-      level: "error",
-      status: response.status,
-      error: errorText,
-      externalUserId,
-    })
+    console.error("sumsub_create_applicant_failed", { status: response.status, error: errorText, externalUserId })
     throw new Error(`Failed to create applicant: ${response.status} - ${errorText}`)
   }
 
@@ -123,20 +116,11 @@ export async function createApplicant(externalUserId: string, levelName: string)
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_create_applicant_invalid_response",
-      level: "error",
-      error: parsed.error.message,
-    })
+    console.error("sumsub_create_applicant_invalid_response", { error: parsed.error.message })
     throw new Error("Invalid response from SumSub create applicant API")
   }
 
-  logEvent({
-    event: "sumsub_applicant_created",
-    level: "info",
-    applicantId: parsed.data.id,
-    externalUserId,
-  })
+  console.log("sumsub_applicant_created", { applicantId: parsed.data.id, externalUserId })
 
   return parsed.data
 }
@@ -163,13 +147,7 @@ export async function generateAccessToken(
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_access_token_failed",
-      level: "error",
-      status: response.status,
-      error: errorText,
-      externalUserId,
-    })
+    console.error("sumsub_access_token_failed", { status: response.status, error: errorText, externalUserId })
     throw new Error(`SumSub access token generation failed: ${response.status} - ${errorText}`)
   }
 
@@ -177,12 +155,7 @@ export async function generateAccessToken(
   const parsed = sumsubAccessTokenApiResponseSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_access_token_invalid_response",
-      level: "error",
-      error: parsed.error.message,
-      response: data,
-    })
+    console.error("sumsub_access_token_invalid_response", { error: parsed.error.message, response: data })
     throw new Error("Invalid response from SumSub access token API")
   }
 
@@ -207,13 +180,7 @@ export async function getApplicant(applicantId: string): Promise<SumSubApplicant
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_get_applicant_failed",
-      level: "error",
-      status: response.status,
-      error: errorText,
-      applicantId,
-    })
+    console.error("sumsub_get_applicant_failed", { status: response.status, error: errorText, applicantId })
     throw new Error(`SumSub get applicant failed: ${response.status} - ${errorText}`)
   }
 
@@ -221,12 +188,7 @@ export async function getApplicant(applicantId: string): Promise<SumSubApplicant
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_get_applicant_invalid_response",
-      level: "error",
-      error: parsed.error.message,
-      response: data,
-    })
+    console.error("sumsub_get_applicant_invalid_response", { error: parsed.error.message, response: data })
     throw new Error("Invalid response from SumSub get applicant API")
   }
 
@@ -251,9 +213,7 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_get_applicant_by_external_id_failed",
-      level: "error",
+    console.error("sumsub_get_applicant_by_external_id_failed", {
       status: response.status,
       error: errorText,
       externalUserId,
@@ -265,9 +225,7 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_get_applicant_by_external_id_invalid_response",
-      level: "error",
+    console.error("sumsub_get_applicant_by_external_id_invalid_response", {
       error: parsed.error.message,
       response: data,
     })
@@ -362,13 +320,7 @@ export async function updateApplicantMetadata(applicantId: string, metadata: Sum
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_update_metadata_failed",
-      level: "error",
-      status: response.status,
-      error: errorText,
-      applicantId,
-    })
+    console.error("sumsub_update_metadata_failed", { status: response.status, error: errorText, applicantId })
     throw new Error(`SumSub update metadata failed: ${response.status} - ${errorText}`)
   }
 }
@@ -396,10 +348,7 @@ export function verifyWebhookSignature(
   const webhookSecret = env.SUMSUB_WEBHOOK_SECRET
 
   if (!webhookSecret) {
-    logEvent({
-      event: "sumsub_webhook_secret_not_configured",
-      level: "error",
-    })
+    console.error("sumsub_webhook_secret_not_configured")
     throw new Error("SumSub webhook secret not configured")
   }
 
