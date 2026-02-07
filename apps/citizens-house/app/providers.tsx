@@ -50,8 +50,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         capture_pageleave: true,
         // Dead click capture - tracks clicks on non-responsive elements
         capture_dead_clicks: true,
-        // Exception autocapture - captures uncaught errors via window.onerror and unhandledrejection
-        capture_exceptions: true,
         // Heatmaps - captures mouse movements, clicks, rageclicks, and scroll depth
         enable_heatmaps: true,
         // Session recording configuration

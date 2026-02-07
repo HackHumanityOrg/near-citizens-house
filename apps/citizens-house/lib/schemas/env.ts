@@ -27,12 +27,6 @@ export const env = createEnv({
     SUMSUB_APP_TOKEN: z.string().optional(),
     SUMSUB_SECRET_KEY: z.string().optional(),
     SUMSUB_WEBHOOK_SECRET: z.string().optional(),
-
-    // PostHog source maps upload (optional - for error tracking with readable stack traces)
-    // Personal API Key: https://app.posthog.com/settings/user-api-keys
-    POSTHOG_PERSONAL_API_KEY: z.string().optional(),
-    // Environment ID: https://app.posthog.com/settings/environment#variables
-    POSTHOG_PROJECT_ID: z.string().optional(),
   },
 
   /**
@@ -73,8 +67,6 @@ export const env = createEnv({
     NEAR_ACCOUNT_ID: process.env.NEAR_ACCOUNT_ID,
     NEAR_PRIVATE_KEY: process.env.NEAR_PRIVATE_KEY,
     REDIS_URL: process.env.REDIS_URL,
-    POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
-    POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
     SUMSUB_APP_TOKEN: process.env.SUMSUB_APP_TOKEN,
     SUMSUB_SECRET_KEY: process.env.SUMSUB_SECRET_KEY,
     SUMSUB_WEBHOOK_SECRET: process.env.SUMSUB_WEBHOOK_SECRET,

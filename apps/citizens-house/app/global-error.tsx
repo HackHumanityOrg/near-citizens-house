@@ -12,14 +12,13 @@
  * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling#handling-global-errors
  */
 
-import { useEffect } from "react"
-import { captureError } from "@/lib/analytics"
-
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => {
-    captureError(error, { stage: "global_error" })
-  }, [error])
-
+export default function GlobalError({
+  error: _error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
   return (
     <html lang="en">
       <head>

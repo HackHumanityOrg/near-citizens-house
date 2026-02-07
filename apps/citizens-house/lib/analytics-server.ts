@@ -56,38 +56,3 @@ export async function trackServerEvent<T extends AnalyticsEvent>(
     },
   })
 }
-
-/**
- * Capture a server-side error with typed analytics and PostHog exception tracking.
- *
- * Sends both a typed analytics event and PostHog's native exception capture
- * for full stack trace visibility.
- *
- * @param error - The error to capture
- * @param distinctId - User identifier (or undefined for anonymous)
- * @param context - Error context including stage and optional session ID
- */
-export async function captureServerError(
-  error: Error,
-  distinctId: string | undefined,
-  context: { stage: "server_handler" | "api_route"; sessionId?: string },
-): Promise<void> {
-  const effectiveDistinctId = distinctId || "anonymous"
-
-  await trackServerEvent(effectiveDistinctId, {
-    domain: "errors",
-    action: "exception_captured",
-    errorName: error.name,
-    errorMessage: error.message,
-    errorStack: error.stack,
-    stage: context.stage,
-  })
-
-  // Also send to PostHog's exception tracking
-  const client = getPostHogServer()
-  if (client) {
-    await client.captureException(error, effectiveDistinctId, {
-      $session_id: context.sessionId,
-    })
-  }
-}

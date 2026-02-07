@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-// import { VercelToolbar } from "@vercel/toolbar/next"
 import { ThemeProvider } from "@near-citizens/ui"
 import { UserJotWidget } from "@/lib"
 import { Header } from "@/components/layout/header"
@@ -53,7 +52,6 @@ export default function RootLayout({
           </Providers>
         </ThemeProvider>
         <Analytics />
-        {/*<VercelToolbar />*/}
         <UserJotWidget />
       </body>
     </html>

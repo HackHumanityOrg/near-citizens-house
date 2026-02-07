@@ -9,17 +9,11 @@
  * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling#using-error-boundaries
  */
 
-import { useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
-import { captureError } from "@/lib/analytics"
 
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => {
-    captureError(error, { stage: "client_render" })
-  }, [error])
-
+export default function Error({ error: _error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <div className="bg-white dark:bg-[#181921]">
       {/* Hero Section - Fixed height with gradient background */}
