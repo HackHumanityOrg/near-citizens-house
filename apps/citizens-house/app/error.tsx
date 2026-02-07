@@ -10,14 +10,14 @@
  */
 
 import { useEffect } from "react"
+import * as Sentry from "@sentry/nextjs"
 import Link from "next/link"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
-import { captureError } from "@/lib/analytics"
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    captureError(error, { stage: "client_render" })
+    Sentry.captureException(error)
   }, [error])
 
   return (

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { NearConnector } from "@hot-labs/near-connect"
+import * as Sentry from "@sentry/nextjs"
 import posthog from "posthog-js"
 import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from "@hot-labs/near-connect"
 import type { FinalExecutionOutcome } from "@near-js/types"
@@ -87,14 +88,16 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           const validatedAccountId = validateAccountId(rawAccountId)
           setAccountId(validatedAccountId)
 
-          // Identify user in PostHog when wallet connects
+          // Identify user in PostHog and Sentry when wallet connects
           if (validatedAccountId) {
             posthog.identify(validatedAccountId)
+            Sentry.setUser({ id: validatedAccountId })
           }
         })
         connector.on("wallet:signOut", () => {
           setAccountId(null)
           posthog.reset()
+          Sentry.setUser(null)
         })
 
         // Try existing session
@@ -107,14 +110,26 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           // Identify existing session user
           if (validatedAccountId) {
             posthog.identify(validatedAccountId)
+            Sentry.setUser({ id: validatedAccountId })
           }
-        } catch {
-          // No previous session
+        } catch (error) {
+          // No previous session (expected for new users)
+          Sentry.logger.debug("wallet_previous_session_missing", {
+            error_message: error instanceof Error ? error.message : "Unknown error",
+          })
         }
 
         setNearConnector(connector)
         setIsLoading(false)
-      } catch {
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { area: "near-wallet-provider-init" },
+        })
+        Sentry.logger.error("wallet_connector_init_failed", {
+          network_id: NEAR_CONFIG.networkId,
+          has_walletconnect_project_id: Boolean(env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID),
+          error_message: error instanceof Error ? error.message : "Unknown error",
+        })
         setIsLoading(false)
       }
     }
@@ -184,6 +199,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     await nearConnector.disconnect()
     setAccountId(null)
     posthog.reset()
+    Sentry.setUser(null)
   }, [nearConnector])
 
   const signMessage = useCallback(
@@ -223,6 +239,23 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+        const isUserRejection = /reject|cancel|denied/i.test(errorMessage)
+
+        if (isUserRejection) {
+          Sentry.logger.warn("wallet_sign_message_rejected", {
+            account_id: accountId,
+            error_message: errorMessage,
+          })
+        } else {
+          Sentry.captureException(error, {
+            tags: { area: "near-wallet-sign-message" },
+            extra: { accountId },
+          })
+          Sentry.logger.error("wallet_sign_message_failed", {
+            account_id: accountId,
+            error_message: errorMessage,
+          })
+        }
         throw new Error(`Failed to sign message: ${errorMessage}`)
       }
     },
@@ -269,6 +302,31 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         return result
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+        const isUserRejection = /reject|cancel|denied/i.test(errorMessage)
+
+        if (isUserRejection) {
+          Sentry.logger.warn("wallet_transaction_rejected", {
+            account_id: accountId,
+            receiver_id: params.receiverId,
+            action_count: Array.isArray(params.actions) ? params.actions.length : 0,
+            error_message: errorMessage,
+          })
+        } else {
+          Sentry.captureException(error, {
+            tags: { area: "near-wallet-sign-and-send" },
+            extra: {
+              accountId,
+              receiverId: params.receiverId,
+              actionCount: Array.isArray(params.actions) ? params.actions.length : 0,
+            },
+          })
+          Sentry.logger.error("wallet_transaction_failed", {
+            account_id: accountId,
+            receiver_id: params.receiverId,
+            action_count: Array.isArray(params.actions) ? params.actions.length : 0,
+            error_message: errorMessage,
+          })
+        }
         throw new Error(`Transaction failed: ${errorMessage}`)
       }
     },

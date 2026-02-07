@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import * as Sentry from "@sentry/nextjs"
 import dynamic from "next/dynamic"
 import { type NearSignatureData } from "@/lib"
 import { trackEvent, getPlatform } from "@/lib/analytics"
@@ -135,7 +136,13 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           if (parsed.success) {
             errorCode = parsed.data.code
           }
-        } catch {
+        } catch (error) {
+          Sentry.logger.warn("token_fetch_error_response_unparseable", {
+            account_id: nearSignature.accountId,
+            status: response.status,
+            error_message: error instanceof Error ? error.message : "Unknown error",
+            verification_attempt_id: verificationAttemptId,
+          })
           // Not JSON, use default error code
         }
         trackEvent({
@@ -154,6 +161,11 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       const parsed = verificationTokenResponseSchema.safeParse(data)
 
       if (!parsed.success) {
+        Sentry.logger.error("token_fetch_invalid_response", {
+          account_id: nearSignature.accountId,
+          validation_error: parsed.error.message,
+          verification_attempt_id: verificationAttemptId,
+        })
         trackEvent({
           domain: "verification",
           action: "token_fetch_fail",
@@ -191,6 +203,11 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           verificationAttemptId,
         })
       }
+      Sentry.logger.warn("token_fetch_failed", {
+        account_id: nearSignature.accountId,
+        error_message: message,
+        verification_attempt_id: verificationAttemptId,
+      })
       throw new Error(message)
     }
   }, [nearSignature, verificationAttemptId])
@@ -222,6 +239,11 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           setTokenError(getErrorMessage(errorCode))
           setVerificationStatus("error")
           onError(errorCode)
+          Sentry.logger.error("sumsub_step2_init_failed", {
+            account_id: nearSignature.accountId,
+            error_code: errorCode,
+            verification_attempt_id: verificationAttemptId,
+          })
         }
       }
     }
@@ -248,6 +270,11 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         accountId: nearSignature.accountId,
         errorMessage: err instanceof Error ? err.message : "Unknown error",
         verificationAttemptId,
+      })
+      Sentry.logger.warn("token_refresh_failed", {
+        account_id: nearSignature.accountId,
+        error_message: err instanceof Error ? err.message : "Unknown error",
+        verification_attempt_id: verificationAttemptId,
       })
       // Return empty string on failure - SDK will handle the error
       return ""
@@ -289,7 +316,10 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           const rawData = await response.json()
           const parsed = verificationStatusResponseSchema.safeParse(rawData)
           if (!parsed.success) {
-            console.error("Invalid status response", parsed.error)
+            Sentry.logger.error("polling_invalid_status_response", {
+              account_id: nearSignature.accountId,
+              validation_error: parsed.error.message,
+            })
             // Continue polling on invalid response
             await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
             continue
@@ -411,6 +441,11 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           return
         }
         // Ignore final check errors
+        Sentry.logger.debug("polling_final_status_check_failed", {
+          account_id: nearSignature.accountId,
+          error_message: error instanceof Error ? error.message : "Unknown error",
+          verification_attempt_id: verificationAttemptId,
+        })
       }
 
       if (!isMountedRef.current) return
@@ -627,7 +662,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
         verificationAttemptId,
       })
       // Don't immediately fail - SDK might recover
-      console.error("SumSub SDK error:", error)
+      Sentry.logger.error("sumsub_sdk_error", { account_id: nearSignature.accountId, error_message: error.message })
     },
     [nearSignature.accountId, verificationAttemptId],
   )

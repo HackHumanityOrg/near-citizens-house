@@ -15,6 +15,7 @@
  * - Between-retry verification: Checks if keys exist before retrying
  * - Post-registration verification: Confirms keys were registered
  */
+import * as Sentry from "@sentry/nextjs"
 
 // Retry configuration
 const MAX_RETRIES = 5
@@ -66,7 +67,10 @@ function isRetryableError(error: unknown): boolean {
 export async function ensureBackendKeysRegistered(): Promise<void> {
   // Skip in development unless explicitly enabled
   if (process.env.NODE_ENV === "development" && !process.env.FORCE_KEY_REGISTRATION) {
-    console.log("[BackendKeyRegistration] Skipping in development mode")
+    Sentry.logger.info("backend_key_registration_skipped", {
+      reason: "development_mode",
+      force_key_registration: Boolean(process.env.FORCE_KEY_REGISTRATION),
+    })
     return
   }
 
@@ -83,11 +87,18 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
     const { backendAccountId, backendPrivateKey, networkId } = NEAR_SERVER_CONFIG
 
     if (!backendAccountId || !backendPrivateKey) {
-      console.warn("[BackendKeyRegistration] NEAR_ACCOUNT_ID or NEAR_PRIVATE_KEY not configured, skipping")
+      Sentry.logger.warn("backend_key_registration_missing_config", {
+        has_backend_account_id: Boolean(backendAccountId),
+        has_backend_private_key: Boolean(backendPrivateKey),
+      })
       return
     }
 
-    console.log(`[BackendKeyRegistration] Checking keys for ${backendAccountId} on ${networkId}...`)
+    Sentry.logger.info("backend_key_registration_started", {
+      backend_account_id: backendAccountId,
+      network_id: networkId,
+      max_retries: MAX_RETRIES,
+    })
 
     const provider = createRpcProvider()
     const rpcUrl = getRpcUrl()
@@ -128,7 +139,12 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
         })
         const data = await response.json()
         return !data.error && data.result?.permission
-      } catch {
+      } catch (error) {
+        Sentry.logger.warn("backend_key_registration_key_exists_check_failed", {
+          backend_account_id: backendAccountId,
+          public_key: publicKeyStr,
+          error_message: error instanceof Error ? error.message : String(error),
+        })
         return false
       }
     }
@@ -147,11 +163,18 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
     }
 
     if (missingKeys.length === 0) {
-      console.log(`[BackendKeyRegistration] All ${poolKeys.length} keys already registered`)
+      Sentry.logger.info("backend_key_registration_already_complete", {
+        backend_account_id: backendAccountId,
+        total_pool_keys: poolKeys.length,
+      })
       return
     }
 
-    console.log(`[BackendKeyRegistration] Registering ${missingKeys.length} missing keys in batch...`)
+    Sentry.logger.info("backend_key_registration_missing_keys_detected", {
+      backend_account_id: backendAccountId,
+      total_pool_keys: poolKeys.length,
+      missing_key_count: missingKeys.length,
+    })
 
     // Create account with master key for adding new keys
     const masterKeyPair = KeyPair.fromString(backendPrivateKey as `ed25519:${string}`)
@@ -174,24 +197,39 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
           actions,
         })
 
-        console.log(`[BackendKeyRegistration] Batch registration successful (${missingKeys.length} keys)`)
+        Sentry.logger.info("backend_key_registration_batch_success", {
+          backend_account_id: backendAccountId,
+          registered_key_count: missingKeys.length,
+          attempt,
+        })
         break
       } catch (error: unknown) {
         // If some keys already exist, re-check which are still missing
         if (isAlreadyExistsError(error)) {
-          console.log(`[BackendKeyRegistration] Some keys already exist, re-checking...`)
+          Sentry.logger.warn("backend_key_registration_race_detected", {
+            backend_account_id: backendAccountId,
+            attempt,
+            error_message: error instanceof Error ? error.message : String(error),
+          })
 
           // Re-query to see current state
           const currentKeys = await queryAccessKeyList()
           missingKeys = missingKeys.filter(({ publicKey }) => !currentKeys.has(publicKey))
 
           if (missingKeys.length === 0) {
-            console.log(`[BackendKeyRegistration] All keys now registered (race condition resolved)`)
+            Sentry.logger.info("backend_key_registration_race_resolved", {
+              backend_account_id: backendAccountId,
+              attempt,
+            })
             break
           }
 
           // Still have missing keys - continue retry loop with remaining keys
-          console.log(`[BackendKeyRegistration] ${missingKeys.length} keys still missing, retrying...`)
+          Sentry.logger.warn("backend_key_registration_keys_still_missing", {
+            backend_account_id: backendAccountId,
+            attempt,
+            missing_key_count: missingKeys.length,
+          })
           if (attempt < MAX_RETRIES) {
             await sleep(BASE_DELAY_MS, 500)
             continue
@@ -201,13 +239,22 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
         // Check if error is retryable
         if (isRetryableError(error) && attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1)
-          console.log(`[BackendKeyRegistration] Attempt ${attempt}/${MAX_RETRIES} failed, retrying in ${delay}ms...`)
+          Sentry.logger.warn("backend_key_registration_retry_scheduled", {
+            backend_account_id: backendAccountId,
+            attempt,
+            max_retries: MAX_RETRIES,
+            retry_delay_ms: delay,
+            error_message: error instanceof Error ? error.message : String(error),
+          })
           await sleep(delay, 500)
 
           // Before retrying, check if keys now exist (another instance may have registered them)
           const allExist = await Promise.all(missingKeys.map(({ publicKey }) => keyExistsOnChain(publicKey)))
           if (allExist.every(Boolean)) {
-            console.log(`[BackendKeyRegistration] Keys now exist (registered by another instance)`)
+            Sentry.logger.info("backend_key_registration_completed_by_other_instance", {
+              backend_account_id: backendAccountId,
+              attempt,
+            })
             break
           }
 
@@ -216,7 +263,24 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
 
         // Non-retryable error or max retries exceeded
         const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error(`[BackendKeyRegistration] Failed after ${attempt} attempts: ${errorMessage}`)
+        Sentry.captureException(error, {
+          tags: { area: "backend-key-registration" },
+          extra: {
+            backendAccountId,
+            networkId,
+            attempt,
+            maxRetries: MAX_RETRIES,
+            missingKeyCount: missingKeys.length,
+          },
+        })
+        Sentry.logger.error("backend_key_registration_failed", {
+          backend_account_id: backendAccountId,
+          network_id: networkId,
+          attempt,
+          max_retries: MAX_RETRIES,
+          missing_key_count: missingKeys.length,
+          error_message: errorMessage,
+        })
         return
       }
     }
@@ -225,12 +289,24 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
     const existingKeysAfter = await queryAccessKeyList()
     const stillMissing = poolKeys.filter((pk) => !existingKeysAfter.has(pk))
     if (stillMissing.length > 0) {
-      console.warn(`[BackendKeyRegistration] Warning: ${stillMissing.length} keys may not be registered yet`)
+      Sentry.logger.warn("backend_key_registration_partial_completion", {
+        backend_account_id: backendAccountId,
+        total_pool_keys: poolKeys.length,
+        still_missing_key_count: stillMissing.length,
+      })
     } else {
-      console.log(`[BackendKeyRegistration] Verified: all ${poolKeys.length} keys registered`)
+      Sentry.logger.info("backend_key_registration_verified", {
+        backend_account_id: backendAccountId,
+        total_pool_keys: poolKeys.length,
+      })
     }
   } catch (error) {
     // Never throw - instrumentation must not block server startup
-    console.error("[BackendKeyRegistration] Error:", error instanceof Error ? error.message : error)
+    Sentry.captureException(error, {
+      tags: { area: "backend-key-registration-bootstrap" },
+    })
+    Sentry.logger.error("backend_key_registration_bootstrap_failed", {
+      error_message: error instanceof Error ? error.message : String(error),
+    })
   }
 }

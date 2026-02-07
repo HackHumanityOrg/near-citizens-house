@@ -29,7 +29,7 @@ export const NEAR_CONFIG = {
   },
 }
 
-// App URL (single app after merge of verification and governance)
+// App URL
 export const APP_URL = env.NEXT_PUBLIC_APP_URL ?? "https://citizenshouse.org"
 
 // SumSub Configuration

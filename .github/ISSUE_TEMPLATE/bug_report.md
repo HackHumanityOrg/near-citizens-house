@@ -11,7 +11,7 @@ assignees: ''
 A clear and concise description of what the bug is.
 
 ## Impact
-e.g. Could not verify my ID document using the Self app on this device
+e.g. Could not verify my ID document on this device
 
 ## Steps To Reproduce & actual result
 1. Go to '...'
@@ -37,7 +37,6 @@ If applicable, add screenshots to help explain your problem.
  - Browser & Version (if applicable) [e.g. Chrome 143, Safari 18.5]
 
 **Additional context**
-- Self app version: [e.g. 2.9.10]
 - Wallet: [e.g. Meteor, Intear]
 - ID document type: [e.g. Passport, EU ID card, Aadhaar card]
 

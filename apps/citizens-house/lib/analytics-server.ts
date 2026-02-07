@@ -17,6 +17,7 @@
  */
 import "server-only"
 
+import * as Sentry from "@sentry/nextjs"
 import { getPostHogServer } from "./providers/posthog-server"
 import type { AnalyticsEvent } from "./schemas/analytics"
 
@@ -46,48 +47,42 @@ export async function trackServerEvent<T extends AnalyticsEvent>(
   const { domain, action, ...properties } = event
   const eventName = `${domain}:${action}`
 
-  await client.captureImmediate({
-    distinctId,
-    event: eventName,
-    properties: {
-      ...properties,
-      // Include session ID if provided (links event to session replay)
-      ...(options?.sessionId && { $session_id: options.sessionId }),
-    },
-  })
-}
-
-/**
- * Capture a server-side error with typed analytics and PostHog exception tracking.
- *
- * Sends both a typed analytics event and PostHog's native exception capture
- * for full stack trace visibility.
- *
- * @param error - The error to capture
- * @param distinctId - User identifier (or undefined for anonymous)
- * @param context - Error context including stage and optional session ID
- */
-export async function captureServerError(
-  error: Error,
-  distinctId: string | undefined,
-  context: { stage: "server_handler" | "api_route"; sessionId?: string },
-): Promise<void> {
-  const effectiveDistinctId = distinctId || "anonymous"
-
-  await trackServerEvent(effectiveDistinctId, {
-    domain: "errors",
-    action: "exception_captured",
-    errorName: error.name,
-    errorMessage: error.message,
-    errorStack: error.stack,
-    stage: context.stage,
-  })
-
-  // Also send to PostHog's exception tracking
-  const client = getPostHogServer()
-  if (client) {
-    await client.captureException(error, effectiveDistinctId, {
-      $session_id: context.sessionId,
+  try {
+    await Sentry.startSpan(
+      {
+        name: "posthog.captureImmediate",
+        op: "analytics.posthog",
+        attributes: {
+          event_name: eventName,
+          distinct_id: distinctId,
+          has_session_id: Boolean(options?.sessionId),
+        },
+      },
+      () =>
+        client.captureImmediate({
+          distinctId,
+          event: eventName,
+          properties: {
+            ...properties,
+            // Include session ID if provided (links event to session replay)
+            ...(options?.sessionId && { $session_id: options.sessionId }),
+          },
+        }),
+    )
+  } catch (error) {
+    // Analytics failures should not break request flow.
+    Sentry.captureException(error, {
+      level: "warning",
+      tags: { area: "posthog-server-capture" },
+      extra: {
+        distinctId,
+        eventName,
+      },
+    })
+    Sentry.logger.error("posthog_capture_failed", {
+      distinct_id: distinctId,
+      event_name: eventName,
+      error_message: error instanceof Error ? error.message : "Unknown error",
     })
   }
 }

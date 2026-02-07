@@ -120,11 +120,6 @@ const N = {
   response: "response",
 } as const
 
-/** Errors domain actions */
-const E = {
-  exception_captured: "exception_captured",
-} as const
-
 // =============================================================================
 // Domain: Verification (Client-Side)
 // =============================================================================
@@ -983,27 +978,6 @@ const consentResponseEventSchema = z
 const consentEventSchema = z.discriminatedUnion("action", [consentResponseEventSchema])
 
 // =============================================================================
-// Domain: Errors
-// =============================================================================
-
-const errorsEventBase = { domain: z.literal("errors") } as const
-
-const errorExceptionCapturedEventSchema = z
-  .object({
-    ...errorsEventBase,
-    action: z.literal(E.exception_captured),
-    errorName: z.string(),
-    errorMessage: z.string(),
-    errorStack: z.string().optional(),
-    stage: z.enum(["client_render", "global_error", "server_handler", "api_route"]),
-    componentStack: z.string().optional(),
-  })
-  .strict()
-
-/** All errors events - discriminated by action */
-const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCapturedEventSchema])
-
-// =============================================================================
 // Combined Schema
 // =============================================================================
 
@@ -1014,12 +988,7 @@ const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCaptured
  * a discriminated union on "action". Type safety is preserved through
  * the domain literal on each event schema.
  */
-export const analyticsEventSchema = z.union([
-  verificationEventSchema,
-  citizensEventSchema,
-  consentEventSchema,
-  errorsEventSchema,
-])
+export const analyticsEventSchema = z.union([verificationEventSchema, citizensEventSchema, consentEventSchema])
 
 // =============================================================================
 // Type Exports
@@ -1053,17 +1022,12 @@ export type CitizensEventName = (typeof CITIZENS_EVENTS)[keyof typeof CITIZENS_E
 export const CONSENT_EVENTS = createEventNames("consent", N)
 export type ConsentEventName = (typeof CONSENT_EVENTS)[keyof typeof CONSENT_EVENTS]
 
-/** Errors event names for PostHog queries */
-export const ERRORS_EVENTS = createEventNames("errors", E)
-export type ErrorsEventName = (typeof ERRORS_EVENTS)[keyof typeof ERRORS_EVENTS]
-
 /** All event name constants by domain */
 export const ANALYTICS_EVENTS = {
   verification: VERIFICATION_EVENTS,
   citizens: CITIZENS_EVENTS,
   consent: CONSENT_EVENTS,
-  errors: ERRORS_EVENTS,
 } as const
 
 /** Union of all event names */
-export type AnalyticsEventName = VerificationEventName | CitizensEventName | ConsentEventName | ErrorsEventName
+export type AnalyticsEventName = VerificationEventName | CitizensEventName | ConsentEventName

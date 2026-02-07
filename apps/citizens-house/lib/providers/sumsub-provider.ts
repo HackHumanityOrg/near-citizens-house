@@ -11,9 +11,9 @@
  */
 import "server-only"
 
+import * as Sentry from "@sentry/nextjs"
 import crypto from "crypto"
 import { env } from "../schemas/env"
-import { logEvent } from "../logger"
 import {
   sumsubAccessTokenApiResponseSchema,
   sumsubApplicantSchema,
@@ -109,12 +109,10 @@ export async function createApplicant(externalUserId: string, levelName: string)
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_create_applicant_failed",
-      level: "error",
+    Sentry.logger.error("sumsub_create_applicant_failed", {
       status: response.status,
-      error: errorText,
-      externalUserId,
+      error_text: errorText,
+      external_user_id: externalUserId,
     })
     throw new Error(`Failed to create applicant: ${response.status} - ${errorText}`)
   }
@@ -123,20 +121,11 @@ export async function createApplicant(externalUserId: string, levelName: string)
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_create_applicant_invalid_response",
-      level: "error",
-      error: parsed.error.message,
-    })
+    Sentry.logger.error("sumsub_create_applicant_invalid_response", { validation_error: parsed.error.message })
     throw new Error("Invalid response from SumSub create applicant API")
   }
 
-  logEvent({
-    event: "sumsub_applicant_created",
-    level: "info",
-    applicantId: parsed.data.id,
-    externalUserId,
-  })
+  Sentry.logger.info("sumsub_applicant_created", { applicant_id: parsed.data.id, external_user_id: externalUserId })
 
   return parsed.data
 }
@@ -163,12 +152,10 @@ export async function generateAccessToken(
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_access_token_failed",
-      level: "error",
+    Sentry.logger.error("sumsub_access_token_failed", {
       status: response.status,
-      error: errorText,
-      externalUserId,
+      error_text: errorText,
+      external_user_id: externalUserId,
     })
     throw new Error(`SumSub access token generation failed: ${response.status} - ${errorText}`)
   }
@@ -177,14 +164,14 @@ export async function generateAccessToken(
   const parsed = sumsubAccessTokenApiResponseSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_access_token_invalid_response",
-      level: "error",
-      error: parsed.error.message,
-      response: data,
-    })
+    Sentry.logger.error("sumsub_access_token_invalid_response", { validation_error: parsed.error.message })
     throw new Error("Invalid response from SumSub access token API")
   }
+
+  Sentry.logger.info("sumsub_access_token_generated", {
+    external_user_id: externalUserId,
+    sumsub_user_id: parsed.data.userId,
+  })
 
   return parsed.data
 }
@@ -207,12 +194,10 @@ export async function getApplicant(applicantId: string): Promise<SumSubApplicant
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_get_applicant_failed",
-      level: "error",
+    Sentry.logger.error("sumsub_get_applicant_failed", {
       status: response.status,
-      error: errorText,
-      applicantId,
+      error_text: errorText,
+      applicant_id: applicantId,
     })
     throw new Error(`SumSub get applicant failed: ${response.status} - ${errorText}`)
   }
@@ -221,14 +206,14 @@ export async function getApplicant(applicantId: string): Promise<SumSubApplicant
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_get_applicant_invalid_response",
-      level: "error",
-      error: parsed.error.message,
-      response: data,
-    })
+    Sentry.logger.error("sumsub_get_applicant_invalid_response", { validation_error: parsed.error.message })
     throw new Error("Invalid response from SumSub get applicant API")
   }
+
+  Sentry.logger.info("sumsub_applicant_fetched", {
+    applicant_id: parsed.data.id,
+    external_user_id: parsed.data.externalUserId ?? "unknown",
+  })
 
   return parsed.data
 }
@@ -251,12 +236,10 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_get_applicant_by_external_id_failed",
-      level: "error",
+    Sentry.logger.error("sumsub_get_applicant_by_external_id_failed", {
       status: response.status,
-      error: errorText,
-      externalUserId,
+      error_text: errorText,
+      external_user_id: externalUserId,
     })
     throw new Error(`SumSub get applicant by external ID failed: ${response.status} - ${errorText}`)
   }
@@ -265,14 +248,16 @@ export async function getApplicantByExternalUserId(externalUserId: string): Prom
   const parsed = sumsubApplicantSchema.safeParse(data)
 
   if (!parsed.success) {
-    logEvent({
-      event: "sumsub_get_applicant_by_external_id_invalid_response",
-      level: "error",
-      error: parsed.error.message,
-      response: data,
+    Sentry.logger.error("sumsub_get_applicant_by_external_id_invalid_response", {
+      validation_error: parsed.error.message,
     })
     throw new Error("Invalid response from SumSub get applicant API")
   }
+
+  Sentry.logger.info("sumsub_applicant_fetched_by_external_id", {
+    applicant_id: parsed.data.id,
+    external_user_id: externalUserId,
+  })
 
   return parsed.data
 }
@@ -362,15 +347,18 @@ export async function updateApplicantMetadata(applicantId: string, metadata: Sum
 
   if (!response.ok) {
     const errorText = await response.text()
-    logEvent({
-      event: "sumsub_update_metadata_failed",
-      level: "error",
+    Sentry.logger.error("sumsub_update_metadata_failed", {
       status: response.status,
-      error: errorText,
-      applicantId,
+      error_text: errorText,
+      applicant_id: applicantId,
     })
     throw new Error(`SumSub update metadata failed: ${response.status} - ${errorText}`)
   }
+
+  Sentry.logger.info("sumsub_update_metadata_succeeded", {
+    applicant_id: applicantId,
+    metadata_items: metadata.length,
+  })
 }
 
 // ==============================================================================
@@ -396,10 +384,7 @@ export function verifyWebhookSignature(
   const webhookSecret = env.SUMSUB_WEBHOOK_SECRET
 
   if (!webhookSecret) {
-    logEvent({
-      event: "sumsub_webhook_secret_not_configured",
-      level: "error",
-    })
+    Sentry.logger.error("sumsub_webhook_secret_not_configured")
     throw new Error("SumSub webhook secret not configured")
   }
 

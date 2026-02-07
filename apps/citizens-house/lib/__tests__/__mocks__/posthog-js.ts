@@ -7,7 +7,6 @@
 const posthog = {
   init: () => {},
   capture: () => {},
-  captureException: () => {},
   identify: () => {},
   reset: () => {},
   opt_in_capturing: () => {},

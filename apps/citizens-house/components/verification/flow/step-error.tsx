@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import * as Sentry from "@sentry/nextjs"
 import { X, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { getErrorTitle, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
@@ -67,6 +68,11 @@ export function StepError({
             recoveredFrom: "error",
           })
           onStatusRecoveredRef.current?.()
+        } else if (!parsed.success) {
+          Sentry.logger.warn("error_status_poll_invalid_response", {
+            account_id: accountId,
+            validation_error: parsed.error.message,
+          })
         }
       } catch (err) {
         // Track polling errors
@@ -76,6 +82,10 @@ export function StepError({
           platform: getPlatform(),
           accountId,
           errorMessage: err instanceof Error ? err.message : "Unknown error",
+        })
+        Sentry.logger.warn("error_status_poll_failed", {
+          account_id: accountId,
+          error_message: err instanceof Error ? err.message : "Unknown error",
         })
       }
     }

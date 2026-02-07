@@ -15,7 +15,6 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   ACT_UNIT_TEST_TARGET: all
-  # Enable ZK verification tests (makes real Celo RPC calls)
   ENABLE_NETWORK_TESTS: "true"
 
 # =============================================================================

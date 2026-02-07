@@ -93,3 +93,6 @@ docs/.plans/
 
 # next-agents-md
 .next-docs/
+
+
+.env.sentry-build-plugin

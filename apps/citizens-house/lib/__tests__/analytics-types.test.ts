@@ -137,47 +137,6 @@ describe("Analytics Event Type Safety", () => {
       trackEvent({ domain: "consent", action: "response", granted: false })
       expect(true).toBe(true)
     })
-
-    it("accepts valid error events", () => {
-      trackEvent({
-        domain: "errors",
-        action: "exception_captured",
-        errorName: "Error",
-        errorMessage: "test",
-        stage: "client_render",
-      })
-      trackEvent({
-        domain: "errors",
-        action: "exception_captured",
-        errorName: "Error",
-        errorMessage: "test",
-        stage: "global_error",
-      })
-      trackEvent({
-        domain: "errors",
-        action: "exception_captured",
-        errorName: "Error",
-        errorMessage: "test",
-        stage: "server_handler",
-      })
-      trackEvent({
-        domain: "errors",
-        action: "exception_captured",
-        errorName: "Error",
-        errorMessage: "test",
-        stage: "api_route",
-      })
-      trackEvent({
-        domain: "errors",
-        action: "exception_captured",
-        errorName: "Error",
-        errorMessage: "test",
-        stage: "client_render",
-        errorStack: "stack",
-        componentStack: "component",
-      })
-      expect(true).toBe(true)
-    })
   })
 
   describe("invalid events cause type errors", () => {
@@ -226,19 +185,6 @@ describe("Analytics Event Type Safety", () => {
     it("rejects invalid domain", () => {
       // @ts-expect-error - invalid is not a valid domain
       trackEvent({ domain: "invalid", action: "flow_start", platform: "desktop" })
-      expect(true).toBe(true)
-    })
-
-    it("rejects errors event without required stage", () => {
-      // @ts-expect-error - missing required 'stage' property
-      trackEvent({ domain: "errors", action: "exception_captured", errorName: "Error", errorMessage: "test" })
-      expect(true).toBe(true)
-    })
-
-    it("rejects invalid stage value for errors", () => {
-      // prettier-ignore
-      // @ts-expect-error - invalid_stage is not a valid stage
-      trackEvent({ domain: "errors", action: "exception_captured", errorName: "Error", errorMessage: "test", stage: "invalid_stage" })
       expect(true).toBe(true)
     })
   })

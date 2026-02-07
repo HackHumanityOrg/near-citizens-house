@@ -1,8 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
+import * as Sentry from "@sentry/nextjs"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-// import { VercelToolbar } from "@vercel/toolbar/next"
 import { ThemeProvider } from "@near-citizens/ui"
 import { UserJotWidget } from "@/lib"
 import { Header } from "@/components/layout/header"
@@ -26,10 +26,15 @@ const geistMono = Geist_Mono({
   preload: true,
 })
 
-export const metadata: Metadata = {
-  title: "NEAR Citizens House",
-  description:
-    "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
+export function generateMetadata(): Metadata {
+  return {
+    title: "NEAR Citizens House",
+    description:
+      "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
+    other: {
+      ...Sentry.getTraceData(),
+    },
+  }
 }
 
 export default function RootLayout({
@@ -53,7 +58,6 @@ export default function RootLayout({
           </Providers>
         </ThemeProvider>
         <Analytics />
-        {/*<VercelToolbar />*/}
         <UserJotWidget />
       </body>
     </html>

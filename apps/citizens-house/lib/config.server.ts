@@ -56,10 +56,3 @@ export const SUMSUB_SERVER_CONFIG = {
 export function isBackendWalletConfigured(): boolean {
   return Boolean(env.NEAR_ACCOUNT_ID && env.NEAR_PRIVATE_KEY)
 }
-
-/**
- * Check if running in E2E testing mode.
- */
-export function isE2ETesting(): boolean {
-  return env.E2E_TESTING === "true"
-}

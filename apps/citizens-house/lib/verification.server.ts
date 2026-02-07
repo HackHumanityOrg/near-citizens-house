@@ -8,6 +8,7 @@
  */
 import "server-only"
 
+import * as Sentry from "@sentry/nextjs"
 import { getRpcProvider } from "./providers/rpc-provider"
 import { nearAccessKeyResponseSchema, type NearAccountId, type NearAccessKeyPermission } from "./schemas/near"
 
@@ -49,10 +50,19 @@ export async function hasFullAccessKey(accountId: NearAccountId, publicKey: stri
 
     const parseResult = nearAccessKeyResponseSchema.safeParse(rawResponse)
     if (!parseResult.success) {
+      Sentry.logger.warn("near_access_key_invalid_response", {
+        account_id: accountId,
+        public_key: publicKey,
+        validation_error: parseResult.error.message,
+      })
       return { isFullAccess: false, error: "Invalid RPC response format" }
     }
 
     if (!isFullAccessPermission(parseResult.data.permission)) {
+      Sentry.logger.info("near_access_key_not_full_access", {
+        account_id: accountId,
+        public_key: publicKey,
+      })
       return { isFullAccess: false, error: "Public key is not a full-access key" }
     }
 
@@ -63,12 +73,24 @@ export async function hasFullAccessKey(accountId: NearAccountId, publicKey: stri
 
     // Common RPC error patterns
     if (message.includes("does not exist") || message.includes("UnknownAccessKey")) {
+      Sentry.logger.warn("near_access_key_not_found", {
+        account_id: accountId,
+        public_key: publicKey,
+      })
       return { isFullAccess: false, error: "Public key not found for account" }
     }
     if (message.includes("UnknownAccount")) {
+      Sentry.logger.warn("near_account_not_found", {
+        account_id: accountId,
+      })
       return { isFullAccess: false, error: "Account not found" }
     }
 
+    Sentry.logger.error("near_access_key_check_failed", {
+      account_id: accountId,
+      public_key: publicKey,
+      error_message: message,
+    })
     return { isFullAccess: false, error: `RPC error: ${message}` }
   }
 }

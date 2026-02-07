@@ -1,5 +1,6 @@
 "use server"
 
+import * as Sentry from "@sentry/nextjs"
 import { unstable_cache } from "next/cache"
 import {
   parseUserContextData,
@@ -38,7 +39,17 @@ export type GetVerificationsResult = {
  */
 async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
   // Get paginated accounts from NEAR contract (newest first)
-  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(pagination)
+  const { accounts, total } = await Sentry.startSpan(
+    {
+      name: "verificationDb.listVerificationsNewestFirst",
+      op: "db.near-contract",
+      attributes: {
+        pagination_page: pagination.page,
+        pagination_page_size: pagination.pageSize,
+      },
+    },
+    () => verificationDb.listVerificationsNewestFirst(pagination),
+  )
 
   // Verify each account's NEAR signature in parallel
   const verifiedAccounts = await Promise.all(
@@ -90,6 +101,15 @@ async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetV
         }
       } catch (error) {
         // Final catch-all: Always display account even if verification fails
+        Sentry.captureException(error, {
+          level: "warning",
+          tags: { area: "getVerificationsWithStatus" },
+          extra: { nearAccountId: account.nearAccountId },
+        })
+        Sentry.logger.warn("verification_signature_processing_failed", {
+          near_account_id: account.nearAccountId,
+          error_message: error instanceof Error ? error.message : "Unknown error",
+        })
         return {
           account,
           verification: {
@@ -124,17 +144,33 @@ const getCachedVerifications = unstable_cache(
  * NEAR signature verification happens server-side.
  */
 export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
-  // Validate input parameters with safeParse
-  const params = paginationSchema.safeParse({ page, pageSize })
-  if (!params.success) {
-    return { accounts: [], total: 0 }
-  }
+  return Sentry.withServerActionInstrumentation("getVerificationsWithStatus", {}, async () => {
+    // Validate input parameters with safeParse
+    const params = paginationSchema.safeParse({ page, pageSize })
+    if (!params.success) {
+      Sentry.logger.warn("get_verifications_invalid_pagination", {
+        page,
+        page_size: pageSize,
+        validation_error: params.error.message,
+      })
+      return { accounts: [], total: 0 }
+    }
 
-  try {
-    return await getCachedVerifications(params.data)
-  } catch {
-    return { accounts: [], total: 0 }
-  }
+    try {
+      return await getCachedVerifications(params.data)
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "getVerificationsWithStatus" },
+        extra: { page, pageSize },
+      })
+      Sentry.logger.error("get_verifications_failed", {
+        page,
+        page_size: pageSize,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
+      return { accounts: [], total: 0 }
+    }
+  })
 }
 
 /**
@@ -142,15 +178,37 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
  * Used by the UI to skip verification steps for already-verified accounts.
  */
 export async function checkIsVerified(nearAccountId: NearAccountId): Promise<boolean> {
-  // Runtime validation for security (server actions can receive arbitrary input)
-  const parsed = nearAccountIdSchema.safeParse(nearAccountId)
-  if (!parsed.success) {
-    return false
-  }
+  return Sentry.withServerActionInstrumentation("checkIsVerified", {}, async () => {
+    // Runtime validation for security (server actions can receive arbitrary input)
+    const parsed = nearAccountIdSchema.safeParse(nearAccountId)
+    if (!parsed.success) {
+      Sentry.logger.warn("check_is_verified_invalid_account_id", {
+        account_id: String(nearAccountId),
+        validation_error: parsed.error.message,
+      })
+      return false
+    }
 
-  try {
-    return await verificationDb.isVerified(parsed.data)
-  } catch {
-    return false
-  }
+    try {
+      return await Sentry.startSpan(
+        {
+          name: "verificationDb.isVerified",
+          op: "db.near-contract",
+          attributes: { near_account_id: parsed.data },
+        },
+        () => verificationDb.isVerified(parsed.data),
+      )
+    } catch (error) {
+      Sentry.captureException(error, {
+        level: "warning",
+        tags: { area: "checkIsVerified" },
+        extra: { nearAccountId: parsed.data },
+      })
+      Sentry.logger.warn("check_is_verified_failed", {
+        account_id: parsed.data,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
+      return false
+    }
+  })
 }
