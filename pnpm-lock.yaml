@@ -207,9 +207,6 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.58.1
-        version: 1.58.1
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
@@ -222,9 +219,6 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.7)
-      allure-playwright:
-        specifier: ^3.4.5
-        version: 3.4.5(@playwright/test@1.58.1)
       postcss:
         specifier: ^8.5
         version: 8.5.6
@@ -2315,21 +2309,8 @@ packages:
       allure-playwright:
         optional: true
 
-  allure-js-commons@3.4.5:
-    resolution: {integrity: sha512-mzAppLFva9PJqWvdI/aXn8jqr+5Am67JITdthMfEk8En6AhsrvRWZAjHZ1yUMDGEbxmivCni3lppvitJGStxFQ==}
-    peerDependencies:
-      allure-playwright: 3.4.5
-    peerDependenciesMeta:
-      allure-playwright:
-        optional: true
-
   allure-playwright@3.4.4:
     resolution: {integrity: sha512-ITJfPHJ2hwCdTLOK2Nx5R6pUUoonL9EdnjYkCWGMcaCGRatbC7gMf5a+ZFFFRlg1AXx/ZnmAUHmlE2BAd0yRTQ==}
-    peerDependencies:
-      '@playwright/test': '>=1.53.0'
-
-  allure-playwright@3.4.5:
-    resolution: {integrity: sha512-pVewTpU9Z4qgT14VJdtYLAfF8rWROuESmvDkvyu/QnFWhRFrcDBnomynj84yx/QpXyMjJL+qu1yMU2z4Mq1YnA==}
     peerDependencies:
       '@playwright/test': '>=1.53.0'
 
@@ -4857,6 +4838,7 @@ snapshots:
   '@playwright/test@1.58.1':
     dependencies:
       playwright: 1.58.1
+    optional: true
 
   '@posthog/cli@0.5.26':
     dependencies:
@@ -6185,22 +6167,11 @@ snapshots:
     optionalDependencies:
       allure-playwright: 3.4.4(@playwright/test@1.57.0)
 
-  allure-js-commons@3.4.5(allure-playwright@3.4.5(@playwright/test@1.58.1)):
-    dependencies:
-      md5: 2.3.0
-    optionalDependencies:
-      allure-playwright: 3.4.5(@playwright/test@1.58.1)
-
   allure-playwright@3.4.4(@playwright/test@1.57.0):
     dependencies:
       '@playwright/test': 1.57.0
       allure-js-commons: 3.4.4(allure-playwright@3.4.4(@playwright/test@1.57.0))
     optional: true
-
-  allure-playwright@3.4.5(@playwright/test@1.58.1):
-    dependencies:
-      '@playwright/test': 1.58.1
-      allure-js-commons: 3.4.5(allure-playwright@3.4.5(@playwright/test@1.58.1))
 
   allure-vitest@3.4.4(@vitest/runner@4.0.16)(allure-playwright@3.4.4(@playwright/test@1.57.0))(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)):
     dependencies:
@@ -7264,7 +7235,8 @@ snapshots:
 
   playwright-core@1.57.0: {}
 
-  playwright-core@1.58.1: {}
+  playwright-core@1.58.1:
+    optional: true
 
   playwright@1.57.0:
     dependencies:
@@ -7277,6 +7249,7 @@ snapshots:
       playwright-core: 1.58.1
     optionalDependencies:
       fsevents: 2.3.2
+    optional: true
 
   postcss@8.4.31:
     dependencies:

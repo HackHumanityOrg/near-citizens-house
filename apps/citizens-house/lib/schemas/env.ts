@@ -23,13 +23,6 @@ export const env = createEnv({
     // Redis for session storage - REQUIRED for verification flow
     REDIS_URL: z.string().min(1, "Redis URL is required for session storage"),
 
-    // Celo RPC URL for ZK proof verification (optional - has default)
-    CELO_RPC_URL: z.url().optional(),
-
-    // E2E Testing flags - WARNING: Must NEVER be "true" in production
-    SKIP_ZK_VERIFICATION: z.string().optional(),
-    E2E_TESTING: z.string().optional(),
-
     // SumSub KYC verification credentials
     SUMSUB_APP_TOKEN: z.string().optional(),
     SUMSUB_SECRET_KEY: z.string().optional(),
@@ -57,7 +50,7 @@ export const env = createEnv({
     // Contract address - REQUIRED for functionality
     NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: z.string().min(1, "Verification contract ID is required"),
 
-    // App URL
+    // App URL (used in wallet signing messages)
     NEXT_PUBLIC_APP_URL: z.url().optional(),
 
     // UserJot (optional feedback widget)
@@ -80,9 +73,6 @@ export const env = createEnv({
     NEAR_ACCOUNT_ID: process.env.NEAR_ACCOUNT_ID,
     NEAR_PRIVATE_KEY: process.env.NEAR_PRIVATE_KEY,
     REDIS_URL: process.env.REDIS_URL,
-    CELO_RPC_URL: process.env.CELO_RPC_URL,
-    SKIP_ZK_VERIFICATION: process.env.SKIP_ZK_VERIFICATION,
-    E2E_TESTING: process.env.E2E_TESTING,
     POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
     POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
     SUMSUB_APP_TOKEN: process.env.SUMSUB_APP_TOKEN,

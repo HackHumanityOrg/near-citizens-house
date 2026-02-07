@@ -46,13 +46,13 @@ Copy `.env.example` to `.env` and configure the required variables. See `.env.ex
 |----------|----------|-------------|
 | `NEXT_PUBLIC_NEAR_NETWORK` | Yes | NEAR network (`testnet` or `mainnet`) |
 | `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | Yes | Verification contract ID |
-| `NEXT_PUBLIC_APP_URL` | Yes | Deployed app URL |
 | `NEAR_ACCOUNT_ID` | Yes | Backend wallet account ID |
 | `NEAR_PRIVATE_KEY` | Yes | Backend wallet private key (server-side only) |
 | `REDIS_URL` | Yes | Redis URL for session storage |
 | `SUMSUB_APP_TOKEN` | Yes | SumSub API token |
 | `SUMSUB_SECRET_KEY` | Yes | SumSub secret key |
 | `SUMSUB_WEBHOOK_SECRET` | Yes | SumSub webhook signature secret |
+| `NEXT_PUBLIC_APP_URL` | No | App URL for signing messages (defaults to `https://citizenshouse.org`) |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | No | WalletConnect project ID for wallet support |
 | `NEXT_PUBLIC_POSTHOG_KEY` | No | PostHog API key for analytics |
 
