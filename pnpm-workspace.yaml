@@ -2,6 +2,8 @@ packages:
   - apps/*
 
 onlyBuiltDependencies:
+  - "@sentry-internal/node-cpu-profiler"
+  - "@sentry/cli"
   - blake-hash
   - esbuild
   - near-sandbox

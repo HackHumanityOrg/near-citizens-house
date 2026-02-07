@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: [],
+  serverExternalPackages: ["@sentry/profiling-node"],
   // Empty turbopack config to allow turbopack to work
   turbopack: {},
   webpack: (config) => {
@@ -20,8 +20,21 @@ const nextConfig: NextConfig = {
     return config
   },
   transpilePackages: ["@hot-labs/near-connect", "@walletconnect/sign-client"],
-  // Required for PostHog proxy
+  // Required for PostHog proxy (trailing slashes on PostHog API endpoints)
   skipTrailingSlashRedirect: true,
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Document-Policy",
+            value: "js-profiling",
+          },
+        ],
+      },
+    ]
+  },
   async rewrites() {
     return [
       // PostHog proxy rewrites

@@ -10,10 +10,16 @@ Sentry.init({
   // Adjust tracing sample rate for production
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,
 
+  // Profiling piggybacks on sampled traces
+  profileSessionSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,
+  profileLifecycle: "trace",
+
   // Enable Sentry structured logging
   enableLogs: true,
 
   integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.browserProfilingIntegration(),
     // Session replay for error context
     Sentry.replayIntegration(),
     // Forward console.log, console.warn, and console.error to Sentry Logs

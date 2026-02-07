@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs"
+import { nodeProfilingIntegration } from "@sentry/profiling-node"
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -10,10 +11,15 @@ Sentry.init({
   // Adjust tracing sample rate for production
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,
 
+  // Profiling piggybacks on sampled traces
+  profileSessionSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,
+  profileLifecycle: "trace",
+
   // Enable Sentry structured logging
   enableLogs: true,
 
   integrations: [
+    nodeProfilingIntegration(),
     // Forward console.log, console.warn, and console.error to Sentry Logs
     Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
   ],
