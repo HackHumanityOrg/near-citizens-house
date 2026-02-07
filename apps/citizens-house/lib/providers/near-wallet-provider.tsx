@@ -172,10 +172,19 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     if (!nearConnector) {
       return
     }
-    // Show wallet selector and connect with the chosen one
-    const id = await nearConnector.selectWallet()
-    if (id) {
-      await nearConnector.connect(id)
+    try {
+      // Show wallet selector and connect with the chosen one
+      const id = await nearConnector.selectWallet()
+      if (id) {
+        await nearConnector.connect(id)
+      }
+    } catch (error) {
+      // Silently handle user rejection - it's expected behavior, not an error
+      if (error instanceof Error && error.message === "User rejected") {
+        return
+      }
+      // Re-throw other unexpected errors
+      throw error
     }
   }, [nearConnector])
 
