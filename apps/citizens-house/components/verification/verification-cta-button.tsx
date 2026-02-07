@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef } from "react"
+import * as Sentry from "@sentry/nextjs"
 import { useNearWallet } from "@/lib"
 import { trackEvent, getPlatform } from "@/lib/analytics"
 import { Button, cn } from "@near-citizens/ui"
@@ -61,6 +62,10 @@ export function VerificationCtaButton({
       await connect()
     } catch (error) {
       didRequestConnect.current = false
+      Sentry.logger.warn("verification_cta_wallet_connect_failed", {
+        account_id: accountId ?? "unknown",
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
       throw error
     }
   }

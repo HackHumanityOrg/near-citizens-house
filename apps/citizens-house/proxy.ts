@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import * as Sentry from "@sentry/nextjs"
 import { get } from "@vercel/edge-config"
 
 // Routes that should remain accessible during maintenance
@@ -83,14 +84,25 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  const maintenanceKey = getMaintenanceKey()
   try {
-    const maintenance = await get(getMaintenanceKey())
+    const maintenance = await get(maintenanceKey)
 
     if (maintenance === true || maintenance === "true") {
+      Sentry.logger.info("maintenance_mode_rewrite", {
+        pathname,
+        maintenance_key: maintenanceKey,
+        vercel_env: process.env.VERCEL_ENV ?? "unknown",
+      })
       request.nextUrl.pathname = "/maintenance"
       return NextResponse.rewrite(request.nextUrl)
     }
-  } catch {
+  } catch (error) {
+    Sentry.logger.warn("maintenance_mode_check_failed", {
+      pathname,
+      maintenance_key: maintenanceKey,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    })
     // Edge Config read failed - continue without maintenance mode
   }
 

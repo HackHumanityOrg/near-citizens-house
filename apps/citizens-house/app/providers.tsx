@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import * as Sentry from "@sentry/nextjs"
 import { SWRConfig } from "swr"
 import { NearWalletProvider } from "@/lib"
 import { ErrorBoundary } from "@near-citizens/ui"
@@ -40,7 +41,16 @@ export function Providers({ children }: ProvidersProps) {
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    if (typeof window !== "undefined" && env.NEXT_PUBLIC_POSTHOG_KEY) {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
+      Sentry.logger.warn("posthog_client_disabled_missing_key")
+      return
+    }
+
+    try {
       posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
         api_host: "/ingest",
         ui_host: "https://us.posthog.com",
@@ -71,18 +81,34 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         // This enables server-side events to link to session replays
         __add_tracing_headers: [window.location.hostname],
       })
+      Sentry.logger.info("posthog_client_initialized", {
+        consent_feature_flag: CONSENT_FEATURE_FLAG,
+        tracing_header_host: window.location.hostname,
+      })
 
       if (CONSENT_FEATURE_FLAG) {
         const storedConsent = window.localStorage.getItem(CONSENT_STORAGE_KEY)
+        Sentry.logger.info("posthog_client_consent_loaded", {
+          consent_state: storedConsent ?? "unset",
+        })
 
         if (storedConsent === "granted") {
           posthog.opt_in_capturing()
+          Sentry.logger.info("posthog_client_opt_in_applied")
         }
 
         if (storedConsent === "denied") {
           posthog.opt_out_capturing()
+          Sentry.logger.info("posthog_client_opt_out_applied")
         }
       }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "posthog-client-init" },
+      })
+      Sentry.logger.error("posthog_client_init_failed", {
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
     }
   }, [])
 

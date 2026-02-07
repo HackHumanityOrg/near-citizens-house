@@ -8,6 +8,7 @@
  */
 import "server-only"
 
+import * as Sentry from "@sentry/nextjs"
 import { Account } from "@near-js/accounts"
 import type { Provider } from "@near-js/providers"
 import type { Signer } from "@near-js/signers"
@@ -152,7 +153,14 @@ export class NearContractDatabase implements IVerificationDatabase {
         if (verified) {
           return true
         }
-      } catch {
+      } catch (error) {
+        Sentry.logger.debug("near_contract_poll_attempt_failed", {
+          contract_id: this.contractId,
+          near_account_id: nearAccountId,
+          attempt,
+          max_attempts: maxAttempts,
+          error_message: error instanceof Error ? error.message : "Unknown error",
+        })
         // Continue polling - RPC might be temporarily unavailable
       }
 
@@ -245,6 +253,10 @@ export class NearContractDatabase implements IVerificationDatabase {
         // Poll to check if verification actually succeeded despite the error
         const verified = await this.pollForVerification(data.nearAccountId)
         if (verified) {
+          Sentry.logger.info("near_contract_store_timeout_but_verified", {
+            contract_id: this.contractId,
+            near_account_id: data.nearAccountId,
+          })
           return // Success - don't throw
         }
       }
@@ -253,10 +265,20 @@ export class NearContractDatabase implements IVerificationDatabase {
       if (error instanceof Error && error.message.includes("Smart contract panicked")) {
         const panicMatch = error.message.match(/Smart contract panicked: (.+)/)
         if (panicMatch) {
+          Sentry.logger.error("near_contract_store_panicked", {
+            contract_id: this.contractId,
+            near_account_id: data.nearAccountId,
+            panic_message: panicMatch[1],
+          })
           throw new Error(panicMatch[1])
         }
       }
 
+      Sentry.logger.error("near_contract_store_failed", {
+        contract_id: this.contractId,
+        near_account_id: data.nearAccountId,
+        error_message: error instanceof Error ? error.message : String(error),
+      })
       throw error
     }
   }
@@ -280,7 +302,12 @@ export class NearContractDatabase implements IVerificationDatabase {
       // Validate and transform contract response using Zod schema
       // Automatically converts snake_case to camelCase and nanoseconds to milliseconds
       return contractVerificationSummarySchema.parse(result)
-    } catch {
+    } catch (error) {
+      Sentry.logger.warn("near_contract_get_verification_failed", {
+        contract_id: this.contractId,
+        near_account_id: nearAccountId,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
       // Return null for not found instead of throwing
       return null
     }
@@ -301,7 +328,12 @@ export class NearContractDatabase implements IVerificationDatabase {
       // Validate and transform contract response using Zod schema
       // Automatically converts snake_case to camelCase and nanoseconds to milliseconds
       return contractVerificationSchema.parse(result)
-    } catch {
+    } catch (error) {
+      Sentry.logger.warn("near_contract_get_full_verification_failed", {
+        contract_id: this.contractId,
+        near_account_id: nearAccountId,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
       // Return null for not found instead of throwing
       return null
     }
@@ -328,7 +360,13 @@ export class NearContractDatabase implements IVerificationDatabase {
         .map((r) => r.data)
 
       return { accounts: verifications, total: total ?? 0 }
-    } catch {
+    } catch (error) {
+      Sentry.logger.error("near_contract_list_verifications_failed", {
+        contract_id: this.contractId,
+        from_index: fromIndex,
+        limit: Math.min(limit, 100),
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
       return { accounts: [], total: 0 }
     }
   }

@@ -13,6 +13,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import * as allure from "allure-js-commons"
+import * as Sentry from "@sentry/nextjs"
 
 // Store original env
 const originalEnv = { ...process.env }
@@ -37,12 +38,18 @@ describe("Near Citizens House", () => {
           process.env.NODE_ENV = "development"
           delete process.env.FORCE_KEY_REGISTRATION
 
-          const mockConsoleLog = vi.spyOn(console, "log").mockImplementation(() => {})
+          const mockInfo = vi.spyOn(Sentry.logger, "info").mockImplementation(() => {})
 
           const { ensureBackendKeysRegistered } = await import("../backend-key-registration")
           await ensureBackendKeysRegistered()
 
-          expect(mockConsoleLog).toHaveBeenCalledWith("[BackendKeyRegistration] Skipping in development mode")
+          expect(mockInfo).toHaveBeenCalledWith(
+            "backend_key_registration_skipped",
+            expect.objectContaining({
+              reason: "development_mode",
+              force_key_registration: false,
+            }),
+          )
         })
       })
 

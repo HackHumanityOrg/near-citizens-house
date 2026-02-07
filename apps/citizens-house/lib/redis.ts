@@ -11,6 +11,7 @@
 
 import "server-only"
 
+import * as Sentry from "@sentry/nextjs"
 import { createClient } from "redis"
 import { env } from "./schemas/env"
 
@@ -38,10 +39,12 @@ export async function getRedisClient(): Promise<RedisClient> {
 
       try {
         await client.connect()
-        console.log("redis_connection_established", { url: env.REDIS_URL.replace(/\/\/.*@/, "//***@") })
+        Sentry.logger.info("redis_connection_established", { url: env.REDIS_URL.replace(/\/\/.*@/, "//***@") })
         return client
       } catch (err) {
-        console.error("redis_connection_failed", { error: err instanceof Error ? err.message : "Unknown error" })
+        Sentry.logger.error("redis_connection_failed", {
+          error_message: err instanceof Error ? err.message : "Unknown error",
+        })
         // Reset the promise so subsequent calls can retry
         connectionPromise = null
         throw err

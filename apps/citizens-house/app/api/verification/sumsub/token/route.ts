@@ -9,6 +9,7 @@
  * user's NEAR account. The nonce is reserved here with 10min TTL to match
  * the signature freshness window during the step 1 → step 2 transition.
  */
+import * as Sentry from "@sentry/nextjs"
 import { type NextRequest } from "next/server"
 import {
   createApplicant,
@@ -31,6 +32,7 @@ import { apiError, apiSuccess } from "@/lib/api/response"
 import { type VerificationErrorCode } from "@/lib/schemas/errors"
 import { statusOkResponseSchema } from "@/lib/schemas/api/response"
 import { nearAccountIdSchema } from "@/lib/schemas/near"
+import { withLogging } from "@/lib/api/with-logging"
 
 /**
  * Optimistically parse accountId from request body before full validation.
@@ -52,10 +54,20 @@ function tryParseAccountId(body: unknown): string | undefined {
   return undefined
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withLogging({ route: "POST /api/verification/sumsub/token" }, async (request: NextRequest, log) => {
   // Extract PostHog context for session replay linkage
   const posthogContext = extractPostHogContext(request)
   const trackingOptions: TrackServerEventOptions = { sessionId: posthogContext.sessionId }
+  log.setAll({
+    has_posthog_session_id: Boolean(posthogContext.sessionId),
+    has_posthog_distinct_id: Boolean(posthogContext.distinctId),
+  })
+  if (posthogContext.sessionId) {
+    log.set("posthog_session_id", posthogContext.sessionId)
+  }
+  if (posthogContext.distinctId) {
+    log.set("posthog_distinct_id", posthogContext.distinctId)
+  }
 
   // Parse body early for optimistic accountId extraction in error handling
   let body: unknown
@@ -70,12 +82,22 @@ export async function POST(request: NextRequest) {
     const parseResult = verificationTokenRequestSchema.safeParse(body)
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => i.path.join(".")).join(", ")
+      log.setAll({
+        error_code: "INVALID_REQUEST",
+        validation_step: "request_schema",
+      })
       return apiError("INVALID_REQUEST", issues)
     }
 
     const { nearSignature } = parseResult.data
     verificationAttemptId = nearSignature.nonce
     const levelName = env.NEXT_PUBLIC_SUMSUB_LEVEL_NAME
+
+    log.setAll({
+      account_id: nearSignature.accountId,
+      verification_attempt_id: verificationAttemptId,
+      level_name: levelName,
+    })
 
     // ==================== SECURITY: Validate NEAR signature ====================
     // This prevents attackers from associating their KYC with another user's account
@@ -103,6 +125,7 @@ export async function POST(request: NextRequest) {
         },
         trackingOptions,
       )
+      log.setAll({ error_code: code, validation_step: "signature_format" })
       return apiError(code, formatCheck.error)
     }
 
@@ -123,6 +146,7 @@ export async function POST(request: NextRequest) {
         },
         trackingOptions,
       )
+      log.set("error_code", "BACKEND_NOT_CONFIGURED")
       return apiError("BACKEND_NOT_CONFIGURED", "Missing signing recipient")
     }
 
@@ -148,11 +172,19 @@ export async function POST(request: NextRequest) {
         },
         trackingOptions,
       )
+      log.setAll({ error_code: "NEAR_SIGNATURE_INVALID", validation_step: "signature_crypto" })
       return apiError("NEAR_SIGNATURE_INVALID", signatureCheck.error)
     }
 
     // 3. Verify public key is a full-access key via NEAR RPC
-    const keyCheck = await hasFullAccessKey(nearSignature.accountId, nearSignature.publicKey)
+    const keyCheck = await Sentry.startSpan(
+      {
+        name: "hasFullAccessKey",
+        op: "http.client",
+        attributes: { "peer.service": "near-rpc", account_id: nearSignature.accountId },
+      },
+      () => hasFullAccessKey(nearSignature.accountId, nearSignature.publicKey),
+    )
     if (!keyCheck.isFullAccess) {
       const errorMsg = keyCheck.error ?? "Public key is not an active full-access key"
       await trackServerEvent(
@@ -168,12 +200,24 @@ export async function POST(request: NextRequest) {
         },
         trackingOptions,
       )
+      log.setAll({ error_code: "NEAR_SIGNATURE_INVALID", validation_step: "key_not_full_access" })
       return apiError("NEAR_SIGNATURE_INVALID", errorMsg)
     }
 
     // 4. Reserve nonce to prevent replay attacks
     const NONCE_TTL_SECONDS = 10 * 60 // 10 minutes - matches signature freshness window
-    const nonceReserved = await reserveSignatureNonce(nearSignature.accountId, nearSignature.nonce, NONCE_TTL_SECONDS)
+    const nonceReserved = await Sentry.startSpan(
+      {
+        name: "reserveSignatureNonce",
+        op: "db.redis",
+        attributes: {
+          account_id: nearSignature.accountId,
+          verification_attempt_id: verificationAttemptId,
+          nonce_ttl_seconds: NONCE_TTL_SECONDS,
+        },
+      },
+      () => reserveSignatureNonce(nearSignature.accountId, nearSignature.nonce, NONCE_TTL_SECONDS),
+    )
     if (!nonceReserved) {
       await trackServerEvent(
         nearSignature.accountId,
@@ -187,6 +231,7 @@ export async function POST(request: NextRequest) {
         },
         trackingOptions,
       )
+      log.setAll({ error_code: "NONCE_ALREADY_USED", validation_step: "nonce_replay" })
       return apiError("NONCE_ALREADY_USED")
     }
 
@@ -209,6 +254,7 @@ export async function POST(request: NextRequest) {
         },
         trackingOptions,
       )
+      log.set("error_code", "ACCOUNT_ALREADY_VERIFIED")
       return apiError("ACCOUNT_ALREADY_VERIFIED")
     }
 
@@ -219,17 +265,43 @@ export async function POST(request: NextRequest) {
 
     // Clear any stale rejection status from previous attempts
     // This prevents users from seeing a flash of old rejection when retrying
-    await clearVerificationStatus(nearSignature.accountId)
+    await Sentry.startSpan(
+      {
+        name: "clearVerificationStatus",
+        op: "db.redis",
+        attributes: {
+          account_id: nearSignature.accountId,
+          verification_attempt_id: verificationAttemptId,
+        },
+      },
+      () => clearVerificationStatus(nearSignature.accountId),
+    )
 
     // Step 1: Create or get existing applicant
     // This guarantees the applicant exists before we try to update metadata
     let applicant: SumSubApplicant
+    let applicantReused = false
     try {
-      applicant = await createApplicant(externalUserId, levelName)
+      applicant = await Sentry.startSpan(
+        {
+          name: "createApplicant",
+          op: "http.client",
+          attributes: { "peer.service": "sumsub", external_user_id: externalUserId },
+        },
+        () => createApplicant(externalUserId, levelName),
+      )
     } catch (error) {
       // If applicant already exists (409 Conflict), fetch it
       if (error instanceof Error && error.message.includes("409")) {
-        applicant = await getApplicantByExternalUserId(externalUserId)
+        applicant = await Sentry.startSpan(
+          {
+            name: "getApplicantByExternalUserId",
+            op: "http.client",
+            attributes: { "peer.service": "sumsub", external_user_id: externalUserId },
+          },
+          () => getApplicantByExternalUserId(externalUserId),
+        )
+        applicantReused = true
 
         await trackServerEvent(
           nearSignature.accountId,
@@ -249,6 +321,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    log.setAll({ applicant_id: applicant.id, applicant_reused: applicantReused })
+
     // Step 2: Store NEAR metadata on applicant (guaranteed to exist now)
     const metadata: SumSubMetadataItem[] = [
       { key: "near_account_id", value: nearSignature.accountId },
@@ -258,7 +332,18 @@ export async function POST(request: NextRequest) {
       { key: "near_timestamp", value: nearSignature.timestamp.toString() },
     ]
 
-    await updateApplicantMetadata(applicant.id, metadata)
+    await Sentry.startSpan(
+      {
+        name: "updateApplicantMetadata",
+        op: "http.client",
+        attributes: {
+          "peer.service": "sumsub",
+          applicant_id: applicant.id,
+          metadata_items: metadata.length,
+        },
+      },
+      () => updateApplicantMetadata(applicant.id, metadata),
+    )
 
     await trackServerEvent(
       nearSignature.accountId,
@@ -277,7 +362,14 @@ export async function POST(request: NextRequest) {
     // Step 3: Generate access token for the existing applicant
     let tokenResponse
     try {
-      tokenResponse = await generateAccessToken(externalUserId, levelName)
+      tokenResponse = await Sentry.startSpan(
+        {
+          name: "generateAccessToken",
+          op: "http.client",
+          attributes: { "peer.service": "sumsub", external_user_id: externalUserId },
+        },
+        () => generateAccessToken(externalUserId, levelName),
+      )
     } catch (tokenError) {
       // Check if applicant was deactivated by SumSub
       const sumsubError = parseSumSubError(tokenError)
@@ -297,6 +389,7 @@ export async function POST(request: NextRequest) {
         )
 
         // Return specific error - user needs to contact support
+        log.set("error_code", "APPLICANT_DEACTIVATED")
         return apiError("APPLICANT_DEACTIVATED")
       }
 
@@ -318,6 +411,8 @@ export async function POST(request: NextRequest) {
       trackingOptions,
     )
 
+    log.set("token_generated", true)
+
     const response = verificationTokenResponseSchema.parse({
       token: tokenResponse.token,
       externalUserId,
@@ -337,11 +432,15 @@ export async function POST(request: NextRequest) {
       trackingOptions,
     )
 
+    log.setAll({
+      error_code: "TOKEN_GENERATION_FAILED",
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    })
     return apiError("TOKEN_GENERATION_FAILED")
   }
-}
+})
 
-export async function GET() {
+export const GET = withLogging({ route: "GET /api/verification/sumsub/token" }, async (_request: NextRequest) => {
   const response = statusOkResponseSchema.parse({
     status: "ok",
     message: "SumSub token API",
@@ -349,4 +448,4 @@ export async function GET() {
   })
 
   return apiSuccess(response)
-}
+})

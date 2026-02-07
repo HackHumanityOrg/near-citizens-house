@@ -23,7 +23,11 @@ export async function register() {
     // Run async without blocking server startup
     import("@/lib/backend-key-registration")
       .then(({ ensureBackendKeysRegistered }) => ensureBackendKeysRegistered())
-      .catch((err) => console.error("[Instrumentation] Failed to load backend-key-registration:", err))
+      .catch((err) =>
+        Sentry.logger.error("instrumentation_backend_key_registration_load_failed", {
+          error_message: err instanceof Error ? err.message : String(err),
+        }),
+      )
   }
 }
 

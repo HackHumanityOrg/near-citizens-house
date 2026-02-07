@@ -5,11 +5,16 @@
 
 import * as Sentry from "@sentry/nextjs"
 
+const isDev = process.env.NODE_ENV === "development"
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-  // Adjust tracing sample rate for production
-  tracesSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,
+  // Intelligent trace sampling: inherit parent or 10% baseline
+  tracesSampler: ({ inheritOrSampleWith }) => {
+    if (isDev) return 1
+    return inheritOrSampleWith(0.1)
+  },
 
   // Enable Sentry structured logging
   enableLogs: true,
