@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs"
 // Validate environment at build time (fail-fast on misconfiguration)
 // @see https://env.t3.gg/docs/nextjs
 import "./lib/schemas/env"
@@ -36,4 +37,29 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  org: "hack-humanity",
+  project: "citizens-house",
+
+  // Auth token for source maps upload (set in CI/Vercel env vars)
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Only print logs for uploading source maps in CI
+  silent: !process.env.CI,
+
+  // Upload a larger set of source maps for prettier stack traces
+  widenClientFileUpload: true,
+
+  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
+  tunnelRoute: "/monitoring",
+
+  webpack: {
+    // Enables automatic instrumentation of Vercel Cron Monitors
+    automaticVercelMonitors: true,
+
+    // Tree-shake Sentry logger statements to reduce bundle size
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+})

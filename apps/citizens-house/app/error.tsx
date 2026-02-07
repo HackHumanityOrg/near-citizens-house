@@ -9,11 +9,17 @@
  * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling#using-error-boundaries
  */
 
+import { useEffect } from "react"
+import * as Sentry from "@sentry/nextjs"
 import Link from "next/link"
 import { Button } from "@near-citizens/ui"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
-export default function Error({ error: _error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
+
   return (
     <div className="bg-white dark:bg-[#181921]">
       {/* Hero Section - Fixed height with gradient background */}

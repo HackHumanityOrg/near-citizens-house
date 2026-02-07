@@ -50,6 +50,9 @@ export const env = createEnv({
     // UserJot (optional feedback widget)
     NEXT_PUBLIC_USERJOT_PROJECT_ID: z.string().optional(),
 
+    // Sentry error tracking (optional)
+    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
+
     // PostHog analytics (optional)
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
 
@@ -76,6 +79,7 @@ export const env = createEnv({
     NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT: process.env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_USERJOT_PROJECT_ID: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
   },
