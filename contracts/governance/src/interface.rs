@@ -5,14 +5,14 @@
 
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
-use near_sdk::{ext_contract, AccountId, NearSchema};
+use near_sdk::{ext_contract, AccountId, NearSchema, Timestamp};
 
 /// Lightweight verification summary (no signature data).
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct VerificationSummary {
     pub near_account_id: AccountId,
-    pub verified_at: u64,
+    pub verified_at: Timestamp,
 }
 
 /// Cross-contract interface to the verified-accounts contract.

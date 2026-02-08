@@ -177,11 +177,11 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - `verified_accounts_contract: AccountId`
   - `admins: Vec<AccountId>` (must include at least one)
   - `quorum_bps: u16` (recommended: 700)
-  - `voting_period_secs: U64` (recommended: 1,209,600 = 14 days)
-  - `pending_expiry_secs: U64` (recommended: 3600 = 1 hour)
-  - `min_proposal_bond: U128` (recommended: 1 NEAR) — minimum bond; proposers may attach more
-  - `finalize_grace_period_secs: U64` (recommended: 3600 = 1 hour) — after `ends_at + grace_period`, finalize proceeds even with pending votes
-  - `max_start_delay_secs: U64` (recommended: 7,776,000 = 90 days) — max allowed delay from `created_at` to `start_at`
+  - `voting_period_secs: u64` (recommended: 1,209,600 = 14 days)
+  - `pending_expiry_secs: u64` (recommended: 3600 = 1 hour)
+  - `min_proposal_bond: NearToken` (recommended: 1 NEAR) — minimum bond; proposers may attach more
+  - `finalize_grace_period_secs: u64` (recommended: 3600 = 1 hour) — after `ends_at + grace_period`, finalize proceeds even with pending votes
+  - `max_start_delay_secs: u64` (recommended: 7,776,000 = 90 days) — max allowed delay from `created_at` to `start_at`
 
 ### 10.2 Admin Management
 
@@ -240,7 +240,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **list_votes(proposal_id, from_index, limit)** view with pagination — iterates the proposal's per-proposal `IterableMap<AccountId, Vote>`. Returns `Vec<VoteView>`. Pagination semantics: `iter().skip(from_index).take(limit)`. `IterableMap`'s internal `Vector` provides O(1) `nth()`, making `skip(n)` efficient. Max `limit` is 100 (see Section 12).
 - **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX; treat as a balance-only hint (may change before the vote is recorded).
 - **get_proposal_count()** view — returns `proposals.len()` as `u32` (total proposals created, including cancelled/failed).
-- **get_pending_votes_count(proposal_id)** view — returns the proposal's `pending_vote_count` field as `U64`. Needed for frontends to show "finalization blocked" state.
+- **get_pending_votes_count(proposal_id)** view — returns the proposal's `pending_vote_count` field as `u64` (JS-safe; bounded by `u32` snapshot). Needed for frontends to show "finalization blocked" state.
 
 ### 10.5 Reject List
 
@@ -288,10 +288,10 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - `title: String`
 - `author: String` (display-only)
 - `description: String`
-- `created_at: u64` (nanoseconds)
-- `start_at: u64` (nanoseconds)
-- `ends_at: u64` (nanoseconds)
-- `pending_expires_at: u64` (nanoseconds)
+- `created_at: Timestamp` (nanoseconds; `Timestamp` is `pub type Timestamp = u64` from `near_sdk`)
+- `start_at: Timestamp` (nanoseconds)
+- `ends_at: Timestamp` (nanoseconds)
+- `pending_expires_at: Timestamp` (nanoseconds)
 - `status: ProposalStatus` (Pending, Active, Succeeded, Failed, Cancelled)
 - `failure_kind: Option<FailureKind>` — set when status becomes Failed. Enum: `QuorumNotMet`, `Rejected`, `PendingExpired`, `ZeroSnapshot`, `SnapshotCallbackFailed`.
 - `quorum_bps: u16`
@@ -300,12 +300,12 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - `yes_votes: u64` (final tally)
 - `no_votes: u64` (final tally)
 
-**JSON serialization note**: All `u64` fields above must use `near_sdk::json_types::U64` in JSON-facing types (view responses, event payloads). See Section 11.6 for rationale and implementation guidance.
+**JSON serialization note**: Timestamp fields (`created_at`, `start_at`, `ends_at`, `pending_expires_at`) must use `near_sdk::json_types::U64` in JSON-facing types (nanosecond values exceed JS safe int). Vote count fields (`snapshot_verified_count`, `pending_vote_count`, `yes_votes`, `no_votes`) use native `u64` (bounded by `u32` snapshot, JS-safe). See Section 11.6 for full type discipline.
 
 ### 11.2 Vote
 
 - `choice: Yes | No`
-- `voted_at: u64` (nanoseconds, submission time — copied from `PendingVote.submitted_at` when the callback records the vote, NOT the callback execution time)
+- `voted_at: Timestamp` (nanoseconds, submission time — copied from `PendingVote.submitted_at` when the callback records the vote, NOT the callback execution time)
 
 The `voter` (AccountId) is the key of the per-proposal `IterableMap<AccountId, Vote>`, so it is not stored in the `Vote` struct itself. The `proposal_id` is implicit from which proposal's `IterableMap` the vote belongs to. View methods (`get_vote`, `list_votes`) return a `VoteView` struct that includes `voter` and `proposal_id` for convenience.
 
@@ -325,14 +325,14 @@ All collections use `near_sdk::store` (not the deprecated `near_sdk::collections
 
 #### PendingVote
 
-- `submitted_at: u64` (nanoseconds, `env::block_timestamp()` at `cast_vote` invocation)
+- `submitted_at: Timestamp` (nanoseconds, `env::block_timestamp()` at `cast_vote` invocation; `Timestamp` is `pub type Timestamp = u64` from `near_sdk`)
 - `choice: Yes | No` (voter's choice, stored so the callback reads it from state)
-- `voter_deposit: U128` (deposit attached by the voter, if any; stored for callback refunds and stuck-lock recovery)
+- `voter_deposit: NearToken` (deposit attached by the voter, if any; stored for callback refunds and stuck-lock recovery)
 
 #### PendingBlocklistOp
 
 - `account_id: AccountId`
-- `submitted_at: u64` (nanoseconds, `env::block_timestamp()` at submission)
+- `submitted_at: Timestamp` (nanoseconds, `env::block_timestamp()` at submission)
 - `initiated_by: AccountId` (admin who initiated the operation; needed because the `#[private]` callback's `predecessor_account_id()` is the contract itself, so the original caller must be stored for the `BlocklistAdded { added_by }` event)
 Used only for blocklist add verification; unblocklist is synchronous.
 
@@ -341,12 +341,13 @@ Used only for blocklist add verification; unblocklist is synchronous.
 /// Includes: IterableMap key (AccountId) + value (Vote struct) + IterableMap internal
 /// Vector entry for iteration index + serialization overhead.
 /// IterableMap adds ~40-60 bytes per entry vs LookupMap for the iteration index.
-const ESTIMATED_VOTE_BYTES: u64 = 200;
+/// StorageUsage is `pub type StorageUsage = u64` from `near_sdk` — a documentary alias.
+const ESTIMATED_VOTE_BYTES: StorageUsage = 200;
 
 /// Conservative estimate of pending vote storage size in bytes
-/// Includes: key (u64 + AccountId) + value (PendingVote: u64 + enum + U128) + serialization overhead
+/// Includes: key (u64 + AccountId) + value (PendingVote: u64 + enum + NearToken) + serialization overhead
 /// Pending storage is temporary (cleared when callback completes).
-const ESTIMATED_PENDING_VOTE_BYTES: u64 = 180;
+const ESTIMATED_PENDING_VOTE_BYTES: StorageUsage = 180;
 ```
 
 The deposit check uses `ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES` (= 380 bytes) to cover both the temporary PendingVote written during `cast_vote` and the permanent Vote written during the callback. The PendingVote portion is refunded after the callback measures actual storage delta (with the PendingVote already flushed/removed from trie before the baseline measurement).
@@ -385,38 +386,46 @@ Note: `ProposalVotes` uses a dynamic prefix that includes the `proposal_id`, ens
 | `cancel_proposal` | `proposals` |
 | Snapshot callback | `proposals` |
 
-### 11.6 JSON Serialization Safety (U64/U128 Wrappers)
+### 11.6 JSON Serialization Safety (U64/NearToken Wrappers)
 
 JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 x 10^15). NEAR nanosecond timestamps are approximately 1.7 x 10^18, which **exceeds** the JavaScript safe integer limit by a factor of ~193x. Without proper wrapping, timestamp fields will be silently corrupted when parsed by JavaScript clients.
 
-**Rule**: All `u64` fields in JSON-facing types (view method return types, event payloads, method parameters) must use `near_sdk::json_types::U64`. All `u128` fields must use `near_sdk::json_types::U128`. These wrapper types serialize to JSON strings (e.g., `"1700000000000000000"` instead of `1700000000000000000`), preserving full precision.
+**Rule**: Only use `U64` wrappers for values that can exceed JavaScript's `Number.MAX_SAFE_INTEGER` (2^53 - 1 ≈ 9.0e15). All other integer fields use native types for better JS ergonomics (serialized as JSON numbers, not strings). Token amounts use `NearToken` (the first-party NEAR SDK type), which serializes to JSON as a quoted string of the yoctoNEAR amount — identical to the old `U128` format — providing type safety and direct compatibility with SDK APIs (`env::attached_deposit()`, `Promise::transfer()`, etc.) without manual conversions.
 
-**Borsh storage is unaffected**: `U64` and `U128` implement both `BorshSerialize`/`BorshDeserialize` (as raw integers) and `Serialize`/`Deserialize` (as JSON strings). A single struct can use `U64`/`U128` for both storage and JSON responses. Alternatively, separate Borsh-storage types (using raw `u64`) and JSON-response types (using `U64`) may be used if the developer prefers to keep storage types lean, with conversion between them.
+**Fields requiring U64 wrapping** (nanosecond timestamps, ~1.7e18):
 
-**Fields requiring U64 wrapping in JSON responses** (sorted by severity):
+| Field | Locations |
+|---|---|
+| `created_at` | ProposalView, ProposalCreated event |
+| `start_at` | ProposalView, ProposalCreated event |
+| `ends_at` | ProposalView, ProposalCreated event |
+| `pending_expires_at` | ProposalView, ProposalCreated event |
+| `voted_at` | VoteView, VoteCast event |
 
-| Field | Risk without wrapping | Notes |
-|---|---|---|
-| `created_at` | **Critical** — nanosecond timestamps (~1.7e18) exceed JS safe int | Must use `U64` |
-| `start_at` | **Critical** — same as above | Must use `U64` |
-| `ends_at` | **Critical** — same as above | Must use `U64` |
-| `pending_expires_at` | **Critical** — same as above | Must use `U64` |
-| `voted_at` | **Critical** — same as above | Must use `U64` |
-| `id` / `proposal_id` | N/A — native `u32` (max ~4.29B), JS-safe | Uses native `u32` in views and events (serialized as JSON number). Same reasoning as `quorum_bps: u16`. |
-| `snapshot_verified_count` | Low — sourced from `u32`, max ~4.29B | Use `U64` for consistency |
-| `yes_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
-| `no_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
-| `pending_vote_count` | Low — bounded by snapshot count | Use `U64` for consistency |
-| `voting_period_secs` | Low — max 7,776,000 (~7.8M) | Use `U64` for consistency |
-| `pending_expiry_secs` | Low — max 86,400 | Use `U64` for consistency |
-| `finalize_grace_period_secs` | Low — max 86,400 | Use `U64` for consistency |
-| `max_start_delay_secs` | Low — max 7,776,000 | Use `U64` for consistency |
+**Fields using NearToken** (yoctoNEAR token amounts):
 
-**`get_verified_count() -> u32` from the verified-accounts contract is safe**: `u32` max value is approximately 4.29 x 10^9, well within the JS safe integer range. The governance contract converts this to `u64` for internal storage (`snapshot_verified_count`), but the JSON response must emit it as `U64`.
+| Field | Locations |
+|---|---|
+| `min_proposal_bond` | Config, ConfigUpdated event, init/update params |
+| `voter_deposit` | PendingVote |
+| `deposit_refunded` | PendingVoteCleared event |
 
-**Implementation approach**: Define a `ProposalView` response struct (or use `U64`/`U128` directly in the `Proposal` struct if dual-derive is preferred) with all `u64` fields as `U64` and all `u128` fields as `U128`. View methods return `ProposalView`. Similarly, define `VoteView` with `U64` for `voted_at`, native `u32` for `proposal_id` (JS-safe), `voter: AccountId`, and `choice`.
+`NearToken` serializes to JSON as a quoted string of the yoctoNEAR amount (e.g., `"1000000000000000000000000"` for 1 NEAR), identical to `U128`. No breaking change for frontends or indexers.
 
-**JS-safe native types**: `proposal_id` (`u32`), `quorum_bps` (`u16`), and pagination parameters (`from_index`, `limit`) use native integer types in both storage and JSON-facing interfaces. Their maximum values are well within the JS safe integer range and do not require `U64` wrapping.
+**JS-safe native types** (no wrapping needed):
+
+| Type | Fields | Max value | Rationale |
+|---|---|---|---|
+| `u32` | `proposal_id`, `from_index`, `limit`, `get_proposal_count` | ~4.29B | `Vector` index; JS-safe |
+| `u16` | `quorum_bps` | 10,000 | Basis points; JS-safe |
+| `u64` | `snapshot_verified_count`, `pending_vote_count`, `yes_votes`, `no_votes`, `quorum`, `quorum_required` | ~4.29B (bounded by u32 snapshot) | Vote counts sourced from `u32`; JS-safe |
+| `u64` | `voting_period_secs`, `pending_expiry_secs`, `finalize_grace_period_secs`, `max_start_delay_secs` | 7,776,000 (~7.8M) | Config durations in seconds; JS-safe |
+
+**`get_verified_count() -> u32` from the verified-accounts contract is safe**: `u32` max value is approximately 4.29 x 10^9, well within the JS safe integer range. The governance contract converts this to `u64` for internal storage (`snapshot_verified_count`).
+
+**NEAR SDK type aliases for documentary clarity**: Stored timestamp fields use `Timestamp` (`pub type Timestamp = u64` from `near_sdk`, nanoseconds since epoch) and storage byte constants use `StorageUsage` (`pub type StorageUsage = u64` from `near_sdk`). These are documentary aliases that do not change serialization or runtime behavior — borsh and JSON formats are byte-for-byte identical to raw `u64`. Config fields denominated in seconds (`voting_period_secs`, `pending_expiry_secs`, etc.) remain raw `u64` because the SDK's `Duration` type is defined as nanoseconds, and using it for second-denominated fields would be misleading.
+
+**Implementation approach**: Define a `ProposalView` response struct with `U64` only for timestamp fields. Token amounts use `NearToken` (the NEAR SDK's first-party type), which provides type safety, direct compatibility with SDK APIs, and identical JSON serialization to the old `U128` approach. All other fields use native types. Similarly, `Config` uses native `u64` for duration fields (seconds) and `NearToken` for `min_proposal_bond`. `VoteView` uses `U64` for `voted_at` (timestamp) and native `u32` for `proposal_id`.
 
 ### 11.7 Enum Serialization
 
@@ -508,7 +517,7 @@ Event names and payloads:
 - Use the native `#[near(event_json(standard = "citizens-house-vote"))]` attribute macro from `near-sdk` (v5.24+) to define a single `GovernanceEvent` enum with one variant per event type, each annotated with `#[event_version("1.0.0")]`. This provides `.emit()` and formats `EVENT_JSON` automatically.
 - The macro defaults to `snake_case` naming for struct names or enum variants, which matches the event names above (e.g., `ProposalCreated` -> `proposal_created`).
 - Emit events after state is finalized (e.g., in snapshot/vote callbacks, and after finalize/cancel state transitions), not on request submission. Events must be emitted as the **last operation** in callbacks, after all state changes and checks succeed.
-- **Event payload integer types**: All `u64` values in event payloads (e.g., `created_at`, `start_at`, `ends_at`, `pending_expires_at`, `voted_at`, `yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`) must be serialized as JSON strings using `U64` to prevent silent precision loss in JavaScript indexer clients. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so using `U64`/`U128` types in the event enum variants automatically produces string-encoded integers in the `EVENT_JSON` output. See Section 11.6 for full rationale. Note: `proposal_id` uses native `u32` (max ~4.29B, JS-safe) and is serialized as a JSON number. Similarly, `quorum_bps` is `u16` (max 65,535) and is JS-safe. Both use native types in events and view responses.
+- **Event payload integer types**: Only nanosecond timestamps (`created_at`, `start_at`, `ends_at`, `pending_expires_at`, `voted_at`) use `U64` wrappers in event payloads (serialized as JSON strings to prevent precision loss in JavaScript indexer clients). Token amounts (`min_proposal_bond`, `deposit_refunded`) use `NearToken`, which serializes as a quoted string of the yoctoNEAR amount — identical to the old `U128` format. All other integer fields use native types and serialize as JSON numbers: vote counts (`yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`, `quorum_required`) use native `u64` (bounded by `u32` snapshot, JS-safe); Config durations (`voting_period_secs`, `pending_expiry_secs`, `finalize_grace_period_secs`, `max_start_delay_secs`) use native `u64` (max ~7.8M, JS-safe); `proposal_id` uses native `u32`; `quorum_bps` uses native `u16`. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so `U64` and `NearToken` types automatically produce string-encoded integers while native types produce JSON numbers. See Section 11.6 for full type discipline.
 - **Important**: NEAR logs from failed callbacks are visible to indexers even though state changes are rolled back (nearcore processes logs before checking execution success). If a callback emits an event and then panics, indexers see a phantom event for state changes that never persisted. Indexers must verify receipt execution status before trusting events.
 
 ---

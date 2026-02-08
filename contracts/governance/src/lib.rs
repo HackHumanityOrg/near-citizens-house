@@ -6,11 +6,11 @@
 #![allow(clippy::too_many_arguments)]
 
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
-use near_sdk::json_types::{U128, U64};
+use near_sdk::json_types::U64;
 use near_sdk::store::{IterableMap, IterableSet, LookupMap, Vector};
 use near_sdk::{
     assert_one_yocto, env, ext_contract, near, require, AccountId, BorshStorageKey, Gas,
-    NearSchema, NearToken, PanicOnDefault, Promise, PromiseError,
+    NearSchema, NearToken, PanicOnDefault, Promise, PromiseError, StorageUsage, Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,10 +26,10 @@ const GAS_FOR_BLOCKLIST_CALLBACK: Gas = Gas::from_tgas(20);
 // ==================== Validation Constants ====================
 
 /// Conservative estimate of vote storage size in bytes for deposit checks.
-pub const ESTIMATED_VOTE_BYTES: u64 = 200;
+pub const ESTIMATED_VOTE_BYTES: StorageUsage = 200;
 
 /// Conservative estimate of pending vote storage size in bytes for deposit checks.
-pub const ESTIMATED_PENDING_VOTE_BYTES: u64 = 180;
+pub const ESTIMATED_PENDING_VOTE_BYTES: StorageUsage = 180;
 
 const MAX_TITLE_LEN: usize = 140;
 const MAX_AUTHOR_LEN: usize = 120;
@@ -45,8 +45,8 @@ const MAX_VOTING_PERIOD_SECS: u64 = 7_776_000; // 90 days
 const MIN_PENDING_EXPIRY_SECS: u64 = 300; // 5 minutes
 const MAX_PENDING_EXPIRY_SECS: u64 = 86_400; // 1 day
 
-const MIN_BOND_YOCTO: u128 = 1_000_000_000_000_000_000_000_000; // 1 NEAR
-const MAX_BOND_YOCTO: u128 = 100_000_000_000_000_000_000_000_000; // 100 NEAR
+const MIN_BOND: NearToken = NearToken::from_near(1);
+const MAX_BOND: NearToken = NearToken::from_near(100);
 
 const MIN_GRACE_PERIOD_SECS: u64 = 300; // 5 minutes
 const MAX_GRACE_PERIOD_SECS: u64 = 86_400; // 1 day
@@ -229,11 +229,11 @@ pub enum ProposalCreationFailedReason {
 pub struct Config {
     pub verified_accounts_contract: AccountId,
     pub quorum_bps: u16,
-    pub voting_period_secs: U64,
-    pub pending_expiry_secs: U64,
-    pub min_proposal_bond: U128,
-    pub finalize_grace_period_secs: U64,
-    pub max_start_delay_secs: U64,
+    pub voting_period_secs: u64,
+    pub pending_expiry_secs: u64,
+    pub min_proposal_bond: NearToken,
+    pub finalize_grace_period_secs: u64,
+    pub max_start_delay_secs: u64,
 }
 
 /// Proposal record (stored on-chain, includes per-proposal votes map).
@@ -246,10 +246,10 @@ pub struct Proposal {
     pub title: String,
     pub author: String,
     pub description: String,
-    pub created_at: u64,
-    pub start_at: u64,
-    pub ends_at: u64,
-    pub pending_expires_at: u64,
+    pub created_at: Timestamp,
+    pub start_at: Timestamp,
+    pub ends_at: Timestamp,
+    pub pending_expires_at: Timestamp,
     pub status: ProposalStatus,
     pub failure_kind: Option<FailureKind>,
     pub quorum_bps: u16,
@@ -275,10 +275,10 @@ pub struct ProposalView {
     pub status: ProposalStatus,
     pub failure_kind: Option<FailureKind>,
     pub quorum_bps: u16,
-    pub snapshot_verified_count: U64,
-    pub pending_vote_count: U64,
-    pub yes_votes: U64,
-    pub no_votes: U64,
+    pub snapshot_verified_count: u64,
+    pub pending_vote_count: u64,
+    pub yes_votes: u64,
+    pub no_votes: u64,
 }
 
 /// Vote record (stored in the proposal's IterableMap).
@@ -287,7 +287,7 @@ pub struct ProposalView {
 #[abi(borsh)]
 pub struct Vote {
     pub choice: VoteChoice,
-    pub voted_at: u64,
+    pub voted_at: Timestamp,
 }
 
 /// Vote view (JSON-safe output).
@@ -305,9 +305,9 @@ pub struct VoteView {
 #[borsh(crate = "near_sdk::borsh")]
 #[abi(borsh)]
 pub struct PendingVote {
-    pub submitted_at: u64,
+    pub submitted_at: Timestamp,
     pub choice: VoteChoice,
-    pub voter_deposit: U128,
+    pub voter_deposit: NearToken,
 }
 
 /// Pending blocklist operation (add-only verification).
@@ -317,7 +317,7 @@ pub struct PendingVote {
 #[abi(borsh)]
 pub struct PendingBlocklistOp {
     pub account_id: AccountId,
-    pub submitted_at: u64,
+    pub submitted_at: Timestamp,
     pub initiated_by: AccountId,
 }
 
@@ -361,8 +361,8 @@ pub enum GovernanceEvent {
     #[event_version("1.0.0")]
     ProposalActivated {
         proposal_id: u32,
-        snapshot_verified_count: U64,
-        quorum_required: U64,
+        snapshot_verified_count: u64,
+        quorum_required: u64,
     },
     #[event_version("1.0.0")]
     ProposalCreationFailed {
@@ -378,10 +378,10 @@ pub enum GovernanceEvent {
     ProposalFinalized {
         proposal_id: u32,
         status: ProposalStatus,
-        yes_votes: U64,
-        no_votes: U64,
-        quorum: U64,
-        snapshot_verified_count: U64,
+        yes_votes: u64,
+        no_votes: u64,
+        quorum: u64,
+        snapshot_verified_count: u64,
     },
     #[event_version("1.0.0")]
     VoteCast {
@@ -419,12 +419,12 @@ pub enum GovernanceEvent {
     #[event_version("1.0.0")]
     ConfigUpdated {
         quorum_bps: u16,
-        voting_period_secs: U64,
-        pending_expiry_secs: U64,
+        voting_period_secs: u64,
+        pending_expiry_secs: u64,
         verified_accounts_contract: AccountId,
-        min_proposal_bond: U128,
-        finalize_grace_period_secs: U64,
-        max_start_delay_secs: U64,
+        min_proposal_bond: NearToken,
+        finalize_grace_period_secs: u64,
+        max_start_delay_secs: u64,
         updated_by: AccountId,
     },
     #[event_version("1.0.0")]
@@ -432,7 +432,7 @@ pub enum GovernanceEvent {
         proposal_id: u32,
         account_id: AccountId,
         cleared_by: AccountId,
-        deposit_refunded: U128,
+        deposit_refunded: NearToken,
     },
     #[event_version("1.0.0")]
     PendingProposalExpired {
@@ -505,10 +505,10 @@ impl VersionedContract {
             status: proposal.status.clone(),
             failure_kind: proposal.failure_kind.clone(),
             quorum_bps: proposal.quorum_bps,
-            snapshot_verified_count: U64(proposal.snapshot_verified_count),
-            pending_vote_count: U64(proposal.pending_vote_count),
-            yes_votes: U64(proposal.yes_votes),
-            no_votes: U64(proposal.no_votes),
+            snapshot_verified_count: proposal.snapshot_verified_count,
+            pending_vote_count: proposal.pending_vote_count,
+            yes_votes: proposal.yes_votes,
+            no_votes: proposal.no_votes,
         }
     }
 
@@ -548,11 +548,11 @@ impl VersionedContract {
         verified_accounts_contract: AccountId,
         admins: Vec<AccountId>,
         quorum_bps: u16,
-        voting_period_secs: U64,
-        pending_expiry_secs: U64,
-        min_proposal_bond: U128,
-        finalize_grace_period_secs: U64,
-        max_start_delay_secs: U64,
+        voting_period_secs: u64,
+        pending_expiry_secs: u64,
+        min_proposal_bond: NearToken,
+        finalize_grace_period_secs: u64,
+        max_start_delay_secs: u64,
     ) -> Self {
         require!(!admins.is_empty(), ERR_NO_ADMINS);
         require!(
@@ -560,23 +560,23 @@ impl VersionedContract {
             ERR_QUORUM_BPS_OUT_OF_RANGE
         );
         require!(
-            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&voting_period_secs.0),
+            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&voting_period_secs),
             ERR_VOTING_PERIOD_OUT_OF_RANGE
         );
         require!(
-            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&pending_expiry_secs.0),
+            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&pending_expiry_secs),
             ERR_PENDING_EXPIRY_OUT_OF_RANGE
         );
         require!(
-            (MIN_BOND_YOCTO..=MAX_BOND_YOCTO).contains(&min_proposal_bond.0),
+            min_proposal_bond >= MIN_BOND && min_proposal_bond <= MAX_BOND,
             ERR_MIN_BOND_OUT_OF_RANGE
         );
         require!(
-            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&finalize_grace_period_secs.0),
+            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&finalize_grace_period_secs),
             ERR_GRACE_PERIOD_OUT_OF_RANGE
         );
         require!(
-            max_start_delay_secs.0 <= MAX_START_DELAY_SECS,
+            max_start_delay_secs <= MAX_START_DELAY_SECS,
             ERR_MAX_START_DELAY_OUT_OF_RANGE
         );
 
@@ -691,7 +691,7 @@ impl VersionedContract {
         let deposit = env::attached_deposit();
         let contract = self.contract();
         require!(
-            deposit.as_yoctonear() >= contract.config.min_proposal_bond.0,
+            deposit >= contract.config.min_proposal_bond,
             ERR_INSUFFICIENT_BOND
         );
 
@@ -720,7 +720,6 @@ impl VersionedContract {
                 contract
                     .config
                     .max_start_delay_secs
-                    .0
                     .checked_mul(NANOS_PER_SEC)
                     .unwrap_or_else(|| env::panic_str("start delay overflow")),
             )
@@ -733,7 +732,6 @@ impl VersionedContract {
                 contract
                     .config
                     .voting_period_secs
-                    .0
                     .checked_mul(NANOS_PER_SEC)
                     .unwrap_or_else(|| env::panic_str("voting period overflow")),
             )
@@ -743,7 +741,6 @@ impl VersionedContract {
                 contract
                     .config
                     .pending_expiry_secs
-                    .0
                     .checked_mul(NANOS_PER_SEC)
                     .unwrap_or_else(|| env::panic_str("pending expiry overflow")),
             )
@@ -891,8 +888,8 @@ impl VersionedContract {
         .emit();
 
         // Refund deposit if any
-        if deposit_refunded.0 > 0 {
-            Promise::new(account_id).transfer(NearToken::from_yoctonear(deposit_refunded.0)).detach();
+        if !deposit_refunded.is_zero() {
+            Promise::new(account_id).transfer(deposit_refunded).detach();
         }
     }
 
@@ -918,7 +915,6 @@ impl VersionedContract {
                     contract
                         .config
                         .finalize_grace_period_secs
-                        .0
                         .checked_mul(NANOS_PER_SEC)
                         .unwrap_or_else(|| env::panic_str("grace period overflow")),
                 )
@@ -936,10 +932,10 @@ impl VersionedContract {
             GovernanceEvent::ProposalFinalized {
                 proposal_id,
                 status: ProposalStatus::Failed,
-                yes_votes: U64(proposal.yes_votes),
-                no_votes: U64(proposal.no_votes),
-                quorum: U64(0),
-                snapshot_verified_count: U64(0),
+                yes_votes: proposal.yes_votes,
+                no_votes: proposal.no_votes,
+                quorum: 0,
+                snapshot_verified_count: 0,
             }
             .emit();
             return;
@@ -968,10 +964,10 @@ impl VersionedContract {
         GovernanceEvent::ProposalFinalized {
             proposal_id,
             status,
-            yes_votes: U64(proposal.yes_votes),
-            no_votes: U64(proposal.no_votes),
-            quorum: U64(quorum_required),
-            snapshot_verified_count: U64(proposal.snapshot_verified_count),
+            yes_votes: proposal.yes_votes,
+            no_votes: proposal.no_votes,
+            quorum: quorum_required,
+            snapshot_verified_count: proposal.snapshot_verified_count,
         }
         .emit();
     }
@@ -1009,13 +1005,13 @@ impl VersionedContract {
         self.contract().proposals.len()
     }
 
-    pub fn get_pending_votes_count(&self, proposal_id: u32) -> U64 {
+    pub fn get_pending_votes_count(&self, proposal_id: u32) -> u64 {
         let contract = self.contract();
         let proposal = contract
             .proposals
             .get(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
-        U64(proposal.pending_vote_count)
+        proposal.pending_vote_count
     }
 
     // ==================== Voting ====================
@@ -1057,21 +1053,11 @@ impl VersionedContract {
         // Excess is refunded after the callback measures actual storage delta.
         let estimated_bytes = ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES;
         let storage_cost = env::storage_byte_cost().saturating_mul(estimated_bytes as u128);
-        let available = NearToken::from_yoctonear(
-            env::account_balance()
-                .as_yoctonear()
-                .saturating_sub(
-                    env::storage_byte_cost()
-                        .saturating_mul(env::storage_usage() as u128)
-                        .as_yoctonear(),
-                ),
-        );
+        let staked_storage = env::storage_byte_cost().saturating_mul(env::storage_usage() as u128);
+        let available = env::account_balance().saturating_sub(staked_storage);
 
-        if available.as_yoctonear() < storage_cost.as_yoctonear() {
-            require!(
-                deposit.as_yoctonear() >= storage_cost.as_yoctonear(),
-                ERR_INSUFFICIENT_DEPOSIT
-            );
+        if available < storage_cost {
+            require!(deposit >= storage_cost, ERR_INSUFFICIENT_DEPOSIT);
         }
 
         let verified_accounts_contract = contract.config.verified_accounts_contract.clone();
@@ -1083,7 +1069,7 @@ impl VersionedContract {
             Some(PendingVote {
                 submitted_at: now,
                 choice,
-                voter_deposit: U128(deposit.as_yoctonear()),
+                voter_deposit: deposit,
             }),
         );
 
@@ -1159,16 +1145,9 @@ impl VersionedContract {
     pub fn is_vote_free(&self, _proposal_id: u32) -> bool {
         let estimated_bytes = ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES;
         let storage_cost = env::storage_byte_cost().saturating_mul(estimated_bytes as u128);
-        let available = NearToken::from_yoctonear(
-            env::account_balance()
-                .as_yoctonear()
-                .saturating_sub(
-                    env::storage_byte_cost()
-                        .saturating_mul(env::storage_usage() as u128)
-                        .as_yoctonear(),
-                ),
-        );
-        available.as_yoctonear() >= storage_cost.as_yoctonear()
+        let staked_storage = env::storage_byte_cost().saturating_mul(env::storage_usage() as u128);
+        let available = env::account_balance().saturating_sub(staked_storage);
+        available >= storage_cost
     }
 
     // ==================== Blocklist ====================
@@ -1268,7 +1247,7 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_voting_period_secs(&mut self, new_period_secs: U64) {
+    pub fn update_voting_period_secs(&mut self, new_period_secs: u64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
@@ -1276,7 +1255,7 @@ impl VersionedContract {
             ERR_CONFIG_LOCKED
         );
         require!(
-            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&new_period_secs.0),
+            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&new_period_secs),
             ERR_VOTING_PERIOD_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1285,11 +1264,11 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_pending_expiry_secs(&mut self, new_period_secs: U64) {
+    pub fn update_pending_expiry_secs(&mut self, new_period_secs: u64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
-            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&new_period_secs.0),
+            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&new_period_secs),
             ERR_PENDING_EXPIRY_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1311,11 +1290,11 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_min_proposal_bond(&mut self, new_min: U128) {
+    pub fn update_min_proposal_bond(&mut self, new_min: NearToken) {
         assert_one_yocto();
         self.assert_admin();
         require!(
-            (MIN_BOND_YOCTO..=MAX_BOND_YOCTO).contains(&new_min.0),
+            new_min >= MIN_BOND && new_min <= MAX_BOND,
             ERR_MIN_BOND_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1324,11 +1303,11 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_finalize_grace_period_secs(&mut self, new_period_secs: U64) {
+    pub fn update_finalize_grace_period_secs(&mut self, new_period_secs: u64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
-            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&new_period_secs.0),
+            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&new_period_secs),
             ERR_GRACE_PERIOD_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1337,11 +1316,11 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_max_start_delay_secs(&mut self, new_period_secs: U64) {
+    pub fn update_max_start_delay_secs(&mut self, new_period_secs: u64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
-            new_period_secs.0 <= MAX_START_DELAY_SECS,
+            new_period_secs <= MAX_START_DELAY_SECS,
             ERR_MAX_START_DELAY_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1428,8 +1407,8 @@ impl VersionedContract {
         let quorum_required = Self::require_quorum_count(effective, quorum_bps);
         GovernanceEvent::ProposalActivated {
             proposal_id,
-            snapshot_verified_count: U64(effective),
-            quorum_required: U64(quorum_required),
+            snapshot_verified_count: effective,
+            quorum_required,
         }
         .emit();
 
@@ -1457,15 +1436,15 @@ impl VersionedContract {
 
         let submitted_at = pending_vote.submitted_at;
         let choice = pending_vote.choice;
-        let voter_deposit = pending_vote.voter_deposit.0;
+        let voter_deposit = pending_vote.voter_deposit;
 
         // Decrement pending_vote_count
         let proposal = match contract.proposals.get_mut(proposal_id) {
             Some(p) => p,
             None => {
                 // Proposal somehow missing — refund
-                if voter_deposit > 0 {
-                    Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
                 return false;
             }
@@ -1489,8 +1468,8 @@ impl VersionedContract {
                     reason: VoteRejectionReason::ProposalCancelled,
                 }
                 .emit();
-                if voter_deposit > 0 {
-                    Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
                 return false;
             }
@@ -1501,15 +1480,15 @@ impl VersionedContract {
                     reason: VoteRejectionReason::PostFinalize,
                 }
                 .emit();
-                if voter_deposit > 0 {
-                    Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
                 return false;
             }
             ProposalStatus::Pending => {
                 // Should not normally happen but reject gracefully
-                if voter_deposit > 0 {
-                    Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
                 return false;
             }
@@ -1525,8 +1504,8 @@ impl VersionedContract {
                     reason: VoteRejectionReason::CallbackFailed,
                 }
                 .emit();
-                if voter_deposit > 0 {
-                    Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
                 return false;
             }
@@ -1542,8 +1521,8 @@ impl VersionedContract {
                     reason: VoteRejectionReason::NotVerified,
                 }
                 .emit();
-                if voter_deposit > 0 {
-                    Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
                 return false;
             }
@@ -1557,8 +1536,8 @@ impl VersionedContract {
                 reason: VoteRejectionReason::VerifiedAfterCreation,
             }
             .emit();
-            if voter_deposit > 0 {
-                Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+            if !voter_deposit.is_zero() {
+                Promise::new(voter).transfer(voter_deposit).detach();
             }
             return false;
         }
@@ -1571,8 +1550,8 @@ impl VersionedContract {
                 reason: VoteRejectionReason::ProposalExpired,
             }
             .emit();
-            if voter_deposit > 0 {
-                Promise::new(voter).transfer(NearToken::from_yoctonear(voter_deposit)).detach();
+            if !voter_deposit.is_zero() {
+                Promise::new(voter).transfer(voter_deposit).detach();
             }
             return false;
         }
@@ -1622,9 +1601,7 @@ impl VersionedContract {
 
         let storage_after = env::storage_usage();
         let storage_delta = storage_after.saturating_sub(storage_before);
-        let actual_cost = env::storage_byte_cost()
-            .saturating_mul(storage_delta as u128)
-            .as_yoctonear();
+        let actual_cost = env::storage_byte_cost().saturating_mul(storage_delta as u128);
         let refund = voter_deposit.saturating_sub(actual_cost);
 
         GovernanceEvent::VoteCast {
@@ -1635,8 +1612,8 @@ impl VersionedContract {
         }
         .emit();
 
-        if refund > 0 {
-            Promise::new(voter).transfer(NearToken::from_yoctonear(refund)).detach();
+        if !refund.is_zero() {
+            Promise::new(voter).transfer(refund).detach();
         }
 
         true
