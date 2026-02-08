@@ -173,15 +173,15 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 ### 10.1 Initialization
 
-- Must initialize with:
+- Must initialize with (all parameters are required; recommended deployment values shown in parentheses):
   - `verified_accounts_contract: AccountId`
   - `admins: Vec<AccountId>` (must include at least one)
-  - `quorum_bps: u16` (default 700)
-  - `voting_period_secs: u64` (default 14 days)
-  - `pending_expiry_secs: u64` (default 3600 = 1 hour)
-  - `min_proposal_bond: U128` (default 1 NEAR) — minimum bond; proposers may attach more
-  - `finalize_grace_period_secs: u64` (default 3600 = 1 hour) — after `ends_at + grace_period`, finalize proceeds even with pending votes
-  - `max_start_delay_secs: u64` (default 7,776,000 = 90 days) — max allowed delay from `created_at` to `start_at`
+  - `quorum_bps: u16` (recommended: 700)
+  - `voting_period_secs: u64` (recommended: 1,209,600 = 14 days)
+  - `pending_expiry_secs: u64` (recommended: 3600 = 1 hour)
+  - `min_proposal_bond: U128` (recommended: 1 NEAR) — minimum bond; proposers may attach more
+  - `finalize_grace_period_secs: u64` (recommended: 3600 = 1 hour) — after `ends_at + grace_period`, finalize proceeds even with pending votes
+  - `max_start_delay_secs: u64` (recommended: 7,776,000 = 90 days) — max allowed delay from `created_at` to `start_at`
 
 ### 10.2 Admin Management
 
@@ -293,7 +293,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - `ends_at: u64` (nanoseconds)
 - `pending_expires_at: u64` (nanoseconds)
 - `status: ProposalStatus` (Pending, Active, Succeeded, Failed, Cancelled)
-- `failure_kind: Option<FailureKind>` — set when status becomes Failed. Enum: `QuorumNotMet`, `Rejected`, `PendingExpired`, `ZeroSnapshot`.
+- `failure_kind: Option<FailureKind>` — set when status becomes Failed. Enum: `QuorumNotMet`, `Rejected`, `PendingExpired`, `ZeroSnapshot`, `SnapshotCallbackFailed`.
 - `quorum_bps: u16`
 - `snapshot_verified_count: u64`
 - `pending_vote_count: u64` (number of in-flight vote locks for this proposal; incremented when `cast_vote` sets a pending lock, decremented when the vote callback succeeds/fails or when `clear_stale_pending_vote` is called; used by `get_pending_votes_count` view method)
@@ -333,6 +333,7 @@ All collections use `near_sdk::store` (not the deprecated `near_sdk::collections
 
 - `account_id: AccountId`
 - `submitted_at: u64` (nanoseconds, `env::block_timestamp()` at submission)
+- `initiated_by: AccountId` (admin who initiated the operation; needed because the `#[private]` callback's `predecessor_account_id()` is the contract itself, so the original caller must be stored for the `BlocklistAdded { added_by }` event)
 Used only for blocklist add verification; unblocklist is synchronous.
 
 ```rust
@@ -360,13 +361,12 @@ enum StorageKey {
     Proposals,
     ProposalVotes { proposal_id: u64 },
     PendingVotes,
-    PendingBlocklistOp,
     Admins,
     Blocklist,
 }
 ```
 
-Note: `ProposalVotes` uses a dynamic prefix that includes the `proposal_id`, ensuring each proposal's `IterableMap` has a unique storage namespace. The `Votes` key is no longer needed (there is no global votes collection).
+Note: `ProposalVotes` uses a dynamic prefix that includes the `proposal_id`, ensuring each proposal's `IterableMap` has a unique storage namespace. The `Votes` key is no longer needed (there is no global votes collection). `pending_blocklist_op` is stored as an `Option<PendingBlocklistOp>` field on the contract struct (not a collection), so it does not need a separate storage key.
 
 ### 11.5 Collection Caching and Flush Discipline
 
@@ -498,7 +498,7 @@ Event names and payloads:
 - Use the native `#[near(event_json(standard = "citizens-house-vote"))]` attribute macro from `near-sdk` (v5.24+) to define a single `GovernanceEvent` enum with one variant per event type, each annotated with `#[event_version("1.0.0")]`. This provides `.emit()` and formats `EVENT_JSON` automatically.
 - The macro defaults to `snake_case` naming for struct names or enum variants, which matches the event names above (e.g., `ProposalCreated` -> `proposal_created`).
 - Emit events after state is finalized (e.g., in snapshot/vote callbacks, and after finalize/cancel state transitions), not on request submission. Events must be emitted as the **last operation** in callbacks, after all state changes and checks succeed.
-- **Event payload integer types**: All `u64` values in event payloads (e.g., `proposal_id`, `created_at`, `start_at`, `ends_at`, `pending_expires_at`, `voted_at`, `yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`, `quorum_bps`) must be serialized as JSON strings using `U64` to prevent silent precision loss in JavaScript indexer clients. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so using `U64`/`U128` types in the event enum variants automatically produces string-encoded integers in the `EVENT_JSON` output. See Section 11.6 for full rationale.
+- **Event payload integer types**: All `u64` values in event payloads (e.g., `proposal_id`, `created_at`, `start_at`, `ends_at`, `pending_expires_at`, `voted_at`, `yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`) must be serialized as JSON strings using `U64` to prevent silent precision loss in JavaScript indexer clients. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so using `U64`/`U128` types in the event enum variants automatically produces string-encoded integers in the `EVENT_JSON` output. See Section 11.6 for full rationale. Note: `quorum_bps` is `u16` (max 65,535) and is JS-safe, so it uses native `u16` in both events and view responses (serialized as a JSON number, not a string).
 - **Important**: NEAR logs from failed callbacks are visible to indexers even though state changes are rolled back (nearcore processes logs before checking execution success). If a callback emits an event and then panics, indexers see a phantom event for state changes that never persisted. Indexers must verify receipt execution status before trusting events.
 
 ---
