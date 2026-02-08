@@ -34,7 +34,7 @@ pub const ESTIMATED_PENDING_VOTE_BYTES: u64 = 180;
 const MAX_TITLE_LEN: usize = 140;
 const MAX_AUTHOR_LEN: usize = 120;
 const MAX_DESCRIPTION_LEN: usize = 10_000;
-const MAX_PAGINATION_LIMIT: u64 = 100;
+const MAX_PAGINATION_LIMIT: u32 = 100;
 
 const MIN_QUORUM_BPS: u16 = 1;
 const MAX_QUORUM_BPS: u16 = 10_000;
@@ -106,6 +106,11 @@ pub const ERR_MAX_START_DELAY_OUT_OF_RANGE: &str = "ERR_MAX_START_DELAY_OUT_OF_R
 // Admin recovery
 pub const ERR_PENDING_VOTE_NOT_FOUND: &str = "ERR_PENDING_VOTE_NOT_FOUND";
 
+// Proposal field validation
+pub const ERR_TITLE_EMPTY: &str = "ERR_TITLE_EMPTY";
+pub const ERR_AUTHOR_EMPTY: &str = "ERR_AUTHOR_EMPTY";
+pub const ERR_DESCRIPTION_EMPTY: &str = "ERR_DESCRIPTION_EMPTY";
+
 // Pagination
 pub const ERR_LIMIT_TOO_LARGE: &str = "ERR_LIMIT_TOO_LARGE";
 
@@ -119,7 +124,7 @@ pub const ERR_ZERO_SNAPSHOT: &str = "ERR_ZERO_SNAPSHOT";
 #[borsh(crate = "near_sdk::borsh")]
 pub enum StorageKey {
     Proposals,
-    ProposalVotes { proposal_id: u64 },
+    ProposalVotes { proposal_id: u32 },
     PendingVotes,
     Admins,
     Blocklist,
@@ -186,6 +191,7 @@ pub enum FailureKind {
     Eq,
 )]
 #[borsh(crate = "near_sdk::borsh")]
+#[serde(rename_all = "snake_case")]
 #[abi(json)]
 #[abi(borsh)]
 pub enum VoteChoice {
@@ -194,18 +200,7 @@ pub enum VoteChoice {
 }
 
 /// Reason a vote was rejected during the verification callback.
-#[derive(
-    BorshDeserialize,
-    BorshSerialize,
-    Serialize,
-    Deserialize,
-    NearSchema,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-)]
-#[borsh(crate = "near_sdk::borsh")]
+#[derive(Serialize, Deserialize, NearSchema, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[abi(json)]
 pub enum VoteRejectionReason {
@@ -218,18 +213,7 @@ pub enum VoteRejectionReason {
 }
 
 /// Reason proposal creation failed during the snapshot callback.
-#[derive(
-    BorshDeserialize,
-    BorshSerialize,
-    Serialize,
-    Deserialize,
-    NearSchema,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-)]
-#[borsh(crate = "near_sdk::borsh")]
+#[derive(Serialize, Deserialize, NearSchema, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[abi(json)]
 pub enum ProposalCreationFailedReason {
@@ -257,7 +241,7 @@ pub struct Config {
 #[borsh(crate = "near_sdk::borsh")]
 #[abi(borsh)]
 pub struct Proposal {
-    pub id: u64,
+    pub id: u32,
     pub creator: AccountId,
     pub title: String,
     pub author: String,
@@ -279,7 +263,7 @@ pub struct Proposal {
 /// Proposal view (JSON-safe output, no embedded votes map).
 #[derive(Serialize, Deserialize, NearSchema, Clone, Debug)]
 pub struct ProposalView {
-    pub id: U64,
+    pub id: u32,
     pub creator: AccountId,
     pub title: String,
     pub author: String,
@@ -309,7 +293,7 @@ pub struct Vote {
 /// Vote view (JSON-safe output).
 #[derive(Serialize, Deserialize, NearSchema, Clone, Debug)]
 pub struct VoteView {
-    pub proposal_id: U64,
+    pub proposal_id: u32,
     pub voter: AccountId,
     pub choice: VoteChoice,
     pub voted_at: U64,
@@ -338,7 +322,7 @@ pub struct PendingBlocklistOp {
 }
 
 /// Key for the global pending votes map: (proposal_id, voter).
-pub type PendingVoteKey = (u64, AccountId);
+pub type PendingVoteKey = (u32, AccountId);
 
 /// Contract state V1 (current version).
 #[near]
@@ -366,7 +350,7 @@ pub type Contract = ContractV1;
 pub enum GovernanceEvent {
     #[event_version("1.0.0")]
     ProposalCreated {
-        proposal_id: U64,
+        proposal_id: u32,
         creator: AccountId,
         created_at: U64,
         start_at: U64,
@@ -376,23 +360,23 @@ pub enum GovernanceEvent {
     },
     #[event_version("1.0.0")]
     ProposalActivated {
-        proposal_id: U64,
+        proposal_id: u32,
         snapshot_verified_count: U64,
         quorum_required: U64,
     },
     #[event_version("1.0.0")]
     ProposalCreationFailed {
-        proposal_id: U64,
+        proposal_id: u32,
         reason: ProposalCreationFailedReason,
     },
     #[event_version("1.0.0")]
     ProposalCancelled {
-        proposal_id: U64,
+        proposal_id: u32,
         cancelled_by: AccountId,
     },
     #[event_version("1.0.0")]
     ProposalFinalized {
-        proposal_id: U64,
+        proposal_id: u32,
         status: ProposalStatus,
         yes_votes: U64,
         no_votes: U64,
@@ -401,14 +385,14 @@ pub enum GovernanceEvent {
     },
     #[event_version("1.0.0")]
     VoteCast {
-        proposal_id: U64,
+        proposal_id: u32,
         voter: AccountId,
         choice: VoteChoice,
         voted_at: U64,
     },
     #[event_version("1.0.0")]
     VoteRejected {
-        proposal_id: U64,
+        proposal_id: u32,
         voter: AccountId,
         reason: VoteRejectionReason,
     },
@@ -445,14 +429,14 @@ pub enum GovernanceEvent {
     },
     #[event_version("1.0.0")]
     PendingVoteCleared {
-        proposal_id: U64,
+        proposal_id: u32,
         account_id: AccountId,
         cleared_by: AccountId,
         deposit_refunded: U128,
     },
     #[event_version("1.0.0")]
     PendingProposalExpired {
-        proposal_id: U64,
+        proposal_id: u32,
         expired_by: AccountId,
     },
 }
@@ -461,10 +445,10 @@ pub enum GovernanceEvent {
 #[ext_contract(ext_self)]
 pub trait GovernanceCallbacks {
     /// Snapshot callback after get_verified_count().
-    fn on_snapshot(&mut self, proposal_id: U64) -> bool;
+    fn on_snapshot(&mut self, proposal_id: u32) -> bool;
 
     /// Vote verification callback after get_verification().
-    fn on_vote_verification(&mut self, proposal_id: U64, voter: AccountId) -> bool;
+    fn on_vote_verification(&mut self, proposal_id: u32, voter: AccountId) -> bool;
 
     /// Blocklist verification callback after get_verification().
     fn on_blocklist_verification(&mut self, account_id: AccountId) -> bool;
@@ -509,7 +493,7 @@ impl VersionedContract {
 
     fn proposal_to_view(proposal: &Proposal) -> ProposalView {
         ProposalView {
-            id: U64(proposal.id),
+            id: proposal.id,
             creator: proposal.creator.clone(),
             title: proposal.title.clone(),
             author: proposal.author.clone(),
@@ -668,13 +652,13 @@ impl VersionedContract {
         self.contract().admins.contains(&account_id)
     }
 
-    pub fn list_admins(&self, from_index: U64, limit: u64) -> Vec<AccountId> {
+    pub fn list_admins(&self, from_index: u32, limit: u32) -> Vec<AccountId> {
         require!(limit <= MAX_PAGINATION_LIMIT, ERR_LIMIT_TOO_LARGE);
         let contract = self.contract();
         contract
             .admins
             .iter()
-            .skip(from_index.0 as usize)
+            .skip(from_index as usize)
             .take(limit as usize)
             .cloned()
             .collect()
@@ -689,10 +673,13 @@ impl VersionedContract {
         author: String,
         description: String,
         start_at: Option<U64>,
-    ) -> U64 {
+    ) -> u32 {
         self.assert_admin();
 
         // Validate field lengths
+        require!(!title.is_empty(), ERR_TITLE_EMPTY);
+        require!(!author.is_empty(), ERR_AUTHOR_EMPTY);
+        require!(!description.is_empty(), ERR_DESCRIPTION_EMPTY);
         require!(title.len() <= MAX_TITLE_LEN, ERR_TITLE_TOO_LONG);
         require!(author.len() <= MAX_AUTHOR_LEN, ERR_AUTHOR_TOO_LONG);
         require!(
@@ -767,7 +754,7 @@ impl VersionedContract {
 
         // Build proposal
         let contract = self.contract_mut();
-        let proposal_id = contract.proposals.len() as u64;
+        let proposal_id = contract.proposals.len();
         let creator = env::predecessor_account_id();
 
         contract.proposals.push(Proposal {
@@ -794,7 +781,7 @@ impl VersionedContract {
         contract.proposals.flush();
 
         GovernanceEvent::ProposalCreated {
-            proposal_id: U64(proposal_id),
+            proposal_id,
             creator,
             created_at: U64(created_at),
             start_at: U64(effective_start_at),
@@ -810,21 +797,21 @@ impl VersionedContract {
             .then(
                 ext_self::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_SNAPSHOT_CALLBACK)
-                    .on_snapshot(U64(proposal_id)),
+                    .on_snapshot(proposal_id),
             )
             .detach();
 
-        U64(proposal_id)
+        proposal_id
     }
 
     #[payable]
-    pub fn cancel_proposal(&mut self, proposal_id: U64) {
+    pub fn cancel_proposal(&mut self, proposal_id: u32) {
         assert_one_yocto();
         self.assert_admin();
         let contract = self.contract_mut();
         let proposal = contract
             .proposals
-            .get_mut(proposal_id.0 as u32)
+            .get_mut(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         match proposal.status {
             ProposalStatus::Succeeded | ProposalStatus::Failed => {
@@ -844,14 +831,14 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn expire_pending_proposal(&mut self, proposal_id: U64) {
+    pub fn expire_pending_proposal(&mut self, proposal_id: u32) {
         assert_one_yocto();
         self.assert_admin();
         let now = env::block_timestamp();
         let contract = self.contract_mut();
         let proposal = contract
             .proposals
-            .get_mut(proposal_id.0 as u32)
+            .get_mut(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         require!(
             proposal.status == ProposalStatus::Pending,
@@ -868,7 +855,7 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn clear_stale_pending_vote(&mut self, proposal_id: U64, account_id: AccountId) {
+    pub fn clear_stale_pending_vote(&mut self, proposal_id: u32, account_id: AccountId) {
         assert_one_yocto();
         self.assert_admin();
         let contract = self.contract_mut();
@@ -876,11 +863,11 @@ impl VersionedContract {
         // Verify proposal exists
         let _proposal = contract
             .proposals
-            .get(proposal_id.0 as u32)
+            .get(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
 
         // Remove pending vote
-        let key = (proposal_id.0, account_id.clone());
+        let key = (proposal_id, account_id.clone());
         let pending_vote = contract
             .pending_votes
             .remove(&key)
@@ -889,7 +876,7 @@ impl VersionedContract {
         // Decrement pending_vote_count
         let proposal = contract
             .proposals
-            .get_mut(proposal_id.0 as u32)
+            .get_mut(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         proposal.pending_vote_count = proposal.pending_vote_count.saturating_sub(1);
 
@@ -909,12 +896,12 @@ impl VersionedContract {
         }
     }
 
-    pub fn finalize_proposal(&mut self, proposal_id: U64) {
+    pub fn finalize_proposal(&mut self, proposal_id: u32) {
         let now = env::block_timestamp();
         let contract = self.contract_mut();
         let proposal = contract
             .proposals
-            .get_mut(proposal_id.0 as u32)
+            .get_mut(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
 
         require!(
@@ -989,28 +976,28 @@ impl VersionedContract {
         .emit();
     }
 
-    pub fn get_proposal(&self, proposal_id: U64) -> Option<ProposalView> {
+    pub fn get_proposal(&self, proposal_id: u32) -> Option<ProposalView> {
         let contract = self.contract();
         contract
             .proposals
-            .get(proposal_id.0 as u32)
+            .get(proposal_id)
             .map(Self::proposal_to_view)
     }
 
-    pub fn list_proposals(&self, from_index: U64, limit: u64) -> Vec<ProposalView> {
+    pub fn list_proposals(&self, from_index: u32, limit: u32) -> Vec<ProposalView> {
         require!(limit <= MAX_PAGINATION_LIMIT, ERR_LIMIT_TOO_LARGE);
         let contract = self.contract();
-        let len = contract.proposals.len() as u64;
-        let start = from_index.0;
+        let len = contract.proposals.len();
+        let start = from_index;
         let end = len.min(
             start
                 .checked_add(limit)
                 .unwrap_or_else(|| env::panic_str("pagination overflow")),
         );
-        let mut result = Vec::with_capacity((end.saturating_sub(start)) as usize);
+        let mut result = Vec::with_capacity(end.saturating_sub(start) as usize);
         let mut i = start;
         while i < end {
-            if let Some(proposal) = contract.proposals.get(i as u32) {
+            if let Some(proposal) = contract.proposals.get(i) {
                 result.push(Self::proposal_to_view(proposal));
             }
             i = i.checked_add(1).unwrap_or_else(|| env::panic_str("overflow"));
@@ -1018,15 +1005,15 @@ impl VersionedContract {
         result
     }
 
-    pub fn get_proposal_count(&self) -> U64 {
-        U64(self.contract().proposals.len() as u64)
+    pub fn get_proposal_count(&self) -> u32 {
+        self.contract().proposals.len()
     }
 
-    pub fn get_pending_votes_count(&self, proposal_id: U64) -> U64 {
+    pub fn get_pending_votes_count(&self, proposal_id: u32) -> U64 {
         let contract = self.contract();
         let proposal = contract
             .proposals
-            .get(proposal_id.0 as u32)
+            .get(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         U64(proposal.pending_vote_count)
     }
@@ -1034,7 +1021,7 @@ impl VersionedContract {
     // ==================== Voting ====================
 
     #[payable]
-    pub fn cast_vote(&mut self, proposal_id: U64, choice: VoteChoice) {
+    pub fn cast_vote(&mut self, proposal_id: u32, choice: VoteChoice) {
         let voter = env::predecessor_account_id();
         let deposit = env::attached_deposit();
         let now = env::block_timestamp();
@@ -1044,7 +1031,7 @@ impl VersionedContract {
         // Check proposal exists and is active
         let proposal = contract
             .proposals
-            .get(proposal_id.0 as u32)
+            .get(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         require!(
             proposal.status == ProposalStatus::Active,
@@ -1060,7 +1047,7 @@ impl VersionedContract {
         require!(!proposal.votes.contains_key(&voter), ERR_ALREADY_VOTED);
 
         // Check no pending vote
-        let pending_key = (proposal_id.0, voter.clone());
+        let pending_key = (proposal_id, voter.clone());
         require!(
             !contract.pending_votes.contains_key(&pending_key),
             ERR_VOTE_ALREADY_PENDING
@@ -1092,7 +1079,7 @@ impl VersionedContract {
         // Record pending vote
         let contract = self.contract_mut();
         contract.pending_votes.set(
-            (proposal_id.0, voter.clone()),
+            (proposal_id, voter.clone()),
             Some(PendingVote {
                 submitted_at: now,
                 choice,
@@ -1103,7 +1090,7 @@ impl VersionedContract {
         // Increment pending_vote_count
         let proposal = contract
             .proposals
-            .get_mut(proposal_id.0 as u32)
+            .get_mut(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         proposal.pending_vote_count = proposal
             .pending_vote_count
@@ -1125,20 +1112,20 @@ impl VersionedContract {
             .detach();
     }
 
-    pub fn has_voted(&self, proposal_id: U64, account_id: AccountId) -> bool {
+    pub fn has_voted(&self, proposal_id: u32, account_id: AccountId) -> bool {
         let contract = self.contract();
         let proposal = contract
             .proposals
-            .get(proposal_id.0 as u32)
+            .get(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         proposal.votes.contains_key(&account_id)
     }
 
-    pub fn get_vote(&self, proposal_id: U64, account_id: AccountId) -> Option<VoteView> {
+    pub fn get_vote(&self, proposal_id: u32, account_id: AccountId) -> Option<VoteView> {
         let contract = self.contract();
         let proposal = contract
             .proposals
-            .get(proposal_id.0 as u32)
+            .get(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         proposal.votes.get(&account_id).map(|vote| VoteView {
             proposal_id,
@@ -1148,17 +1135,17 @@ impl VersionedContract {
         })
     }
 
-    pub fn list_votes(&self, proposal_id: U64, from_index: U64, limit: u64) -> Vec<VoteView> {
+    pub fn list_votes(&self, proposal_id: u32, from_index: u32, limit: u32) -> Vec<VoteView> {
         require!(limit <= MAX_PAGINATION_LIMIT, ERR_LIMIT_TOO_LARGE);
         let contract = self.contract();
         let proposal = contract
             .proposals
-            .get(proposal_id.0 as u32)
+            .get(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         proposal
             .votes
             .iter()
-            .skip(from_index.0 as usize)
+            .skip(from_index as usize)
             .take(limit as usize)
             .map(|(voter, vote)| VoteView {
                 proposal_id,
@@ -1169,7 +1156,7 @@ impl VersionedContract {
             .collect()
     }
 
-    pub fn is_vote_free(&self, _proposal_id: U64) -> bool {
+    pub fn is_vote_free(&self, _proposal_id: u32) -> bool {
         let estimated_bytes = ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES;
         let storage_cost = env::storage_byte_cost().saturating_mul(estimated_bytes as u128);
         let available = NearToken::from_yoctonear(
@@ -1249,13 +1236,13 @@ impl VersionedContract {
         self.contract().blocklist.contains(&account_id)
     }
 
-    pub fn list_blocklist(&self, from_index: U64, limit: u64) -> Vec<AccountId> {
+    pub fn list_blocklist(&self, from_index: u32, limit: u32) -> Vec<AccountId> {
         require!(limit <= MAX_PAGINATION_LIMIT, ERR_LIMIT_TOO_LARGE);
         let contract = self.contract();
         contract
             .blocklist
             .iter()
-            .skip(from_index.0 as usize)
+            .skip(from_index as usize)
             .take(limit as usize)
             .cloned()
             .collect()
@@ -1372,12 +1359,12 @@ impl VersionedContract {
     pub fn on_snapshot(
         &mut self,
         #[callback_result] snapshot_result: Result<u32, PromiseError>,
-        proposal_id: U64,
+        proposal_id: u32,
     ) -> bool {
         let contract = self.contract_mut();
 
         // Proposal may have been cancelled since creation
-        let proposal = match contract.proposals.get(proposal_id.0 as u32) {
+        let proposal = match contract.proposals.get(proposal_id) {
             Some(p) => p,
             None => return false,
         };
@@ -1391,7 +1378,7 @@ impl VersionedContract {
                 env::log_str(ERR_SNAPSHOT_CALLBACK_FAILED);
                 let proposal = contract
                     .proposals
-                    .get_mut(proposal_id.0 as u32)
+                    .get_mut(proposal_id)
                     .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
                 proposal.status = ProposalStatus::Failed;
                 proposal.failure_kind = Some(FailureKind::SnapshotCallbackFailed);
@@ -1411,7 +1398,7 @@ impl VersionedContract {
             env::log_str(ERR_ZERO_SNAPSHOT);
             let proposal = contract
                 .proposals
-                .get_mut(proposal_id.0 as u32)
+                .get_mut(proposal_id)
                 .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
             proposal.status = ProposalStatus::Failed;
             proposal.failure_kind = Some(FailureKind::ZeroSnapshot);
@@ -1426,14 +1413,14 @@ impl VersionedContract {
         let quorum_bps = {
             let proposal = contract
                 .proposals
-                .get(proposal_id.0 as u32)
+                .get(proposal_id)
                 .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
             proposal.quorum_bps
         };
 
         let proposal = contract
             .proposals
-            .get_mut(proposal_id.0 as u32)
+            .get_mut(proposal_id)
             .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
         proposal.snapshot_verified_count = effective;
         proposal.status = ProposalStatus::Active;
@@ -1453,13 +1440,13 @@ impl VersionedContract {
     pub fn on_vote_verification(
         &mut self,
         #[callback_result] verification_result: Result<Option<VerificationSummary>, PromiseError>,
-        proposal_id: U64,
+        proposal_id: u32,
         voter: AccountId,
     ) -> bool {
         let contract = self.contract_mut();
 
         // Remove pending vote — always clear the lock
-        let pending_key = (proposal_id.0, voter.clone());
+        let pending_key = (proposal_id, voter.clone());
         let pending_vote = match contract.pending_votes.remove(&pending_key) {
             Some(pv) => pv,
             None => {
@@ -1473,7 +1460,7 @@ impl VersionedContract {
         let voter_deposit = pending_vote.voter_deposit.0;
 
         // Decrement pending_vote_count
-        let proposal = match contract.proposals.get_mut(proposal_id.0 as u32) {
+        let proposal = match contract.proposals.get_mut(proposal_id) {
             Some(p) => p,
             None => {
                 // Proposal somehow missing — refund
@@ -1604,7 +1591,7 @@ impl VersionedContract {
         {
             let proposal = contract
                 .proposals
-                .get_mut(pid as u32)
+                .get_mut(pid)
                 .unwrap_or_else(|| env::panic_str(ERR_PROPOSAL_NOT_FOUND));
 
             proposal.votes.insert(
