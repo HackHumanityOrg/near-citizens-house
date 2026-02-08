@@ -58,9 +58,9 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - Contract account will be funded for baseline storage.
 - **Storage model**:
   - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Bond covers storage for the proposal and votes. Bond is a non-refundable fee and is never refunded regardless of proposal outcome or lifecycle state.
-  - **Votes**: Before recording a vote, the contract checks if available balance can cover storage (using `env::account_balance()`, `env::storage_usage()`, `env::storage_byte_cost()`). If sufficient, no deposit required. If insufficient, voter must attach deposit (~0.0015 NEAR). This creates a "free until bond exhausted" model.
+  - **Votes**: Before recording a vote, the contract checks if available balance can cover storage for both the temporary `PendingVote` and permanent `Vote` (`ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES`). If sufficient, no deposit required. If insufficient, voter must attach a fixed deposit (~0.004 NEAR); excess is refunded after the callback measures actual storage delta. This creates a "free until bond exhausted" model.
   - **Admin operations**: Use `assert_one_yocto()`. Storage cost is minimal and absorbed by contract.
-  - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` after minus before, multiplied by `env::storage_byte_cost()`). The refund follows checks-effects-interactions: record the vote and finalize all state changes first, then compute the storage delta, then issue the excess refund via `Promise::new(voter).transfer(excess)`.
+  - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` after minus before, multiplied by `env::storage_byte_cost()`). The PendingVote removal and `pending_vote_count` decrement must be flushed to trie **before** measuring the baseline, so the delta captures only the permanent Vote insertion. The refund follows checks-effects-interactions: record the vote and finalize all state changes first, then compute the storage delta, then issue the excess refund via `Promise::new(voter).transfer(excess)`.
 
 **NEAR execution model considerations**
 
@@ -224,15 +224,15 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - `choice` is `Yes` or `No`. One vote per proposal per account.
   - Requires active proposal within `[start_at, ends_at]`.
   - Rejects if a final vote already exists for this `(proposal_id, voter)` (explicit `has_voted` check).
-  - **Storage check**: Contract checks available balance vs estimated storage cost (`max(ESTIMATED_PENDING_VOTE_BYTES, ESTIMATED_VOTE_BYTES)`, since the pending entry is replaced by the final vote).
+  - **Storage check**: Contract checks available balance vs estimated storage cost (`ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES`). The deposit covers both the temporary PendingVote and permanent Vote storage; the PendingVote portion is refunded after the callback measures actual storage delta.
     - If sufficient balance: no deposit required.
-    - If insufficient: requires attached deposit (~0.0015 NEAR); excess refunded after storage delta is computed.
+    - If insufficient: requires attached deposit (~0.004 NEAR); excess refunded after storage delta is computed.
   - Records a `PendingVote` with `submitted_at = env::block_timestamp()`, `choice`, and `voter_deposit = env::attached_deposit()` (or 0 if no deposit required).
   - Initiates async `get_verification` call. Callback enforces `verified_at <= proposal.created_at` and `proposal.start_at <= pending_vote.submitted_at <= proposal.ends_at`.
   - Blocklist is checked at `cast_vote` only; callbacks do not re-check because blocklist changes are locked during proposals.
   - Because the callback executes later and independently, `submitted_at` must be recorded in `cast_vote` (not the callback) so votes started before `ends_at` still count.
   - `PendingVote` record prevents concurrent submissions; removed on callback completion (success or failure).
-  - **Vote callback refund ordering (success path)**: On successful vote recording, the callback must: (1) read and remove the `PendingVote` record (clearing the lock, extracting `submitted_at`, `choice`, `voter_deposit`) and decrement `pending_vote_count`; (2) record the vote (using stored `choice`, setting `voted_at = submitted_at`) and update tallies; (3) compute storage delta (`env::storage_usage()` after minus before); (4) calculate excess deposit (`voter_deposit` minus actual storage cost); (5) issue refund of excess via `Promise::new(voter).transfer(excess)`. All state mutations complete before the refund transfer promise is created.
+  - **Vote callback refund ordering (success path)**: On successful vote recording, the callback must: (1) read and remove the `PendingVote` record (clearing the lock, extracting `submitted_at`, `choice`, `voter_deposit`) and decrement `pending_vote_count`; (1b) flush `pending_votes` and `proposals` to trie so the PendingVote removal and count decrement are reflected in `env::storage_usage()` — this ensures the storage baseline excludes the temporary PendingVote; (2) measure `storage_before`, then record the vote (using stored `choice`, setting `voted_at = submitted_at`) and update tallies; (3) flush and measure `storage_after` — the delta captures only the permanent Vote insertion; (4) calculate excess deposit (`voter_deposit` minus actual storage cost); (5) issue refund of excess via `Promise::new(voter).transfer(excess)`. All state mutations complete before the refund transfer promise is created.
   - **Vote callback refund ordering (failure path)**: On callback failure (verification failed, proposal cancelled, proposal finalized, etc.), the callback must: (1) read and remove the `PendingVote` record (clearing the lock, extracting `voter_deposit`) and decrement `pending_vote_count`; (2) emit `vote_rejected` event with the appropriate `VoteRejectionReason`; (3) issue full deposit refund via `Promise::new(voter).transfer(voter_deposit)`. The record removal must complete before the refund transfer is created.
   - **Post-finalize rejection**: If the vote callback discovers the proposal is already finalized (Succeeded or Failed), it rejects the vote with `VoteRejectionReason::PostFinalize`, removes the `PendingVote`, refunds the deposit, and emits a `vote_rejected` event.
 - **has_voted(proposal_id, account_id)** view — O(1) lookup via the proposal's per-proposal `IterableMap`.
@@ -347,6 +347,8 @@ const ESTIMATED_VOTE_BYTES: u64 = 200;
 /// Pending storage is temporary (cleared when callback completes).
 const ESTIMATED_PENDING_VOTE_BYTES: u64 = 180;
 ```
+
+The deposit check uses `ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES` (= 380 bytes) to cover both the temporary PendingVote written during `cast_vote` and the permanent Vote written during the callback. The PendingVote portion is refunded after the callback measures actual storage delta (with the PendingVote already flushed/removed from trie before the baseline measurement).
 
 ### 11.4 Storage Keys
 
@@ -478,7 +480,7 @@ Event names and payloads:
 
 - `proposal_created`: `{ proposal_id, creator, created_at, start_at, ends_at, pending_expires_at, quorum_bps }` — emitted at initial creation (Pending state).
 - `proposal_activated`: `{ proposal_id, snapshot_verified_count, quorum_required }` — emitted when snapshot callback succeeds and proposal transitions to Active. `quorum_required` is the absolute vote count: `ceil(snapshot_verified_count * quorum_bps / 10_000)`.
-- `proposal_creation_failed`: `{ proposal_id, creator, reason }` — emitted when snapshot callback fails or the effective snapshot is zero. `reason` is a `ProposalCreationFailedReason` enum value serialized as a snake_case string (e.g., `"snapshot_callback_failed"`, `"zero_snapshot"`). See Section 11.8.
+- `proposal_creation_failed`: `{ proposal_id, reason }` — emitted when snapshot callback fails or the effective snapshot is zero. `reason` is a `ProposalCreationFailedReason` enum value serialized as a snake_case string (e.g., `"snapshot_callback_failed"`, `"zero_snapshot"`). See Section 11.8.
 - `proposal_cancelled`: `{ proposal_id, cancelled_by }`
 - `proposal_finalized`: `{ proposal_id, status, yes_votes, no_votes, quorum, snapshot_verified_count }` where `quorum` is the required vote count (not bps).
 - `vote_cast`: `{ proposal_id, voter, choice, voted_at }` — `voted_at` is the submission time (from `PendingVote.submitted_at`), not the callback execution time.
