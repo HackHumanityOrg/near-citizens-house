@@ -57,7 +57,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - The Verified Accounts contract remains the source of truth for verification.
 - Contract account will be funded for baseline storage.
 - **Storage model**:
-  - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Bond covers storage for the proposal and votes. Bond is never refunded regardless of proposal outcome or lifecycle state.
+  - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Bond covers storage for the proposal and votes. Bond is a non-refundable fee and is never refunded regardless of proposal outcome or lifecycle state.
   - **Votes**: Before recording a vote, the contract checks if available balance can cover storage (using `env::account_balance()`, `env::storage_usage()`, `env::storage_byte_cost()`). If sufficient, no deposit required. If insufficient, voter must attach deposit (~0.0015 NEAR). This creates a "free until bond exhausted" model.
   - **Admin operations**: Use `assert_one_yocto()`. Storage cost is minimal and absorbed by contract.
   - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` after minus before, multiplied by `env::storage_byte_cost()`). The refund follows checks-effects-interactions: record the vote and finalize all state changes first, then compute the storage delta, then issue the excess refund via `Promise::new(voter).transfer(excess)`.
@@ -99,16 +99,17 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **Verification timing**: Accounts must be verified before proposal creation to vote (`verified_at <= created_at`). This preserves snapshot/quorum correctness since the snapshot is anchored to creation time.
 - **Voting period**: Global configurable; default 14 days.
 - **Voting window**: Voting opens at `start_at` and ends at `ends_at = start_at + (voting_period_secs * 1_000_000_000)`.
-- **Snapshot**: Verified account count fetched via `get_verified_count()` cross-contract call after proposal creation, then adjusted by subtracting the current blocklist size to compute `snapshot_verified_count`. The snapshot count is an upper bound on the eligible voter population: it may include accounts verified in the 1-2 block window between `created_at` (set in the create call) and the cross-contract call (executed in the next block). These accounts cannot vote (`verified_at > created_at`) but are counted in the quorum denominator. At any realistic verification rate, this adds zero additional required quorum votes due to ceiling rounding (e.g., at 10,000 verified accounts and 7% quorum, even 5 extra accounts do not change `ceil(count * 700 / 10_000)`). This is accepted as policy: the snapshot is conservative (slightly harder to reach quorum) rather than permissive. If verification rates become extreme in the future, a `get_verified_count_before(timestamp)` method could be added to the verified-accounts contract to tighten the snapshot.
+- **Snapshot**: Verified account count fetched via `get_verified_count()` cross-contract call after proposal creation, then adjusted by subtracting the **blocklist size at snapshot callback time** to compute `snapshot_verified_count`. The snapshot count is an upper bound on the eligible voter population: it may include accounts verified in the 1-2 block window between `created_at` (set in the create call) and the cross-contract call (executed in the next block). These accounts cannot vote (`verified_at > created_at`) but are counted in the quorum denominator. At any realistic verification rate, this adds zero additional required quorum votes due to ceiling rounding (e.g., at 10,000 verified accounts and 7% quorum, even 5 extra accounts do not change `ceil(count * 700 / 10_000)`). This is accepted as policy: the snapshot is conservative (slightly harder to reach quorum) rather than permissive. If verification rates become extreme in the future, a `get_verified_count_before(timestamp)` method could be added to the verified-accounts contract to tighten the snapshot.
 - **Quorum**: Default 7% of snapshot verified count; configurable (basis points, minimum 1 bps).
   - Quorum count uses `ceil((snapshot_verified_count * quorum_bps) / 10_000)`.
 - **Passing condition**: Quorum met and `yes_votes >= no_votes` (ties pass).
 - **Finalize preconditions**: Finalize is only allowed for `Active` proposals; calls for `Pending`, `Cancelled`, `Succeeded`, or `Failed` must be rejected. Finalize is blocked while any `pending_votes` exist for the proposal, unless the finalize grace period has elapsed (see below).
 - **Finalize grace period**: If `pending_vote_count > 0` but `env::block_timestamp() >= ends_at + (finalize_grace_period_secs * 1_000_000_000)`, finalize proceeds anyway, treating remaining pending votes as abandoned. This prevents malicious actors from permanently blocking finalization by spamming low-gas vote transactions that create stuck `PendingVote` records. `finalize_grace_period_secs` is a configurable parameter (default 3600 seconds = 1 hour). Pending votes that resolve (via callbacks) after finalization are rejected with `VoteRejectionReason::PostFinalize` and deposits are refunded.
-- **Pending expiry**: If a proposal remains `Pending` past `pending_expires_at` (`created_at + (pending_expiry_secs * 1_000_000_000)`), it is handled by the admin-only `expire_pending_proposal` method (not `finalize`). This marks the proposal as Failed with `failure_kind: PendingExpired`. `pending_expiry_secs` is a distinct config parameter from `voting_period_secs`, with a default of 3600 seconds (1 hour), reflecting that Pending is a transient state (normally 1-2 blocks for the snapshot callback).
-- **Blocklisting**: Prevents future voting. Blocklist changes are allowed only when there are **no Pending or Active proposals**. Blocklist entries are verified at blocklist time via a cross-contract call; unverified accounts cannot be added. At proposal creation time, quorum excludes blocklisted accounts by subtracting the blocklist size from the verified count. At vote time, eligibility checks only local blocklist membership (no additional blocklist-related cross-contract calls beyond the existing vote verification).
+- **Pending expiry**: If a proposal remains `Pending` past `pending_expires_at` (`created_at + (pending_expiry_secs * 1_000_000_000)`), it is handled by the admin-only `expire_pending_proposal` method (not `finalize`). This marks the proposal as Failed with `failure_kind: PendingExpired`. `pending_expiry_secs` is a distinct config parameter from `voting_period_secs`, with a default of 3600 seconds (1 hour), reflecting that Pending is a transient state (normally 1-2 blocks for the snapshot callback). There is no constraint tying `pending_expiry_secs` to `voting_period_secs`.
+- **Blocklisting**: Prevents future voting. Blocklist changes are allowed only when there are **no Pending or Active proposals**. Blocklist entries are verified at blocklist time via a cross-contract call; unverified accounts cannot be added. At proposal creation time, quorum excludes blocklisted accounts by subtracting the blocklist size (at snapshot callback time) from the verified count. At vote time, eligibility checks only local blocklist membership (no additional blocklist-related cross-contract calls beyond the existing vote verification).
 - **Blocklist lock**: `blocklist_account` and `unblocklist_account` must reject with `ERR_BLOCKLIST_LOCKED` if any proposal is Pending or Active. Proposal creation must also reject if a blocklist change is pending.
-- **Zero snapshot**: If the snapshot callback returns `verified_count == 0`, proposal creation fails (`proposal_creation_failed` event emitted). As a defensive fallback, `finalize` also checks for `snapshot_verified_count == 0` and fails the proposal with `failure_kind: ZeroSnapshot`, though this path should not be reachable in normal operation.
+- **Zero snapshot**: If the snapshot callback returns `verified_count == 0`, or if `verified_count - blocklist_size` results in an effective `snapshot_verified_count == 0`, proposal creation fails (`proposal_creation_failed` event emitted). As a defensive fallback, `finalize` also checks for `snapshot_verified_count == 0` and fails the proposal with `failure_kind: ZeroSnapshot`, though this path should not be reachable in normal operation.
+- **Cancellation window**: Admins may cancel any Pending or Active proposal at any time before finalization, including after `ends_at`.
 - **Config updates**: Updates to `voting_period_secs` and `verified_accounts_contract` are blocked while any proposal is Pending or Active. `quorum_bps`, `pending_expiry_secs`, `min_proposal_bond`, and `finalize_grace_period_secs` may be updated at any time since they only affect future proposals or are checked dynamically at finalize time.
 - **Storage funding**: See storage model in Section 5 Assumptions.
 
@@ -129,7 +130,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
    - Callback finalizes proposal to Active and stores `snapshot_verified_count = verified_count - blocklist_size` (saturating at 0); it must not change `created_at`, `start_at`, `ends_at`, or `pending_expires_at`.
    - Snapshot count is an upper bound on the eligible voter population. It may include accounts verified in the 1-2 block window between `created_at` (set in the create call) and the `get_verified_count()` cross-contract call (executed in the next block). These accounts cannot vote (`verified_at > created_at`) but are counted in the quorum denominator. At any realistic verification rate, this adds zero additional required quorum votes due to ceiling rounding. This is accepted as policy: the snapshot is conservative (slightly harder to reach quorum) rather than permissive.
    - On callback failure (snapshot call fails), the snapshot callback must: (1) check that the proposal is still in `Pending` status (checks); (2) update proposal status to Failed and emit `proposal_creation_failed` event (effects). If the proposal was cancelled between the create call and callback, the callback checks status, finds it Cancelled, and aborts without further state changes.
-   - On callback success, if `get_verified_count()` returned 0, the callback should fail the proposal creation rather than creating an Active proposal that will auto-fail at finalization.
+   - On callback success, if `get_verified_count()` returned 0 **or** `verified_count - blocklist_size` results in an effective `snapshot_verified_count == 0`, the callback should fail the proposal creation rather than creating an Active proposal that will auto-fail at finalization.
    - On pending expiry (proposal remains Pending past `pending_expires_at`), an admin calls `expire_pending_proposal` which marks it Failed (with `failure_kind: PendingExpired`).
 
 2. **Vote (verified-only)**
@@ -149,7 +150,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 3. **Finalize**
    - Anyone can call finalize after `ends_at`.
-   - Finalize is blocked while any `pending_votes` exist for the proposal, **unless** the finalize grace period has elapsed (`env::block_timestamp() >= ends_at + (finalize_grace_period_secs * 1_000_000_000)`). After the grace period, finalize proceeds regardless of `pending_vote_count`, treating remaining pending votes as abandoned. Vote callbacks that resolve after finalization are rejected with `VoteRejectionReason::PostFinalize` and deposits are refunded.
+   - Finalize is blocked while any `pending_votes` exist for the proposal, **unless** the finalize grace period has elapsed (`env::block_timestamp() >= ends_at + (finalize_grace_period_secs * 1_000_000_000)`). After the grace period, finalize proceeds regardless of `pending_vote_count`, treating remaining pending votes as abandoned (they do not count toward tallies or quorum). Vote callbacks that resolve after finalization are rejected with `VoteRejectionReason::PostFinalize` and deposits are refunded.
    - Finalize is only valid for `Active` proposals. Expired Pending proposals must use `expire_pending_proposal` instead.
    - `yes_votes` and `no_votes` are final tallies; finalize reads them directly.
    - Defensive check: if `snapshot_verified_count == 0`, proposal fails (with `failure_kind: ZeroSnapshot`). This should not be reachable in normal operation since zero-snapshot proposals are rejected at creation (see Section 9.1).
@@ -158,7 +159,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 4. **Cancel (admin-only)**
    - Requires `assert_one_yocto()` to prevent function-call key abuse.
-   - If Active or Pending and not finalized, proposal becomes Cancelled.
+   - If Active or Pending and not finalized, proposal becomes Cancelled. Cancellation is allowed even after `ends_at` (until finalize).
    - Bond is not refunded.
    - If a Pending proposal is cancelled, the snapshot callback (which will still execute per NEAR protocol guarantees) must check the proposal status. If already Cancelled, the callback aborts without further state changes.
    - **Pending vote handling on cancel**: Pending vote locks (`PendingVote` records) are **not** cleared by cancel. Since `pending_votes` is a non-iterable `LookupMap`, the contract cannot discover which accounts have pending votes for a given proposal. Instead, in-flight vote callbacks will discover the Cancelled status and clean up their own `PendingVote` records (refunding any `voter_deposit`). Stuck records (from failed callbacks) can be cleared by admin via `clear_stale_pending_vote`. The `pending_vote_count` field on the proposal decrements naturally as callbacks complete or admin clears stuck records.
@@ -204,6 +205,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
     - `pending_expires_at = created_at + (pending_expiry_secs * 1_000_000_000)`
   - Validates `created_at <= start_at <= created_at + (max_start_delay_secs * 1_000_000_000)`.
   - Initiates async call to fetch snapshot; callback activates proposal.
+  - If `get_verified_count()` returns 0, or if `verified_count - blocklist_size` results in an effective `snapshot_verified_count == 0`, the snapshot callback fails proposal creation (`proposal_creation_failed`).
   - Bond is never refunded regardless of proposal outcome.
 - **cancel_proposal(proposal_id)**: Admin-only (`predecessor_account_id()` must be admin); uses `assert_one_yocto()`. Works on both Active and Pending proposals, only if not finalized. Bond is not refunded. Does **not** clear pending vote locks (see Section 9.4).
 - **expire_pending_proposal(proposal_id)**: Admin-only; only valid for Pending proposals past `pending_expires_at`. Marks proposal as Failed with `failure_kind: PendingExpired`. Uses `assert_one_yocto()`.
@@ -221,6 +223,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **cast_vote(proposal_id, choice)**: Verified-only (verified before proposal creation), not blocklisted. Voter identity is `predecessor_account_id()`.
   - `choice` is `Yes` or `No`. One vote per proposal per account.
   - Requires active proposal within `[start_at, ends_at]`.
+  - Rejects if a final vote already exists for this `(proposal_id, voter)` (explicit `has_voted` check).
   - **Storage check**: Contract checks available balance vs estimated storage cost (`max(ESTIMATED_PENDING_VOTE_BYTES, ESTIMATED_VOTE_BYTES)`, since the pending entry is replaced by the final vote).
     - If sufficient balance: no deposit required.
     - If insufficient: requires attached deposit (~0.0015 NEAR); excess refunded after storage delta is computed.
@@ -235,13 +238,13 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **has_voted(proposal_id, account_id)** view — O(1) lookup via the proposal's per-proposal `IterableMap`.
 - **get_vote(proposal_id, account_id)** view — O(1) lookup via the proposal's per-proposal `IterableMap`.
 - **list_votes(proposal_id, from_index, limit)** view with pagination — iterates the proposal's per-proposal `IterableMap<AccountId, Vote>`. Returns `Vec<VoteView>`. Pagination semantics: `iter().skip(from_index).take(limit)`. `IterableMap`'s internal `Vector` provides O(1) `nth()`, making `skip(n)` efficient. Max `limit` is 100 (see Section 12).
-- **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX; treat as a hint only (balance may change before the vote is recorded).
-- **get_proposal_count()** view — returns `next_proposal_id` as `U64` (total proposals created, including cancelled/failed).
+- **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX; treat as a balance-only hint (may change before the vote is recorded).
+- **get_proposal_count()** view — returns `proposals.len()` as `U64` (total proposals created, including cancelled/failed).
 - **get_pending_votes_count(proposal_id)** view — returns the proposal's `pending_vote_count` field as `U64`. Needed for frontends to show "finalization blocked" state.
 
 ### 10.5 Reject List
 
-- **blocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Only allowed when there are no Pending or Active proposals and no pending blocklist operation. Records a `PendingBlocklistOp` and performs a cross-contract verification lookup; if verified, adds the account to the blocklist and emits `blocklist_added`. If not verified or the callback fails, the pending op is cleared and the change is rejected.
+- **blocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Only allowed when there are no Pending or Active proposals and no pending blocklist operation. Records a `PendingBlocklistOp` and performs a cross-contract `get_verification(account_id)` lookup; if verified, adds the account to the blocklist and emits `blocklist_added`. If not verified or the callback fails, the pending op is cleared and the change is rejected.
 - **unblocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Only allowed when there are no Pending or Active proposals and no pending blocklist operation. Removes the account from the blocklist and emits `blocklist_removed`.
 - Only one blocklist operation may be pending at a time; while pending, all blocklist changes and `create_proposal` are rejected.
 - **is_blocklisted(account_id)** view.
@@ -312,7 +315,7 @@ The `voter` (AccountId) is the key of the per-proposal `IterableMap<AccountId, V
 
 All collections use `near_sdk::store` (not the deprecated `near_sdk::collections`).
 
-- `next_proposal_id: u64` — derived from `self.proposals.len() as u64` (not stored separately). Alternatively, may be stored explicitly in contract state for convenience, but the Vector length is the source of truth.
+- `next_proposal_id: u64` — derived from `self.proposals.len() as u64` (not stored separately). The Vector length is the source of truth.
 - `proposals: Vector<Proposal>` — iteration needed for `list_proposals`; append-only (proposals are never removed from storage). The Vector index serves as the proposal ID (sequential from 0), eliminating redundant key storage. `Vector` uses `u32` indices internally (max ~4.29B proposals, sufficient for governance). `next_proposal_id` can be derived from `self.proposals.len() as u64`.
 - **Per-proposal votes**: Each proposal owns an `IterableMap<AccountId, Vote>` stored with a dynamic storage key prefix (e.g., `StorageKey::ProposalVotes { proposal_id }`). This provides O(1) lookup by account and efficient per-proposal iteration for `list_votes`. No global votes collection is needed. The `IterableMap` maintains an internal `Vector` for iteration order, adding ~40-60 bytes per vote compared to `LookupMap`, but enabling on-chain vote enumeration without indexer dependency.
 - `pending_votes: LookupMap<(u64, AccountId), PendingVote>` — vote lock during async verification; stores submission context needed by the callback. Flat global map (not nested per-proposal) since pending votes are temporary, never iterated, and only accessed by exact key.
@@ -430,6 +433,21 @@ enum VoteRejectionReason {
 }
 ```
 
+### 11.8 ProposalCreationFailedReason Enum
+
+When proposal creation fails during the snapshot callback, the contract emits a `proposal_creation_failed` event with a `ProposalCreationFailedReason` enum value. This enum is serialized as a string in JSON event payloads.
+
+```rust
+/// Reason proposal creation failed during the snapshot callback.
+/// Serialized as snake_case strings in EVENT_JSON payloads.
+enum ProposalCreationFailedReason {
+    /// Snapshot callback failed (promise failed or JSON parse error).
+    SnapshotCallbackFailed,
+    /// Effective snapshot count was zero (verified_count == 0 or minus blocklist size).
+    ZeroSnapshot,
+}
+```
+
 ---
 
 ## 12. Limits and Validation
@@ -439,7 +457,7 @@ enum VoteRejectionReason {
 - **Description length**: <= 10,000 chars
 - **Pagination limit**: max 100
 
-- **Proposal IDs**: Assigned sequentially starting from 0 via the `next_proposal_id` counter.
+- **Proposal IDs**: Assigned sequentially starting from 0 via `proposals` Vector index (`proposals.len()` is total count).
 - **Pagination semantics**: `from_index` parameters are 0-based offsets. For `proposals` (`Vector`), pagination uses range-based indexing: `(from_index..min(len, from_index+limit)).filter_map(|i| self.proposals.get(i))`, giving O(limit) with no skip overhead and no hashing. For `admins` and `blocklist` (`IterableSet`), pagination uses `iter().skip(from_index).take(limit)`; the `IterableSet` iterator provides O(1) `nth()` via its internal `Vector`, making `skip(n)` O(1) regardless of offset. For `votes` (per-proposal `IterableMap`), pagination uses `iter().skip(from_index).take(limit)`; the `IterableMap` iterator provides O(1) `nth()` via its internal `Vector`. Total pagination cost is O(limit) for all collections.
 - **Voting period bounds**: minimum 86,400 seconds (1 day), maximum 7,776,000 seconds (90 days).
 - **Minimum proposal bond bounds**: minimum 1 NEAR, maximum 100 NEAR.
@@ -460,7 +478,7 @@ Event names and payloads:
 
 - `proposal_created`: `{ proposal_id, creator, created_at, start_at, ends_at, pending_expires_at, quorum_bps }` — emitted at initial creation (Pending state).
 - `proposal_activated`: `{ proposal_id, snapshot_verified_count, quorum_required }` — emitted when snapshot callback succeeds and proposal transitions to Active. `quorum_required` is the absolute vote count: `ceil(snapshot_verified_count * quorum_bps / 10_000)`.
-- `proposal_creation_failed`: `{ proposal_id, creator, reason }` — emitted when snapshot callback fails or returns zero count.
+- `proposal_creation_failed`: `{ proposal_id, creator, reason }` — emitted when snapshot callback fails or the effective snapshot is zero. `reason` is a `ProposalCreationFailedReason` enum value serialized as a snake_case string (e.g., `"snapshot_callback_failed"`, `"zero_snapshot"`). See Section 11.8.
 - `proposal_cancelled`: `{ proposal_id, cancelled_by }`
 - `proposal_finalized`: `{ proposal_id, status, yes_votes, no_votes, quorum, snapshot_verified_count }` where `quorum` is the required vote count (not bps).
 - `vote_cast`: `{ proposal_id, voter, choice, voted_at }` — `voted_at` is the submission time (from `PendingVote.submitted_at`), not the callback execution time.
@@ -631,7 +649,8 @@ Event names and payloads:
   - Pending vote lock not found (for `clear_stale_pending_vote`)
   - Pending vote record not found in callback (internal error; indicates storage corruption or concurrent removal)
   - Proposal not pending or not expired (for `expire_pending_proposal`)
-  - Snapshot count is zero; proposal creation failed
+  - Snapshot count is zero; proposal creation failed (`ERR_ZERO_SNAPSHOT`)
+  - Snapshot callback failed or returned invalid JSON; proposal creation failed (`ERR_SNAPSHOT_CALLBACK_FAILED`)
   - Quorum bps must be at least 1
   - Voting period must be between 86,400 and 7,776,000 seconds
   - Pending expiry must be between 300 and 86,400 seconds
@@ -703,6 +722,9 @@ Event names and payloads:
   - Finalize grace period: verify that finalize is blocked by pending votes before the grace period, but succeeds after `ends_at + finalize_grace_period_secs`.
   - Finalize grace period bounds: verify minimum (300s) and maximum (86,400s) enforcement for `update_finalize_grace_period_secs`.
   - Cancel does not clear pending votes: verify that `cancel_proposal` does not modify `pending_votes` LookupMap entries; verify that vote callbacks correctly handle cancelled proposals by cleaning up their own `PendingVote` records and refunding deposits.
+  - Cancel after `ends_at`: verify an admin can cancel an Active proposal after voting ends but before finalize.
+  - Effective zero snapshot: verify snapshot callback fails proposal creation when `verified_count > 0` but `blocklist_size >= verified_count` (effective snapshot is zero).
+  - Already voted: verify `cast_vote` rejects when a final vote already exists for the `(proposal_id, voter)`.
 - Integration tests (using real verified-accounts contract):
   - Snapshot and vote eligibility — deploy real verified-accounts WASM, store verifications via real transactions, verify `get_verified_count()` and `get_verification()` return correct data through governance cross-contract calls.
   - Async callbacks and success paths, including deposit refunds on success.
