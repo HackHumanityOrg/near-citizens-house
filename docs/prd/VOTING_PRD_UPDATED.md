@@ -57,7 +57,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - The Verified Accounts contract remains the source of truth for verification.
 - Contract account will be funded for baseline storage.
 - **Storage model**:
-  - **Proposals**: Require a bond (minimum 1 NEAR, proposer may attach more for higher expected participation). Bond covers storage for the proposal and votes. Bond is a non-refundable fee and is never refunded regardless of proposal outcome or lifecycle state.
+  - **Proposals**: Require a bond (minimum 1 NEAR). Bond is pooled at the contract level and covers storage for proposals and votes on a first-come basis. The bond is a non-refundable fee and is never refunded regardless of proposal outcome or lifecycle state. (If per-proposal storage accounting is desired in the future, it must be implemented explicitly.)
   - **Votes**: Before recording a vote, the contract checks if available balance can cover storage for both the temporary `PendingVote` and permanent `Vote` (`ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES`). If sufficient, no deposit required. If insufficient, voter must attach a fixed deposit (~0.004 NEAR); excess is refunded after the callback measures actual storage delta. This creates a "free until bond exhausted" model.
   - **Admin operations**: Use `assert_one_yocto()`. Storage cost is minimal and absorbed by contract.
   - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` after minus before, multiplied by `env::storage_byte_cost()`). The PendingVote removal and `pending_vote_count` decrement must be flushed to trie **before** measuring the baseline, so the delta captures only the permanent Vote insertion. The refund follows checks-effects-interactions: record the vote and finalize all state changes first, then compute the storage delta, then issue the excess refund via `Promise::new(voter).transfer(excess)`.
@@ -379,12 +379,8 @@ Note: `ProposalVotes` uses a dynamic prefix that includes the `proposal_id`, ens
 
 | Method | Collections modified |
 |---|---|
-| `blocklist_account` | `pending_blocklist_op` |
 | Blocklist callback | `pending_blocklist_op`, `blocklist` |
-| `unblocklist_account` | `blocklist` |
 | `cast_vote` callback | `pending_votes`, per-proposal `IterableMap` (votes), `proposals` |
-| `cancel_proposal` | `proposals` |
-| Snapshot callback | `proposals` |
 
 ### 11.6 JSON Serialization Safety (U64/NearToken Wrappers)
 
@@ -516,7 +512,7 @@ Event names and payloads:
 
 - Use the native `#[near(event_json(standard = "citizens-house-vote"))]` attribute macro from `near-sdk` (v5.24+) to define a single `GovernanceEvent` enum with one variant per event type, each annotated with `#[event_version("1.0.0")]`. This provides `.emit()` and formats `EVENT_JSON` automatically.
 - The macro defaults to `snake_case` naming for struct names or enum variants, which matches the event names above (e.g., `ProposalCreated` -> `proposal_created`).
-- Emit events after state is finalized (e.g., in snapshot/vote callbacks, and after finalize/cancel state transitions), not on request submission. Events must be emitted as the **last operation** in callbacks, after all state changes and checks succeed.
+- Emit events after state is finalized (e.g., in snapshot/vote callbacks, and after finalize/cancel state transitions), not on request submission. Events must be emitted after all state changes succeed and **before** any refund transfers are created.
 - **Event payload integer types**: Only nanosecond timestamps (`created_at`, `start_at`, `ends_at`, `pending_expires_at`, `voted_at`) use `U64` wrappers in event payloads (serialized as JSON strings to prevent precision loss in JavaScript indexer clients). Token amounts (`min_proposal_bond`, `deposit_refunded`) use `NearToken`, which serializes as a quoted string of the yoctoNEAR amount — identical to the old `U128` format. All other integer fields use native types and serialize as JSON numbers: vote counts (`yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`, `quorum_required`) use native `u64` (bounded by `u32` snapshot, JS-safe); Config durations (`voting_period_secs`, `pending_expiry_secs`, `finalize_grace_period_secs`, `max_start_delay_secs`) use native `u64` (max ~7.8M, JS-safe); `proposal_id` uses native `u32`; `quorum_bps` uses native `u16`. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so `U64` and `NearToken` types automatically produce string-encoded integers while native types produce JSON numbers. See Section 11.6 for full type discipline.
 - **Important**: NEAR logs from failed callbacks are visible to indexers even though state changes are rolled back (nearcore processes logs before checking execution success). If a callback emits an event and then panics, indexers see a phantom event for state changes that never persisted. Indexers must verify receipt execution status before trusting events.
 
@@ -666,6 +662,8 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 |---|---|
 | `ERR_NOT_ADMIN` | `predecessor_account_id()` is not in admins set |
 | `ERR_CANNOT_REMOVE_LAST_ADMIN` | `remove_admin` would leave zero admins |
+| `ERR_ADMIN_ALREADY_EXISTS` | `add_admin`: account already present in admins set |
+| `ERR_ADMIN_NOT_FOUND` | `remove_admin`: account not present in admins set |
 
 **Proposal lifecycle:**
 
@@ -746,14 +744,16 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 | `ERR_PENDING_VOTE_NOT_FOUND_IN_CALLBACK` | Vote callback: `PendingVote` record missing (internal error; indicates storage corruption or concurrent removal) |
 | `ERR_SNAPSHOT_CALLBACK_FAILED` | Snapshot callback: promise failed or returned invalid JSON |
 | `ERR_ZERO_SNAPSHOT` | Snapshot callback: effective verified count is 0 after blocklist subtraction |
+| `ERR_INVALID_PROMISE_RESULTS` | Callback: `promise_results_count() != 1` (unexpected receipts) |
+| `ERR_VOTE_COUNT_OVERFLOW` | Vote callback: overflow when updating vote counts (defensive guard) |
 
 ### 17.2 Per-Method Error Reference
 
 | Method | `assert_one_yocto()` | Synchronous errors |
 |---|---|---|
 | `new` | No | `ERR_NO_ADMINS`, `ERR_QUORUM_BPS_OUT_OF_RANGE`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE`, `ERR_MIN_BOND_OUT_OF_RANGE`, `ERR_GRACE_PERIOD_OUT_OF_RANGE`, `ERR_MAX_START_DELAY_OUT_OF_RANGE` |
-| `add_admin` | Yes | `ERR_NOT_ADMIN` |
-| `remove_admin` | Yes | `ERR_NOT_ADMIN`, `ERR_CANNOT_REMOVE_LAST_ADMIN` |
+| `add_admin` | Yes | `ERR_NOT_ADMIN`, `ERR_ADMIN_ALREADY_EXISTS` |
+| `remove_admin` | Yes | `ERR_NOT_ADMIN`, `ERR_CANNOT_REMOVE_LAST_ADMIN`, `ERR_ADMIN_NOT_FOUND` |
 | `create_proposal` | No (bond >= 1 NEAR) | `ERR_NOT_ADMIN`, `ERR_TITLE_EMPTY`, `ERR_AUTHOR_EMPTY`, `ERR_DESCRIPTION_EMPTY`, `ERR_TITLE_TOO_LONG`, `ERR_AUTHOR_TOO_LONG`, `ERR_DESCRIPTION_TOO_LONG`, `ERR_INSUFFICIENT_BOND`, `ERR_START_AT_BEFORE_CREATED`, `ERR_START_AT_TOO_FAR`, `ERR_BLOCKLIST_OP_PENDING` |
 | `cancel_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_ALREADY_FINALIZED`, `ERR_PROPOSAL_ALREADY_CANCELLED` |
 | `expire_pending_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_PENDING`, `ERR_PROPOSAL_NOT_EXPIRED` |
@@ -838,6 +838,9 @@ Paginated view methods (`list_admins`, `list_blocklist`, `list_proposals`, `list
   - Cancel after `ends_at`: verify an admin can cancel an Active proposal after voting ends but before finalize.
   - Effective zero snapshot: verify snapshot callback fails proposal creation when `verified_count > 0` but `blocklist_size >= verified_count` (effective snapshot is zero).
   - Already voted: verify `cast_vote` rejects when a final vote already exists for the `(proposal_id, voter)`.
+  - Admin duplicate operations: verify `add_admin` fails on existing admin and `remove_admin` fails on missing admin.
+  - Blocklist duplicate add: verify a duplicate add is a no-op and does not emit a second `blocklist_added` event.
+  - Callback promise result count guard: verify callbacks return false if `promise_results_count() != 1`.
 - Integration tests (using real verified-accounts contract):
   - Snapshot and vote eligibility — deploy real verified-accounts WASM, store verifications via real transactions, verify `get_verified_count()` and `get_verification()` return correct data through governance cross-contract calls.
   - Async callbacks and success paths, including deposit refunds on success.
