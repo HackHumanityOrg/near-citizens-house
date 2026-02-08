@@ -1,7 +1,6 @@
 //! # Citizens House Governance Contract
 //!
 //! On-chain governance for NEAR Citizens House proposals and voting.
-//! See VOTING_PRD_UPDATED.md for the full specification.
 
 #![allow(clippy::too_many_arguments)]
 
@@ -926,10 +925,7 @@ impl VersionedContract {
                         .unwrap_or_else(|| env::panic_str("grace period overflow")),
                 )
                 .unwrap_or_else(|| env::panic_str("grace period overflow"));
-            require!(
-                now >= grace_deadline,
-                ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES
-            );
+            require!(now >= grace_deadline, ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES);
         }
 
         // Defensive: zero-snapshot proposals should never be Active, but guard finalize
@@ -1003,7 +999,9 @@ impl VersionedContract {
             if let Some(proposal) = contract.proposals.get(i) {
                 result.push(Self::proposal_to_view(proposal));
             }
-            i = i.checked_add(1).unwrap_or_else(|| env::panic_str("overflow"));
+            i = i
+                .checked_add(1)
+                .unwrap_or_else(|| env::panic_str("overflow"));
         }
         result
     }
@@ -1257,10 +1255,7 @@ impl VersionedContract {
     pub fn update_voting_period_secs(&mut self, new_period_secs: u64) {
         assert_one_yocto();
         self.assert_admin();
-        require!(
-            !self.has_pending_or_active_proposals(),
-            ERR_CONFIG_LOCKED
-        );
+        require!(!self.has_pending_or_active_proposals(), ERR_CONFIG_LOCKED);
         require!(
             (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&new_period_secs),
             ERR_VOTING_PERIOD_OUT_OF_RANGE
@@ -1287,10 +1282,7 @@ impl VersionedContract {
     pub fn update_verified_accounts_contract(&mut self, new_contract: AccountId) {
         assert_one_yocto();
         self.assert_admin();
-        require!(
-            !self.has_pending_or_active_proposals(),
-            ERR_CONFIG_LOCKED
-        );
+        require!(!self.has_pending_or_active_proposals(), ERR_CONFIG_LOCKED);
         let contract = self.contract_mut();
         contract.config.verified_accounts_contract = new_contract;
         Self::emit_config_updated(&contract.config);
