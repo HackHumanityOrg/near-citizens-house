@@ -177,11 +177,11 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - `verified_accounts_contract: AccountId`
   - `admins: Vec<AccountId>` (must include at least one)
   - `quorum_bps: u16` (recommended: 700)
-  - `voting_period_secs: u64` (recommended: 1,209,600 = 14 days)
-  - `pending_expiry_secs: u64` (recommended: 3600 = 1 hour)
+  - `voting_period_secs: U64` (recommended: 1,209,600 = 14 days)
+  - `pending_expiry_secs: U64` (recommended: 3600 = 1 hour)
   - `min_proposal_bond: U128` (recommended: 1 NEAR) — minimum bond; proposers may attach more
-  - `finalize_grace_period_secs: u64` (recommended: 3600 = 1 hour) — after `ends_at + grace_period`, finalize proceeds even with pending votes
-  - `max_start_delay_secs: u64` (recommended: 7,776,000 = 90 days) — max allowed delay from `created_at` to `start_at`
+  - `finalize_grace_period_secs: U64` (recommended: 3600 = 1 hour) — after `ends_at + grace_period`, finalize proceeds even with pending votes
+  - `max_start_delay_secs: U64` (recommended: 7,776,000 = 90 days) — max allowed delay from `created_at` to `start_at`
 
 ### 10.2 Admin Management
 
@@ -407,6 +407,10 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 | `yes_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
 | `no_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
 | `pending_vote_count` | Low — bounded by snapshot count | Use `U64` for consistency |
+| `voting_period_secs` | Low — max 7,776,000 (~7.8M) | Use `U64` for consistency |
+| `pending_expiry_secs` | Low — max 86,400 | Use `U64` for consistency |
+| `finalize_grace_period_secs` | Low — max 86,400 | Use `U64` for consistency |
+| `max_start_delay_secs` | Low — max 7,776,000 | Use `U64` for consistency |
 
 **`get_verified_count() -> u32` from the verified-accounts contract is safe**: `u32` max value is approximately 4.29 x 10^9, well within the JS safe integer range. The governance contract converts this to `u64` for internal storage (`snapshot_verified_count`), but the JSON response must emit it as `U64`.
 
