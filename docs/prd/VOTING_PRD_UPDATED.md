@@ -523,6 +523,7 @@ Event names and payloads:
   | `update_verified_accounts_contract` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `update_min_proposal_bond` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
   | `update_finalize_grace_period_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
+  | `update_max_start_delay_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
   | `migrate` | `predecessor_account_id()` | Admin check + 1 yoctoNEAR |
   | Snapshot callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Original caller identity read from stored `proposal.creator`. |
   | Vote callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Voter identity passed as callback parameter or read from pending vote lock key `(proposal_id, account_id)`. |
@@ -551,6 +552,7 @@ Event names and payloads:
   | `update_verified_accounts_contract` | Required | Config change |
   | `update_min_proposal_bond` | Required | Config change |
   | `update_finalize_grace_period_secs` | Required | Config change |
+  | `update_max_start_delay_secs` | Required | Config change |
   | `migrate` | Required (1 yoctoNEAR) | Upgrade protection |
 - **Private callbacks**: Mark callbacks `#[private]`, verify `promise_results_count`, and handle `promise_result` errors.
 - **Async safety**: Treat cross-contract calls as asynchronous; only finalize proposal/vote state in callbacks.
@@ -631,34 +633,121 @@ Event names and payloads:
 
 ## 17. Error Handling
 
-- Clear error strings for (use stable error identifiers, e.g., `ERR_PROPOSAL_NOT_STARTED`, `ERR_START_AT_TOO_FAR`):
-  - Not admin / not verified
-  - Verified after proposal creation
-  - Blocklisted (pre-check)
-  - Proposal not active / expired / finalized
-  - Proposal not started (attempted vote before `start_at`)
-  - Pending proposal expired
-  - Finalize blocked by pending votes
-  - Config locked due to active proposals
-  - Already voted / vote already pending
-  - Insufficient bond (for proposals)
-  - Insufficient deposit when vote requires payment (contract balance exhausted)
-  - Invalid `start_at` (before `created_at` or beyond `max_start_delay_secs`)
-  - Invalid parameters
-  - Callback failures (including JSON deserialization errors)
-  - Pending vote lock not found (for `clear_stale_pending_vote`)
-  - Pending vote record not found in callback (internal error; indicates storage corruption or concurrent removal)
-  - Proposal not pending or not expired (for `expire_pending_proposal`)
-  - Snapshot count is zero; proposal creation failed (`ERR_ZERO_SNAPSHOT`)
-  - Snapshot callback failed or returned invalid JSON; proposal creation failed (`ERR_SNAPSHOT_CALLBACK_FAILED`)
-  - Quorum bps must be at least 1
-  - Voting period must be between 86,400 and 7,776,000 seconds
-  - Pending expiry must be between 300 and 86,400 seconds
-  - Min proposal bond must be between 1 and 100 NEAR
-  - Finalize grace period must be between 300 and 86,400 seconds
-  - Vote rejected: proposal cancelled / not verified / verified after creation / proposal expired / callback failed / post finalize (see `VoteRejectionReason` enum in Section 11.7)
-  - Blocklist locked (no Pending/Active proposals allowed): `ERR_BLOCKLIST_LOCKED`
-  - Blocklist account not verified: `ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED`
+Every synchronous panic uses a stable `ERR_*` string constant defined in the contract. Callback-phase errors are logged via `env::log_str()` (not panics) and communicated through events (`VoteRejectionReason` in Section 11.7, `ProposalCreationFailedReason` in Section 11.8).
+
+Methods requiring `assert_one_yocto()` use the SDK's built-in function, which panics with `"Requires attached deposit of exactly 1 yoctoNEAR"`. No custom constant — the per-method table below marks which methods use it.
+
+### 17.1 Error Constants
+
+**Access control:**
+
+| Constant | Condition |
+|---|---|
+| `ERR_NOT_ADMIN` | `predecessor_account_id()` is not in admins set |
+| `ERR_CANNOT_REMOVE_LAST_ADMIN` | `remove_admin` would leave zero admins |
+
+**Proposal lifecycle:**
+
+| Constant | Condition |
+|---|---|
+| `ERR_PROPOSAL_NOT_FOUND` | Proposal ID does not exist in `proposals` Vector |
+| `ERR_PROPOSAL_NOT_ACTIVE` | Proposal status is not `Active` |
+| `ERR_PROPOSAL_NOT_PENDING` | Proposal status is not `Pending` |
+| `ERR_PROPOSAL_ALREADY_FINALIZED` | Proposal status is `Succeeded` or `Failed` |
+| `ERR_PROPOSAL_ALREADY_CANCELLED` | Proposal status is `Cancelled` |
+| `ERR_PROPOSAL_NOT_STARTED` | `env::block_timestamp() < proposal.start_at` |
+| `ERR_PROPOSAL_ENDED` | `env::block_timestamp() > proposal.ends_at` |
+| `ERR_PROPOSAL_NOT_EXPIRED` | Pending proposal has not reached `pending_expires_at` |
+| `ERR_FINALIZE_NOT_ENDED` | `env::block_timestamp() < proposal.ends_at` |
+| `ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES` | `pending_vote_count > 0` and grace period not elapsed |
+
+**Proposal creation:**
+
+| Constant | Condition |
+|---|---|
+| `ERR_TITLE_TOO_LONG` | `title.len() > 140` |
+| `ERR_AUTHOR_TOO_LONG` | `author.len() > 120` |
+| `ERR_DESCRIPTION_TOO_LONG` | `description.len() > 10_000` |
+| `ERR_INSUFFICIENT_BOND` | Attached deposit < `config.min_proposal_bond` |
+| `ERR_START_AT_BEFORE_CREATED` | `start_at < created_at` |
+| `ERR_START_AT_TOO_FAR` | `start_at > created_at + (max_start_delay_secs * 1_000_000_000)` |
+
+**Voting:**
+
+| Constant | Condition |
+|---|---|
+| `ERR_BLOCKLISTED` | Voter is in the blocklist (pre-check in `cast_vote`, not re-checked in callback because blocklist changes are locked during proposals) |
+| `ERR_ALREADY_VOTED` | A final vote already exists for `(proposal_id, voter)` |
+| `ERR_VOTE_ALREADY_PENDING` | A `PendingVote` already exists for `(proposal_id, voter)` |
+| `ERR_INSUFFICIENT_DEPOSIT` | Contract balance insufficient for vote storage and attached deposit too low |
+
+**Blocklist:**
+
+| Constant | Condition |
+|---|---|
+| `ERR_BLOCKLIST_LOCKED` | Any proposal is Pending or Active |
+| `ERR_BLOCKLIST_OP_PENDING` | A `PendingBlocklistOp` is already in flight |
+| `ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED` | Blocklist callback: account has no verification record |
+| `ERR_ACCOUNT_NOT_BLOCKLISTED` | `unblocklist_account`: account is not in the blocklist |
+
+**Config validation (init + update methods):**
+
+| Constant | Condition |
+|---|---|
+| `ERR_NO_ADMINS` | `admins` vec is empty at init |
+| `ERR_CONFIG_LOCKED` | `voting_period_secs` or `verified_accounts_contract` update while any proposal is Pending or Active |
+| `ERR_QUORUM_BPS_OUT_OF_RANGE` | `quorum_bps < 1` or `> 10_000` |
+| `ERR_VOTING_PERIOD_OUT_OF_RANGE` | `voting_period_secs < 86_400` or `> 7_776_000` |
+| `ERR_PENDING_EXPIRY_OUT_OF_RANGE` | `pending_expiry_secs < 300` or `> 86_400` |
+| `ERR_MIN_BOND_OUT_OF_RANGE` | `min_proposal_bond < 1 NEAR` or `> 100 NEAR` |
+| `ERR_GRACE_PERIOD_OUT_OF_RANGE` | `finalize_grace_period_secs < 300` or `> 86_400` |
+| `ERR_MAX_START_DELAY_OUT_OF_RANGE` | `max_start_delay_secs > 7_776_000` |
+
+**Admin recovery:**
+
+| Constant | Condition |
+|---|---|
+| `ERR_PENDING_VOTE_NOT_FOUND` | `clear_stale_pending_vote`: no `PendingVote` at `(proposal_id, account_id)` |
+
+**Pagination:**
+
+| Constant | Condition |
+|---|---|
+| `ERR_LIMIT_TOO_LARGE` | `limit > 100` in any paginated view method |
+
+**Callback-phase (logged via `env::log_str()`, not panics — callbacks return false):**
+
+| Constant | Used in |
+|---|---|
+| `ERR_PENDING_VOTE_NOT_FOUND_IN_CALLBACK` | Vote callback: `PendingVote` record missing (internal error; indicates storage corruption or concurrent removal) |
+| `ERR_SNAPSHOT_CALLBACK_FAILED` | Snapshot callback: promise failed or returned invalid JSON |
+| `ERR_ZERO_SNAPSHOT` | Snapshot callback: effective verified count is 0 after blocklist subtraction |
+
+### 17.2 Per-Method Error Reference
+
+| Method | `assert_one_yocto()` | Synchronous errors |
+|---|---|---|
+| `new` | No | `ERR_NO_ADMINS`, `ERR_QUORUM_BPS_OUT_OF_RANGE`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE`, `ERR_MIN_BOND_OUT_OF_RANGE`, `ERR_GRACE_PERIOD_OUT_OF_RANGE`, `ERR_MAX_START_DELAY_OUT_OF_RANGE` |
+| `add_admin` | Yes | `ERR_NOT_ADMIN` |
+| `remove_admin` | Yes | `ERR_NOT_ADMIN`, `ERR_CANNOT_REMOVE_LAST_ADMIN` |
+| `create_proposal` | No (bond >= 1 NEAR) | `ERR_NOT_ADMIN`, `ERR_TITLE_TOO_LONG`, `ERR_AUTHOR_TOO_LONG`, `ERR_DESCRIPTION_TOO_LONG`, `ERR_INSUFFICIENT_BOND`, `ERR_START_AT_BEFORE_CREATED`, `ERR_START_AT_TOO_FAR`, `ERR_BLOCKLIST_OP_PENDING` |
+| `cancel_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_ALREADY_FINALIZED`, `ERR_PROPOSAL_ALREADY_CANCELLED` |
+| `expire_pending_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_PENDING`, `ERR_PROPOSAL_NOT_EXPIRED` |
+| `clear_stale_pending_vote` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PENDING_VOTE_NOT_FOUND` |
+| `finalize_proposal` | No (public) | `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_ACTIVE`, `ERR_FINALIZE_NOT_ENDED`, `ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES` |
+| `cast_vote` | No | `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_ACTIVE`, `ERR_PROPOSAL_NOT_STARTED`, `ERR_PROPOSAL_ENDED`, `ERR_BLOCKLISTED`, `ERR_ALREADY_VOTED`, `ERR_VOTE_ALREADY_PENDING`, `ERR_INSUFFICIENT_DEPOSIT` |
+| `blocklist_account` | Yes | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING` |
+| `unblocklist_account` | Yes | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING`, `ERR_ACCOUNT_NOT_BLOCKLISTED` |
+| `update_quorum_bps` | Yes | `ERR_NOT_ADMIN`, `ERR_QUORUM_BPS_OUT_OF_RANGE` |
+| `update_voting_period_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED`, `ERR_VOTING_PERIOD_OUT_OF_RANGE` |
+| `update_pending_expiry_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE` |
+| `update_verified_accounts_contract` | Yes | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED` |
+| `update_min_proposal_bond` | Yes | `ERR_NOT_ADMIN`, `ERR_MIN_BOND_OUT_OF_RANGE` |
+| `update_finalize_grace_period_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_GRACE_PERIOD_OUT_OF_RANGE` |
+| `update_max_start_delay_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_MAX_START_DELAY_OUT_OF_RANGE` |
+| `migrate` | Yes (1 yoctoNEAR) | `ERR_NOT_ADMIN` |
+
+Paginated view methods (`list_admins`, `list_blocklist`, `list_proposals`, `list_votes`): `ERR_LIMIT_TOO_LARGE`.
 
 ---
 
