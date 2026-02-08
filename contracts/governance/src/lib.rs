@@ -245,11 +245,11 @@ pub enum ProposalCreationFailedReason {
 pub struct Config {
     pub verified_accounts_contract: AccountId,
     pub quorum_bps: u16,
-    pub voting_period_secs: u64,
-    pub pending_expiry_secs: u64,
+    pub voting_period_secs: U64,
+    pub pending_expiry_secs: U64,
     pub min_proposal_bond: U128,
-    pub finalize_grace_period_secs: u64,
-    pub max_start_delay_secs: u64,
+    pub finalize_grace_period_secs: U64,
+    pub max_start_delay_secs: U64,
 }
 
 /// Proposal record (stored on-chain, includes per-proposal votes map).
@@ -531,12 +531,12 @@ impl VersionedContract {
     fn emit_config_updated(config: &Config) {
         GovernanceEvent::ConfigUpdated {
             quorum_bps: config.quorum_bps,
-            voting_period_secs: U64(config.voting_period_secs),
-            pending_expiry_secs: U64(config.pending_expiry_secs),
+            voting_period_secs: config.voting_period_secs,
+            pending_expiry_secs: config.pending_expiry_secs,
             verified_accounts_contract: config.verified_accounts_contract.clone(),
             min_proposal_bond: config.min_proposal_bond,
-            finalize_grace_period_secs: U64(config.finalize_grace_period_secs),
-            max_start_delay_secs: U64(config.max_start_delay_secs),
+            finalize_grace_period_secs: config.finalize_grace_period_secs,
+            max_start_delay_secs: config.max_start_delay_secs,
             updated_by: env::predecessor_account_id(),
         }
         .emit();
@@ -564,11 +564,11 @@ impl VersionedContract {
         verified_accounts_contract: AccountId,
         admins: Vec<AccountId>,
         quorum_bps: u16,
-        voting_period_secs: u64,
-        pending_expiry_secs: u64,
+        voting_period_secs: U64,
+        pending_expiry_secs: U64,
         min_proposal_bond: U128,
-        finalize_grace_period_secs: u64,
-        max_start_delay_secs: u64,
+        finalize_grace_period_secs: U64,
+        max_start_delay_secs: U64,
     ) -> Self {
         require!(!admins.is_empty(), ERR_NO_ADMINS);
         require!(
@@ -576,11 +576,11 @@ impl VersionedContract {
             ERR_QUORUM_BPS_OUT_OF_RANGE
         );
         require!(
-            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&voting_period_secs),
+            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&voting_period_secs.0),
             ERR_VOTING_PERIOD_OUT_OF_RANGE
         );
         require!(
-            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&pending_expiry_secs),
+            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&pending_expiry_secs.0),
             ERR_PENDING_EXPIRY_OUT_OF_RANGE
         );
         require!(
@@ -588,11 +588,11 @@ impl VersionedContract {
             ERR_MIN_BOND_OUT_OF_RANGE
         );
         require!(
-            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&finalize_grace_period_secs),
+            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&finalize_grace_period_secs.0),
             ERR_GRACE_PERIOD_OUT_OF_RANGE
         );
         require!(
-            max_start_delay_secs <= MAX_START_DELAY_SECS,
+            max_start_delay_secs.0 <= MAX_START_DELAY_SECS,
             ERR_MAX_START_DELAY_OUT_OF_RANGE
         );
 
@@ -733,6 +733,7 @@ impl VersionedContract {
                 contract
                     .config
                     .max_start_delay_secs
+                    .0
                     .checked_mul(NANOS_PER_SEC)
                     .unwrap_or_else(|| env::panic_str("start delay overflow")),
             )
@@ -745,6 +746,7 @@ impl VersionedContract {
                 contract
                     .config
                     .voting_period_secs
+                    .0
                     .checked_mul(NANOS_PER_SEC)
                     .unwrap_or_else(|| env::panic_str("voting period overflow")),
             )
@@ -754,6 +756,7 @@ impl VersionedContract {
                 contract
                     .config
                     .pending_expiry_secs
+                    .0
                     .checked_mul(NANOS_PER_SEC)
                     .unwrap_or_else(|| env::panic_str("pending expiry overflow")),
             )
@@ -928,6 +931,7 @@ impl VersionedContract {
                     contract
                         .config
                         .finalize_grace_period_secs
+                        .0
                         .checked_mul(NANOS_PER_SEC)
                         .unwrap_or_else(|| env::panic_str("grace period overflow")),
                 )
@@ -1277,7 +1281,7 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_voting_period_secs(&mut self, new_period_secs: u64) {
+    pub fn update_voting_period_secs(&mut self, new_period_secs: U64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
@@ -1285,7 +1289,7 @@ impl VersionedContract {
             ERR_CONFIG_LOCKED
         );
         require!(
-            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&new_period_secs),
+            (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&new_period_secs.0),
             ERR_VOTING_PERIOD_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1294,11 +1298,11 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_pending_expiry_secs(&mut self, new_period_secs: u64) {
+    pub fn update_pending_expiry_secs(&mut self, new_period_secs: U64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
-            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&new_period_secs),
+            (MIN_PENDING_EXPIRY_SECS..=MAX_PENDING_EXPIRY_SECS).contains(&new_period_secs.0),
             ERR_PENDING_EXPIRY_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1333,11 +1337,11 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_finalize_grace_period_secs(&mut self, new_period_secs: u64) {
+    pub fn update_finalize_grace_period_secs(&mut self, new_period_secs: U64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
-            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&new_period_secs),
+            (MIN_GRACE_PERIOD_SECS..=MAX_GRACE_PERIOD_SECS).contains(&new_period_secs.0),
             ERR_GRACE_PERIOD_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
@@ -1346,11 +1350,11 @@ impl VersionedContract {
     }
 
     #[payable]
-    pub fn update_max_start_delay_secs(&mut self, new_period_secs: u64) {
+    pub fn update_max_start_delay_secs(&mut self, new_period_secs: U64) {
         assert_one_yocto();
         self.assert_admin();
         require!(
-            new_period_secs <= MAX_START_DELAY_SECS,
+            new_period_secs.0 <= MAX_START_DELAY_SECS,
             ERR_MAX_START_DELAY_OUT_OF_RANGE
         );
         let contract = self.contract_mut();
