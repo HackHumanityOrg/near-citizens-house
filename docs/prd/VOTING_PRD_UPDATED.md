@@ -193,8 +193,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 ### 10.3 Proposal Management
 
-- **create_proposal(title, author, description, start_at?)**: Admin-only.
-  - Validates length limits (see Section 12).
+- **create_proposal(title, author, description, start_at?) -> u32**: Admin-only. Returns the proposal ID as a native `u32`.
+  - Validates non-empty and length limits (see Section 12).
   - Rejects if a blocklist change is pending.
   - Requires attached bond (minimum configurable, default 1 NEAR; proposer may attach more).
   - Stores `creator = predecessor_account_id()` for auditability.
@@ -239,7 +239,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **get_vote(proposal_id, account_id)** view — O(1) lookup via the proposal's per-proposal `IterableMap`.
 - **list_votes(proposal_id, from_index, limit)** view with pagination — iterates the proposal's per-proposal `IterableMap<AccountId, Vote>`. Returns `Vec<VoteView>`. Pagination semantics: `iter().skip(from_index).take(limit)`. `IterableMap`'s internal `Vector` provides O(1) `nth()`, making `skip(n)` efficient. Max `limit` is 100 (see Section 12).
 - **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX; treat as a balance-only hint (may change before the vote is recorded).
-- **get_proposal_count()** view — returns `proposals.len()` as `U64` (total proposals created, including cancelled/failed).
+- **get_proposal_count()** view — returns `proposals.len()` as `u32` (total proposals created, including cancelled/failed).
 - **get_pending_votes_count(proposal_id)** view — returns the proposal's `pending_vote_count` field as `U64`. Needed for frontends to show "finalization blocked" state.
 
 ### 10.5 Reject List
@@ -283,7 +283,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 ### 11.1 Proposal
 
-- `id: u64`
+- `id: u32` — `Vector` uses `u32` indices; proposal IDs are natively `u32` and JS-safe (`u32::MAX` = 4.29B < `Number.MAX_SAFE_INTEGER`).
 - `creator: AccountId`
 - `title: String`
 - `author: String` (display-only)
@@ -309,16 +309,16 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 The `voter` (AccountId) is the key of the per-proposal `IterableMap<AccountId, Vote>`, so it is not stored in the `Vote` struct itself. The `proposal_id` is implicit from which proposal's `IterableMap` the vote belongs to. View methods (`get_vote`, `list_votes`) return a `VoteView` struct that includes `voter` and `proposal_id` for convenience.
 
-**JSON serialization note**: `voted_at` must use `U64` in JSON-facing types. `VoteView` includes `proposal_id` (as `U64`) and `voter` for frontend consumption. See Section 11.6.
+**JSON serialization note**: `voted_at` must use `U64` in JSON-facing types. `VoteView` includes `proposal_id` (as native `u32`, JS-safe) and `voter` for frontend consumption. See Section 11.6.
 
 ### 11.3 Collections
 
 All collections use `near_sdk::store` (not the deprecated `near_sdk::collections`).
 
-- `next_proposal_id: u64` — derived from `self.proposals.len() as u64` (not stored separately). The Vector length is the source of truth.
-- `proposals: Vector<Proposal>` — iteration needed for `list_proposals`; append-only (proposals are never removed from storage). The Vector index serves as the proposal ID (sequential from 0), eliminating redundant key storage. `Vector` uses `u32` indices internally (max ~4.29B proposals, sufficient for governance). `next_proposal_id` can be derived from `self.proposals.len() as u64`.
+- `next_proposal_id: u32` — derived from `self.proposals.len()` (not stored separately). The Vector length is the source of truth.
+- `proposals: Vector<Proposal>` — iteration needed for `list_proposals`; append-only (proposals are never removed from storage). The Vector index serves as the proposal ID (sequential from 0), eliminating redundant key storage. `Vector` uses `u32` indices internally (max ~4.29B proposals, sufficient for governance). `next_proposal_id` can be derived from `self.proposals.len()`.
 - **Per-proposal votes**: Each proposal owns an `IterableMap<AccountId, Vote>` stored with a dynamic storage key prefix (e.g., `StorageKey::ProposalVotes { proposal_id }`). This provides O(1) lookup by account and efficient per-proposal iteration for `list_votes`. No global votes collection is needed. The `IterableMap` maintains an internal `Vector` for iteration order, adding ~40-60 bytes per vote compared to `LookupMap`, but enabling on-chain vote enumeration without indexer dependency.
-- `pending_votes: LookupMap<(u64, AccountId), PendingVote>` — vote lock during async verification; stores submission context needed by the callback. Flat global map (not nested per-proposal) since pending votes are temporary, never iterated, and only accessed by exact key.
+- `pending_votes: LookupMap<(u32, AccountId), PendingVote>` — vote lock during async verification; stores submission context needed by the callback. Flat global map (not nested per-proposal) since pending votes are temporary, never iterated, and only accessed by exact key.
 - `admins: IterableSet<AccountId>` — iteration needed for `list_admins`
 - `blocklist: IterableSet<AccountId>` — iteration needed for `list_blocklist`
 - `pending_blocklist_op: Option<PendingBlocklistOp>` — at most one pending blocklist change; used to gate concurrent blocklist ops and proposal creation.
@@ -359,7 +359,7 @@ Use an enum with `BorshStorageKey` to ensure unique prefixes:
 #[derive(BorshSerialize, BorshStorageKey)]
 enum StorageKey {
     Proposals,
-    ProposalVotes { proposal_id: u64 },
+    ProposalVotes { proposal_id: u32 },
     PendingVotes,
     Admins,
     Blocklist,
@@ -402,7 +402,7 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 | `ends_at` | **Critical** — same as above | Must use `U64` |
 | `pending_expires_at` | **Critical** — same as above | Must use `U64` |
 | `voted_at` | **Critical** — same as above | Must use `U64` |
-| `id` | Low — sequential IDs will not reach 2^53 in practice | Use `U64` for consistency |
+| `id` / `proposal_id` | N/A — native `u32` (max ~4.29B), JS-safe | Uses native `u32` in views and events (serialized as JSON number). Same reasoning as `quorum_bps: u16`. |
 | `snapshot_verified_count` | Low — sourced from `u32`, max ~4.29B | Use `U64` for consistency |
 | `yes_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
 | `no_votes` | Low — bounded by snapshot count | Use `U64` for consistency |
@@ -414,9 +414,15 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 
 **`get_verified_count() -> u32` from the verified-accounts contract is safe**: `u32` max value is approximately 4.29 x 10^9, well within the JS safe integer range. The governance contract converts this to `u64` for internal storage (`snapshot_verified_count`), but the JSON response must emit it as `U64`.
 
-**Implementation approach**: Define a `ProposalView` response struct (or use `U64`/`U128` directly in the `Proposal` struct if dual-derive is preferred) with all `u64` fields as `U64` and all `u128` fields as `U128`. View methods return `ProposalView`. Similarly, define `VoteView` with `U64` for `voted_at` and `proposal_id`, `voter: AccountId`, and `choice`.
+**Implementation approach**: Define a `ProposalView` response struct (or use `U64`/`U128` directly in the `Proposal` struct if dual-derive is preferred) with all `u64` fields as `U64` and all `u128` fields as `U128`. View methods return `ProposalView`. Similarly, define `VoteView` with `U64` for `voted_at`, native `u32` for `proposal_id` (JS-safe), `voter: AccountId`, and `choice`.
 
-### 11.7 VoteRejectionReason Enum
+**JS-safe native types**: `proposal_id` (`u32`), `quorum_bps` (`u16`), and pagination parameters (`from_index`, `limit`) use native integer types in both storage and JSON-facing interfaces. Their maximum values are well within the JS safe integer range and do not require `U64` wrapping.
+
+### 11.7 Enum Serialization
+
+All enums used in JSON-facing types use `#[serde(rename_all = "snake_case")]` for consistent serialization. This includes `ProposalStatus`, `FailureKind`, `VoteChoice`, `VoteRejectionReason`, and `ProposalCreationFailedReason`. For example, `VoteChoice::Yes` serializes as `"yes"` and `VoteChoice::No` as `"no"`.
+
+#### VoteRejectionReason
 
 When a vote callback fails for any reason, the contract emits a `vote_rejected` event with a `VoteRejectionReason` enum value. This enum is serialized as a string in JSON event payloads.
 
@@ -439,7 +445,7 @@ enum VoteRejectionReason {
 }
 ```
 
-### 11.8 ProposalCreationFailedReason Enum
+#### ProposalCreationFailedReason
 
 When proposal creation fails during the snapshot callback, the contract emits a `proposal_creation_failed` event with a `ProposalCreationFailedReason` enum value. This enum is serialized as a string in JSON event payloads.
 
@@ -458,9 +464,9 @@ enum ProposalCreationFailedReason {
 
 ## 12. Limits and Validation
 
-- **Title length**: <= 140 chars
-- **Author length**: <= 120 chars
-- **Description length**: <= 10,000 chars
+- **Title**: must be non-empty, <= 140 chars
+- **Author**: must be non-empty, <= 120 chars
+- **Description**: must be non-empty, <= 10,000 chars
 - **Pagination limit**: max 100
 
 - **Proposal IDs**: Assigned sequentially starting from 0 via `proposals` Vector index (`proposals.len()` is total count).
@@ -484,7 +490,7 @@ Event names and payloads:
 
 - `proposal_created`: `{ proposal_id, creator, created_at, start_at, ends_at, pending_expires_at, quorum_bps }` — emitted at initial creation (Pending state).
 - `proposal_activated`: `{ proposal_id, snapshot_verified_count, quorum_required }` — emitted when snapshot callback succeeds and proposal transitions to Active. `quorum_required` is the absolute vote count: `ceil(snapshot_verified_count * quorum_bps / 10_000)`.
-- `proposal_creation_failed`: `{ proposal_id, reason }` — emitted when snapshot callback fails or the effective snapshot is zero. `reason` is a `ProposalCreationFailedReason` enum value serialized as a snake_case string (e.g., `"snapshot_callback_failed"`, `"zero_snapshot"`). See Section 11.8.
+- `proposal_creation_failed`: `{ proposal_id, reason }` — emitted when snapshot callback fails or the effective snapshot is zero. `reason` is a `ProposalCreationFailedReason` enum value serialized as a snake_case string (e.g., `"snapshot_callback_failed"`, `"zero_snapshot"`). See Section 11.7.
 - `proposal_cancelled`: `{ proposal_id, cancelled_by }`
 - `proposal_finalized`: `{ proposal_id, status, yes_votes, no_votes, quorum, snapshot_verified_count }` where `quorum` is the required vote count (not bps).
 - `vote_cast`: `{ proposal_id, voter, choice, voted_at }` — `voted_at` is the submission time (from `PendingVote.submitted_at`), not the callback execution time.
@@ -502,7 +508,7 @@ Event names and payloads:
 - Use the native `#[near(event_json(standard = "citizens-house-vote"))]` attribute macro from `near-sdk` (v5.24+) to define a single `GovernanceEvent` enum with one variant per event type, each annotated with `#[event_version("1.0.0")]`. This provides `.emit()` and formats `EVENT_JSON` automatically.
 - The macro defaults to `snake_case` naming for struct names or enum variants, which matches the event names above (e.g., `ProposalCreated` -> `proposal_created`).
 - Emit events after state is finalized (e.g., in snapshot/vote callbacks, and after finalize/cancel state transitions), not on request submission. Events must be emitted as the **last operation** in callbacks, after all state changes and checks succeed.
-- **Event payload integer types**: All `u64` values in event payloads (e.g., `proposal_id`, `created_at`, `start_at`, `ends_at`, `pending_expires_at`, `voted_at`, `yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`) must be serialized as JSON strings using `U64` to prevent silent precision loss in JavaScript indexer clients. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so using `U64`/`U128` types in the event enum variants automatically produces string-encoded integers in the `EVENT_JSON` output. See Section 11.6 for full rationale. Note: `quorum_bps` is `u16` (max 65,535) and is JS-safe, so it uses native `u16` in both events and view responses (serialized as a JSON number, not a string).
+- **Event payload integer types**: All `u64` values in event payloads (e.g., `created_at`, `start_at`, `ends_at`, `pending_expires_at`, `voted_at`, `yes_votes`, `no_votes`, `snapshot_verified_count`, `quorum`) must be serialized as JSON strings using `U64` to prevent silent precision loss in JavaScript indexer clients. The `near_sdk` event macro serializes fields using their `Serialize` implementation, so using `U64`/`U128` types in the event enum variants automatically produces string-encoded integers in the `EVENT_JSON` output. See Section 11.6 for full rationale. Note: `proposal_id` uses native `u32` (max ~4.29B, JS-safe) and is serialized as a JSON number. Similarly, `quorum_bps` is `u16` (max 65,535) and is JS-safe. Both use native types in events and view responses.
 - **Important**: NEAR logs from failed callbacks are visible to indexers even though state changes are rolled back (nearcore processes logs before checking execution success). If a callback emits an event and then panics, indexers see a phantom event for state changes that never persisted. Indexers must verify receipt execution status before trusting events.
 
 ---
@@ -671,6 +677,9 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 
 | Constant | Condition |
 |---|---|
+| `ERR_TITLE_EMPTY` | `title.is_empty()` |
+| `ERR_AUTHOR_EMPTY` | `author.is_empty()` |
+| `ERR_DESCRIPTION_EMPTY` | `description.is_empty()` |
 | `ERR_TITLE_TOO_LONG` | `title.len() > 140` |
 | `ERR_AUTHOR_TOO_LONG` | `author.len() > 120` |
 | `ERR_DESCRIPTION_TOO_LONG` | `description.len() > 10_000` |
@@ -736,7 +745,7 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 | `new` | No | `ERR_NO_ADMINS`, `ERR_QUORUM_BPS_OUT_OF_RANGE`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE`, `ERR_MIN_BOND_OUT_OF_RANGE`, `ERR_GRACE_PERIOD_OUT_OF_RANGE`, `ERR_MAX_START_DELAY_OUT_OF_RANGE` |
 | `add_admin` | Yes | `ERR_NOT_ADMIN` |
 | `remove_admin` | Yes | `ERR_NOT_ADMIN`, `ERR_CANNOT_REMOVE_LAST_ADMIN` |
-| `create_proposal` | No (bond >= 1 NEAR) | `ERR_NOT_ADMIN`, `ERR_TITLE_TOO_LONG`, `ERR_AUTHOR_TOO_LONG`, `ERR_DESCRIPTION_TOO_LONG`, `ERR_INSUFFICIENT_BOND`, `ERR_START_AT_BEFORE_CREATED`, `ERR_START_AT_TOO_FAR`, `ERR_BLOCKLIST_OP_PENDING` |
+| `create_proposal` | No (bond >= 1 NEAR) | `ERR_NOT_ADMIN`, `ERR_TITLE_EMPTY`, `ERR_AUTHOR_EMPTY`, `ERR_DESCRIPTION_EMPTY`, `ERR_TITLE_TOO_LONG`, `ERR_AUTHOR_TOO_LONG`, `ERR_DESCRIPTION_TOO_LONG`, `ERR_INSUFFICIENT_BOND`, `ERR_START_AT_BEFORE_CREATED`, `ERR_START_AT_TOO_FAR`, `ERR_BLOCKLIST_OP_PENDING` |
 | `cancel_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_ALREADY_FINALIZED`, `ERR_PROPOSAL_ALREADY_CANCELLED` |
 | `expire_pending_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_PENDING`, `ERR_PROPOSAL_NOT_EXPIRED` |
 | `clear_stale_pending_vote` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PENDING_VOTE_NOT_FOUND` |
