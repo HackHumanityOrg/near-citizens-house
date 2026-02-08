@@ -238,7 +238,6 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **is_vote_free(proposal_id)** view — Returns `true` if contract has enough balance to cover vote storage, `false` if deposit is required. Useful for frontend UX; treat as a hint only (balance may change before the vote is recorded).
 - **get_proposal_count()** view — returns `next_proposal_id` as `U64` (total proposals created, including cancelled/failed).
 - **get_pending_votes_count(proposal_id)** view — returns the proposal's `pending_vote_count` field as `U64`. Needed for frontends to show "finalization blocked" state.
-- **get_votes_summary(proposal_id)** view — returns `{ yes_votes: U64, no_votes: U64, quorum_required: U64, quorum_met: bool, total_votes: U64 }` so frontends don't need to replicate quorum math. All integer fields use `U64` for JSON safety (see Section 11.6).
 
 ### 10.5 Reject List
 
@@ -406,7 +405,7 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 
 **`get_verified_count() -> u32` from the verified-accounts contract is safe**: `u32` max value is approximately 4.29 x 10^9, well within the JS safe integer range. The governance contract converts this to `u64` for internal storage (`snapshot_verified_count`), but the JSON response must emit it as `U64`.
 
-**Implementation approach**: Define a `ProposalView` response struct (or use `U64`/`U128` directly in the `Proposal` struct if dual-derive is preferred) with all `u64` fields as `U64` and all `u128` fields as `U128`. View methods return `ProposalView`. Similarly, define `VoteView` with `U64` for `voted_at` and `proposal_id`, `voter: AccountId`, and `choice`. Define `VotesSummaryView` with `U64` for all count fields.
+**Implementation approach**: Define a `ProposalView` response struct (or use `U64`/`U128` directly in the `Proposal` struct if dual-derive is preferred) with all `u64` fields as `U64` and all `u128` fields as `U128`. View methods return `ProposalView`. Similarly, define `VoteView` with `U64` for `voted_at` and `proposal_id`, `voter: AccountId`, and `choice`.
 
 ### 11.7 VoteRejectionReason Enum
 
@@ -693,7 +692,7 @@ Event names and payloads:
   - Quorum bps bounds — verifies minimum (1) enforcement.
   - Pending expiry bounds — verifies minimum (300s) and maximum (86,400s) enforcement.
   - Pending expiry distinct from voting period — verifies that `pending_expires_at` is computed from `pending_expiry_secs` (not `voting_period_secs`), and that `expire_pending_proposal` uses `pending_expires_at` for the expiry check.
-  - New view methods: `get_proposal_count`, `get_pending_votes_count`, `get_votes_summary`.
+  - New view methods: `get_proposal_count`, `get_pending_votes_count`.
   - Vote deposit refund ordering: verify that vote is recorded and tallies updated before excess deposit refund on success path; verify pending lock cleared before full deposit refund on failure path.
   - `cancel_proposal` requires one yocto: verify that calling `cancel_proposal` without attaching exactly 1 yoctoNEAR panics.
   - JSON serialization safety: verify that all view methods return `U64`-wrapped integers (not raw `u64`) by checking that JSON output contains string-encoded numbers for timestamp and count fields. Verify that nanosecond timestamps (e.g., `1_700_000_000_000_000_000u64`) round-trip correctly through JSON serialization without precision loss.
