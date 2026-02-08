@@ -53,7 +53,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 **Assumptions**
 
-- Voting should be available within the same app as Verification was, with the ability to turn each module (Verification, Voting) on or off at any given time
+- Voting should be available within the same app as Verification was. The UI may hide or show Verification and Voting modules, but there is no on-chain pause.
 - The Verified Accounts contract remains the source of truth for verification.
 - Contract account will be funded for baseline storage.
 - **Storage model**:
@@ -72,7 +72,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 
 ## 6. Actors and Roles
 
-- **Admin**: Can create/cancel proposals, manage blocklists, update config, pause/unpause, manage admins.
+- **Admin**: Can create/cancel proposals, manage blocklists, update config, manage admins.
 - **Verified Voter**: Can vote on active proposals if verified and not blocklisted.
 - **Public Reader**: Can query proposals and results.
 
@@ -86,7 +86,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - Governance actions complete within expected gas limits.
 - At least 7% of NEAR Verified Accounts vote (hopefully signifantly higher).
 - Voting is concluded within a 2-week time period.
-- We do not need to pause voting e.g. due to any major bugs or security incidents.
+- We do not need to cancel and recreate a proposal to address operational issues.
 
 ---
 
@@ -110,7 +110,6 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **Zero snapshot**: If the snapshot callback returns `verified_count == 0`, proposal creation fails (`proposal_creation_failed` event emitted). As a defensive fallback, `finalize` also checks for `snapshot_verified_count == 0` and fails the proposal with `failure_kind: ZeroSnapshot`, though this path should not be reachable in normal operation.
 - **Config updates**: Updates to `voting_period_secs` and `verified_accounts_contract` are blocked while any proposal is Pending or Active. `quorum_bps`, `pending_expiry_secs`, `min_proposal_bond`, and `finalize_grace_period_secs` may be updated at any time since they only affect future proposals or are checked dynamically at finalize time.
 - **Storage funding**: See storage model in Section 5 Assumptions.
-- **Pause semantics**: Pause blocks new create/vote/finalize, but allows cancel, `expire_pending_proposal`, `clear_stale_pending_vote`, and in-flight callbacks to complete.
 
 ---
 
@@ -145,13 +144,13 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
    - If a vote callback fails (e.g., insufficient gas), all callback state changes are rolled back per NEAR's receipt-level atomicity, but the `PendingVote` record from the initial `cast_vote` call persists (including the trapped `voter_deposit`). Stuck records can be cleared via the admin-only `clear_stale_pending_vote` method, which also refunds the trapped deposit.
 
 3. **Finalize**
-   - Anyone can call finalize after `ends_at` when not paused.
+   - Anyone can call finalize after `ends_at`.
    - Finalize is blocked while any `pending_votes` exist for the proposal, **unless** the finalize grace period has elapsed (`env::block_timestamp() >= ends_at + (finalize_grace_period_secs * 1_000_000_000)`). After the grace period, finalize proceeds regardless of `pending_vote_count`, treating remaining pending votes as abandoned. Vote callbacks that resolve after finalization are rejected with `VoteRejectionReason::PostFinalize` and deposits are refunded.
    - Finalize is only valid for `Active` proposals. Expired Pending proposals must use `expire_pending_proposal` instead.
    - `yes_votes` and `no_votes` are always effective tallies (already adjusted for blocklisted accounts in real-time), so finalize reads them directly.
    - Defensive check: if `snapshot_verified_count == 0`, proposal fails (with `failure_kind: ZeroSnapshot`). This should not be reachable in normal operation since zero-snapshot proposals are rejected at creation (see Section 9.1).
    - Proposal becomes Succeeded or Failed based on quorum and yes/no results. On failure, `failure_kind` is set (`QuorumNotMet` or `Rejected`).
-   - Finalize uses `ends_at` as originally set (pause does not freeze time).
+   - Finalize uses `ends_at` as originally set.
 
 4. **Cancel (admin-only)**
    - Requires `assert_one_yocto()` to prevent function-call key abuse.
@@ -178,7 +177,6 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - `min_proposal_bond: U128` (default 1 NEAR) — minimum bond; proposers may attach more
   - `finalize_grace_period_secs: u64` (default 3600 = 1 hour) — after `ends_at + grace_period`, finalize proceeds even with pending votes
   - `max_start_delay_secs: u64` (default 7,776,000 = 90 days) — max allowed delay from `created_at` to `start_at`
-- Must set `paused = false`.
 
 ### 10.2 Admin Management
 
@@ -202,10 +200,10 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Validates `created_at <= start_at <= created_at + (max_start_delay_secs * 1_000_000_000)`.
   - Initiates async call to fetch snapshot; callback activates proposal.
   - Bond is never refunded regardless of proposal outcome.
-- **cancel_proposal(proposal_id)**: Admin-only (`predecessor_account_id()` must be admin); uses `assert_one_yocto()`. Works on both Active and Pending proposals, only if not finalized. Bond is not refunded. Allowed while paused. Does **not** clear pending vote locks (see Section 9.4).
-- **expire_pending_proposal(proposal_id)**: Admin-only; only valid for Pending proposals past `pending_expires_at`. Marks proposal as Failed with `failure_kind: PendingExpired`. Uses `assert_one_yocto()`. Allowed while paused.
-- **clear_stale_pending_vote(proposal_id, account_id)**: Admin-only; removes a stuck `PendingVote` record. Uses `assert_one_yocto()`. This is a safety mechanism for vote callbacks that failed due to insufficient gas, which leaves the `PendingVote` from the initial call permanently set (per NEAR's receipt-level atomicity). If the removed `PendingVote` has a non-zero `voter_deposit`, the deposit is refunded to the voter (`account_id`). Allowed while paused.
-- **finalize_proposal(proposal_id)**: Public; only after `ends_at` and when not paused.
+- **cancel_proposal(proposal_id)**: Admin-only (`predecessor_account_id()` must be admin); uses `assert_one_yocto()`. Works on both Active and Pending proposals, only if not finalized. Bond is not refunded. Does **not** clear pending vote locks (see Section 9.4).
+- **expire_pending_proposal(proposal_id)**: Admin-only; only valid for Pending proposals past `pending_expires_at`. Marks proposal as Failed with `failure_kind: PendingExpired`. Uses `assert_one_yocto()`.
+- **clear_stale_pending_vote(proposal_id, account_id)**: Admin-only; removes a stuck `PendingVote` record. Uses `assert_one_yocto()`. This is a safety mechanism for vote callbacks that failed due to insufficient gas, which leaves the `PendingVote` from the initial call permanently set (per NEAR's receipt-level atomicity). If the removed `PendingVote` has a non-zero `voter_deposit`, the deposit is refunded to the voter (`account_id`).
+- **finalize_proposal(proposal_id)**: Public; only after `ends_at`.
   - Only valid for `Active` proposals. Expired Pending proposals must use `expire_pending_proposal` instead.
   - Blocked while any `pending_votes` exist for the proposal, **unless** the finalize grace period has elapsed (`env::block_timestamp() >= ends_at + (finalize_grace_period_secs * 1_000_000_000)`). After the grace period, finalize proceeds regardless of `pending_vote_count`.
   - `yes_votes` and `no_votes` are read directly (already adjusted for blocklisted accounts in real-time).
@@ -267,16 +265,6 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Must be >= 0 and <= 7,776,000 (90 days).
   - Uses `assert_one_yocto()`.
 - **get_config()** view: Returns current configuration including `quorum_bps`, `voting_period_secs`, `pending_expiry_secs`, `verified_accounts_contract`, `min_proposal_bond`, `finalize_grace_period_secs`, and `max_start_delay_secs`.
-
-### 10.7 Pause Controls
-
-- **pause() / unpause()**: Admin-only; uses `assert_one_yocto()`.
-  - Paused state blocks proposal creation, voting, and finalization.
-  - Pause does not freeze proposal time: `ends_at` and pending expiry timers continue to advance while paused.
-  - Admin config updates, admin/blocklist management, `expire_pending_proposal`, and `clear_stale_pending_vote` remain allowed while paused.
-  - Admin cancellation remains allowed while paused.
-  - In-flight callbacks from pre-pause actions are allowed to complete.
-  - View methods remain accessible.
 
 ---
 
@@ -470,8 +458,6 @@ Event names and payloads:
 - `config_updated`: `{ quorum_bps, voting_period_secs, pending_expiry_secs, verified_accounts_contract, min_proposal_bond, finalize_grace_period_secs, max_start_delay_secs, updated_by }`
 - `pending_vote_cleared`: `{ proposal_id, account_id, cleared_by, deposit_refunded }` — emitted when admin clears a stuck pending vote. `deposit_refunded` is the amount returned to the voter (0 if no deposit was attached).
 - `pending_proposal_expired`: `{ proposal_id, expired_by }` — emitted when admin expires a pending proposal.
-- `paused`: `{ paused_by }`
-- `unpaused`: `{ unpaused_by }`
 
 **Implementation guidance**
 
@@ -505,7 +491,6 @@ Event names and payloads:
   | `update_verified_accounts_contract` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `update_min_proposal_bond` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
   | `update_finalize_grace_period_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
-  | `pause` / `unpause` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `migrate` | `predecessor_account_id()` | Admin check + 1 yoctoNEAR |
   | Snapshot callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Original caller identity read from stored `proposal.creator`. |
   | Vote callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Voter identity passed as callback parameter or read from pending vote lock key `(proposal_id, account_id)`. |
@@ -534,8 +519,6 @@ Event names and payloads:
   | `update_verified_accounts_contract` | Required | Config change |
   | `update_min_proposal_bond` | Required | Config change |
   | `update_finalize_grace_period_secs` | Required | Config change |
-  | `pause` | Required | Operational control change |
-  | `unpause` | Required | Operational control change |
   | `migrate` | Required (1 yoctoNEAR) | Upgrade protection |
 - **Private callbacks**: Mark callbacks `#[private]`, verify `promise_results_count`, and handle `promise_result` errors.
 - **Async safety**: Treat cross-contract calls as asynchronous; only finalize proposal/vote state in callbacks.
@@ -605,7 +588,7 @@ Event names and payloads:
 - **Callback gas**: Snapshot callback uses at least 20 Tgas; vote callback uses at least 30 Tgas.
 - **Error handling**: If cross-contract call fails, creation/vote must fail cleanly and any `PendingVote` record must be removed (with `voter_deposit` refunded).
 - **Serialization**: Promise results are JSON; parse with `serde_json::from_slice` in callbacks and treat deserialization failures as callback failures.
-- **Verification pause behavior**: Verified Accounts pause only blocks writes; reads remain available, so governance reads may proceed unless governance intentionally blocks them.
+- **Verification pause behavior**: Verified Accounts pause only blocks writes; reads remain available, so governance reads may proceed.
 - **Zero-snapshot sanity check**: If `get_verified_count()` returns 0, the snapshot callback should fail the proposal creation rather than creating an Active proposal with `snapshot_verified_count = 0` that will auto-fail at finalization.
 - **Callback status verification**: The snapshot callback must check that the proposal is still in `Pending` status before transitioning to Active. If the proposal was cancelled between the cross-contract call and callback, the callback aborts without further state changes.
 - **Trust dependency**: The governance contract trusts that the verified-accounts contract returns accurate data. The verified-accounts contract has its own upgrade path (`migrate()`) and single `backend_wallet` admin. If compromised, it could affect governance outcomes. This dependency should be documented in deployment procedures and operational runbooks.
@@ -622,7 +605,6 @@ Event names and payloads:
   - Proposal not started (attempted vote before `start_at`)
   - Pending proposal expired
   - Finalize blocked by pending votes
-  - Contract paused
   - Config locked due to active proposals
   - Already voted / vote already pending
   - Insufficient bond (for proposals)
@@ -668,7 +650,6 @@ Event names and payloads:
   - Config update granularity: verify `quorum_bps`, `pending_expiry_secs`, and `min_proposal_bond` can be updated during active proposals; verify `voting_period_secs` and `verified_accounts_contract` are blocked while proposals are Active.
   - Blocklist real-time adjustment: verify that when blocklisting a voter, their vote's `blocklisted` field is set to `true` and proposal `yes_votes`/`no_votes` decremented. Verify unblocklist reverses this. Verify `get_vote()` shows blocklisted status.
   - Blocklist behavior and list_blocklist pagination.
-  - Pause/unpause behavior, including finalize blocked while paused.
   - Snapshot callback with cancelled proposal — verifies callback checks status and aborts.
   - Stuck pending vote lock — verifies admin can clear it via `clear_stale_pending_vote` and finalization proceeds.
   - Pending vote stores submission context: verify `PendingVote` contains correct `submitted_at`, `choice`, and `voter_deposit` after `cast_vote`.
