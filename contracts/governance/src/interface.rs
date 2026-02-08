@@ -4,8 +4,8 @@
 //! verified-accounts contract.
 
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
-use serde::{Deserialize, Serialize};
 use near_sdk::{ext_contract, AccountId, NearSchema, Timestamp};
+use serde::{Deserialize, Serialize};
 
 /// Lightweight verification summary (no signature data).
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, NearSchema)]
