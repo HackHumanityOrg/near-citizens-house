@@ -102,6 +102,7 @@ pub const ERR_BLOCKLIST_LOCKED: &str = "ERR_BLOCKLIST_LOCKED";
 pub const ERR_BLOCKLIST_OP_PENDING: &str = "ERR_BLOCKLIST_OP_PENDING";
 pub const ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED: &str = "ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED";
 pub const ERR_ACCOUNT_NOT_BLOCKLISTED: &str = "ERR_ACCOUNT_NOT_BLOCKLISTED";
+pub const ERR_BLOCKLIST_OP_NOT_PENDING: &str = "ERR_BLOCKLIST_OP_NOT_PENDING";
 
 // Config validation (init + update methods)
 pub const ERR_NO_ADMINS: &str = "ERR_NO_ADMINS";
@@ -445,6 +446,11 @@ pub enum GovernanceEvent {
         account_id: AccountId,
         cleared_by: AccountId,
         deposit_refunded: NearToken,
+    },
+    #[event_version("1.0.0")]
+    PendingBlocklistOpCleared {
+        account_id: AccountId,
+        cleared_by: AccountId,
     },
     #[event_version("1.0.0")]
     PendingProposalExpired {
@@ -906,6 +912,23 @@ impl VersionedContract {
         if !deposit_refunded.is_zero() {
             Promise::new(account_id).transfer(deposit_refunded).detach();
         }
+    }
+
+    #[payable]
+    pub fn clear_stale_blocklist_op(&mut self) {
+        assert_one_yocto();
+        self.assert_admin();
+        let contract = self.contract_mut();
+        let pending = contract
+            .pending_blocklist_op
+            .take()
+            .unwrap_or_else(|| env::panic_str(ERR_BLOCKLIST_OP_NOT_PENDING));
+
+        GovernanceEvent::PendingBlocklistOpCleared {
+            account_id: pending.account_id,
+            cleared_by: env::predecessor_account_id(),
+        }
+        .emit();
     }
 
     pub fn finalize_proposal(&mut self, proposal_id: u32) {
