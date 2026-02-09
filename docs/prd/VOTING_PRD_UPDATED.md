@@ -143,10 +143,11 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
      - If contract lacks balance → voter must attach deposit (revert if insufficient)
    - Contract records a `PendingVote` per proposal (`pending_votes` keyed by `(proposal_id, account_id)` → `PendingVote { submitted_at, choice, voter_deposit }`) to prevent duplicate submissions and preserve submission context for the callback.
    - Contract calls Verified Accounts `get_verification` (summary).
-   - Callback reads the `PendingVote` from storage, enforces `verified_at <= proposal.created_at` and `pending_vote.submitted_at <= proposal.ends_at`, and records vote if valid (using `choice` and `submitted_at` from the pending record).
+   - Callback reads the `PendingVote` from storage, enforces `verified_at <= proposal.created_at` and `proposal.start_at <= pending_vote.submitted_at <= proposal.ends_at`, and records vote if valid (using `choice` and `submitted_at` from the pending record).
    - Vote timing uses **submission time**: the callback enforces `proposal.start_at <= pending_vote.submitted_at <= proposal.ends_at` (where `submitted_at` was recorded during `cast_vote`), so a vote submitted before `ends_at` is eligible even if its callback executes after `ends_at`.
    - **NEAR async model rationale**: cross-contract calls and callbacks execute in separate blocks and are independent, so `submitted_at` must be captured before the callback to enforce the voting window reliably.
    - On failure, the `PendingVote` record is removed (clearing the lock) and `pending_vote.voter_deposit` is refunded to the voter.
+   - Defensive case: if the vote callback executes while the proposal is still `Pending` (should not normally happen), the callback must refund and exit without emitting a `vote_rejected` event.
    - If a vote callback fails (e.g., insufficient gas), all callback state changes are rolled back per NEAR's receipt-level atomicity, but the `PendingVote` record from the initial `cast_vote` call persists (including the trapped `voter_deposit`). Stuck records can be cleared via the admin-only `clear_stale_pending_vote` method, which also refunds the trapped deposit.
 
 3. **Finalize**
@@ -447,7 +448,7 @@ enum VoteRejectionReason {
     NotVerified,
     /// Voter was verified after proposal creation (verified_at > created_at).
     VerifiedAfterCreation,
-    /// Proposal voting period expired (submitted_at > ends_at edge case guard).
+    /// Proposal voting period invalid (submitted_at < start_at or submitted_at > ends_at).
     ProposalExpired,
     /// Cross-contract call failed (e.g., JSON deserialization error, promise failure).
     CallbackFailed,
@@ -475,9 +476,9 @@ enum ProposalCreationFailedReason {
 
 ## 12. Limits and Validation
 
-- **Title**: must be non-empty, <= 140 chars
-- **Author**: must be non-empty, <= 120 chars
-- **Description**: must be non-empty, <= 10,000 chars
+- **Title**: must be non-empty, <= 140 bytes
+- **Author**: must be non-empty, <= 120 bytes
+- **Description**: must be non-empty, <= 10,000 bytes
 - **Pagination limit**: max 100
 
 - **Proposal IDs**: Assigned sequentially starting from 0 via `proposals` Vector index (`proposals.len()` is total count).
@@ -691,7 +692,7 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 | `ERR_PROPOSAL_NOT_STARTED` | `env::block_timestamp() < proposal.start_at` |
 | `ERR_PROPOSAL_ENDED` | `env::block_timestamp() > proposal.ends_at` |
 | `ERR_PROPOSAL_NOT_EXPIRED` | Pending proposal has not reached `pending_expires_at` |
-| `ERR_FINALIZE_NOT_ENDED` | `env::block_timestamp() < proposal.ends_at` |
+| `ERR_FINALIZE_NOT_ENDED` | `env::block_timestamp() <= proposal.ends_at` |
 | `ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES` | `pending_vote_count > 0` and grace period not elapsed |
 
 **Proposal creation:**
