@@ -32,11 +32,18 @@ serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 near-sdk = { version = "5.24", features = ["unit-testing"] }
-near-workspaces = "0.21"
+near-workspaces = { version = "0.21", features = ["unstable"] }
+cargo-near-build = "0.7.2"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 anyhow = "1.0"
 tokio = { version = "1.49", features = ["full"] }
+allure-rs = { version = "0.1", features = ["async", "tokio"] }
+allure-core = { version = "0.1", features = ["async", "tokio"] }
+futures = "0.3"
+base64 = "0.22"
+sha2 = "0.10"
+near-crypto = "0.22"
 
 [lints.clippy]
 unwrap_used = "deny"
