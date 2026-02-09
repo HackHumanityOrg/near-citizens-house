@@ -261,7 +261,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Must be >= 86,400 (1 day) and <= 7,776,000 (90 days).
   - Uses `assert_one_yocto()`.
 - **update_pending_expiry_secs(new_period)**: Admin-only. May be updated at any time; only affects future proposals since each proposal snapshots its own `pending_expires_at` at creation.
-  - Must be >= 300 (5 minutes) and <= 86,400 (1 day).
+  - Must be >= 300 (5 minutes) and <= 86,400 (1 day).  
+    **Testing feature override**: minimum is 10 seconds when compiled with `testing`.
   - Uses `assert_one_yocto()`.
 - **update_verified_accounts_contract(new_contract)**: Admin-only; blocked while any proposal is Pending or Active.
   - Uses `assert_one_yocto()`.
@@ -270,7 +271,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - This sets the minimum; proposers may attach more.
   - Uses `assert_one_yocto()`.
 - **update_finalize_grace_period_secs(new_period)**: Admin-only. May be updated at any time; checked dynamically at finalize time.
-  - Must be >= 300 (5 minutes) and <= 86,400 (1 day).
+  - Must be >= 300 (5 minutes) and <= 86,400 (1 day).  
+    **Testing feature override**: minimum is 10 seconds when compiled with `testing`.
   - Uses `assert_one_yocto()`.
 - **update_max_start_delay_secs(new_period)**: Admin-only. May be updated at any time; affects only future proposals.
   - Must be >= 0 and <= 7,776,000 (90 days).
@@ -476,11 +478,14 @@ enum ProposalCreationFailedReason {
 
 - **Proposal IDs**: Assigned sequentially starting from 0 via `proposals` Vector index (`proposals.len()` is total count).
 - **Pagination semantics**: `from_index` parameters are 0-based offsets. For `proposals` (`Vector`), pagination uses range-based indexing: `(from_index..min(len, from_index+limit)).filter_map(|i| self.proposals.get(i))`, giving O(limit) with no skip overhead and no hashing. For `admins` and `blocklist` (`IterableSet`), pagination uses `iter().skip(from_index).take(limit)`; the `IterableSet` iterator provides O(1) `nth()` via its internal `Vector`, making `skip(n)` O(1) regardless of offset. For `votes` (per-proposal `IterableMap`), pagination uses `iter().skip(from_index).take(limit)`; the `IterableMap` iterator provides O(1) `nth()` via its internal `Vector`. Total pagination cost is O(limit) for all collections.
-- **Voting period bounds**: minimum 86,400 seconds (1 day), maximum 7,776,000 seconds (90 days).
+- **Voting period bounds**: minimum 86,400 seconds (1 day), maximum 7,776,000 seconds (90 days).  
+  **Testing feature override**: when compiled with the `testing` feature, the minimum is lowered to 60 seconds for faster tests.
 - **Minimum proposal bond bounds**: minimum 1 NEAR, maximum 100 NEAR.
 - **Quorum bps bounds**: minimum 1, maximum 10,000.
-- **Pending expiry bounds**: minimum 300 seconds (5 minutes), maximum 86,400 seconds (1 day).
-- **Finalize grace period bounds**: minimum 300 seconds (5 minutes), maximum 86,400 seconds (1 day).
+- **Pending expiry bounds**: minimum 300 seconds (5 minutes), maximum 86,400 seconds (1 day).  
+  **Testing feature override**: when compiled with the `testing` feature, the minimum is lowered to 10 seconds for faster tests.
+- **Finalize grace period bounds**: minimum 300 seconds (5 minutes), maximum 86,400 seconds (1 day).  
+  **Testing feature override**: when compiled with the `testing` feature, the minimum is lowered to 10 seconds for faster tests.
 - **Start delay bounds**: `start_at` must be between `created_at` and `created_at + (max_start_delay_secs * 1_000_000_000)`. `max_start_delay_secs` must be between 0 and 7,776,000 seconds (90 days).
 
 These limits prevent storage abuse, parameter misconfiguration, and keep gas costs predictable.

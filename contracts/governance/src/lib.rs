@@ -38,15 +38,24 @@ const MAX_PAGINATION_LIMIT: u32 = 100;
 const MIN_QUORUM_BPS: u16 = 1;
 const MAX_QUORUM_BPS: u16 = 10_000;
 
+#[cfg(feature = "testing")]
+const MIN_VOTING_PERIOD_SECS: u64 = 60; // 1 minute (tests)
+#[cfg(not(feature = "testing"))]
 const MIN_VOTING_PERIOD_SECS: u64 = 86_400; // 1 day
 const MAX_VOTING_PERIOD_SECS: u64 = 7_776_000; // 90 days
 
+#[cfg(feature = "testing")]
+const MIN_PENDING_EXPIRY_SECS: u64 = 10; // 10 seconds (tests)
+#[cfg(not(feature = "testing"))]
 const MIN_PENDING_EXPIRY_SECS: u64 = 300; // 5 minutes
 const MAX_PENDING_EXPIRY_SECS: u64 = 86_400; // 1 day
 
 const MIN_BOND: NearToken = NearToken::from_near(1);
 const MAX_BOND: NearToken = NearToken::from_near(100);
 
+#[cfg(feature = "testing")]
+const MIN_GRACE_PERIOD_SECS: u64 = 10; // 10 seconds (tests)
+#[cfg(not(feature = "testing"))]
 const MIN_GRACE_PERIOD_SECS: u64 = 300; // 5 minutes
 const MAX_GRACE_PERIOD_SECS: u64 = 86_400; // 1 day
 
