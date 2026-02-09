@@ -1348,20 +1348,34 @@ impl VersionedContract {
         #[callback_result] snapshot_result: Result<u32, PromiseError>,
         proposal_id: u32,
     ) -> bool {
-        if env::promise_results_count() != 1 {
-            env::log_str(ERR_INVALID_PROMISE_RESULTS);
-            return false;
-        }
         let contract = self.contract_mut();
 
         // Proposal may have been cancelled since creation
-        let proposal = match contract.proposals.get(proposal_id) {
-            Some(p) => p,
+        let status = match contract.proposals.get(proposal_id) {
+            Some(p) => p.status.clone(),
             None => return false,
         };
-        if proposal.status != ProposalStatus::Pending {
+        if status != ProposalStatus::Pending {
             return false;
         }
+
+        if env::promise_results_count() != 1 {
+            env::log_str(ERR_INVALID_PROMISE_RESULTS);
+            if let Some(proposal) = contract.proposals.get_mut(proposal_id) {
+                proposal.status = ProposalStatus::Failed;
+                proposal.failure_kind = Some(FailureKind::SnapshotCallbackFailed);
+            } else {
+                env::log_str(ERR_PROPOSAL_NOT_FOUND);
+                return false;
+            }
+            GovernanceEvent::ProposalCreationFailed {
+                proposal_id,
+                reason: ProposalCreationFailedReason::SnapshotCallbackFailed,
+            }
+            .emit();
+            return false;
+        }
+
         // Parse promise result
         let verified_count: u32 = match snapshot_result {
             Ok(count) => count,
@@ -1437,10 +1451,6 @@ impl VersionedContract {
         proposal_id: u32,
         voter: AccountId,
     ) -> bool {
-        if env::promise_results_count() != 1 {
-            env::log_str(ERR_INVALID_PROMISE_RESULTS);
-            return false;
-        }
         let contract = self.contract_mut();
 
         // Remove pending vote — always clear the lock
@@ -1476,6 +1486,20 @@ impl VersionedContract {
         let start_at = proposal.start_at;
         let ends_at = proposal.ends_at;
         let pid = proposal.id;
+
+        if env::promise_results_count() != 1 {
+            env::log_str(ERR_INVALID_PROMISE_RESULTS);
+            GovernanceEvent::VoteRejected {
+                proposal_id,
+                voter: voter.clone(),
+                reason: VoteRejectionReason::CallbackFailed,
+            }
+            .emit();
+            if !voter_deposit.is_zero() {
+                Promise::new(voter).transfer(voter_deposit).detach();
+            }
+            return false;
+        }
 
         // Check proposal status — reject if not Active
         match status {
@@ -1653,10 +1677,6 @@ impl VersionedContract {
         #[callback_result] verification_result: Result<Option<VerificationSummary>, PromiseError>,
         account_id: AccountId,
     ) -> bool {
-        if env::promise_results_count() != 1 {
-            env::log_str(ERR_INVALID_PROMISE_RESULTS);
-            return false;
-        }
         let contract = self.contract_mut();
 
         // Read initiated_by from pending op, then always clear it
@@ -1664,6 +1684,11 @@ impl VersionedContract {
             Some(op) => op.initiated_by,
             None => return false,
         };
+
+        if env::promise_results_count() != 1 {
+            env::log_str(ERR_INVALID_PROMISE_RESULTS);
+            return false;
+        }
 
         // Parse promise result
         let verification: Option<VerificationSummary> = match verification_result {

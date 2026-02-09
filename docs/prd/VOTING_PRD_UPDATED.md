@@ -129,7 +129,8 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
    - Contract calls Verified Accounts to fetch `verified_count` (snapshot).
    - Callback finalizes proposal to Active and stores `snapshot_verified_count = verified_count - blocklist_size` (saturating at 0); it must not change `created_at`, `start_at`, `ends_at`, or `pending_expires_at`.
    - Snapshot count is an upper bound on the eligible voter population. It may include accounts verified in the 1-2 block window between `created_at` (set in the create call) and the `get_verified_count()` cross-contract call (executed in the next block). These accounts cannot vote (`verified_at > created_at`) but are counted in the quorum denominator. At any realistic verification rate, this adds zero additional required quorum votes due to ceiling rounding. This is accepted as policy: the snapshot is conservative (slightly harder to reach quorum) rather than permissive.
-   - On callback failure (snapshot call fails), the snapshot callback must: (1) check that the proposal is still in `Pending` status (checks); (2) update proposal status to Failed and emit `proposal_creation_failed` event (effects). If the proposal was cancelled between the create call and callback, the callback checks status, finds it Cancelled, and aborts without further state changes.
+  - On callback failure (snapshot call fails), the snapshot callback must: (1) check that the proposal is still in `Pending` status (checks); (2) update proposal status to Failed and emit `proposal_creation_failed` event (effects). If the proposal was cancelled between the create call and callback, the callback checks status, finds it Cancelled, and aborts without further state changes.
+  - Invalid promise result counts (`promise_results_count() != 1`) are treated as snapshot callback failures and must fail proposal creation with `reason: SnapshotCallbackFailed`.
    - On callback success, if `get_verified_count()` returned 0 **or** `verified_count - blocklist_size` results in an effective `snapshot_verified_count == 0`, the callback should fail the proposal creation rather than creating an Active proposal that will auto-fail at finalization.
    - On pending expiry (proposal remains Pending past `pending_expires_at`), an admin calls `expire_pending_proposal` which marks it Failed (with `failure_kind: PendingExpired`).
 
@@ -234,6 +235,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - `PendingVote` record prevents concurrent submissions; removed on callback completion (success or failure).
   - **Vote callback refund ordering (success path)**: On successful vote recording, the callback must: (1) read and remove the `PendingVote` record (clearing the lock, extracting `submitted_at`, `choice`, `voter_deposit`) and decrement `pending_vote_count`; (1b) flush `pending_votes` and `proposals` to trie so the PendingVote removal and count decrement are reflected in `env::storage_usage()` — this ensures the storage baseline excludes the temporary PendingVote; (2) measure `storage_before`, then record the vote (using stored `choice`, setting `voted_at = submitted_at`) and update tallies; (3) flush and measure `storage_after` — the delta captures only the permanent Vote insertion; (4) calculate excess deposit (`voter_deposit` minus actual storage cost); (5) issue refund of excess via `Promise::new(voter).transfer(excess)`. All state mutations complete before the refund transfer promise is created.
   - **Vote callback refund ordering (failure path)**: On callback failure (verification failed, proposal cancelled, proposal finalized, etc.), the callback must: (1) read and remove the `PendingVote` record (clearing the lock, extracting `voter_deposit`) and decrement `pending_vote_count`; (2) emit `vote_rejected` event with the appropriate `VoteRejectionReason`; (3) issue full deposit refund via `Promise::new(voter).transfer(voter_deposit)`. The record removal must complete before the refund transfer is created.
+  - **Invalid promise result count**: If `promise_results_count() != 1`, the callback treats it as `CallbackFailed`: it removes the `PendingVote`, decrements `pending_vote_count`, emits `vote_rejected` with `reason: CallbackFailed`, and refunds the full deposit.
   - **Post-finalize rejection**: If the vote callback discovers the proposal is already finalized (Succeeded or Failed), it rejects the vote with `VoteRejectionReason::PostFinalize`, removes the `PendingVote`, refunds the deposit, and emits a `vote_rejected` event.
 - **has_voted(proposal_id, account_id)** view — O(1) lookup via the proposal's per-proposal `IterableMap`.
 - **get_vote(proposal_id, account_id)** view — O(1) lookup via the proposal's per-proposal `IterableMap`.
@@ -245,6 +247,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 ### 10.5 Reject List
 
 - **blocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Only allowed when there are no Pending or Active proposals and no pending blocklist operation. Records a `PendingBlocklistOp` and performs a cross-contract `get_verification(account_id)` lookup; if verified, adds the account to the blocklist and emits `blocklist_added`. If not verified or the callback fails, the pending op is cleared and the change is rejected.
+- If the blocklist callback receives an invalid promise result count, it is treated as a failure: the pending op is cleared and the admin must retry the blocklist action.
 - **unblocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Only allowed when there are no Pending or Active proposals and no pending blocklist operation. Removes the account from the blocklist and emits `blocklist_removed`.
 - Only one blocklist operation may be pending at a time; while pending, all blocklist changes and `create_proposal` are rejected.
 - **is_blocklisted(account_id)** view.
@@ -591,7 +594,7 @@ Event names and payloads:
 - **Access key hygiene**: Avoid full-access keys on the contract account after deployment to prevent `#[private]` bypass.
 - **Upgrade access**: Admin-only upgrades must be protected by `predecessor_account_id` and 1 yoctoⓃ.
 - **Unique storage prefixes**: Ensure all collections have unique storage keys/prefixes.
-- **Callback status checks**: All callbacks (snapshot, vote) must verify the proposal/vote is still in the expected status before applying state changes. A proposal may be cancelled or finalized between the initial call and callback execution (NEAR callbacks execute in a later block). Vote callbacks that discover a finalized proposal must reject the vote with `VoteRejectionReason::PostFinalize`, clean up the `PendingVote` record, and refund the deposit.
+- **Callback status checks**: All callbacks (snapshot, vote) must verify the proposal/vote is still in the expected status before applying state changes. A proposal may be cancelled or finalized between the initial call and callback execution (NEAR callbacks execute in a later block). Vote callbacks that discover a finalized proposal must reject the vote with `VoteRejectionReason::PostFinalize`, clean up the `PendingVote` record, and refund the deposit. Vote and blocklist callbacks must clear their pending locks even when `promise_results_count() != 1`, treating it as a `CallbackFailed` scenario.
 - **Blocklist callback safety**: Blocklist add uses an async verification callback; the callback must verify promise results, clear the pending blocklist op in all paths (success or failure), and apply the blocklist change only on verified success.
 - **Pending lock recovery**: Stuck `PendingVote` records (from failed callbacks where the initial call's state persists per NEAR's receipt-level atomicity) must have an admin-accessible recovery mechanism (`clear_stale_pending_vote`) to prevent permanent finalization blockage. Recovery must also refund any `voter_deposit` stored in the pending record.
 - **Event emission ordering**: Events must be emitted after all state changes succeed and before refund transfer promises are created. NEAR's runtime makes logs from panicking callbacks visible to indexers, which could create phantom events if events are emitted before a subsequent panic. Since both event emission and `Promise::new().transfer()` are non-panicking operations, they may safely follow all state mutations without risk of phantom events or rolled-back state.
@@ -896,6 +899,15 @@ contracts/governance/tests/
 - Remove full-access keys from the contract account after deployment.
 - Obtain external security review/audit before production deployment.
 - Monitor gas usage, storage growth, and errors.
+
+### 20.1 Operational Issues
+
+- Callback gas budgets are a liveness dependency: if callbacks run out of gas, pending votes or blocklist ops can become stuck. Use `clear_stale_pending_vote` to recover vote locks and re-run blocklist actions when needed.
+- Contract account access keys are security sensitive. Keep the contract account free of full-access keys, and avoid any function-call keys that could invoke `#[private]` callbacks.
+- Verified Accounts is a critical dependency; its upgrade path and admin controls can affect governance outcomes. Monitor and restrict its upgrades operationally.
+- Storage funding must be monitored. Even with per-vote deposits, the contract pays for proposals, admins, blocklist entries, and pending records. Keep a buffer above the minimum to avoid write failures.
+- Use a multisig or controlled process for admin actions to reduce the blast radius of key compromise.
+- Indexers must verify receipt execution status to avoid phantom events from failed callbacks.
 
 ---
 
