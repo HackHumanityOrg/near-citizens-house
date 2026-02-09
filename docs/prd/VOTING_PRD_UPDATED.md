@@ -249,6 +249,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **blocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Only allowed when there are no Pending or Active proposals and no pending blocklist operation. Records a `PendingBlocklistOp` and performs a cross-contract `get_verification(account_id)` lookup; if verified, adds the account to the blocklist and emits `blocklist_added`. If not verified or the callback fails, the pending op is cleared and the change is rejected.
 - If the blocklist callback receives an invalid promise result count, it is treated as a failure: the pending op is cleared and the admin must retry the blocklist action.
 - **unblocklist_account(account_id)**: Admin-only; uses `assert_one_yocto()`. Only allowed when there are no Pending or Active proposals and no pending blocklist operation. Removes the account from the blocklist and emits `blocklist_removed`.
+- **clear_stale_blocklist_op()**: Admin-only; uses `assert_one_yocto()`. Clears a stuck pending blocklist operation if the callback receipt failed or was never executed. Emits `pending_blocklist_op_cleared` with the account that was in flight. Does not change the blocklist.
 - Only one blocklist operation may be pending at a time; while pending, all blocklist changes and `create_proposal` are rejected.
 - **is_blocklisted(account_id)** view.
 - **list_blocklist(from_index, limit)** view with pagination.
@@ -514,6 +515,7 @@ Event names and payloads:
 - `blocklist_removed`: `{ account_id, removed_by }`
 - `config_updated`: `{ quorum_bps, voting_period_secs, pending_expiry_secs, verified_accounts_contract, min_proposal_bond, finalize_grace_period_secs, max_start_delay_secs, updated_by }`
 - `pending_vote_cleared`: `{ proposal_id, account_id, cleared_by, deposit_refunded }` — emitted when admin clears a stuck pending vote. `deposit_refunded` is the amount returned to the voter (0 if no deposit was attached).
+- `pending_blocklist_op_cleared`: `{ account_id, cleared_by }` — emitted when admin clears a stuck pending blocklist operation.
 - `pending_proposal_expired`: `{ proposal_id, expired_by }` — emitted when admin expires a pending proposal.
 
 **Implementation guidance**
@@ -538,6 +540,7 @@ Event names and payloads:
   | `cancel_proposal` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `expire_pending_proposal` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `clear_stale_pending_vote` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
+  | `clear_stale_blocklist_op` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
   | `cast_vote` | `predecessor_account_id()` | Used as voter identity and pending vote lock key |
   | `finalize_proposal` | (no caller identity needed) | Public; no access control |
   | `blocklist_account` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
@@ -569,6 +572,7 @@ Event names and payloads:
   | `cancel_proposal` | Required | Admin state change; without it, a function-call key could cancel proposals without wallet confirmation |
   | `expire_pending_proposal` | Required | Admin state change |
   | `clear_stale_pending_vote` | Required | Admin state change |
+  | `clear_stale_blocklist_op` | Required | Admin state change |
   | `blocklist_account` | Required | Admin state change |
   | `unblocklist_account` | Required | Admin state change |
   | `update_quorum_bps` | Required | Config change |
@@ -597,6 +601,7 @@ Event names and payloads:
 - **Callback status checks**: All callbacks (snapshot, vote) must verify the proposal/vote is still in the expected status before applying state changes. A proposal may be cancelled or finalized between the initial call and callback execution (NEAR callbacks execute in a later block). Vote callbacks that discover a finalized proposal must reject the vote with `VoteRejectionReason::PostFinalize`, clean up the `PendingVote` record, and refund the deposit. Vote and blocklist callbacks must clear their pending locks even when `promise_results_count() != 1`, treating it as a `CallbackFailed` scenario.
 - **Blocklist callback safety**: Blocklist add uses an async verification callback; the callback must verify promise results, clear the pending blocklist op in all paths (success or failure), and apply the blocklist change only on verified success.
 - **Pending lock recovery**: Stuck `PendingVote` records (from failed callbacks where the initial call's state persists per NEAR's receipt-level atomicity) must have an admin-accessible recovery mechanism (`clear_stale_pending_vote`) to prevent permanent finalization blockage. Recovery must also refund any `voter_deposit` stored in the pending record.
+- **Pending blocklist op recovery**: A stuck `PendingBlocklistOp` (from a failed or missing callback receipt) must have an admin-accessible recovery mechanism (`clear_stale_blocklist_op`) to restore blocklist operations and proposal creation.
 - **Event emission ordering**: Events must be emitted after all state changes succeed and before refund transfer promises are created. NEAR's runtime makes logs from panicking callbacks visible to indexers, which could create phantom events if events are emitted before a subsequent panic. Since both event emission and `Promise::new().transfer()` are non-panicking operations, they may safely follow all state mutations without risk of phantom events or rolled-back state.
 - **Verified accounts dependency**: The governance contract's integrity depends on the verified-accounts contract returning truthful data. The verified-accounts contract has its own upgrade path (`migrate()`) and single `backend_wallet` admin. If compromised or upgraded, governance outcomes may be affected. This trust dependency must be documented in deployment procedures.
 - **Zero-snapshot rejection**: The snapshot callback should reject a verified count of 0 at creation time (fail fast) rather than allowing the proposal to become Active and auto-fail at finalization.
@@ -719,6 +724,7 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 | `ERR_BLOCKLIST_OP_PENDING` | A `PendingBlocklistOp` is already in flight |
 | `ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED` | Blocklist callback: account has no verification record |
 | `ERR_ACCOUNT_NOT_BLOCKLISTED` | `unblocklist_account`: account is not in the blocklist |
+| `ERR_BLOCKLIST_OP_NOT_PENDING` | `clear_stale_blocklist_op`: no pending blocklist op exists |
 
 **Config validation (init + update methods):**
 
