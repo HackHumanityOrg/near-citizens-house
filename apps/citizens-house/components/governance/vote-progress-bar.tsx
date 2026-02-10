@@ -1,5 +1,7 @@
 "use client"
 
+import { Check, X } from "lucide-react"
+
 interface Props {
   yesVotes: number
   noVotes: number
@@ -13,7 +15,7 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
   const yesPct = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0
   const noPct = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 0
   const quorumRequired = Math.ceil((snapshotVerifiedCount * quorumBps) / 10_000)
-  const quorumPct = quorumRequired > 0 ? Math.min((totalVotes / quorumRequired) * 100, 100) : 100
+  const quorumMet = totalVotes >= quorumRequired
 
   if (compact) {
     return (
@@ -34,7 +36,7 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {/* Vote bar */}
       <div className="relative h-3 bg-[#e2e8f0] dark:bg-white/10 rounded-full overflow-hidden flex">
         {totalVotes > 0 && (
@@ -51,18 +53,22 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
         <span className="text-[#991b1b] dark:text-[#fecaca]">No: {noVotes}</span>
       </div>
 
-      {/* Quorum progress */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between text-[11px] text-[#64748b] dark:text-[#94a3b8] font-inter">
-          <span>
-            Quorum: {totalVotes} / {quorumRequired} votes
-          </span>
-          <span>{Math.round(quorumPct)}%</span>
-        </div>
-        <div className="h-1.5 bg-[#e2e8f0] dark:bg-white/10 rounded-full overflow-hidden">
-          <div className="bg-[#3b82f6] h-full transition-all rounded-full" style={{ width: `${quorumPct}%` }} />
-        </div>
+      {/* Quorum */}
+      <div className="flex items-center gap-1.5 text-[13px] font-inter">
+        {quorumMet ? (
+          <Check className="h-4 w-4 text-[#22c55e] shrink-0" />
+        ) : (
+          <X className="h-4 w-4 text-[#ef4444] shrink-0" />
+        )}
+        <span className={quorumMet ? "text-[#22c55e]" : "text-[#64748b] dark:text-[#94a3b8]"}>
+          Quorum {totalVotes}/{quorumRequired} votes
+        </span>
       </div>
+
+      {/* Voter snapshot */}
+      <p className="text-[11px] text-[#94a3b8] dark:text-[#64748b] font-inter">
+        Voter snapshot: {snapshotVerifiedCount} verified account{snapshotVerifiedCount !== 1 ? "s" : ""}
+      </p>
     </div>
   )
 }

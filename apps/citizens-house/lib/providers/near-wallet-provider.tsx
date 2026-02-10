@@ -3,7 +3,13 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { NearConnector } from "@hot-labs/near-connect"
 import posthog from "posthog-js"
-import type { NearWalletBase, SignedMessage, SignAndSendTransactionParams } from "@hot-labs/near-connect"
+import type {
+  NearWalletBase,
+  SignedMessage,
+  SignAndSendTransactionParams,
+  SignDelegateActionParams,
+  SignDelegateActionResult,
+} from "@hot-labs/near-connect"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import { Buffer } from "buffer"
 import { NEAR_CONFIG, CONSTANTS, getSigningRecipient } from "../config"
@@ -20,6 +26,19 @@ function validateAccountId(accountId: string | undefined | null): NearAccountId 
   return result.success ? result.data : null
 }
 
+/**
+ * Check if a wallet supports NEP-366 delegate actions (meta-transactions).
+ *
+ * The manifest feature is named "signDelegateActions" (plural) in the actual JSON,
+ * despite the TypeScript WalletFeatures interface using "signDelegateAction" (singular).
+ * We check the runtime value directly to handle this naming inconsistency.
+ */
+function walletSupportsMetaTransactions(wallet: NearWalletBase | null | undefined): boolean {
+  if (!wallet?.manifest?.features) return false
+  const features = wallet.manifest.features as unknown as Record<string, boolean>
+  return features.signDelegateActions === true || features.signDelegateAction === true
+}
+
 type SignAndSendTransactionsParams = {
   transactions: Array<SignAndSendTransactionParams & { signerId?: string }>
 }
@@ -32,11 +51,14 @@ type NearWalletWithTransactions = NearWalletBase & {
 
 interface NearWalletContextType {
   accountId: NearAccountId | null
+  walletName: string | null
   isConnected: boolean
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   signMessage: (message: string) => Promise<NearSignatureData>
   signAndSendTransaction: (params: SignAndSendTransactionParams) => Promise<FinalExecutionOutcome>
+  signDelegateActions: ((params: SignDelegateActionParams) => Promise<SignDelegateActionResult[]>) | null
+  supportsMetaTransactions: boolean
   isLoading: boolean
 }
 
@@ -45,6 +67,8 @@ const NearWalletContext = createContext<NearWalletContextType | null>(null)
 export function NearWalletProvider({ children }: { children: ReactNode }) {
   const [nearConnector, setNearConnector] = useState<NearConnector | null>(null)
   const [accountId, setAccountId] = useState<NearAccountId | null>(null)
+  const [walletName, setWalletName] = useState<string | null>(null)
+  const [supportsMetaTransactions, setSupportsMetaTransactions] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -86,6 +110,8 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           const rawAccountId = payload?.accounts?.[0]?.accountId
           const validatedAccountId = validateAccountId(rawAccountId)
           setAccountId(validatedAccountId)
+          setWalletName(payload?.wallet?.manifest?.name ?? null)
+          setSupportsMetaTransactions(walletSupportsMetaTransactions(payload?.wallet))
 
           // Identify user in PostHog when wallet connects
           if (validatedAccountId) {
@@ -94,6 +120,8 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         })
         connector.on("wallet:signOut", () => {
           setAccountId(null)
+          setWalletName(null)
+          setSupportsMetaTransactions(false)
           posthog.reset()
         })
 
@@ -103,6 +131,8 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           const rawAccountId = connected?.accounts?.[0]?.accountId
           const validatedAccountId = validateAccountId(rawAccountId)
           setAccountId(validatedAccountId)
+          setWalletName(connected?.wallet?.manifest?.name ?? null)
+          setSupportsMetaTransactions(walletSupportsMetaTransactions(connected?.wallet))
 
           // Identify existing session user
           if (validatedAccountId) {
@@ -229,6 +259,29 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     [nearConnector, accountId],
   )
 
+  const signDelegateActions = useCallback(
+    async (params: SignDelegateActionParams): Promise<SignDelegateActionResult[]> => {
+      if (!nearConnector || !accountId) {
+        throw new Error("Wallet not connected")
+      }
+
+      const wallet = await nearConnector.wallet()
+
+      if (!wallet || !walletSupportsMetaTransactions(wallet)) {
+        throw new Error("Wallet does not support delegate actions")
+      }
+
+      try {
+        const result = await wallet.signDelegateActions(params)
+        return result.signedDelegateActions
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+        throw new Error(`Failed to sign delegate actions: ${errorMessage}`)
+      }
+    },
+    [nearConnector, accountId],
+  )
+
   const signAndSendTransaction = useCallback(
     async (params: SignAndSendTransactionParams): Promise<FinalExecutionOutcome> => {
       if (!nearConnector || !accountId) {
@@ -279,11 +332,14 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     <NearWalletContext.Provider
       value={{
         accountId,
+        walletName,
         isConnected: !!accountId,
         connect,
         disconnect,
         signMessage,
         signAndSendTransaction,
+        signDelegateActions: supportsMetaTransactions ? signDelegateActions : null,
+        supportsMetaTransactions,
         isLoading,
       }}
     >

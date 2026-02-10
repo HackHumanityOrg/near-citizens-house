@@ -54,8 +54,8 @@ importers:
   apps/citizens-house:
     dependencies:
       '@hot-labs/near-connect':
-        specifier: ^0.8.2
-        version: 0.8.2
+        specifier: ^0.9.0
+        version: 0.9.0
       '@near-js/accounts':
         specifier: ^2.5.1
         version: 2.5.1(aa211f6842ae8a1a94a4a8d5025a4b2f)
@@ -547,8 +547,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@hot-labs/near-connect@0.8.2':
-    resolution: {integrity: sha512-cvi5q9mp7k575CIPSUEKNUwpwV04oV6i9SJBkwaaT2IS3rFaIlE0fnl8zje7Eenj7Futt+L0/mQfJgtek6E0bQ==}
+  '@hot-labs/near-connect@0.9.0':
+    resolution: {integrity: sha512-jmb1q1eESNkGPCMp+9BxbP9KUKdm+4L5px0xVnKtPupjKs64HNpEhOLjYiQl6qrZxfmrJBNflflUXDFCvpL8nw==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -4685,7 +4685,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@hot-labs/near-connect@0.8.2': {}
+  '@hot-labs/near-connect@0.9.0': {}
 
   '@humanfs/core@0.19.1': {}
 

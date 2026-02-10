@@ -24,7 +24,7 @@
     "posthog:all": "npx tsx scripts/posthog-dashboards/setup.ts all"
   },
   "dependencies": {
-    "@hot-labs/near-connect": "^0.8.2",
+    "@hot-labs/near-connect": "^0.9.0",
     "@near-js/accounts": "^2.5.1",
     "@near-js/crypto": "^2.5.1",
     "@near-js/keystores": "^2.5.1",

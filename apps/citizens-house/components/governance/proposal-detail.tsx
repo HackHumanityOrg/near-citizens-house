@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { Button } from "@near-citizens/ui"
 import { NEAR_CONFIG, useNearWallet } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
@@ -15,7 +15,7 @@ import {
   buildExpirePendingProposalTx,
   buildFinalizeProposalTx,
 } from "@/lib/contracts/governance/transactions"
-import { revalidateGovernance } from "@/app/governance/actions"
+import { checkIsAdmin, revalidateGovernance } from "@/app/governance/actions"
 import { trackEvent } from "@/lib/analytics"
 import { MarkdownContent } from "./markdown-content"
 
@@ -180,6 +180,14 @@ export function ProposalAdminActions({ proposal }: ProposalProps) {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
   const [isPending, startTransition] = useTransition()
   const [txLoading, setTxLoading] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (!isConnected || !accountId) return
+    checkIsAdmin(accountId).then(setIsAdmin)
+  }, [isConnected, accountId])
+
+  if (!isAdmin) return null
 
   const handleAdminAction = async (action: "cancel" | "expire") => {
     if (!isConnected || !accountId) return

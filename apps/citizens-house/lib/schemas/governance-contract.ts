@@ -127,6 +127,23 @@ export type ContractConfig = z.input<typeof contractConfigSchema>
 export type GovernanceConfig = z.output<typeof contractConfigSchema>
 
 // =============================================================================
+// Relay Schemas
+// =============================================================================
+
+export const relayRequestSchema = z.object({
+  signedDelegate: z.string().min(1),
+})
+
+export type RelayRequest = z.infer<typeof relayRequestSchema>
+
+export const relayResponseSchema = z.object({
+  success: z.literal(true),
+  txHash: z.string(),
+})
+
+export type RelayResponse = z.infer<typeof relayResponseSchema>
+
+// =============================================================================
 // Utility Functions
 // =============================================================================
 
