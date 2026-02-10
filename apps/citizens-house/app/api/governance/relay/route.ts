@@ -7,7 +7,10 @@
  */
 import { type NextRequest, NextResponse } from "next/server"
 import { deserialize } from "borsh"
-import { SCHEMA, actionCreators, type DelegateAction, type Signature } from "@near-js/transactions"
+import { PublicKey, KeyType } from "@near-js/crypto"
+import { sha256 } from "@noble/hashes/sha2.js"
+import { SCHEMA, actionCreators, encodeDelegateAction, type DelegateAction, type Signature } from "@near-js/transactions"
+import type { Provider } from "@near-js/providers"
 import { NEAR_CONFIG } from "@/lib/config"
 import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
 import { backendKeyPool, setBackendKeyPoolRedis } from "@/lib/backend-key-pool"
@@ -16,7 +19,7 @@ import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { governanceReader } from "@/lib/contracts/governance/client"
 import { relayRequestSchema, voteChoiceSchema } from "@/lib/schemas/governance-contract"
 import { trackServerEvent } from "@/lib/analytics-server"
-import { nearAccountIdSchema, type NearAccountId } from "@/lib/schemas/near"
+import { nearAccessKeyResponseSchema, nearAccountIdSchema, type NearAccessKeyPermission, type NearAccountId } from "@/lib/schemas/near"
 import type { FinalExecutionOutcome } from "@near-js/types"
 
 const RATE_LIMIT_TTL = 60 // 1 relay per voter per minute
@@ -54,6 +57,11 @@ interface DeserializedDelegateAction {
 interface DeserializedSignedDelegate {
   delegateAction: DeserializedDelegateAction
   signature: Record<string, unknown>
+}
+
+interface ParsedKeyData {
+  keyType: KeyType
+  data: Uint8Array
 }
 
 function relayError(message: string, status = 400) {
@@ -119,6 +127,103 @@ function parseCastVoteArgs(args: Uint8Array): { proposal_id: number; choice: str
   return null
 }
 
+function parsePublicKey(publicKey: Record<string, unknown>): ParsedKeyData | null {
+  if (!publicKey || typeof publicKey !== "object") return null
+
+  if ("ed25519Key" in publicKey) {
+    const key = (publicKey as { ed25519Key?: { data?: unknown } }).ed25519Key
+    const data = key?.data
+    if (data instanceof Uint8Array) return { keyType: KeyType.ED25519, data }
+    if (Array.isArray(data)) return { keyType: KeyType.ED25519, data: Uint8Array.from(data) }
+  }
+
+  if ("secp256k1Key" in publicKey) {
+    const key = (publicKey as { secp256k1Key?: { data?: unknown } }).secp256k1Key
+    const data = key?.data
+    if (data instanceof Uint8Array) return { keyType: KeyType.SECP256K1, data }
+    if (Array.isArray(data)) return { keyType: KeyType.SECP256K1, data: Uint8Array.from(data) }
+  }
+
+  return null
+}
+
+function parseSignature(signature: Record<string, unknown>): ParsedKeyData | null {
+  if (!signature || typeof signature !== "object") return null
+
+  if ("ed25519Signature" in signature) {
+    const sig = (signature as { ed25519Signature?: { data?: unknown } }).ed25519Signature
+    const data = sig?.data
+    if (data instanceof Uint8Array) return { keyType: KeyType.ED25519, data }
+    if (Array.isArray(data)) return { keyType: KeyType.ED25519, data: Uint8Array.from(data) }
+  }
+
+  if ("secp256k1Signature" in signature) {
+    const sig = (signature as { secp256k1Signature?: { data?: unknown } }).secp256k1Signature
+    const data = sig?.data
+    if (data instanceof Uint8Array) return { keyType: KeyType.SECP256K1, data }
+    if (Array.isArray(data)) return { keyType: KeyType.SECP256K1, data: Uint8Array.from(data) }
+  }
+
+  return null
+}
+
+function isAccessKeyPermissionAllowed(
+  permission: NearAccessKeyPermission,
+  receiverId: string,
+  methodName: string,
+): boolean {
+  if (permission === "FullAccess") return true
+  if (typeof permission === "object" && "FullAccess" in permission) return true
+
+  if (typeof permission === "object" && "FunctionCall" in permission) {
+    const { receiver_id, method_names } = permission.FunctionCall
+    if (receiver_id !== receiverId) return false
+    if (method_names.length === 0) return true
+    return method_names.includes(methodName)
+  }
+
+  return false
+}
+
+async function verifyAccessKeyPermission(
+  provider: Provider,
+  accountId: NearAccountId,
+  publicKey: string,
+  receiverId: string,
+  methodName: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const rawResponse = await provider.query({
+      request_type: "view_access_key",
+      finality: "final",
+      account_id: accountId,
+      public_key: publicKey,
+    })
+
+    const parseResult = nearAccessKeyResponseSchema.safeParse(rawResponse)
+    if (!parseResult.success) {
+      return { ok: false, error: "Invalid access key response from RPC" }
+    }
+
+    if (!isAccessKeyPermissionAllowed(parseResult.data.permission, receiverId, methodName)) {
+      return { ok: false, error: "Access key does not allow this action" }
+    }
+
+    return { ok: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error"
+
+    if (message.includes("does not exist") || message.includes("UnknownAccessKey")) {
+      return { ok: false, error: "Public key not found for account" }
+    }
+    if (message.includes("UnknownAccount")) {
+      return { ok: false, error: "Account not found" }
+    }
+
+    return { ok: false, error: `RPC error: ${message}` }
+  }
+}
+
 export async function POST(request: NextRequest) {
   let validatedAccountId: NearAccountId | undefined
 
@@ -172,12 +277,35 @@ export async function POST(request: NextRequest) {
       return relayError("Relay only supports cast_vote")
     }
 
-    // 4. Deposit check — must be zero
+    // 4. Verify SignedDelegate signature + access key ownership/permissions
+    const publicKeyData = parsePublicKey(delegateAction.publicKey)
+    if (!publicKeyData) {
+      return relayError("Invalid delegate public key")
+    }
+
+    const signatureData = parseSignature(signature)
+    if (!signatureData) {
+      return relayError("Invalid SignedDelegate signature")
+    }
+
+    if (signatureData.keyType !== publicKeyData.keyType) {
+      return relayError("SignedDelegate signature key type mismatch")
+    }
+
+    const publicKey = new PublicKey(publicKeyData)
+    const message = encodeDelegateAction(delegateAction as unknown as DelegateAction)
+    const messageHash = sha256(message)
+    const signatureValid = publicKey.verify(messageHash, signatureData.data)
+    if (!signatureValid) {
+      return relayError("Invalid SignedDelegate signature")
+    }
+
+    // 5. Deposit check — must be zero
     if (functionCallData.deposit !== BigInt(0)) {
       return relayError("Relay does not support attached deposits")
     }
 
-    // 5. Block height check
+    // 6. Block height check
     const provider = createRpcProvider()
     const nodeStatus = await provider.viewNodeStatus()
     const currentBlockHeight = BigInt(nodeStatus.sync_info.latest_block_height)
@@ -188,13 +316,25 @@ export async function POST(request: NextRequest) {
       return relayError("DelegateAction maxBlockHeight is too far in the future")
     }
 
-    // 6. isVoteFree check — relay only makes sense when voting is free
+    // 7. Access key check — public key must belong to sender and allow this call
+    const accessKeyResult = await verifyAccessKeyPermission(
+      provider,
+      validatedAccountId,
+      publicKey.toString(),
+      governanceContractId,
+      functionCallData.methodName,
+    )
+    if (!accessKeyResult.ok) {
+      return relayError(accessKeyResult.error ?? "Invalid access key")
+    }
+
+    // 8. isVoteFree check — relay only makes sense when voting is free
     const isVoteFree = await governanceReader.isVoteFree()
     if (!isVoteFree) {
       return relayError("Voting currently requires a storage deposit; relay unavailable", 409)
     }
 
-    // 7. Rate limit: 1 relay per voter per minute
+    // 9. Rate limit: 1 relay per voter per minute
     const redis = await getRedisClient()
     const rateLimitKey = `relay:vote:${validatedAccountId}`
     const existing = await redis.get(rateLimitKey)
