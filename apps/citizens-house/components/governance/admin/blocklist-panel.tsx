@@ -7,7 +7,12 @@ import { MiddleTruncate } from "@/components/ui/middle-truncate"
 import { ExternalLink, Loader2, Trash2, ShieldBan, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { buildBlocklistAccountTx, buildUnblocklistAccountTx } from "@/lib/contracts/governance/transactions"
-import { getBlocklist, getBlocklistLockInfo, revalidateGovernance, type BlocklistLockInfo } from "@/app/governance/actions"
+import {
+  getBlocklist,
+  getBlocklistLockInfo,
+  revalidateGovernance,
+  type BlocklistLockInfo,
+} from "@/app/governance/actions"
 import { trackEvent } from "@/lib/analytics"
 
 export function BlocklistPanel() {

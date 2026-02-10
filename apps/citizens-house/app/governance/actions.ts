@@ -188,11 +188,25 @@ export async function getBlocklistLockInfo(): Promise<BlocklistLockInfo> {
     const locked = await governanceReader.isBlocklistLocked()
     if (!locked) return { locked: false, hasActiveProposals: false }
 
-    // Determine lock reason by checking for pending/active proposals
-    const { proposals } = await governanceReader.listProposalsNewestFirst({ page: 0, pageSize: 100 })
-    const hasActiveProposals = proposals.some((p) => p.status === "pending" || p.status === "active")
+    // Determine lock reason by checking for pending/active proposals across all pages
+    const pageSize = 100
+    const firstPage = await governanceReader.listProposalsNewestFirst({ page: 0, pageSize })
+    const hasActiveInPage = (pageProposals: typeof firstPage.proposals) =>
+      pageProposals.some((p) => p.status === "pending" || p.status === "active")
 
-    return { locked: true, hasActiveProposals }
+    if (hasActiveInPage(firstPage.proposals)) {
+      return { locked: true, hasActiveProposals: true }
+    }
+
+    const totalPages = Math.ceil(firstPage.total / pageSize)
+    for (let page = 1; page < totalPages; page += 1) {
+      const { proposals } = await governanceReader.listProposalsNewestFirst({ page, pageSize })
+      if (hasActiveInPage(proposals)) {
+        return { locked: true, hasActiveProposals: true }
+      }
+    }
+
+    return { locked: true, hasActiveProposals: false }
   } catch {
     return { locked: false, hasActiveProposals: false }
   }

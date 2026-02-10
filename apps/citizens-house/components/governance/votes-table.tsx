@@ -46,7 +46,7 @@ export function VotesTable({ proposalId, initialVotes, totalVotes }: Props) {
   if (totalVotes === 0 && votes.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] w-full max-w-[800px] mx-auto">
+    <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] w-full">
       <div className="px-4 py-4 md:px-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white">
           Votes ({totalVotes > 0 ? totalVotes : votes.length})

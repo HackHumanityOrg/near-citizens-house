@@ -47,7 +47,7 @@ export function ProposalsList({ proposals, total, page, pageSize: _pageSize, tot
 
         {/* Table Header - Desktop */}
         <div className="hidden md:block bg-[#e2e8f0] dark:bg-white/10 border-b border-[#cbd5e1] dark:border-white/10 px-10 py-4 w-full">
-          <div className="grid grid-cols-[minmax(0,1fr)_120px_140px_140px] gap-4 items-center">
+          <div className="grid grid-cols-[minmax(0,1fr)_200px_140px_140px] gap-4 items-center">
             <span className="font-fk-grotesk font-bold text-[16px] leading-[28px] text-black dark:text-white">
               Title
             </span>

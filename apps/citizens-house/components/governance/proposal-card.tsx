@@ -15,7 +15,8 @@ export function ProposalCard({ proposal }: Props) {
   const { id, title, author, status, yesVotes, noVotes, quorumBps, snapshotVerifiedCount, startAt, endsAt } = proposal
   const [now, setNow] = useState(Date.now)
   const isScheduled = status === "active" && startAt > now
-  const displayStatus = isScheduled ? "scheduled" : status
+  const isFinished = status === "active" && endsAt < now
+  const displayStatus = isScheduled ? "scheduled" : isFinished ? "finished" : status
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000)
@@ -54,7 +55,7 @@ export function ProposalCard({ proposal }: Props) {
       </div>
 
       {/* Desktop Row */}
-      <div className="hidden md:grid grid-cols-[minmax(0,1fr)_120px_140px_140px] gap-4 items-center px-10 py-4">
+      <div className="hidden md:grid grid-cols-[minmax(0,1fr)_200px_140px_140px] gap-4 items-center px-10 py-4">
         <div className="min-w-0">
           <p className="font-fk-grotesk font-medium text-[16px] leading-[28px] text-black dark:text-white truncate">
             {title}

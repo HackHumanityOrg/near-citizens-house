@@ -145,8 +145,8 @@ export function ConfigPanel() {
     <div className="flex flex-col gap-4">
       {fields.map(({ key, label, description, value, placeholder }) => (
         <div key={key} className="flex flex-col gap-1 p-3 rounded-lg bg-[#f8fafc] dark:bg-white/[0.03]">
-          <Label className="font-fk-grotesk text-[13px] text-[#64748b] dark:text-[#94a3b8]">{label}</Label>
-          <p className="font-inter text-[12px] leading-[18px] text-[#94a3b8] dark:text-[#64748b]">{description}</p>
+          <Label className="font-fk-grotesk text-[13px] text-[#334155] dark:text-[#cbd5e1]">{label}</Label>
+          <p className="font-inter text-[12px] leading-[18px] text-[#64748b] dark:text-[#94a3b8]">{description}</p>
           {editingField === key ? (
             <div className="flex items-center gap-2">
               <Input
