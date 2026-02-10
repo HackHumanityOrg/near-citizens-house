@@ -1,9 +1,17 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
 use crate::helpers::{init_governance, init_verified_accounts};
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Initialization")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "initialization")]
+#[allure_description("Verifies init 001 double initialization rejected.")]
+#[allure_test]
 async fn it_init_001_double_initialization_rejected() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let (verified_contract, _backend) = init_verified_accounts(&worker).await?;

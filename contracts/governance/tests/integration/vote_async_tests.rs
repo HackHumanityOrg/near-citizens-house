@@ -1,11 +1,11 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
     init_mock_verified_accounts, proposal_storage_keys, setup_env,
-    DEFAULT_GRACE_PERIOD_SECS, GAS_HEAVY,
-};
+    DEFAULT_GRACE_PERIOD_SECS, GAS_HEAVY};
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
 
@@ -21,6 +21,13 @@ async fn pending_votes_count(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Async Voting")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "async-vote")]
+#[allure_description("Verifies vote async 001 submitted before end callback after end.")]
+#[allure_test]
 async fn it_vote_async_001_submitted_before_end_callback_after_end() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -49,6 +56,13 @@ async fn it_vote_async_001_submitted_before_end_callback_after_end() -> anyhow::
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Async Voting")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "async-vote")]
+#[allure_description("Verifies vote async 002 callback executes after finalize.")]
+#[allure_test]
 async fn it_vote_async_002_callback_executes_after_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -79,6 +93,13 @@ async fn it_vote_async_002_callback_executes_after_finalize() -> anyhow::Result<
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Async Voting")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "async-vote")]
+#[allure_description("Verifies vote async 003 callback error leaves no pending lock.")]
+#[allure_test]
 async fn it_vote_async_003_callback_error_leaves_no_pending_lock() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, true, false).await?;
@@ -111,6 +132,13 @@ async fn it_vote_async_003_callback_error_leaves_no_pending_lock() -> anyhow::Re
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Async Voting")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "async-vote")]
+#[allure_description("Verifies vote async 004 stuck pending vote cleared by admin.")]
+#[allure_test]
 async fn it_vote_async_004_stuck_pending_vote_cleared_by_admin() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -124,8 +152,7 @@ async fn it_vote_async_004_stuck_pending_vote_cleared_by_admin() -> anyhow::Resu
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0),
-    };
+        voter_deposit: NearToken::from_near(0)};
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;
@@ -159,6 +186,13 @@ async fn it_vote_async_004_stuck_pending_vote_cleared_by_admin() -> anyhow::Resu
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Async Voting")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "async-vote")]
+#[allure_description("Verifies vote async 005 clear stale pending vote unblocks finalize.")]
+#[allure_test]
 async fn it_vote_async_005_clear_stale_pending_vote_unblocks_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -173,8 +207,7 @@ async fn it_vote_async_005_clear_stale_pending_vote_unblocks_finalize() -> anyho
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0),
-    };
+        voter_deposit: NearToken::from_near(0)};
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;

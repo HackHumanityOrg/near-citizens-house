@@ -1,3 +1,4 @@
+use allure_rs::prelude::*;
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
 use near_workspaces::types::NearToken;
@@ -7,8 +8,7 @@ use tokio::time::{sleep, Duration};
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
     init_mock_verified_accounts, proposal_storage_keys, seed_mock_verified_accounts, setup_env,
-    DEFAULT_PENDING_EXPIRY_SECS, GAS_HEAVY,
-};
+    DEFAULT_PENDING_EXPIRY_SECS, GAS_HEAVY};
 
 fn assert_failure_contains(result: &near_workspaces::result::ExecutionFinalResult, needle: &str) {
     let failures = format!("{:?}", result.failures());
@@ -55,14 +55,20 @@ async fn set_pending_blocklist_op(
     c.pending_blocklist_op = Some(governance::PendingBlocklistOp {
         account_id,
         submitted_at: 0,
-        initiated_by,
-    });
+        initiated_by});
     let bytes = to_vec(&contract)?;
     worker.patch_state(governance.id(), &key.0, &bytes).await?;
     Ok(())
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 001 description too long.")]
+#[allure_test]
 async fn it_prop_err_001_description_too_long() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
     let desc = "d".repeat(10_001);
@@ -99,6 +105,13 @@ async fn wait_for_blocklist_locked(
     anyhow::bail!("blocklist_locked did not reach expected value");
 }
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 002 insufficient bond.")]
+#[allure_test]
 async fn it_prop_err_002_insufficient_bond() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
     let bond = NearToken::from_yoctonear(NearToken::from_millinear(10).as_yoctonear() - 1);
@@ -120,6 +133,13 @@ async fn it_prop_err_002_insufficient_bond() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 003 blocklist op pending.")]
+#[allure_test]
 async fn it_prop_err_003_blocklist_op_pending() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, false).await?;
@@ -152,6 +172,13 @@ async fn it_prop_err_003_blocklist_op_pending() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 004 start at before created.")]
+#[allure_test]
 async fn it_prop_err_004_start_at_before_created() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
     let now = worker.view_block().await?.timestamp();
@@ -173,6 +200,13 @@ async fn it_prop_err_004_start_at_before_created() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 005 expire pending not pending.")]
+#[allure_test]
 async fn it_prop_err_005_expire_pending_not_pending() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let proposal_id =
@@ -192,6 +226,13 @@ async fn it_prop_err_005_expire_pending_not_pending() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 006 finalize not active.")]
+#[allure_test]
 async fn it_prop_err_006_finalize_not_active() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
@@ -215,6 +256,13 @@ async fn it_prop_err_006_finalize_not_active() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 007 cast vote not active.")]
+#[allure_test]
 async fn it_prop_err_007_cast_vote_not_active() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
@@ -236,6 +284,13 @@ async fn it_prop_err_007_cast_vote_not_active() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 008 cast vote already pending.")]
+#[allure_test]
 async fn it_prop_err_008_cast_vote_already_pending() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, false).await?;
@@ -256,8 +311,7 @@ async fn it_prop_err_008_cast_vote_already_pending() -> anyhow::Result<()> {
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0),
-    };
+        voter_deposit: NearToken::from_near(0)};
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;
@@ -284,6 +338,13 @@ async fn it_prop_err_008_cast_vote_already_pending() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 009 unblocklist locked by active.")]
+#[allure_test]
 async fn it_prop_err_009_unblocklist_locked_by_active() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     let proposal_id =
@@ -340,6 +401,13 @@ async fn it_prop_err_009_unblocklist_locked_by_active() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "proposals")]
+#[allure_description("Verifies prop err 010 config updates out of range.")]
+#[allure_test]
 async fn it_prop_err_010_config_updates_out_of_range() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
     let result = admin

@@ -1,3 +1,4 @@
+use allure_rs::prelude::*;
 use governance::{FailureKind, ProposalStatus, VoteChoice};
 use near_sdk::test_utils::{accounts, get_created_receipts, get_logs};
 use near_sdk::{env, mock::MockAction, NearToken, PromiseError, PromiseResult};
@@ -5,8 +6,7 @@ use serde_json::Value;
 
 use crate::helpers::{
     activate_proposal, build_context, create_basic_proposal, insert_pending_vote, new_contract,
-    set_context, set_context_with_promise_results, verify_vote, with_block_timestamp, with_deposit,
-};
+    set_context_with_promise_results, verify_vote, with_block_timestamp, with_deposit};
 
 fn call_on_snapshot(
     contract: &mut governance::VersionedContract,
@@ -55,6 +55,13 @@ fn extract_event(logs: &[String], event_name: &str) -> Value {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies snap 001 on snapshot ignores non pending.")]
+#[allure_test]
 fn ut_snap_001_on_snapshot_ignores_non_pending() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -79,12 +86,19 @@ fn ut_snap_001_on_snapshot_ignores_non_pending() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies snap 001b on snapshot after cancelled.")]
+#[allure_test]
 fn ut_snap_001b_on_snapshot_after_cancelled() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
-    set_context(builder);
+    crate::helpers::set_context(builder);
     contract.cancel_proposal(id);
 
     let result = call_on_snapshot(
@@ -99,6 +113,13 @@ fn ut_snap_001b_on_snapshot_after_cancelled() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies snap 001c on snapshot missing proposal.")]
+#[allure_test]
 fn ut_snap_001c_on_snapshot_missing_proposal() {
     let mut contract = new_contract();
     let result = call_on_snapshot(
@@ -111,6 +132,13 @@ fn ut_snap_001c_on_snapshot_missing_proposal() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies snap 002 invalid promise results count.")]
+#[allure_test]
 fn ut_snap_002_invalid_promise_results_count() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -122,6 +150,13 @@ fn ut_snap_002_invalid_promise_results_count() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies snap 003 callback error.")]
+#[allure_test]
 fn ut_snap_003_callback_error() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -138,6 +173,13 @@ fn ut_snap_003_callback_error() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies snap 004 zero effective count.")]
+#[allure_test]
 fn ut_snap_004_zero_effective_count() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -166,6 +208,13 @@ fn ut_snap_004_zero_effective_count() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies snap 005 success activates.")]
+#[allure_test]
 fn ut_snap_005_success_activates() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -182,6 +231,13 @@ fn ut_snap_005_success_activates() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 001 missing pending vote.")]
+#[allure_test]
 fn ut_vote_cb_001_missing_pending_vote() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -197,6 +253,13 @@ fn ut_vote_cb_001_missing_pending_vote() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 001b proposal missing after pending vote.")]
+#[allure_test]
 fn ut_vote_cb_001b_proposal_missing_after_pending_vote() {
     let mut contract = new_contract();
     let governance::VersionedContract::V1(ref mut c) = contract;
@@ -205,8 +268,7 @@ fn ut_vote_cb_001b_proposal_missing_after_pending_vote() {
         Some(governance::PendingVote {
             submitted_at: 1_700_000_000_000_000_000,
             choice: VoteChoice::Yes,
-            voter_deposit: NearToken::from_near(1),
-        }),
+            voter_deposit: NearToken::from_near(1)}),
     );
     c.pending_votes.flush();
     let result = call_on_vote_verification(
@@ -216,8 +278,7 @@ fn ut_vote_cb_001b_proposal_missing_after_pending_vote() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000,
-        })),
+            verified_at: 1_700_000_000_000_000_000})),
     );
     assert!(!result);
     let receipts = get_created_receipts();
@@ -225,6 +286,13 @@ fn ut_vote_cb_001b_proposal_missing_after_pending_vote() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 002 invalid promise results count.")]
+#[allure_test]
 fn ut_vote_cb_002_invalid_promise_results_count() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -251,6 +319,13 @@ fn ut_vote_cb_002_invalid_promise_results_count() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 003 proposal cancelled or finalized.")]
+#[allure_test]
 fn ut_vote_cb_003_proposal_cancelled_or_finalized() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -266,7 +341,7 @@ fn ut_vote_cb_003_proposal_cancelled_or_finalized() {
     );
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
-    set_context(builder);
+    crate::helpers::set_context(builder);
     contract.cancel_proposal(id);
 
     let result = call_on_vote_verification(
@@ -276,8 +351,7 @@ fn ut_vote_cb_003_proposal_cancelled_or_finalized() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(!result);
 
@@ -304,13 +378,19 @@ fn ut_vote_cb_003_proposal_cancelled_or_finalized() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: created_at,
-        })),
+            verified_at: created_at})),
     );
     assert!(!result);
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 003b proposal pending.")]
+#[allure_test]
 fn ut_vote_cb_003b_proposal_pending() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -330,13 +410,19 @@ fn ut_vote_cb_003b_proposal_pending() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(!result);
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 004 callback error or not verified.")]
+#[allure_test]
 fn ut_vote_cb_004_callback_error_or_not_verified() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -378,6 +464,13 @@ fn ut_vote_cb_004_callback_error_or_not_verified() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 005 verified after creation.")]
+#[allure_test]
 fn ut_vote_cb_005_verified_after_creation() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -398,13 +491,19 @@ fn ut_vote_cb_005_verified_after_creation() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0 + 1,
-        })),
+            verified_at: proposal.created_at.0 + 1})),
     );
     assert!(!result);
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 006 submitted outside window.")]
+#[allure_test]
 fn ut_vote_cb_006_submitted_outside_window() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -425,8 +524,7 @@ fn ut_vote_cb_006_submitted_outside_window() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(!result);
 
@@ -445,13 +543,19 @@ fn ut_vote_cb_006_submitted_outside_window() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(!result);
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 006b submitted at boundary accepts.")]
+#[allure_test]
 fn ut_vote_cb_006b_submitted_at_boundary_accepts() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -473,8 +577,7 @@ fn ut_vote_cb_006b_submitted_at_boundary_accepts() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(result);
     let vote = contract.get_vote(id, accounts(2)).unwrap();
@@ -495,8 +598,7 @@ fn ut_vote_cb_006b_submitted_at_boundary_accepts() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(result);
     let vote = contract.get_vote(id, accounts(3)).unwrap();
@@ -504,6 +606,13 @@ fn ut_vote_cb_006b_submitted_at_boundary_accepts() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 007 success records vote and refunds excess.")]
+#[allure_test]
 fn ut_vote_cb_007_success_records_vote_and_refunds_excess() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -525,8 +634,7 @@ fn ut_vote_cb_007_success_records_vote_and_refunds_excess() {
     let result = contract.on_vote_verification(
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
         id,
         accounts(2),
     );
@@ -550,8 +658,7 @@ fn ut_vote_cb_007_success_records_vote_and_refunds_excess() {
         .iter()
         .filter_map(|a| match a {
             MockAction::Transfer { deposit, .. } => Some(deposit.as_yoctonear()),
-            _ => None,
-        })
+            _ => None})
         .sum();
     assert_eq!(amount, expected_refund.as_yoctonear());
 
@@ -573,6 +680,13 @@ fn ut_vote_cb_007_success_records_vote_and_refunds_excess() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb verified at zero is accepted.")]
+#[allure_test]
 fn ut_vote_cb_verified_at_zero_is_accepted() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -595,8 +709,7 @@ fn ut_vote_cb_verified_at_zero_is_accepted() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 0,
-        })),
+            verified_at: 0})),
     );
     assert!(result);
     let vote = contract.get_vote(id, accounts(2)).unwrap();
@@ -604,6 +717,13 @@ fn ut_vote_cb_verified_at_zero_is_accepted() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb near account id mismatch is not checked.")]
+#[allure_test]
 fn ut_vote_cb_near_account_id_mismatch_is_not_checked() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -626,14 +746,20 @@ fn ut_vote_cb_near_account_id_mismatch_is_not_checked() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(!result);
     assert!(contract.get_vote(id, accounts(2)).is_none());
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 007b voted at equals submitted at.")]
+#[allure_test]
 fn ut_vote_cb_007b_voted_at_equals_submitted_at() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -655,8 +781,7 @@ fn ut_vote_cb_007b_voted_at_equals_submitted_at() {
     contract.on_vote_verification(
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
         id,
         accounts(2),
     );
@@ -666,6 +791,13 @@ fn ut_vote_cb_007b_voted_at_equals_submitted_at() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 007c vote choice no.")]
+#[allure_test]
 fn ut_vote_cb_007c_vote_choice_no() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -686,6 +818,13 @@ fn ut_vote_cb_007c_vote_choice_no() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies vote cb 008 vote count overflow.")]
+#[allure_test]
 fn ut_vote_cb_008_vote_count_overflow() {
     let mut contract = new_contract();
     let id = create_basic_proposal(&mut contract, accounts(0));
@@ -709,8 +848,7 @@ fn ut_vote_cb_008_vote_count_overflow() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0,
-        })),
+            verified_at: proposal.created_at.0})),
     );
     assert!(!result);
     let receipts = get_created_receipts();
@@ -718,6 +856,13 @@ fn ut_vote_cb_008_vote_count_overflow() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies block cb 001 pending op missing.")]
+#[allure_test]
 fn ut_block_cb_001_pending_op_missing() {
     let mut contract = new_contract();
     let result = call_on_blocklist_verification(
@@ -730,11 +875,18 @@ fn ut_block_cb_001_pending_op_missing() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies block cb 002 invalid promise results count.")]
+#[allure_test]
 fn ut_block_cb_002_invalid_promise_results_count() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
-    set_context(builder);
+    crate::helpers::set_context(builder);
     contract.blocklist_account(accounts(2));
 
     let result = call_on_blocklist_verification(&mut contract, accounts(2), vec![], Ok(None));
@@ -743,11 +895,18 @@ fn ut_block_cb_002_invalid_promise_results_count() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies block cb 003 verification error or none.")]
+#[allure_test]
 fn ut_block_cb_003_verification_error_or_none() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
-    set_context(builder);
+    crate::helpers::set_context(builder);
     contract.blocklist_account(accounts(2));
     let result = call_on_blocklist_verification(
         &mut contract,
@@ -760,7 +919,7 @@ fn ut_block_cb_003_verification_error_or_none() {
 
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
-    set_context(builder);
+    crate::helpers::set_context(builder);
     contract.blocklist_account(accounts(3));
     let result = call_on_blocklist_verification(
         &mut contract,
@@ -773,11 +932,18 @@ fn ut_block_cb_003_verification_error_or_none() {
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies block cb 004 success adds to blocklist.")]
+#[allure_test]
 fn ut_block_cb_004_success_adds_to_blocklist() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
-    set_context(builder);
+    crate::helpers::set_context(builder);
     contract.blocklist_account(accounts(2));
 
     let result = call_on_blocklist_verification(
@@ -786,21 +952,27 @@ fn ut_block_cb_004_success_adds_to_blocklist() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000,
-        })),
+            verified_at: 1_700_000_000_000_000_000})),
     );
     assert!(result);
     assert!(contract.is_blocklisted(accounts(2)));
 }
 
 #[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Callbacks")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "callback")]
+#[allure_description("Verifies block cb 005 success already blocklisted.")]
+#[allure_test]
 fn ut_block_cb_005_success_already_blocklisted() {
     let mut contract = new_contract();
     let governance::VersionedContract::V1(ref mut c) = contract;
     c.blocklist.insert(accounts(2));
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
-    set_context(builder);
+    crate::helpers::set_context(builder);
     contract.blocklist_account(accounts(2));
 
     let result = call_on_blocklist_verification(
@@ -809,8 +981,7 @@ fn ut_block_cb_005_success_already_blocklisted() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000,
-        })),
+            verified_at: 1_700_000_000_000_000_000})),
     );
     assert!(result);
     assert!(contract.is_blocklisted(accounts(2)));

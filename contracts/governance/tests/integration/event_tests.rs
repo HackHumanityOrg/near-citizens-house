@@ -1,3 +1,4 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
@@ -6,8 +7,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_mock_verified_accounts,
-    proposal_storage_key, setup_env,
-};
+    proposal_storage_key, setup_env};
 
 fn extract_event(logs: &[&str], event_name: &str) -> serde_json::Value {
     let entry = logs
@@ -36,6 +36,13 @@ async fn wait_for_blocklist_locked(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Events")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "events")]
+#[allure_description("Verifies event 001 all mutating actions emit events.")]
+#[allure_test]
 async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
 
@@ -160,8 +167,7 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0),
-    };
+        voter_deposit: NearToken::from_near(0)};
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;

@@ -1,11 +1,11 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::{AccountDetails, NearToken};
 use serde_json::json;
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
     init_mock_verified_accounts, seed_mock_verified_accounts, setup_env, store_verification,
-    sum_tokens_burnt, GAS_HEAVY,
-};
+    sum_tokens_burnt, GAS_HEAVY};
 use tokio::time::{sleep, Duration};
 
 const STORAGE_PRICE_PER_BYTE: u128 = 10_000_000_000_000_000_000;
@@ -92,6 +92,13 @@ async fn wait_for_pending_votes(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies store 001 free vote when contract has balance.")]
+#[allure_test]
 async fn it_store_001_free_vote_when_contract_has_balance() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -118,6 +125,13 @@ async fn it_store_001_free_vote_when_contract_has_balance() -> anyhow::Result<()
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies store 001b deposit attached when free partial refund.")]
+#[allure_test]
 async fn it_store_001b_deposit_attached_when_free_partial_refund() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -143,6 +157,13 @@ async fn it_store_001b_deposit_attached_when_free_partial_refund() -> anyhow::Re
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies store 002 deposit required and excess refunded.")]
+#[allure_test]
 async fn it_store_002_deposit_required_and_excess_refunded() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -172,6 +193,13 @@ async fn it_store_002_deposit_required_and_excess_refunded() -> anyhow::Result<(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies store 003 deposit refunded on rejection.")]
+#[allure_test]
 async fn it_store_003_deposit_refunded_on_rejection() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, true, false).await?;
@@ -212,6 +240,13 @@ async fn it_store_003_deposit_refunded_on_rejection() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies store 004 refund calculation accuracy.")]
+#[allure_test]
 async fn it_store_004_refund_calculation_accuracy() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -241,6 +276,13 @@ async fn it_store_004_refund_calculation_accuracy() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 001 full refund on callback failed.")]
+#[allure_test]
 async fn it_refund_001_full_refund_on_callback_failed() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, true, false).await?;
@@ -281,6 +323,13 @@ async fn it_refund_001_full_refund_on_callback_failed() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 002 full refund on not verified.")]
+#[allure_test]
 async fn it_refund_002_full_refund_on_not_verified() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let unverified = worker.dev_create_account().await?;
@@ -315,6 +364,13 @@ async fn it_refund_002_full_refund_on_not_verified() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 003 full refund on verified after creation.")]
+#[allure_test]
 async fn it_refund_003_full_refund_on_verified_after_creation() -> anyhow::Result<()> {
     let (worker, governance, verified, admin, backend, users) = setup_env(1).await?;
     let late_user = worker.dev_create_account().await?;
@@ -354,6 +410,13 @@ async fn it_refund_003_full_refund_on_verified_after_creation() -> anyhow::Resul
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 004 full refund on proposal cancelled.")]
+#[allure_test]
 async fn it_refund_004_full_refund_on_proposal_cancelled() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
@@ -406,6 +469,13 @@ async fn it_refund_004_full_refund_on_proposal_cancelled() -> anyhow::Result<()>
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 005 full refund on post finalize.")]
+#[allure_test]
 async fn it_refund_005_full_refund_on_post_finalize() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
@@ -458,6 +528,13 @@ async fn it_refund_005_full_refund_on_post_finalize() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 006 full refund on proposal expired.")]
+#[allure_test]
 async fn it_refund_006_full_refund_on_proposal_expired() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -493,6 +570,13 @@ async fn it_refund_006_full_refund_on_proposal_expired() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 007 partial refund on success.")]
+#[allure_test]
 async fn it_refund_007_partial_refund_on_success() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -521,6 +605,13 @@ async fn it_refund_007_partial_refund_on_success() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 008 zero refund when deposit equals storage cost.")]
+#[allure_test]
 async fn it_refund_008_zero_refund_when_deposit_equals_storage_cost() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     let proposal_id =
@@ -578,6 +669,13 @@ async fn it_refund_008_zero_refund_when_deposit_equals_storage_cost() -> anyhow:
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Storage")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "storage")]
+#[allure_description("Verifies refund 009 no transfer when voting is free.")]
+#[allure_test]
 async fn it_refund_009_no_transfer_when_voting_is_free() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =

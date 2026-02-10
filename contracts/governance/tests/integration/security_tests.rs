@@ -1,3 +1,4 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
@@ -14,6 +15,13 @@ fn assert_failure_contains(result: &near_workspaces::result::ExecutionFinalResul
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Security")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "governance", "security")]
+#[allure_description("Verifies sec 001 all admin functions require one yocto.")]
+#[allure_test]
 async fn it_sec_001_all_admin_functions_require_one_yocto() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
 
@@ -140,6 +148,13 @@ async fn it_sec_001_all_admin_functions_require_one_yocto() -> anyhow::Result<()
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Security")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "governance", "security")]
+#[allure_description("Verifies sec 002 non admin cannot call admin methods.")]
+#[allure_test]
 async fn it_sec_002_non_admin_cannot_call_admin_methods() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let user = &crate::helpers::user(&users, 0);
@@ -285,6 +300,13 @@ async fn it_sec_002_non_admin_cannot_call_admin_methods() -> anyhow::Result<()> 
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Security")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "governance", "security")]
+#[allure_description("Verifies sec 003 004 005 private callbacks rejected.")]
+#[allure_test]
 async fn it_sec_003_004_005_private_callbacks_rejected() -> anyhow::Result<()> {
     let (_worker, governance, _verified, _admin, _backend, users) = setup_env(1).await?;
     let user = &crate::helpers::user(&users, 0);

@@ -1,13 +1,20 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
 use serde_json::json;
 use crate::helpers::{
     create_proposal, get_proposal, init_governance, init_mock_verified_accounts,
-    init_verified_accounts, proposal_storage_key, setup_env,
-};
+    init_verified_accounts, proposal_storage_key, setup_env};
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Snapshots")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "snapshot")]
+#[allure_description("Verifies snap 001 snapshot callback failure.")]
+#[allure_test]
 async fn it_snap_001_snapshot_callback_failure() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let (verified_contract, backend) = init_verified_accounts(&worker).await?;
@@ -59,6 +66,13 @@ async fn it_snap_001_snapshot_callback_failure() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Snapshots")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "snapshot")]
+#[allure_description("Verifies snap 002 zero snapshot rejection.")]
+#[allure_test]
 async fn it_snap_002_zero_snapshot_rejection() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
     let proposal_id =
@@ -73,6 +87,13 @@ async fn it_snap_002_zero_snapshot_rejection() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Snapshots")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "snapshot")]
+#[allure_description("Verifies pending 001 pending expiry.")]
+#[allure_test]
 async fn it_pending_001_pending_expiry() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
