@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { Button } from "@near-citizens/ui"
 import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
-import { ExternalLink, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { ExternalLink, Loader2 } from "lucide-react"
 import type { VoteView } from "@/lib/schemas/governance-contract"
 import { getProposalVotes } from "@/app/governance/actions"
 
@@ -33,13 +33,15 @@ export function VotesTable({ proposalId, initialVotes, totalVotes }: Props) {
   const [votes, setVotes] = useState(initialVotes)
   const [page, setPage] = useState(0)
   const [isPending, startTransition] = useTransition()
-  const hasMore = (page + 1) * PAGE_SIZE < totalVotes
+  const hasMore = votes.length < totalVotes
 
-  const loadPage = (newPage: number) => {
+  const loadMore = () => {
+    const nextPage = page + 1
     startTransition(async () => {
-      const result = await getProposalVotes(proposalId, newPage, PAGE_SIZE)
-      setVotes(result.votes)
-      setPage(newPage)
+      const result = await getProposalVotes(proposalId, nextPage, PAGE_SIZE)
+      if (result.votes.length === 0) return
+      setVotes((prev) => [...prev, ...result.votes])
+      setPage(nextPage)
     })
   }
 
@@ -94,27 +96,18 @@ export function VotesTable({ proposalId, initialVotes, totalVotes }: Props) {
         ))
       )}
 
-      {/* Pagination */}
-      {(page > 0 || hasMore) && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[#cbd5e1] dark:border-white/10">
-          <Button
-            variant="citizens-outline"
-            size="sm"
-            onClick={() => loadPage(page - 1)}
-            disabled={page === 0 || isPending}
-          >
-            <ChevronLeft className="h-3 w-3" />
-            Prev
-          </Button>
-          <span className="font-inter text-[12px] text-[#64748b]">Page {page + 1}</span>
-          <Button
-            variant="citizens-outline"
-            size="sm"
-            onClick={() => loadPage(page + 1)}
-            disabled={!hasMore || isPending}
-          >
-            Next
-            <ChevronRight className="h-3 w-3" />
+      {/* Lazy loading */}
+      {hasMore && (
+        <div className="flex items-center justify-center px-4 py-3 border-t border-[#cbd5e1] dark:border-white/10">
+          <Button variant="citizens-outline" size="sm" onClick={loadMore} disabled={isPending}>
+            {isPending ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load more votes"
+            )}
           </Button>
         </div>
       )}
