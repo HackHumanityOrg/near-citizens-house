@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@flags-sdk/vercel": "^1.0.0",
-    "@hot-labs/near-connect": "^0.8.2",
+    "@hot-labs/near-connect": "^0.9.0",
     "@near-js/accounts": "^2.5.1",
     "@near-js/crypto": "^2.5.1",
     "@near-js/keystores": "^2.5.1",

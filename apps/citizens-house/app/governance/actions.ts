@@ -3,6 +3,8 @@
 import { unstable_cache, revalidateTag } from "next/cache"
 import { nearAccountIdSchema } from "@/lib"
 import { governanceReader } from "@/lib/contracts/governance/client"
+import type { AccountViewRaw } from "@near-js/types"
+import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 import type { ProposalView, VoteView, GovernanceConfig } from "@/lib/contracts/governance/governance-contract"
 
@@ -217,6 +219,27 @@ export async function getPendingVotesCount(proposalId: number): Promise<number> 
     return await governanceReader.getPendingVotesCount(proposalId)
   } catch {
     return 0
+  }
+}
+
+// =============================================================================
+// Account Balance
+// =============================================================================
+
+export async function checkAccountBalance(accountId: string): Promise<string> {
+  const parsed = nearAccountIdSchema.safeParse(accountId)
+  if (!parsed.success) return "0"
+
+  try {
+    const provider = createRpcProvider()
+    const response = await provider.query<AccountViewRaw>({
+      request_type: "view_account",
+      account_id: parsed.data,
+      finality: "optimistic",
+    })
+    return response.amount
+  } catch {
+    return "0"
   }
 }
 

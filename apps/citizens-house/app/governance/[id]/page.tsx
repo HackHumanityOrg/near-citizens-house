@@ -1,7 +1,16 @@
 import { notFound } from "next/navigation"
 import { getProposal, getProposalVotes } from "../actions"
-import { ProposalPageLayout } from "./admin-check"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
+import { VotePanel } from "@/components/governance/vote-panel"
+import { VotesTable } from "@/components/governance/votes-table"
+import {
+  ProposalHeader,
+  ProposalDescription,
+  VotingProgressCard,
+  ProposalTimeline,
+  FinalizeButton,
+  ProposalAdminActions,
+} from "@/components/governance/proposal-detail"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -41,12 +50,26 @@ export default async function ProposalPage({ params }: Props) {
 
       {/* Content overlapping hero */}
       <div className="relative z-10 -mt-[320px] md:-mt-[380px] pb-[80px] px-4 md:px-[82px]">
-        <ProposalPageLayout
-          proposal={proposal}
-          proposalId={proposalId}
-          initialVotes={votesResult.votes}
-          totalVotes={totalVotes}
-        />
+        <div className="flex flex-col gap-6 lg:gap-8 max-w-[1140px] mx-auto">
+          <ProposalHeader proposal={proposal} />
+
+          <div className="flex flex-col-reverse lg:flex-row lg:gap-8 gap-6 lg:items-start">
+            {/* Left column: description */}
+            <div className="flex-1 min-w-0">
+              <ProposalDescription proposal={proposal} />
+            </div>
+
+            {/* Right column: sidebar */}
+            <div className="w-full lg:w-[380px] lg:shrink-0 flex flex-col gap-6">
+              <VotePanel proposal={proposal} />
+              <VotingProgressCard proposal={proposal} />
+              <ProposalTimeline proposal={proposal} />
+              <FinalizeButton proposal={proposal} />
+              <ProposalAdminActions proposal={proposal} />
+              <VotesTable proposalId={proposalId} initialVotes={votesResult.votes} totalVotes={totalVotes} />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
