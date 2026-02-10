@@ -6,9 +6,9 @@ use crate::helpers::{create_proposal, setup_env};
 #[tokio::test]
 async fn it_view_001_list_proposals_pagination() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
-    create_proposal(&admin, &governance, "p1", None, NearToken::from_near(1)).await?;
-    create_proposal(&admin, &governance, "p2", None, NearToken::from_near(1)).await?;
-    create_proposal(&admin, &governance, "p3", None, NearToken::from_near(1)).await?;
+    create_proposal(&admin, &governance, "p1", None, NearToken::from_millinear(10)).await?;
+    create_proposal(&admin, &governance, "p2", None, NearToken::from_millinear(10)).await?;
+    create_proposal(&admin, &governance, "p3", None, NearToken::from_millinear(10)).await?;
 
     let page1: Vec<governance::ProposalView> = governance
         .view("list_proposals")
@@ -29,7 +29,7 @@ async fn it_view_001_list_proposals_pagination() -> anyhow::Result<()> {
 async fn it_view_002_list_votes_pagination() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(3).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "v", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "v", None, NearToken::from_millinear(10)).await?;
     for user in &users {
         let result = user
             .call(governance.id(), "cast_vote")

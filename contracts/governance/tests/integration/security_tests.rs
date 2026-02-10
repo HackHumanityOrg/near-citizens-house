@@ -115,7 +115,7 @@ async fn it_sec_001_all_admin_functions_require_one_yocto() -> anyhow::Result<()
     let res = admin
         .call(governance.id(), "update_min_proposal_bond")
         .gas(crate::helpers::GAS_HEAVY)
-        .args_json(json!({ "new_min": NearToken::from_near(1).as_yoctonear().to_string() }))
+        .args_json(json!({ "new_min": NearToken::from_millinear(10).as_yoctonear().to_string() }))
         .transact()
         .await?;
     assert_failure_contains(&res, "Requires attached deposit");
@@ -163,7 +163,7 @@ async fn it_sec_002_non_admin_cannot_call_admin_methods() -> anyhow::Result<()> 
         .await?;
     assert_failure_contains(&res, "ERR_NOT_ADMIN");
 
-    let proposal_id = create_proposal(&admin, &governance, "sec", None, NearToken::from_near(1)).await?;
+    let proposal_id = create_proposal(&admin, &governance, "sec", None, NearToken::from_millinear(10)).await?;
 
     let res = user
         .call(governance.id(), "cancel_proposal")
@@ -258,7 +258,7 @@ async fn it_sec_002_non_admin_cannot_call_admin_methods() -> anyhow::Result<()> 
         .call(governance.id(), "update_min_proposal_bond")
         .gas(crate::helpers::GAS_HEAVY)
         .deposit(deposit)
-        .args_json(json!({ "new_min": NearToken::from_near(1).as_yoctonear().to_string() }))
+        .args_json(json!({ "new_min": NearToken::from_millinear(10).as_yoctonear().to_string() }))
         .transact()
         .await?;
     assert_failure_contains(&res, "ERR_NOT_ADMIN");

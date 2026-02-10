@@ -19,7 +19,7 @@ async fn it_init_001_double_initialization_rejected() -> anyhow::Result<()> {
             "quorum_bps": 700,
             "voting_period_secs": 86_400,
             "pending_expiry_secs": 300,
-            "min_proposal_bond": NearToken::from_near(1).as_yoctonear().to_string(),
+            "min_proposal_bond": NearToken::from_millinear(10).as_yoctonear().to_string(),
             "finalize_grace_period_secs": 300,
             "max_start_delay_secs": 7_776_000
         }))

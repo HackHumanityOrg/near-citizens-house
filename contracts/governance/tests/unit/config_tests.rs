@@ -152,7 +152,7 @@ fn ut_config_005_update_min_proposal_bond_boundaries() {
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
     set_context(builder);
-    contract.update_min_proposal_bond(NearToken::from_near(1));
+    contract.update_min_proposal_bond(NearToken::from_millinear(10));
 
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
@@ -163,7 +163,7 @@ fn ut_config_005_update_min_proposal_bond_boundaries() {
     with_deposit(&mut builder, 1);
     set_context(builder);
     assert_panics_with(
-        || contract.update_min_proposal_bond(NearToken::from_yoctonear(1)),
+        || contract.update_min_proposal_bond(NearToken::from_millinear(9)),
         "ERR_MIN_BOND_OUT_OF_RANGE",
     );
 

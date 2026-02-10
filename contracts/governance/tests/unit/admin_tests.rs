@@ -140,7 +140,7 @@ fn ut_admin_010_clear_stale_pending_vote_missing_record() {
 
     // create a proposal to satisfy proposal existence
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 

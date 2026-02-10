@@ -69,7 +69,7 @@ async fn it_prop_err_001_description_too_long() -> anyhow::Result<()> {
     let result = admin
         .call(governance.id(), "create_proposal")
         .gas(GAS_HEAVY)
-        .deposit(NearToken::from_near(1))
+        .deposit(NearToken::from_millinear(10))
         .args_json(json!({
             "title": "t",
             "author": "a",
@@ -101,7 +101,7 @@ async fn wait_for_blocklist_locked(
 #[tokio::test]
 async fn it_prop_err_002_insufficient_bond() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
-    let bond = NearToken::from_yoctonear(NearToken::from_near(1).as_yoctonear() - 1);
+    let bond = NearToken::from_yoctonear(NearToken::from_millinear(10).as_yoctonear() - 1);
     let result = admin
         .call(governance.id(), "create_proposal")
         .gas(GAS_HEAVY)
@@ -137,7 +137,7 @@ async fn it_prop_err_003_blocklist_op_pending() -> anyhow::Result<()> {
     let result = admin
         .call(governance.id(), "create_proposal")
         .gas(GAS_HEAVY)
-        .deposit(NearToken::from_near(1))
+        .deposit(NearToken::from_millinear(10))
         .args_json(json!({
             "title": "t",
             "author": "a",
@@ -158,7 +158,7 @@ async fn it_prop_err_004_start_at_before_created() -> anyhow::Result<()> {
     let result = admin
         .call(governance.id(), "create_proposal")
         .gas(GAS_HEAVY)
-        .deposit(NearToken::from_near(1))
+        .deposit(NearToken::from_millinear(10))
         .args_json(json!({
             "title": "t",
             "author": "a",
@@ -176,7 +176,7 @@ async fn it_prop_err_004_start_at_before_created() -> anyhow::Result<()> {
 async fn it_prop_err_005_expire_pending_not_pending() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p-exp", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p-exp", None, NearToken::from_millinear(10)).await?;
     wait_for_active(&worker, &governance, proposal_id).await?;
 
     let result = admin
@@ -199,7 +199,7 @@ async fn it_prop_err_006_finalize_not_active() -> anyhow::Result<()> {
     let governance = init_governance(&worker, &mock_verified, &admin).await?;
 
     let proposal_id =
-        create_proposal(&admin, &governance, "p-final", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p-final", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     fast_forward_to_timestamp(&worker, proposal.ends_at.0 + 1).await?;
 
@@ -223,7 +223,7 @@ async fn it_prop_err_007_cast_vote_not_active() -> anyhow::Result<()> {
     let user = worker.dev_create_account().await?;
 
     let proposal_id =
-        create_proposal(&admin, &governance, "p-vote", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p-vote", None, NearToken::from_millinear(10)).await?;
     let result = user
         .call(governance.id(), "cast_vote")
         .gas(GAS_HEAVY)
@@ -245,7 +245,7 @@ async fn it_prop_err_008_cast_vote_already_pending() -> anyhow::Result<()> {
     seed_mock_verified_accounts(&mock_verified, &[user.clone()], 0).await?;
 
     let proposal_id =
-        create_proposal(&admin, &governance, "p-pending", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p-pending", None, NearToken::from_millinear(10)).await?;
     wait_for_active(&worker, &governance, proposal_id).await?;
 
     // Inject a pending vote directly to ensure the pending lock exists.
@@ -287,7 +287,7 @@ async fn it_prop_err_008_cast_vote_already_pending() -> anyhow::Result<()> {
 async fn it_prop_err_009_unblocklist_locked_by_active() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p-block", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p-block", None, NearToken::from_millinear(10)).await?;
     wait_for_active(&worker, &governance, proposal_id).await?;
 
     let result = admin
@@ -323,7 +323,7 @@ async fn it_prop_err_009_unblocklist_locked_by_active() -> anyhow::Result<()> {
 
     // Create a new active proposal to lock blocklist, then try to unblock.
     let proposal_id =
-        create_proposal(&admin, &governance, "p-block-2", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p-block-2", None, NearToken::from_millinear(10)).await?;
     wait_for_active(&worker, &governance, proposal_id).await?;
     let result = admin
         .call(governance.id(), "unblocklist_account")

@@ -10,7 +10,7 @@ use crate::helpers::{
 async fn it_e2e_001_full_happy_path_yes_wins() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p1", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p1", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     assert_eq!(proposal.status, governance::ProposalStatus::Active);
 
@@ -51,7 +51,7 @@ async fn it_e2e_001_full_happy_path_yes_wins() -> anyhow::Result<()> {
 async fn it_e2e_002_full_happy_path_no_wins() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p2", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p2", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     assert_eq!(proposal.status, governance::ProposalStatus::Active);
 
@@ -101,7 +101,7 @@ async fn it_e2e_003_quorum_not_met() -> anyhow::Result<()> {
     assert!(result.is_success());
 
     let proposal_id =
-        create_proposal(&admin, &governance, "p3", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p3", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
@@ -132,7 +132,7 @@ async fn it_e2e_004_start_delay_happy_path() -> anyhow::Result<()> {
     let now = worker.view_block().await?.timestamp();
     let start_at = now + 5_000_000_000;
     let proposal_id =
-        create_proposal(&admin, &governance, "p4", Some(start_at), NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p4", Some(start_at), NearToken::from_millinear(10)).await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
         .gas(crate::helpers::GAS_HEAVY)
@@ -158,7 +158,7 @@ async fn it_e2e_005_non_admin_cannot_create_proposal() -> anyhow::Result<()> {
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "create_proposal")
         .gas(crate::helpers::GAS_HEAVY)
-        .deposit(NearToken::from_near(1))
+        .deposit(NearToken::from_millinear(10))
         .args_json(json!({
             "title": "t",
             "author": "a",
@@ -175,7 +175,7 @@ async fn it_e2e_005_non_admin_cannot_create_proposal() -> anyhow::Result<()> {
 async fn it_e2e_006_non_admin_can_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p6", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p6", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     fast_forward_to_timestamp(&worker, proposal.ends_at.0 + 1).await?;
     let result = crate::helpers::user(&users, 0)
@@ -192,7 +192,7 @@ async fn it_e2e_006_non_admin_can_finalize() -> anyhow::Result<()> {
 async fn it_e2e_007_cancel_after_ends_at() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p7", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p7", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     fast_forward_to_timestamp(&worker, proposal.ends_at.0 + 1).await?;
     let result = admin
@@ -211,8 +211,8 @@ async fn it_e2e_007_cancel_after_ends_at() -> anyhow::Result<()> {
 #[tokio::test]
 async fn it_e2e_008_concurrentproposals_independent() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
-    let p1 = create_proposal(&admin, &governance, "p8a", None, NearToken::from_near(1)).await?;
-    let p2 = create_proposal(&admin, &governance, "p8b", None, NearToken::from_near(1)).await?;
+    let p1 = create_proposal(&admin, &governance, "p8a", None, NearToken::from_millinear(10)).await?;
+    let p2 = create_proposal(&admin, &governance, "p8b", None, NearToken::from_millinear(10)).await?;
 
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
@@ -272,7 +272,7 @@ async fn it_e2e_009_verified_at_equals_created_at_boundary() -> anyhow::Result<(
     )
     .await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p9", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p9", None, NearToken::from_millinear(10)).await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
         .gas(crate::helpers::GAS_HEAVY)
@@ -286,7 +286,7 @@ async fn it_e2e_009_verified_at_equals_created_at_boundary() -> anyhow::Result<(
 #[tokio::test]
 async fn it_e2e_010_lifecycle_continuity_after_cancel() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
-    let p1 = create_proposal(&admin, &governance, "p10", None, NearToken::from_near(1)).await?;
+    let p1 = create_proposal(&admin, &governance, "p10", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "cancel_proposal")
         .gas(crate::helpers::GAS_HEAVY)
@@ -295,7 +295,7 @@ async fn it_e2e_010_lifecycle_continuity_after_cancel() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(result.is_success());
-    let p2 = create_proposal(&admin, &governance, "p10b", None, NearToken::from_near(1)).await?;
+    let p2 = create_proposal(&admin, &governance, "p10b", None, NearToken::from_millinear(10)).await?;
     assert_eq!(p2, p1 + 1);
     Ok(())
 }
@@ -306,7 +306,7 @@ async fn it_e2e_011_deferred_start_end_to_end() -> anyhow::Result<()> {
     let now = worker.view_block().await?.timestamp();
     let start_at = now + 5_000_000_000;
     let proposal_id =
-        create_proposal(&admin, &governance, "p11", Some(start_at), NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p11", Some(start_at), NearToken::from_millinear(10)).await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
         .gas(crate::helpers::GAS_HEAVY)
@@ -340,7 +340,7 @@ async fn it_e2e_011_deferred_start_end_to_end() -> anyhow::Result<()> {
 async fn it_e2e_012_concurrent_votes_sameproposal() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "p12", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "p12", None, NearToken::from_millinear(10)).await?;
     for user in &users {
         let result = user
             .call(governance.id(), "cast_vote")
@@ -358,8 +358,8 @@ async fn it_e2e_012_concurrent_votes_sameproposal() -> anyhow::Result<()> {
 #[tokio::test]
 async fn it_prop_id_001proposal_ids_sequential() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
-    let p1 = create_proposal(&admin, &governance, "pid1", None, NearToken::from_near(1)).await?;
-    let p2 = create_proposal(&admin, &governance, "pid2", None, NearToken::from_near(1)).await?;
+    let p1 = create_proposal(&admin, &governance, "pid1", None, NearToken::from_millinear(10)).await?;
+    let p2 = create_proposal(&admin, &governance, "pid2", None, NearToken::from_millinear(10)).await?;
     assert_eq!(p1, 0);
     assert_eq!(p2, 1);
     Ok(())
@@ -369,7 +369,7 @@ async fn it_prop_id_001proposal_ids_sequential() -> anyhow::Result<()> {
 async fn it_final_002_finalize_after_grace_proceeds() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "pg", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "pg", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
