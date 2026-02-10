@@ -1594,6 +1594,20 @@ impl VersionedContract {
             }
         };
 
+        // Defensive: verification must match the voter we queried.
+        if summary.near_account_id != voter {
+            GovernanceEvent::VoteRejected {
+                proposal_id,
+                voter: voter.clone(),
+                reason: VoteRejectionReason::NotVerified,
+            }
+            .emit();
+            if !voter_deposit.is_zero() {
+                Promise::new(voter).transfer(voter_deposit).detach();
+            }
+            return false;
+        }
+
         // Check verified_at <= created_at
         if summary.verified_at > created_at {
             GovernanceEvent::VoteRejected {
