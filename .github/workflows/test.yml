@@ -108,6 +108,8 @@ jobs:
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts.outputs.failed }}
+      governance_passed: ${{ steps.test_governance.outputs.passed }}
+      governance_failed: ${{ steps.test_governance.outputs.failed }}
     steps:
       # Fix permissions from previous runs (Allure action creates root-owned files)
       - name: Fix workspace permissions
@@ -142,7 +144,22 @@ jobs:
         id: test_verified_accounts
         working-directory: contracts/verified-accounts
         run: |
-          cargo test --features testing 2>&1 | tee test_output.txt
+          ALLURE_RESULTS_DIR=${{ github.workspace }}/contracts/verified-accounts/allure-results \
+            cargo test --features testing 2>&1 | tee test_output.txt
+          # Sum ALL passed/failed counts from all "test result:" lines (cargo outputs one per crate)
+          PASSED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= passed)' | awk '{sum+=$1} END {print sum+0}')
+          FAILED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= failed)' | awk '{sum+=$1} END {print sum+0}')
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Run governance unit tests
+        if: ${{ env.ACT != 'true' || env.ACT_UNIT_TEST_TARGET == 'all' || env.ACT_UNIT_TEST_TARGET == 'governance' }}
+        id: test_governance
+        working-directory: contracts/governance
+        run: |
+          ALLURE_RESULTS_DIR=${{ github.workspace }}/contracts/governance/allure-results \
+            cargo test --features testing 2>&1 | tee test_output.txt
           # Sum ALL passed/failed counts from all "test result:" lines (cargo outputs one per crate)
           PASSED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= passed)' | awk '{sum+=$1} END {print sum+0}')
           FAILED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= failed)' | awk '{sum+=$1} END {print sum+0}')
@@ -249,6 +266,8 @@ jobs:
     outputs:
       verified_accounts_passed: ${{ steps.test_verified_accounts_integration.outputs.passed }}
       verified_accounts_failed: ${{ steps.test_verified_accounts_integration.outputs.failed }}
+      governance_passed: ${{ steps.test_governance_integration.outputs.passed }}
+      governance_failed: ${{ steps.test_governance_integration.outputs.failed }}
     steps:
       # Fix permissions from previous runs (Allure action creates root-owned files)
       - name: Fix workspace permissions
@@ -299,7 +318,21 @@ jobs:
         id: test_verified_accounts_integration
         working-directory: contracts/verified-accounts
         run: |
-          cargo test --features integration-tests 2>&1 | tee test_output.txt
+          ALLURE_RESULTS_DIR=${{ github.workspace }}/contracts/verified-accounts/allure-results \
+            cargo test --features integration-tests 2>&1 | tee test_output.txt
+          # Sum ALL passed/failed counts from all "test result:" lines (cargo outputs one per crate)
+          PASSED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= passed)' | awk '{sum+=$1} END {print sum+0}')
+          FAILED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= failed)' | awk '{sum+=$1} END {print sum+0}')
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Run governance integration tests
+        id: test_governance_integration
+        working-directory: contracts/governance
+        run: |
+          ALLURE_RESULTS_DIR=${{ github.workspace }}/contracts/governance/allure-results \
+            RUST_TEST_THREADS=1 cargo test --test integration --features integration-tests 2>&1 | tee test_output.txt
           # Sum ALL passed/failed counts from all "test result:" lines (cargo outputs one per crate)
           PASSED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= passed)' | awk '{sum+=$1} END {print sum+0}')
           FAILED=$(grep "test result:" test_output.txt | grep -oP '\d+(?= failed)' | awk '{sum+=$1} END {print sum+0}')
@@ -359,13 +392,17 @@ jobs:
         run: |
           TOTAL_PASSED=$((
             ${{ needs.unit-tests-rust.outputs.verified_accounts_passed || 0 }} +
+            ${{ needs.unit-tests-rust.outputs.governance_passed || 0 }} +
             ${{ needs.unit-tests-typescript.outputs.passed || 0 }} +
-            ${{ needs.integration-tests.outputs.verified_accounts_passed || 0 }}
+            ${{ needs.integration-tests.outputs.verified_accounts_passed || 0 }} +
+            ${{ needs.integration-tests.outputs.governance_passed || 0 }}
           ))
           TOTAL_FAILED=$((
             ${{ needs.unit-tests-rust.outputs.verified_accounts_failed || 0 }} +
+            ${{ needs.unit-tests-rust.outputs.governance_failed || 0 }} +
             ${{ needs.unit-tests-typescript.outputs.failed || 0 }} +
-            ${{ needs.integration-tests.outputs.verified_accounts_failed || 0 }}
+            ${{ needs.integration-tests.outputs.verified_accounts_failed || 0 }} +
+            ${{ needs.integration-tests.outputs.governance_failed || 0 }}
           ))
           echo "passed=$TOTAL_PASSED" >> $GITHUB_OUTPUT
           echo "failed=$TOTAL_FAILED" >> $GITHUB_OUTPUT
