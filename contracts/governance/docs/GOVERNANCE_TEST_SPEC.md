@@ -508,13 +508,6 @@ Expected results:
 1. Step 1 panics ERR_PROPOSAL_NOT_EXPIRED.
 2. Step 2 succeeds (does not require ends_at).
 
-UT-PROP-021: finalize with pending_vote_count = 0
-Preconditions: Active proposal ended, pending_vote_count = 0
-Steps:
-1. Call finalize after ends_at + 1.
-Expected results:
-1. Finalize succeeds without grace-period blocking.
-
 UT-PROP-020: proposal IDs sequential
 Preconditions: None
 Steps:
@@ -523,7 +516,14 @@ Expected results:
 1. IDs are 0, 1, 2.
 2. get_proposal_count returns 3.
 
-UT-PROP-023: create_proposal start_at default None
+UT-PROP-021: finalize with pending_vote_count = 0
+Preconditions: Active proposal ended, pending_vote_count = 0
+Steps:
+1. Call finalize after ends_at + 1.
+Expected results:
+1. Finalize succeeds without grace-period blocking.
+
+UT-PROP-022: create_proposal start_at default None
 Preconditions: `admin1` is admin
 Steps:
 1. Call `create_proposal` with `start_at = None`.
@@ -802,15 +802,7 @@ Expected results:
 1. Step 1 returns true.
 2. Step 2 returns false.
 
-UT-VOTE-007b: is_vote_free independent of proposal_id
-Preconditions: Two different proposal IDs exist
-Steps:
-1. Call `is_vote_free(proposal_id_1)`.
-2. Call `is_vote_free(proposal_id_2)`.
-Expected results:
-1. Results are identical regardless of proposal_id.
-
-UT-VOTE-007c: is_vote_free changes after storage increases
+UT-VOTE-007b: is_vote_free changes after storage increases
 Preconditions: Control `storage_usage` and balance
 Steps:
 1. Set available >= storage_cost, call `is_vote_free`.

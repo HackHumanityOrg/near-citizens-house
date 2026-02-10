@@ -1179,7 +1179,7 @@ impl VersionedContract {
             .collect()
     }
 
-    pub fn is_vote_free(&self, _proposal_id: u32) -> bool {
+    pub fn is_vote_free(&self) -> bool {
         let estimated_bytes = ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES;
         let storage_cost = env::storage_byte_cost().saturating_mul(estimated_bytes as u128);
         let staked_storage = env::storage_byte_cost().saturating_mul(env::storage_usage() as u128);
