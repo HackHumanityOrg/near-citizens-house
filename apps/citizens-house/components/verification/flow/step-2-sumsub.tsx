@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import dynamic from "next/dynamic"
 import { type NearSignatureData } from "@/lib"
 import { trackEvent, getPlatform } from "@/lib/analytics"
@@ -13,7 +13,6 @@ import {
 } from "@/lib/schemas/errors"
 import { Loader2, Info, Ban, Check, Shield } from "lucide-react"
 import { StarPattern } from "../icons/star-pattern"
-import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
 import {
   type SumSubWebSdkProps,
   type SumSubWebSdkPayload,
@@ -21,7 +20,7 @@ import {
   type SumSubReviewAnswer,
   type SumSubReviewRejectType,
 } from "./sumsub-websdk.types"
-import { verificationStepStates, type VerificationStepState } from "./verification-step-state"
+import { type VerificationStepState } from "./verification-step-state"
 
 // Dynamic import of SumSub WebSDK to avoid SSR issues
 // The @sumsub/websdk-react package doesn't ship TypeScript definitions
@@ -68,35 +67,6 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
       pollingAbortControllerRef.current?.abort()
     }
   }, [])
-
-  // Debug mode state override
-  const handleDebugStateChange = useCallback(
-    (state: string) => {
-      if (verificationStepStates.includes(state as VerificationStepState)) {
-        setVerificationStatus(state as VerificationStepState)
-        // If switching to ready or verifying, set a mock token
-        if ((state === "ready" || state === "verifying") && !accessToken) {
-          setAccessToken("debug-token")
-        }
-        // If success, trigger the onSuccess callback
-        if (state === "success") {
-          onSuccess()
-        }
-      }
-    },
-    [accessToken, onSuccess],
-  )
-
-  // Register with debug context
-  const debugStates = useMemo(() => [...verificationStepStates], [])
-
-  useDebugRegistration({
-    id: "step2-sumsub",
-    name: "Step 2: SumSub",
-    availableStates: debugStates,
-    currentState: verificationStatus,
-    onStateChange: handleDebugStateChange,
-  })
 
   // Fetch access token on mount
   const fetchAccessToken = useCallback(async (): Promise<string> => {

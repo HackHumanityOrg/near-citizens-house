@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, Suspense, useCallback, useMemo } from "react"
+import { useState, useEffect, useRef, Suspense, useCallback } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@/lib"
@@ -12,7 +12,6 @@ import { Step3Success } from "../../../components/verification/flow/step-3-succe
 import { StepError } from "../../../components/verification/flow/step-error"
 import { StepHold } from "../../../components/verification/flow/step-hold"
 import { ErrorModal } from "../../../components/verification/flow/error-modal"
-import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
 import { isNonRetryableError, isHoldError, getErrorMessage, type VerificationErrorCode } from "@/lib/schemas/errors"
 
 enum VerificationProgressStep {
@@ -117,112 +116,6 @@ function VerificationStartContent() {
   const hasTrackedAlreadyVerified = useRef(false)
   const hasTrackedWalletConnected = useRef(false)
   const lastAccountIdRef = useRef<string | null>(null)
-  const [debugModeActive, setDebugModeActive] = useState(false)
-  const [debugOverrideConnected, setDebugOverrideConnected] = useState<boolean | null>(null)
-
-  // Effective isConnected - uses debug override when debug mode is active
-  const effectiveIsConnected = debugModeActive && debugOverrideConnected !== null ? debugOverrideConnected : isConnected
-
-  // Debug mode state override
-  const handleDebugStateChange = useCallback(
-    (state: string) => {
-      setDebugModeActive(true)
-      setCurrentStep(state as VerificationProgressStep)
-
-      // Override isConnected based on the state
-      if (state === VerificationProgressStep.NotConnected) {
-        setDebugOverrideConnected(false)
-      } else {
-        setDebugOverrideConnected(true)
-      }
-
-      // If switching to MessageSigned, create a mock signature
-      if (state === VerificationProgressStep.MessageSigned && !nearSignature) {
-        setNearSignature({
-          accountId: accountId || "debug.testnet",
-          signature: "debug-signature",
-          publicKey: "ed25519:debug-public-key",
-          nonce: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", // base64-encoded 32 bytes
-          timestamp: Date.now(),
-          challenge: "Sign this message to verify ownership of your NEAR wallet.",
-          recipient: "citizens-house",
-        })
-      }
-    },
-    [accountId, nearSignature],
-  )
-
-  // Register with debug context
-  const debugStates = useMemo(() => Object.values(VerificationProgressStep), [])
-
-  const debugControls = useMemo(
-    () => [
-      {
-        label: "Reset to Real State",
-        action: () => {
-          setDebugModeActive(false)
-          setDebugOverrideConnected(null)
-          setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
-          setNearSignature(null)
-          setErrorMessage(null)
-          setErrorCode(null)
-          setIsErrorModalOpen(false)
-        },
-      },
-    ],
-    [isConnected],
-  )
-
-  useDebugRegistration({
-    id: "verification-progress",
-    name: "Verification Progress",
-    availableStates: debugStates,
-    currentState: currentStep,
-    onStateChange: handleDebugStateChange,
-    additionalControls: debugControls,
-  })
-
-  // Listen for debug error trigger events
-  useEffect(() => {
-    const handleDebugTriggerError = (
-      event: CustomEvent<{ type: "retryable" | "non-retryable" | "hold"; code: VerificationErrorCode }>,
-    ) => {
-      const { type, code } = event.detail
-      setErrorMessage(`Debug: ${code}`)
-      setErrorCode(code)
-
-      if (type === "hold") {
-        setIsErrorModalOpen(false)
-        setDebugModeActive(true)
-        setCurrentStep(VerificationProgressStep.Hold)
-      } else if (type === "non-retryable") {
-        setIsErrorModalOpen(false)
-        setDebugModeActive(true)
-        setCurrentStep(VerificationProgressStep.Error)
-      } else {
-        setIsErrorModalOpen(true)
-      }
-    }
-
-    const handleDebugClearErrors = () => {
-      setErrorMessage(null)
-      setErrorCode(null)
-      setIsErrorModalOpen(false)
-      // If we're on the error or hold step, go back to the appropriate step
-      if (currentStep === VerificationProgressStep.Error || currentStep === VerificationProgressStep.Hold) {
-        setDebugModeActive(false)
-        setDebugOverrideConnected(null)
-        setCurrentStep(isConnected ? VerificationProgressStep.WalletConnected : VerificationProgressStep.NotConnected)
-      }
-    }
-
-    window.addEventListener("debug:trigger-error", handleDebugTriggerError as EventListener)
-    window.addEventListener("debug:clear-errors", handleDebugClearErrors)
-    return () => {
-      window.removeEventListener("debug:trigger-error", handleDebugTriggerError as EventListener)
-      window.removeEventListener("debug:clear-errors", handleDebugClearErrors)
-    }
-  }, [currentStep, isConnected])
 
   // Track flow_start event once on component mount
   useEffect(() => {
@@ -255,9 +148,6 @@ function VerificationStartContent() {
   }, [accountId, isConnected])
 
   useEffect(() => {
-    // Skip auto state management when debug mode is controlling the state
-    if (debugModeActive) return
-
     if (!isConnected) {
       if (currentStep !== VerificationProgressStep.NotConnected) {
         setCurrentStep(VerificationProgressStep.NotConnected)
@@ -280,7 +170,7 @@ function VerificationStartContent() {
       }
       setCurrentStep(VerificationProgressStep.WalletConnected)
     }
-  }, [isConnected, currentStep, nearSignature, accountId, debugModeActive])
+  }, [isConnected, currentStep, nearSignature, accountId])
 
   // Check if already verified on mount
   useEffect(() => {
@@ -517,10 +407,6 @@ function VerificationStartContent() {
 
   // Handle retry from error modal
   const handleRetry = useCallback(() => {
-    // Reset debug mode on retry to use real wallet state
-    setDebugModeActive(false)
-    setDebugOverrideConnected(null)
-
     setIsErrorModalOpen(false)
     setErrorMessage(null)
     setErrorCode(null)
@@ -541,8 +427,8 @@ function VerificationStartContent() {
         {(currentStep === VerificationProgressStep.NotConnected ||
           currentStep === VerificationProgressStep.WalletConnected) && (
           <Step1WalletSignature
-            accountId={effectiveIsConnected ? accountId : null}
-            isConnected={effectiveIsConnected}
+            accountId={isConnected ? accountId : null}
+            isConnected={isConnected}
             isLoading={isLoading || isCheckingVerification}
             isSigning={isSigning}
             onConnect={handleConnect}

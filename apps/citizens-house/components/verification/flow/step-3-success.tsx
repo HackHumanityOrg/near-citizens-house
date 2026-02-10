@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Check, Info } from "lucide-react"
 import { Button } from "@near-citizens/ui"
 import { type NearAccountId } from "@/lib"
 import { trackEvent, getPlatform } from "@/lib/analytics"
 import { StarPattern } from "../icons/star-pattern"
-import { useDebugRegistration } from "@/lib/hooks/use-debug-registration"
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform } from "framer-motion"
 
 interface Step3SuccessProps {
@@ -21,27 +20,6 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
   const verificationLabel = "ID Verified"
   const [phase, setPhase] = useState<AnimationPhase>(shouldReduceMotion ? "complete" : "initial")
   const hasTrackedDisplay = useRef(false)
-  const [debugModeActive, setDebugModeActive] = useState(false)
-
-  // Debug mode state override
-  const handleDebugStateChange = useCallback((state: string) => {
-    setDebugModeActive(true)
-    const validPhases = ["initial", "labelsOut", "merging", "checkmark", "complete"] as const
-    if (validPhases.includes(state as (typeof validPhases)[number])) {
-      setPhase(state as AnimationPhase)
-    }
-  }, [])
-
-  // Register with debug context
-  const debugStates = useMemo(() => ["initial", "labelsOut", "merging", "checkmark", "complete"], [])
-
-  useDebugRegistration({
-    id: "step3-success",
-    name: "Step 3: Success Animation",
-    availableStates: debugStates,
-    currentState: phase,
-    onStateChange: handleDebugStateChange,
-  })
 
   // Motion value for checkmark path - prevents flash by linking opacity to pathLength
   const pathLength = useMotionValue(0)
@@ -62,8 +40,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
   }, [accountId])
 
   useEffect(() => {
-    // Skip auto-progression when debug mode is controlling the phase
-    if (shouldReduceMotion || debugModeActive) {
+    if (shouldReduceMotion) {
       return
     }
 
@@ -75,7 +52,7 @@ export function Step3Success({ accountId, onDisconnect }: Step3SuccessProps) {
     ]
 
     return () => timers.forEach(clearTimeout)
-  }, [shouldReduceMotion, debugModeActive])
+  }, [shouldReduceMotion])
 
   const handleDisconnect = () => {
     trackEvent({

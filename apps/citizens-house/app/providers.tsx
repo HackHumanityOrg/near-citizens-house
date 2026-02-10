@@ -7,8 +7,6 @@ import { ErrorBoundary } from "@near-citizens/ui"
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider } from "posthog-js/react"
 import { env } from "@/lib/schemas/env"
-import { DebugProvider } from "@/lib/providers/debug-provider"
-import { DebugMenu } from "@/components/debug"
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -28,10 +26,7 @@ export function Providers({ children }: ProvidersProps) {
         }}
       >
         <NearWalletProvider>
-          <DebugProvider>
-            <ErrorBoundary>{children}</ErrorBoundary>
-            <DebugMenu />
-          </DebugProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
         </NearWalletProvider>
       </SWRConfig>
     </PostHogProvider>
