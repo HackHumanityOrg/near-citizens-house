@@ -17,7 +17,7 @@ async function ensureRedisInitialized(): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") {
     return new NextResponse(null, { status: 404 })
   }
 
