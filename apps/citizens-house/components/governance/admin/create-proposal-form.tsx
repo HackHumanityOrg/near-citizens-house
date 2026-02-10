@@ -76,7 +76,7 @@ export function CreateProposalForm({ minProposalBond }: Props) {
           <Label htmlFor="title" className="font-fk-grotesk text-[14px] text-black dark:text-white">
             Title
           </Label>
-          <span className="text-[12px] text-[#94a3b8] font-inter">{title.length}/140</span>
+          <span className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">{title.length}/140</span>
         </div>
         <Input
           id="title"
@@ -93,7 +93,7 @@ export function CreateProposalForm({ minProposalBond }: Props) {
           <Label htmlFor="author" className="font-fk-grotesk text-[14px] text-black dark:text-white">
             Author
           </Label>
-          <span className="text-[12px] text-[#94a3b8] font-inter">{author.length}/120</span>
+          <span className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">{author.length}/120</span>
         </div>
         <Input
           id="author"
@@ -110,7 +110,7 @@ export function CreateProposalForm({ minProposalBond }: Props) {
           <Label htmlFor="description" className="font-fk-grotesk text-[14px] text-black dark:text-white">
             Description
           </Label>
-          <span className="text-[12px] text-[#94a3b8] font-inter">{description.length}/10000</span>
+          <span className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">{description.length}/10000</span>
         </div>
         <textarea
           id="description"
@@ -156,7 +156,7 @@ export function CreateProposalForm({ minProposalBond }: Props) {
         {scheduled && (
           <Input id="startAt" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
         )}
-        <p className="text-[12px] text-[#94a3b8] font-inter">
+        <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
           {scheduled
             ? "Voting opens at the scheduled time. Must be within the max start delay."
             : "Voting opens as soon as the proposal is confirmed on-chain."}
@@ -176,7 +176,7 @@ export function CreateProposalForm({ minProposalBond }: Props) {
           onChange={(e) => setBondNear(e.target.value)}
           placeholder={`Min: ${minBondNear} NEAR`}
         />
-        <p className="text-[12px] text-[#94a3b8] font-inter">
+        <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
           Minimum bond: {minBondNear} NEAR. Non-refundable. Covers storage costs.
         </p>
       </div>
