@@ -58,6 +58,9 @@ const MIN_PENDING_EXPIRY_SECS: u64 = 10; // 10 seconds (tests)
 const MIN_PENDING_EXPIRY_SECS: u64 = 300; // 5 minutes
 const MAX_PENDING_EXPIRY_SECS: u64 = 86_400; // 1 day
 
+#[cfg(feature = "testing")]
+const MIN_BOND: NearToken = NearToken::from_millinear(10); // 0.01 NEAR (tests)
+#[cfg(not(feature = "testing"))]
 const MIN_BOND: NearToken = NearToken::from_near(1);
 const MAX_BOND: NearToken = NearToken::from_near(100);
 

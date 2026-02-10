@@ -67,7 +67,7 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
     let res = admin
         .call(governance.id(), "create_proposal")
         .gas(crate::helpers::GAS_HEAVY)
-        .deposit(NearToken::from_near(1))
+        .deposit(NearToken::from_millinear(10))
         .args_json(json!({
             "title": "event",
             "author": "a",
@@ -130,7 +130,7 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
 
     // proposal_finalized
     let proposal_id =
-        create_proposal(&admin, &governance, "event2", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "event2", None, NearToken::from_millinear(10)).await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
         .gas(crate::helpers::GAS_HEAVY)
@@ -152,7 +152,7 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
 
     // pending_vote_cleared
     let proposal_id =
-        create_proposal(&admin, &governance, "event3", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "event3", None, NearToken::from_millinear(10)).await?;
     let pending_key = (proposal_id, crate::helpers::user(&users, 0).id().clone());
     let key_prefix = governance::StorageKey::PendingVotes.into_storage_key();
     let mut key = key_prefix.clone();

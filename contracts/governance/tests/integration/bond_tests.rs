@@ -23,7 +23,7 @@ async fn it_bond_001_retained_after_succeeded() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     let before = contract_balance(&worker, &governance).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "bond1", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "bond1", None, NearToken::from_millinear(10)).await?;
     let after_create = contract_balance(&worker, &governance).await?;
     assert!(after_create > before);
 
@@ -66,7 +66,7 @@ async fn it_bond_002_retained_after_quorum_not_met() -> anyhow::Result<()> {
 
     let _before = contract_balance(&worker, &governance).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "bond2", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "bond2", None, NearToken::from_millinear(10)).await?;
     let after_create = contract_balance(&worker, &governance).await?;
 
     let result = crate::helpers::user(&users, 0)
@@ -97,7 +97,7 @@ async fn it_bond_003_retained_after_cancelled() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _before = contract_balance(&worker, &governance).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "bond3", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "bond3", None, NearToken::from_millinear(10)).await?;
     let after_create = contract_balance(&worker, &governance).await?;
 
     let result = admin
@@ -118,7 +118,7 @@ async fn it_bond_003_retained_after_cancelled() -> anyhow::Result<()> {
 async fn it_bond_004_retained_after_pending_expired() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "bond4", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "bond4", None, NearToken::from_millinear(10)).await?;
     let after_create = contract_balance(&worker, &governance).await?;
     let _proposal = get_proposal(&governance, proposal_id).await?;
     let block = worker.view_block().await?;
@@ -171,7 +171,7 @@ async fn it_bond_005_retained_after_snapshot_callback_failed() -> anyhow::Result
 
     let _before = contract_balance(&worker, &governance).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "bond5", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "bond5", None, NearToken::from_millinear(10)).await?;
     let after_create = contract_balance(&worker, &governance).await?;
 
     let proposal = get_proposal(&governance, proposal_id).await?;
@@ -187,8 +187,8 @@ async fn it_bond_006_bond_exceeds_minimum() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let before = contract_balance(&worker, &governance).await?;
     let _proposal_id =
-        create_proposal(&admin, &governance, "bond6", None, NearToken::from_near(5)).await?;
+        create_proposal(&admin, &governance, "bond6", None, NearToken::from_millinear(50)).await?;
     let after = contract_balance(&worker, &governance).await?;
-    assert!(after >= before + NearToken::from_near(5).as_yoctonear());
+    assert!(after >= before + NearToken::from_millinear(50).as_yoctonear());
     Ok(())
 }

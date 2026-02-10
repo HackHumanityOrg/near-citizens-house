@@ -39,7 +39,7 @@ async fn wait_for_active(
 async fn it_config_001_update_quorum_while_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
-        create_proposal(&admin, &governance, "q", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "q", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "update_quorum_bps")
         .gas(crate::helpers::GAS_HEAVY)
@@ -55,7 +55,7 @@ async fn it_config_001_update_quorum_while_active() -> anyhow::Result<()> {
 async fn it_config_002_update_voting_period_locked_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
-        create_proposal(&admin, &governance, "vp", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "vp", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "update_voting_period_secs")
         .gas(crate::helpers::GAS_HEAVY)
@@ -85,7 +85,7 @@ async fn it_config_003_update_verified_contract_when_idle() -> anyhow::Result<()
     assert!(result.is_success());
 
     let proposal_id =
-        create_proposal(&admin, &governance, "cfg", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "cfg", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     assert_eq!(proposal.status, governance::ProposalStatus::Failed);
     let _ = backend1;
@@ -103,7 +103,7 @@ async fn it_config_004_quorum_snapshots_per_proposal() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(result.is_success());
-    let p1 = create_proposal(&admin, &governance, "qa", None, NearToken::from_near(1)).await?;
+    let p1 = create_proposal(&admin, &governance, "qa", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "update_quorum_bps")
         .gas(crate::helpers::GAS_HEAVY)
@@ -112,7 +112,7 @@ async fn it_config_004_quorum_snapshots_per_proposal() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(result.is_success());
-    let p2 = create_proposal(&admin, &governance, "qb", None, NearToken::from_near(1)).await?;
+    let p2 = create_proposal(&admin, &governance, "qb", None, NearToken::from_millinear(10)).await?;
     let p1v = get_proposal(&governance, p1).await?;
     let p2v = get_proposal(&governance, p2).await?;
     assert_eq!(p1v.quorum_bps, 700);
@@ -124,7 +124,7 @@ async fn it_config_004_quorum_snapshots_per_proposal() -> anyhow::Result<()> {
 async fn it_config_005_grace_period_change_affects_existing() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "g", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "g", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     let _tx = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
@@ -157,7 +157,7 @@ async fn it_config_005_grace_period_change_affects_existing() -> anyhow::Result<
 async fn it_config_010_increase_grace_blocks_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "grace", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "grace", None, NearToken::from_millinear(10)).await?;
     wait_for_active(&worker, &governance, proposal_id).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
@@ -223,7 +223,7 @@ async fn it_config_010_increase_grace_blocks_finalize() -> anyhow::Result<()> {
 async fn it_config_011_reduce_grace_allows_finalize_sooner() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "grace-short", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "grace-short", None, NearToken::from_millinear(10)).await?;
     wait_for_active(&worker, &governance, proposal_id).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
@@ -298,7 +298,7 @@ async fn it_config_011_reduce_grace_allows_finalize_sooner() -> anyhow::Result<(
 async fn it_config_006_update_pending_expiry_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
-        create_proposal(&admin, &governance, "pe", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "pe", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "update_pending_expiry_secs")
         .gas(crate::helpers::GAS_HEAVY)
@@ -314,7 +314,7 @@ async fn it_config_006_update_pending_expiry_during_active() -> anyhow::Result<(
 async fn it_config_007_update_min_bond_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
-        create_proposal(&admin, &governance, "mb", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "mb", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "update_min_proposal_bond")
         .gas(crate::helpers::GAS_HEAVY)
@@ -330,7 +330,7 @@ async fn it_config_007_update_min_bond_during_active() -> anyhow::Result<()> {
 async fn it_config_008_update_grace_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
-        create_proposal(&admin, &governance, "gr", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "gr", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "update_finalize_grace_period_secs")
         .gas(crate::helpers::GAS_HEAVY)
@@ -346,7 +346,7 @@ async fn it_config_008_update_grace_during_active() -> anyhow::Result<()> {
 async fn it_config_009_update_max_start_delay_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
-        create_proposal(&admin, &governance, "ms", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "ms", None, NearToken::from_millinear(10)).await?;
     let result = admin
         .call(governance.id(), "update_max_start_delay_secs")
         .gas(crate::helpers::GAS_HEAVY)

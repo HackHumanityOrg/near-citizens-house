@@ -71,7 +71,7 @@ fn ut_view_006_get_config_returns_all_fields() {
     assert_eq!(cfg.quorum_bps, 700);
     assert_eq!(cfg.voting_period_secs, 60);
     assert_eq!(cfg.pending_expiry_secs, 10);
-    assert_eq!(cfg.min_proposal_bond, NearToken::from_near(1));
+    assert_eq!(cfg.min_proposal_bond, NearToken::from_millinear(10));
     assert_eq!(cfg.finalize_grace_period_secs, 10);
     assert_eq!(cfg.max_start_delay_secs, 60);
 }

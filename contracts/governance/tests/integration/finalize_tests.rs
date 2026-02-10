@@ -38,7 +38,7 @@ async fn it_final_001_finalize_blocked_by_pending_votes_before_grace() -> anyhow
     let users = vec![worker.dev_create_account().await?];
     seed_mock_verified_accounts(&mock_verified, &users, 0).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "final1", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "final1", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
     // Inject pending vote and count to avoid callback races.

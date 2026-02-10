@@ -46,14 +46,26 @@ sha2 = "0.10"
 near-crypto = "0.22"
 
 [lints.clippy]
+# Security-critical: prevent panics and uncontrolled aborts
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
 indexing_slicing = "deny"
 
+# Arithmetic safety (critical for vote counts, bond math, quorum calculations)
+arithmetic_side_effects = "deny"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+
+# No floats in on-chain logic
+float_arithmetic = "deny"
+
+# Lint groups
+correctness = { level = "deny", priority = -1 }
 perf = { level = "warn", priority = -1 }
 suspicious = { level = "warn", priority = -1 }
 
+# Allow noisy pedantic lints
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"

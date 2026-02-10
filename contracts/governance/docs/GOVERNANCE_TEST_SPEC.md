@@ -186,9 +186,9 @@ Expected results:
 UT-INIT-006: Min proposal bond boundaries
 Preconditions: None
 Steps:
-1. Call `new` with `min_proposal_bond = 1 NEAR`.
+1. Call `new` with `min_proposal_bond = MIN_BOND` (0.01 NEAR in testing, 1 NEAR in production).
 2. Call `new` with `min_proposal_bond = 100 NEAR`.
-3. Call `new` with `min_proposal_bond < 1 NEAR`.
+3. Call `new` with `min_proposal_bond < MIN_BOND`.
 4. Call `new` with `min_proposal_bond > 100 NEAR`.
 Expected results:
 1. Steps 1-2 succeed.
@@ -311,16 +311,16 @@ Expected results:
 2. Steps 2,4,6 panic with `ERR_TITLE_TOO_LONG`, `ERR_AUTHOR_TOO_LONG`, `ERR_DESCRIPTION_TOO_LONG`.
 
 UT-PROP-003: create_proposal enforces min bond
-Preconditions: `admin1` is admin, min bond set to 1 NEAR
+Preconditions: `admin1` is admin, min bond set to MIN_BOND (0.01 NEAR in testing)
 Steps:
-1. Call `create_proposal` with attached deposit 0.999 NEAR.
-2. Call `create_proposal` with attached deposit 1 NEAR.
+1. Call `create_proposal` with attached deposit just below MIN_BOND.
+2. Call `create_proposal` with attached deposit = MIN_BOND.
 Expected results:
 1. Step 1 panics with `ERR_INSUFFICIENT_BOND`.
 2. Step 2 succeeds, proposal stored as Pending.
 
 UT-PROP-003b: create_proposal with bond > min succeeds
-Preconditions: `admin1` is admin, min bond set to 1 NEAR
+Preconditions: `admin1` is admin, min bond set to MIN_BOND (0.01 NEAR in testing)
 Steps:
 1. Call `create_proposal` with attached deposit 2 NEAR.
 Expected results:
@@ -961,8 +961,8 @@ Expected results:
 UT-CONFIG-005: update_min_proposal_bond boundaries
 Preconditions: Admin caller
 Steps:
-1. Call with 1 NEAR and 100 NEAR.
-2. Call below min and above max.
+1. Call with MIN_BOND (0.01 NEAR in testing) and 100 NEAR.
+2. Call below MIN_BOND and above max.
 Expected results:
 1. Step 1 succeeds.
 2. Step 2 panics `ERR_MIN_BOND_OUT_OF_RANGE`.
@@ -1807,7 +1807,7 @@ Expected results:
 1. Contract balance retains bond.
 
 IT-BOND-006: Bond exceeds minimum
-Preconditions: min bond = 1 NEAR
+Preconditions: min bond = MIN_BOND (0.01 NEAR in testing)
 Steps:
 1. Create proposal with bond = 5 NEAR.
 Expected results:

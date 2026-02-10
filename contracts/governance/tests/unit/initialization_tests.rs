@@ -14,7 +14,7 @@ fn ut_init_001_successful_initialization() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -32,7 +32,7 @@ fn ut_init_002_reject_empty_admins() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -48,7 +48,7 @@ fn ut_init_003_quorum_bps_min() {
         1,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -64,7 +64,7 @@ fn ut_init_003_quorum_bps_max() {
         10_000,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -81,7 +81,7 @@ fn ut_init_003b_quorum_bps_below_min() {
         0,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -98,7 +98,7 @@ fn ut_init_003c_quorum_bps_above_max() {
         10_001,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -114,7 +114,7 @@ fn ut_init_004_voting_period_min() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -130,7 +130,7 @@ fn ut_init_004_voting_period_max() {
         700,
         7_776_000,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -147,7 +147,7 @@ fn ut_init_004b_voting_period_below_min() {
         700,
         59,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -164,7 +164,7 @@ fn ut_init_004c_voting_period_above_max() {
         700,
         7_776_001,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -180,7 +180,7 @@ fn ut_init_005_pending_expiry_min() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -196,7 +196,7 @@ fn ut_init_005_pending_expiry_max() {
         700,
         60,
         86_400,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -213,7 +213,7 @@ fn ut_init_005b_pending_expiry_below_min() {
         700,
         60,
         9,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -230,7 +230,7 @@ fn ut_init_005c_pending_expiry_above_max() {
         700,
         60,
         86_401,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -246,7 +246,7 @@ fn ut_init_006_min_proposal_bond_min() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -279,7 +279,7 @@ fn ut_init_006b_min_bond_below_min() {
         700,
         60,
         10,
-        NearToken::from_yoctonear(NearToken::from_near(1).as_yoctonear() - 1),
+        NearToken::from_millinear(9),
         10,
         60,
     );
@@ -312,7 +312,7 @@ fn ut_init_007_grace_period_min() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -328,7 +328,7 @@ fn ut_init_007_grace_period_max() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         86_400,
         60,
     );
@@ -345,7 +345,7 @@ fn ut_init_007b_grace_period_below_min() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         9,
         60,
     );
@@ -362,7 +362,7 @@ fn ut_init_007c_grace_period_above_max() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         86_401,
         60,
     );
@@ -378,7 +378,7 @@ fn ut_init_008_max_start_delay_min() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         0,
     );
@@ -394,7 +394,7 @@ fn ut_init_008_max_start_delay_max() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         7_776_000,
     );
@@ -411,7 +411,7 @@ fn ut_init_008b_max_start_delay_above_max() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         7_776_001,
     );
@@ -427,7 +427,7 @@ fn ut_init_009_duplicate_admins_deduped() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );

@@ -188,7 +188,7 @@ fn ut_vote_007_is_vote_free_boundaries() {
     assert!(contract.is_vote_free());
 
     let mut builder = build_context(accounts(0));
-    builder.account_balance(NearToken::from_yoctonear(storage_cost - 1));
+    builder.account_balance(NearToken::from_yoctonear(storage_cost.saturating_sub(1)));
     builder.storage_usage(0);
     near_sdk::testing_env!(builder.build());
     assert!(!contract.is_vote_free());

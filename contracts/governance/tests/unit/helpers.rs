@@ -66,7 +66,7 @@ pub fn default_config() -> Config {
         quorum_bps: DEFAULT_QUORUM_BPS,
         voting_period_secs: 60,
         pending_expiry_secs: 10,
-        min_proposal_bond: NearToken::from_near(1),
+        min_proposal_bond: NearToken::from_millinear(10),
         finalize_grace_period_secs: 10,
         max_start_delay_secs: 60,
     }
@@ -82,7 +82,7 @@ pub fn new_contract() -> VersionedContract {
         DEFAULT_QUORUM_BPS,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     )
@@ -90,7 +90,7 @@ pub fn new_contract() -> VersionedContract {
 
 pub fn create_basic_proposal(contract: &mut VersionedContract, creator: AccountId) -> u32 {
     let mut builder = build_context(creator);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("title".to_string(), "author".to_string(), "desc".to_string(), None)
 }
@@ -119,7 +119,7 @@ pub fn insert_pending_vote(
         }),
     );
     let proposal = c.proposals.get_mut(proposal_id).unwrap();
-    proposal.pending_vote_count += 1;
+    proposal.pending_vote_count = proposal.pending_vote_count.saturating_add(1);
     c.pending_votes.flush();
     c.proposals.flush();
 }

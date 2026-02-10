@@ -489,6 +489,7 @@ enum ProposalCreationFailedReason {
 - **Voting period bounds**: minimum 86,400 seconds (1 day), maximum 7,776,000 seconds (90 days).  
   **Testing feature override**: when compiled with the `testing` feature, the minimum is lowered to 60 seconds for faster tests.
 - **Minimum proposal bond bounds**: minimum 1 NEAR, maximum 100 NEAR.
+  **Testing feature override**: when compiled with the `testing` feature, the minimum is lowered to 0.01 NEAR for faster and cheaper tests.
 - **Quorum bps bounds**: minimum 1, maximum 10,000.
 - **Pending expiry bounds**: minimum 300 seconds (5 minutes), maximum 86,400 seconds (1 day).  
   **Testing feature override**: when compiled with the `testing` feature, the minimum is lowered to 10 seconds for faster tests.
@@ -741,7 +742,7 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 | `ERR_QUORUM_BPS_OUT_OF_RANGE`      | `quorum_bps < 1` or `> 10_000`                                                                      |
 | `ERR_VOTING_PERIOD_OUT_OF_RANGE`   | `voting_period_secs < 86_400` or `> 7_776_000`                                                      |
 | `ERR_PENDING_EXPIRY_OUT_OF_RANGE`  | `pending_expiry_secs < 300` or `> 86_400`                                                           |
-| `ERR_MIN_BOND_OUT_OF_RANGE`        | `min_proposal_bond < 1 NEAR` or `> 100 NEAR`                                                        |
+| `ERR_MIN_BOND_OUT_OF_RANGE`        | `min_proposal_bond < 1 NEAR` or `> 100 NEAR` (testing: `< 0.01 NEAR`)                               |
 | `ERR_GRACE_PERIOD_OUT_OF_RANGE`    | `finalize_grace_period_secs < 300` or `> 86_400`                                                    |
 | `ERR_MAX_START_DELAY_OUT_OF_RANGE` | `max_start_delay_secs > 7_776_000`                                                                  |
 
@@ -840,7 +841,7 @@ Paginated view methods (`list_admins`, `list_blocklist`, `list_proposals`, `list
   - Zero-snapshot rejection — verifies snapshot callback fails proposal creation when `get_verified_count()` returns 0.
   - `failure_kind` field — verifies correct failure reasons set for different failure modes (QuorumNotMet, Rejected, PendingExpired, ZeroSnapshot).
   - Voting period bounds — verifies minimum (86,400s) and maximum (7,776,000s) enforcement.
-  - Proposal bond bounds — verifies minimum (1 NEAR) and maximum (100 NEAR) enforcement.
+  - Proposal bond bounds — verifies minimum (1 NEAR; 0.01 NEAR with testing feature) and maximum (100 NEAR) enforcement.
   - Quorum bps bounds — verifies minimum (1) enforcement.
   - Pending expiry bounds — verifies minimum (300s) and maximum (86,400s) enforcement.
   - Pending expiry distinct from voting period — verifies that `pending_expires_at` is computed from `pending_expiry_secs` (not `voting_period_secs`), and that `expire_pending_proposal` uses `pending_expires_at` for the expiry check.

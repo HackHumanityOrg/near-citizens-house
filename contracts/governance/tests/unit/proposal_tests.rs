@@ -9,7 +9,7 @@ use crate::helpers::{
 
 fn create_basic_proposal(contract: &mut VersionedContract, creator: usize) -> u32 {
     let mut builder = build_context(accounts(creator));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("title".to_string(), "author".to_string(), "desc".to_string(), None)
 }
@@ -37,7 +37,7 @@ fn insert_pending_vote(
         }),
     );
     let proposal = c.proposals.get_mut(proposal_id).unwrap();
-    proposal.pending_vote_count += 1;
+    proposal.pending_vote_count = proposal.pending_vote_count.saturating_add(1);
     c.pending_votes.flush();
     c.proposals.flush();
 }
@@ -65,7 +65,7 @@ fn verify_vote(
 fn ut_prop_000_create_proposal_non_admin() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(2));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 }
@@ -75,7 +75,7 @@ fn ut_prop_000_create_proposal_non_admin() {
 fn ut_prop_001_title_empty() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("".to_string(), "a".to_string(), "d".to_string(), None);
 }
@@ -85,7 +85,7 @@ fn ut_prop_001_title_empty() {
 fn ut_prop_001_author_empty() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("t".to_string(), "".to_string(), "d".to_string(), None);
 }
@@ -95,7 +95,7 @@ fn ut_prop_001_author_empty() {
 fn ut_prop_001_description_empty() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), "".to_string(), None);
 }
@@ -108,7 +108,7 @@ fn ut_prop_002_length_boundaries() {
     let desc = "d".repeat(10_000);
 
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal(title, author, desc, None);
 }
@@ -119,7 +119,7 @@ fn ut_prop_002_title_too_long() {
     let mut contract = new_contract();
     let title = "t".repeat(141);
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal(title, "a".to_string(), "d".to_string(), None);
 }
@@ -130,7 +130,7 @@ fn ut_prop_002_author_too_long() {
     let mut contract = new_contract();
     let author = "a".repeat(121);
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("t".to_string(), author, "d".to_string(), None);
 }
@@ -141,7 +141,7 @@ fn ut_prop_002_description_too_long() {
     let mut contract = new_contract();
     let desc = "d".repeat(10_001);
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), desc, None);
 }
@@ -152,12 +152,12 @@ fn ut_prop_002b_utf8_byte_length_boundary() {
     let title_ok = "😀".repeat(35); // 35 * 4 bytes = 140 bytes
     let title_too_long = "😀".repeat(36); // 144 bytes
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal(title_ok, "a".to_string(), "d".to_string(), None);
 
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     assert_panics_with(
         || {
@@ -172,7 +172,7 @@ fn ut_prop_002b_utf8_byte_length_boundary() {
 fn ut_prop_003_insufficient_bond() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_yoctonear(NearToken::from_near(1).as_yoctonear() - 1));
+    builder.attached_deposit(NearToken::from_yoctonear(NearToken::from_millinear(10).as_yoctonear() - 1));
     set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 }
@@ -196,7 +196,7 @@ fn ut_prop_004_blocklist_op_pending() {
     contract.blocklist_account(accounts(2));
 
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 }
@@ -206,7 +206,7 @@ fn ut_prop_005_start_at_boundaries() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, 1_700_000_000_000_000_000);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal(
         "t".to_string(),
@@ -222,7 +222,7 @@ fn ut_prop_005_start_at_before_created() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, 1_700_000_000_000_000_000);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal(
         "t".to_string(),
@@ -240,7 +240,7 @@ fn ut_prop_005_start_at_too_far() {
     let max_start = created_at + 60 * 1_000_000_000;
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, created_at);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     contract.create_proposal(
         "t".to_string(),
@@ -257,7 +257,7 @@ fn ut_prop_005b_start_at_at_max_boundary() {
     let max_start = created_at + 60 * 1_000_000_000;
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, created_at);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     let id = contract.create_proposal(
         "t".to_string(),
@@ -275,7 +275,7 @@ fn ut_prop_006_created_start_ends() {
     let now = 1_700_000_000_000_000_000u64;
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, now);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     let id = contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 
@@ -293,7 +293,7 @@ fn ut_prop_006b_deferred_start_ends_at_from_start() {
     let start_at = now + 1_000_000_000;
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, now);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     let id = contract.create_proposal(
         "t".to_string(),
@@ -677,7 +677,7 @@ fn ut_prop_023_start_at_none_defaults() {
     let now = 1_700_000_000_000_000_000u64;
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, now);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     let id = contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 
@@ -690,7 +690,7 @@ fn ut_prop_023_start_at_none_defaults() {
 fn ut_prop_whitespace_only_fields_allowed() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     let id = contract.create_proposal(
         "   ".to_string(),
@@ -714,7 +714,7 @@ fn ut_prop_removed_admin_cannot_cancel() {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );
@@ -746,14 +746,14 @@ fn ut_prop_max_config_no_overflow() {
         700,
         max_secs,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         max_secs,
     );
 
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, now);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     let start_at = now + max_secs * 1_000_000_000;
     let id = contract.create_proposal(
@@ -976,7 +976,7 @@ fn ut_prop_015_pending_expiry_distinct() {
     let now = 1_700_000_000_000_000_000u64;
     let mut builder = build_context(accounts(0));
     with_block_timestamp(&mut builder, now);
-    builder.attached_deposit(NearToken::from_near(1));
+    builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
     let id = contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 

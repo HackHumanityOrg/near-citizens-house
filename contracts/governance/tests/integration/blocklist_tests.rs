@@ -87,7 +87,7 @@ async fn it_block_002_add_blocklist_unverified_account() -> anyhow::Result<()> {
 async fn it_block_003_blocklist_lock_during_active_proposal() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
-        create_proposal(&admin, &governance, "lock", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "lock", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     assert_eq!(proposal.status, governance::ProposalStatus::Active);
     let result = admin
@@ -224,7 +224,7 @@ async fn it_block_008_blocklist_subtraction_in_snapshot() -> anyhow::Result<()> 
         .await?;
     assert!(result.is_success());
     let proposal_id =
-        create_proposal(&admin, &governance, "snap", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "snap", None, NearToken::from_millinear(10)).await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     assert_eq!(proposal.snapshot_verified_count, 8);
     Ok(())
@@ -236,7 +236,7 @@ async fn it_block_009_is_blocklist_locked_lifecycle() -> anyhow::Result<()> {
     let locked: bool = governance.view("is_blocklist_locked").await?.json()?;
     assert!(!locked);
     let proposal_id =
-        create_proposal(&admin, &governance, "lock", None, NearToken::from_near(1)).await?;
+        create_proposal(&admin, &governance, "lock", None, NearToken::from_millinear(10)).await?;
     let locked: bool = governance.view("is_blocklist_locked").await?.json()?;
     assert!(locked);
     let proposal = get_proposal(&governance, proposal_id).await?;

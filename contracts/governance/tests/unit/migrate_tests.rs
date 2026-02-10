@@ -11,7 +11,7 @@ fn write_state_with_admin(admin: near_sdk::AccountId) {
         700,
         60,
         10,
-        NearToken::from_near(1),
+        NearToken::from_millinear(10),
         10,
         60,
     );

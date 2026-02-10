@@ -166,7 +166,7 @@ pub async fn init_governance(
             "quorum_bps": DEFAULT_QUORUM_BPS,
             "voting_period_secs": DEFAULT_VOTING_PERIOD_SECS,
             "pending_expiry_secs": DEFAULT_PENDING_EXPIRY_SECS,
-            "min_proposal_bond": NearToken::from_near(1).as_yoctonear().to_string(),
+            "min_proposal_bond": NearToken::from_millinear(10).as_yoctonear().to_string(),
             "finalize_grace_period_secs": DEFAULT_GRACE_PERIOD_SECS,
             "max_start_delay_secs": DEFAULT_MAX_START_DELAY_SECS
         }))
@@ -189,6 +189,7 @@ pub async fn setup_env(
         users.push(worker.dev_create_account().await?);
     }
     for (i, user) in users.iter().enumerate() {
+        #[allow(clippy::cast_possible_truncation)]
         let nonce = [i as u8; 32];
         store_verification(&backend, &verified_contract, user, "Identify myself", nonce).await?;
     }
@@ -342,7 +343,7 @@ pub async fn fast_forward_to_timestamp(
             1
         };
         worker.fast_forward(step).await?;
-        iterations += 1;
+        iterations = iterations.saturating_add(1);
         if iterations > 200_000 {
             anyhow::bail!("fast_forward_to_timestamp exceeded iteration limit");
         }
