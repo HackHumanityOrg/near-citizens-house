@@ -1,3 +1,4 @@
+use allure_rs::prelude::*;
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
 use near_workspaces::types::NearToken;
@@ -6,8 +7,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::helpers::{
     create_proposal, get_proposal, init_governance, init_verified_accounts, proposal_storage_keys,
-    setup_env,
-};
+    setup_env};
 
 fn assert_failure_contains(result: &near_workspaces::result::ExecutionFinalResult, needle: &str) {
     let failures = format!("{:?}", result.failures());
@@ -36,6 +36,13 @@ async fn wait_for_active(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 001 update quorum while active.")]
+#[allure_test]
 async fn it_config_001_update_quorum_while_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
@@ -52,6 +59,13 @@ async fn it_config_001_update_quorum_while_active() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 002 update voting period locked during active.")]
+#[allure_test]
 async fn it_config_002_update_voting_period_locked_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
@@ -68,6 +82,13 @@ async fn it_config_002_update_voting_period_locked_during_active() -> anyhow::Re
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 003 update verified contract when idle.")]
+#[allure_test]
 async fn it_config_003_update_verified_contract_when_idle() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let (verified1, backend1) = init_verified_accounts(&worker).await?;
@@ -93,6 +114,13 @@ async fn it_config_003_update_verified_contract_when_idle() -> anyhow::Result<()
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 004 quorum snapshots per proposal.")]
+#[allure_test]
 async fn it_config_004_quorum_snapshots_per_proposal() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let result = admin
@@ -121,6 +149,13 @@ async fn it_config_004_quorum_snapshots_per_proposal() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 005 grace period change affects existing.")]
+#[allure_test]
 async fn it_config_005_grace_period_change_affects_existing() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -154,6 +189,13 @@ async fn it_config_005_grace_period_change_affects_existing() -> anyhow::Result<
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 010 increase grace blocks finalize.")]
+#[allure_test]
 async fn it_config_010_increase_grace_blocks_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -179,8 +221,7 @@ async fn it_config_010_increase_grace_blocks_finalize() -> anyhow::Result<()> {
     let pending_vote = governance::PendingVote {
         submitted_at: proposal.start_at.0 + 1,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0),
-    };
+        voter_deposit: NearToken::from_near(0)};
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;
@@ -220,6 +261,13 @@ async fn it_config_010_increase_grace_blocks_finalize() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 011 reduce grace allows finalize sooner.")]
+#[allure_test]
 async fn it_config_011_reduce_grace_allows_finalize_sooner() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -235,8 +283,7 @@ async fn it_config_011_reduce_grace_allows_finalize_sooner() -> anyhow::Result<(
     let pending_vote = governance::PendingVote {
         submitted_at: proposal.start_at.0 + 1,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0),
-    };
+        voter_deposit: NearToken::from_near(0)};
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;
@@ -295,6 +342,13 @@ async fn it_config_011_reduce_grace_allows_finalize_sooner() -> anyhow::Result<(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 006 update pending expiry during active.")]
+#[allure_test]
 async fn it_config_006_update_pending_expiry_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
@@ -311,6 +365,13 @@ async fn it_config_006_update_pending_expiry_during_active() -> anyhow::Result<(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 007 update min bond during active.")]
+#[allure_test]
 async fn it_config_007_update_min_bond_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
@@ -327,6 +388,13 @@ async fn it_config_007_update_min_bond_during_active() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 008 update grace during active.")]
+#[allure_test]
 async fn it_config_008_update_grace_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =
@@ -343,6 +411,13 @@ async fn it_config_008_update_grace_during_active() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Configuration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "config")]
+#[allure_description("Verifies config 009 update max start delay during active.")]
+#[allure_test]
 async fn it_config_009_update_max_start_delay_during_active() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _proposal_id =

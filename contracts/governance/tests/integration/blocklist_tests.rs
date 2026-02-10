@@ -1,10 +1,10 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
 use crate::helpers::{
     create_proposal, get_proposal, init_governance, init_mock_verified_accounts,
-    seed_mock_verified_accounts, setup_env,
-};
+    seed_mock_verified_accounts, setup_env};
 use tokio::time::{sleep, Duration};
 
 async fn wait_for_blocklist_locked(
@@ -43,6 +43,13 @@ async fn setup_env_with_mock(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 001 add blocklist verified account.")]
+#[allure_test]
 async fn it_block_001_add_blocklist_verified_account() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let result = admin
@@ -63,6 +70,13 @@ async fn it_block_001_add_blocklist_verified_account() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 002 add blocklist unverified account.")]
+#[allure_test]
 async fn it_block_002_add_blocklist_unverified_account() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
     let unverified = worker.dev_create_account().await?;
@@ -84,6 +98,13 @@ async fn it_block_002_add_blocklist_unverified_account() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 003 blocklist lock during active proposal.")]
+#[allure_test]
 async fn it_block_003_blocklist_lock_during_active_proposal() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -102,6 +123,13 @@ async fn it_block_003_blocklist_lock_during_active_proposal() -> anyhow::Result<
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 004 unblocklist happy path.")]
+#[allure_test]
 async fn it_block_004_unblocklist_happy_path() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let result = admin
@@ -130,6 +158,13 @@ async fn it_block_004_unblocklist_happy_path() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 005 pending blocklist op prevents another.")]
+#[allure_test]
 async fn it_block_005_pending_blocklist_op_prevents_another() -> anyhow::Result<()> {
     let (_worker, governance, _mock_verified, admin, users) = setup_env_with_mock(2).await?;
     let tx = admin
@@ -153,6 +188,13 @@ async fn it_block_005_pending_blocklist_op_prevents_another() -> anyhow::Result<
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 006 pending blocklist op prevents unblocklist.")]
+#[allure_test]
 async fn it_block_006_pending_blocklist_op_prevents_unblocklist() -> anyhow::Result<()> {
     let (_worker, governance, _mock_verified, admin, users) = setup_env_with_mock(2).await?;
     let result = admin
@@ -183,6 +225,13 @@ async fn it_block_006_pending_blocklist_op_prevents_unblocklist() -> anyhow::Res
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 007 clear stale blocklist op.")]
+#[allure_test]
 async fn it_block_007_clear_stale_blocklist_op() -> anyhow::Result<()> {
     let (_worker, governance, _mock_verified, admin, users) = setup_env_with_mock(1).await?;
     let _tx = admin
@@ -205,6 +254,13 @@ async fn it_block_007_clear_stale_blocklist_op() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 008 blocklist subtraction in snapshot.")]
+#[allure_test]
 async fn it_block_008_blocklist_subtraction_in_snapshot() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(10).await?;
     let result = admin
@@ -231,6 +287,13 @@ async fn it_block_008_blocklist_subtraction_in_snapshot() -> anyhow::Result<()> 
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "blocklist")]
+#[allure_description("Verifies block 009 is blocklist locked lifecycle.")]
+#[allure_test]
 async fn it_block_009_is_blocklist_locked_lifecycle() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let locked: bool = governance.view("is_blocklist_locked").await?.json()?;

@@ -1,10 +1,10 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
-    init_mock_verified_accounts, proposal_storage_keys, seed_mock_verified_accounts,
-};
+    init_mock_verified_accounts, proposal_storage_keys, seed_mock_verified_accounts};
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
 
@@ -30,6 +30,13 @@ async fn pending_votes_count(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Finalize")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "finalize")]
+#[allure_description("Verifies final 001 finalize blocked by pending votes before grace.")]
+#[allure_test]
 async fn it_final_001_finalize_blocked_by_pending_votes_before_grace() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
@@ -49,8 +56,7 @@ async fn it_final_001_finalize_blocked_by_pending_votes_before_grace() -> anyhow
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0),
-    };
+        voter_deposit: NearToken::from_near(0)};
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;

@@ -1,3 +1,4 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
@@ -14,6 +15,13 @@ fn assert_failure_contains(result: &near_workspaces::result::ExecutionFinalResul
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Migration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "migration")]
+#[allure_description("Verifies mig 001 migrate requires admin and one yocto.")]
+#[allure_test]
 async fn it_mig_001_migrate_requires_admin_and_one_yocto() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
 
@@ -39,6 +47,13 @@ async fn it_mig_001_migrate_requires_admin_and_one_yocto() -> anyhow::Result<()>
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Migration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "migration")]
+#[allure_description("Verifies mig 002 migrate preserves state.")]
+#[allure_test]
 async fn it_mig_002_migrate_preserves_state() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
 
@@ -129,6 +144,13 @@ async fn it_mig_002_migrate_preserves_state() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Migration")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "migration")]
+#[allure_description("Verifies mig 003 migrate non admin with one yocto.")]
+#[allure_test]
 async fn it_mig_003_migrate_non_admin_with_one_yocto() -> anyhow::Result<()> {
     let (_worker, governance, _verified, _admin, _backend, users) = setup_env(1).await?;
     let res = crate::helpers::user(&users, 0)

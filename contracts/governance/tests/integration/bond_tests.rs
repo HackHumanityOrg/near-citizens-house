@@ -1,11 +1,11 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use borsh::{to_vec, BorshDeserialize};
 use serde_json::json;
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
-    init_verified_accounts, proposal_storage_key, setup_env,
-};
+    init_verified_accounts, proposal_storage_key, setup_env};
 
 async fn contract_balance(
     worker: &near_workspaces::Worker<near_workspaces::network::Sandbox>,
@@ -19,6 +19,13 @@ async fn contract_balance(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Bond")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "bond")]
+#[allure_description("Verifies bond 001 retained after succeeded.")]
+#[allure_test]
 async fn it_bond_001_retained_after_succeeded() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     let before = contract_balance(&worker, &governance).await?;
@@ -53,6 +60,13 @@ async fn it_bond_001_retained_after_succeeded() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Bond")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "bond")]
+#[allure_description("Verifies bond 002 retained after quorum not met.")]
+#[allure_test]
 async fn it_bond_002_retained_after_quorum_not_met() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     let result = admin
@@ -93,6 +107,13 @@ async fn it_bond_002_retained_after_quorum_not_met() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Bond")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "bond")]
+#[allure_description("Verifies bond 003 retained after cancelled.")]
+#[allure_test]
 async fn it_bond_003_retained_after_cancelled() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let _before = contract_balance(&worker, &governance).await?;
@@ -115,6 +136,13 @@ async fn it_bond_003_retained_after_cancelled() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Bond")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "bond")]
+#[allure_description("Verifies bond 004 retained after pending expired.")]
+#[allure_test]
 async fn it_bond_004_retained_after_pending_expired() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let proposal_id =
@@ -153,6 +181,13 @@ async fn it_bond_004_retained_after_pending_expired() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Bond")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "bond")]
+#[allure_description("Verifies bond 005 retained after snapshot callback failed.")]
+#[allure_test]
 async fn it_bond_005_retained_after_snapshot_callback_failed() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let (verified_contract, _backend) = init_verified_accounts(&worker).await?;
@@ -183,6 +218,13 @@ async fn it_bond_005_retained_after_snapshot_callback_failed() -> anyhow::Result
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Bond")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "bond")]
+#[allure_description("Verifies bond 006 bond exceeds minimum.")]
+#[allure_test]
 async fn it_bond_006_bond_exceeds_minimum() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let before = contract_balance(&worker, &governance).await?;

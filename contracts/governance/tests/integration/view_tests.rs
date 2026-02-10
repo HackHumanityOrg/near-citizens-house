@@ -1,9 +1,17 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
 use crate::helpers::{create_proposal, setup_env};
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("View")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "view")]
+#[allure_description("Verifies view 001 list proposals pagination.")]
+#[allure_test]
 async fn it_view_001_list_proposals_pagination() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     create_proposal(&admin, &governance, "p1", None, NearToken::from_millinear(10)).await?;
@@ -26,6 +34,13 @@ async fn it_view_001_list_proposals_pagination() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("View")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "view")]
+#[allure_description("Verifies view 002 list votes pagination.")]
+#[allure_test]
 async fn it_view_002_list_votes_pagination() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(3).await?;
     let proposal_id =
@@ -56,6 +71,13 @@ async fn it_view_002_list_votes_pagination() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("View")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "view")]
+#[allure_description("Verifies view 003 list admins blocklist out of range.")]
+#[allure_test]
 async fn it_view_003_list_admins_blocklist_out_of_range() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     // Add another admin

@@ -1,12 +1,19 @@
+use allure_rs::prelude::*;
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, setup_env, store_verification,
-    DEFAULT_GRACE_PERIOD_SECS,
-};
+    DEFAULT_GRACE_PERIOD_SECS};
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 001 full happy path yes wins.")]
+#[allure_test]
 async fn it_e2e_001_full_happy_path_yes_wins() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let proposal_id =
@@ -48,6 +55,13 @@ async fn it_e2e_001_full_happy_path_yes_wins() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 002 full happy path no wins.")]
+#[allure_test]
 async fn it_e2e_002_full_happy_path_no_wins() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let proposal_id =
@@ -89,6 +103,13 @@ async fn it_e2e_002_full_happy_path_no_wins() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 003 quorum not met.")]
+#[allure_test]
 async fn it_e2e_003_quorum_not_met() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let result = admin
@@ -127,6 +148,13 @@ async fn it_e2e_003_quorum_not_met() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 004 start delay happy path.")]
+#[allure_test]
 async fn it_e2e_004_start_delay_happy_path() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
     let now = worker.view_block().await?.timestamp();
@@ -153,6 +181,13 @@ async fn it_e2e_004_start_delay_happy_path() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 005 non admin cannot create proposal.")]
+#[allure_test]
 async fn it_e2e_005_non_admin_cannot_create_proposal() -> anyhow::Result<()> {
     let (_worker, governance, _verified, _admin, _backend, users) = setup_env(1).await?;
     let result = crate::helpers::user(&users, 0)
@@ -172,6 +207,13 @@ async fn it_e2e_005_non_admin_cannot_create_proposal() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 006 non admin can finalize.")]
+#[allure_test]
 async fn it_e2e_006_non_admin_can_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
@@ -189,6 +231,13 @@ async fn it_e2e_006_non_admin_can_finalize() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 007 cancel after ends at.")]
+#[allure_test]
 async fn it_e2e_007_cancel_after_ends_at() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let proposal_id =
@@ -209,6 +258,13 @@ async fn it_e2e_007_cancel_after_ends_at() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 008 concurrentproposals independent.")]
+#[allure_test]
 async fn it_e2e_008_concurrentproposals_independent() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let p1 = create_proposal(&admin, &governance, "p8a", None, NearToken::from_millinear(10)).await?;
@@ -257,6 +313,13 @@ async fn it_e2e_008_concurrentproposals_independent() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 009 verified at equals created at boundary.")]
+#[allure_test]
 async fn it_e2e_009_verified_at_equals_created_at_boundary() -> anyhow::Result<()> {
     let (worker, governance, verified, admin, backend, mut users) = setup_env(0).await?;
     let user = worker.dev_create_account().await?;
@@ -284,6 +347,13 @@ async fn it_e2e_009_verified_at_equals_created_at_boundary() -> anyhow::Result<(
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 010 lifecycle continuity after cancel.")]
+#[allure_test]
 async fn it_e2e_010_lifecycle_continuity_after_cancel() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let p1 = create_proposal(&admin, &governance, "p10", None, NearToken::from_millinear(10)).await?;
@@ -301,6 +371,13 @@ async fn it_e2e_010_lifecycle_continuity_after_cancel() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 011 deferred start end to end.")]
+#[allure_test]
 async fn it_e2e_011_deferred_start_end_to_end() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let now = worker.view_block().await?.timestamp();
@@ -337,6 +414,13 @@ async fn it_e2e_011_deferred_start_end_to_end() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 012 concurrent votes sameproposal.")]
+#[allure_test]
 async fn it_e2e_012_concurrent_votes_sameproposal() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
     let proposal_id =
@@ -356,6 +440,13 @@ async fn it_e2e_012_concurrent_votes_sameproposal() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies prop id 001proposal ids sequential.")]
+#[allure_test]
 async fn it_prop_id_001proposal_ids_sequential() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let p1 = create_proposal(&admin, &governance, "pid1", None, NearToken::from_millinear(10)).await?;
@@ -366,6 +457,13 @@ async fn it_prop_id_001proposal_ids_sequential() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies final 002 finalize after grace proceeds.")]
+#[allure_test]
 async fn it_final_002_finalize_after_grace_proceeds() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
     let proposal_id =
