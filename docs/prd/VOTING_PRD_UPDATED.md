@@ -58,7 +58,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - Contract account will be funded for baseline storage.
 - **Storage model**:
   - **Proposals**: Require a bond (minimum 1 NEAR). Bond is pooled at the contract level and covers storage for proposals and votes on a first-come basis. The bond is a non-refundable fee and is never refunded regardless of proposal outcome or lifecycle state. (If per-proposal storage accounting is desired in the future, it must be implemented explicitly.)
-  - **Votes**: Before recording a vote, the contract checks if available balance can cover storage for both the temporary `PendingVote` and permanent `Vote` (`ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES`). If sufficient, no deposit required. If insufficient, voter must attach a fixed deposit (~0.004 NEAR); excess is refunded after the callback measures actual storage delta. This creates a "free until bond exhausted" model.
+  - **Votes**: Before recording a vote, the contract checks if available balance can cover storage for both the temporary `PendingVote` and permanent `Vote` (`ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES`). If sufficient, no deposit required. If insufficient, voter must attach a fixed deposit (~0.0045 NEAR); excess is refunded after the callback measures actual storage delta. This creates a "free until bond exhausted" model.
   - **Admin operations**: Use `assert_one_yocto()`. Storage cost is minimal and absorbed by contract.
   - **Storage delta**: When a vote deposit is required, compute refund based on actual storage delta (`env::storage_usage()` after minus before, multiplied by `env::storage_byte_cost()`). The PendingVote removal and `pending_vote_count` decrement must be flushed to trie **before** measuring the baseline, so the delta captures only the permanent Vote insertion. The refund follows checks-effects-interactions: record the vote and finalize all state changes first, then compute the storage delta, then issue the excess refund via `Promise::new(voter).transfer(excess)`.
 
@@ -129,10 +129,11 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
    - Contract calls Verified Accounts to fetch `verified_count` (snapshot).
    - Callback finalizes proposal to Active and stores `snapshot_verified_count = verified_count - blocklist_size` (saturating at 0); it must not change `created_at`, `start_at`, `ends_at`, or `pending_expires_at`.
    - Snapshot count is an upper bound on the eligible voter population. It may include accounts verified in the 1-2 block window between `created_at` (set in the create call) and the `get_verified_count()` cross-contract call (executed in the next block). These accounts cannot vote (`verified_at > created_at`) but are counted in the quorum denominator. At any realistic verification rate, this adds zero additional required quorum votes due to ceiling rounding. This is accepted as policy: the snapshot is conservative (slightly harder to reach quorum) rather than permissive.
-  - On callback failure (snapshot call fails), the snapshot callback must: (1) check that the proposal is still in `Pending` status (checks); (2) update proposal status to Failed and emit `proposal_creation_failed` event (effects). If the proposal was cancelled between the create call and callback, the callback checks status, finds it Cancelled, and aborts without further state changes.
-  - Invalid promise result counts (`promise_results_count() != 1`) are treated as snapshot callback failures and must fail proposal creation with `reason: SnapshotCallbackFailed`.
-   - On callback success, if `get_verified_count()` returned 0 **or** `verified_count - blocklist_size` results in an effective `snapshot_verified_count == 0`, the callback should fail the proposal creation rather than creating an Active proposal that will auto-fail at finalization.
-   - On pending expiry (proposal remains Pending past `pending_expires_at`), an admin calls `expire_pending_proposal` which marks it Failed (with `failure_kind: PendingExpired`).
+
+- On callback failure (snapshot call fails), the snapshot callback must: (1) check that the proposal is still in `Pending` status (checks); (2) update proposal status to Failed and emit `proposal_creation_failed` event (effects). If the proposal was cancelled between the create call and callback, the callback checks status, finds it Cancelled, and aborts without further state changes.
+- Invalid promise result counts (`promise_results_count() != 1`) are treated as snapshot callback failures and must fail proposal creation with `reason: SnapshotCallbackFailed`.
+- On callback success, if `get_verified_count()` returned 0 **or** `verified_count - blocklist_size` results in an effective `snapshot_verified_count == 0`, the callback should fail the proposal creation rather than creating an Active proposal that will auto-fail at finalization.
+- On pending expiry (proposal remains Pending past `pending_expires_at`), an admin calls `expire_pending_proposal` which marks it Failed (with `failure_kind: PendingExpired`).
 
 2. **Vote (verified-only)**
    - Contract checks if proposal is Active and within voting window (`start_at <= now <= ends_at`).
@@ -228,7 +229,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
   - Rejects if a final vote already exists for this `(proposal_id, voter)` (explicit `has_voted` check).
   - **Storage check**: Contract checks available balance vs estimated storage cost (`ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES`). The deposit covers both the temporary PendingVote and permanent Vote storage; the PendingVote portion is refunded after the callback measures actual storage delta.
     - If sufficient balance: no deposit required.
-    - If insufficient: requires attached deposit (~0.004 NEAR); excess refunded after storage delta is computed.
+    - If insufficient: requires attached deposit (~0.0045 NEAR); excess refunded after storage delta is computed.
   - Records a `PendingVote` with `submitted_at = env::block_timestamp()`, `choice`, and `voter_deposit = env::attached_deposit()` (or 0 if no deposit required).
   - Initiates async `get_verification` call. Callback enforces `verified_at <= proposal.created_at` and `proposal.start_at <= pending_vote.submitted_at <= proposal.ends_at`.
   - Blocklist is checked at `cast_vote` only; callbacks do not re-check because blocklist changes are locked during proposals.
@@ -341,23 +342,25 @@ All collections use `near_sdk::store` (not the deprecated `near_sdk::collections
 - `account_id: AccountId`
 - `submitted_at: Timestamp` (nanoseconds, `env::block_timestamp()` at submission)
 - `initiated_by: AccountId` (admin who initiated the operation; needed because the `#[private]` callback's `predecessor_account_id()` is the contract itself, so the original caller must be stored for the `BlocklistAdded { added_by }` event)
-Used only for blocklist add verification; unblocklist is synchronous.
+  Used only for blocklist add verification; unblocklist is synchronous.
 
 ```rust
-/// Conservative estimate of vote storage size in bytes
-/// Includes: IterableMap key (AccountId) + value (Vote struct) + IterableMap internal
-/// Vector entry for iteration index + serialization overhead.
-/// IterableMap adds ~40-60 bytes per entry vs LookupMap for the iteration index.
-/// StorageUsage is `pub type StorageUsage = u64` from `near_sdk` — a documentary alias.
-const ESTIMATED_VOTE_BYTES: StorageUsage = 200;
+/// Conservative estimate of vote storage size in bytes for deposit checks.
+/// IterableMap creates 2 trie entries per vote (Vector + LookupMap):
+///   Entry 1 (Vector):   key=10B, value=(4+N)B, overhead=40B → 54+N
+///   Entry 2 (LookupMap): key=32B (sha256), value=13B, overhead=40B → 85
+///   Total: 139+N where N = account ID length (max 64 for implicit accounts)
+///   Worst case: 203 bytes. Padded to 250 for safety margin.
+const ESTIMATED_VOTE_BYTES: StorageUsage = 250;
 
-/// Conservative estimate of pending vote storage size in bytes
-/// Includes: key (u64 + AccountId) + value (PendingVote: u64 + enum + NearToken) + serialization overhead
-/// Pending storage is temporary (cleared when callback completes).
-const ESTIMATED_PENDING_VOTE_BYTES: StorageUsage = 180;
+/// Conservative estimate of pending vote storage size in bytes for deposit checks.
+/// LookupMap creates 1 trie entry per pending vote:
+///   key=(9+N)B, value=25B, overhead=40B → 74+N
+///   Worst case (N=64): 138 bytes. Padded to 200 for safety margin.
+const ESTIMATED_PENDING_VOTE_BYTES: StorageUsage = 200;
 ```
 
-The deposit check uses `ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES` (= 380 bytes) to cover both the temporary PendingVote written during `cast_vote` and the permanent Vote written during the callback. The PendingVote portion is refunded after the callback measures actual storage delta (with the PendingVote already flushed/removed from trie before the baseline measurement).
+The deposit check uses `ESTIMATED_PENDING_VOTE_BYTES + ESTIMATED_VOTE_BYTES` (= 450 bytes) to cover both the temporary PendingVote written during `cast_vote` and the permanent Vote written during the callback. The PendingVote portion is refunded after the callback measures actual storage delta (with the PendingVote already flushed/removed from trie before the baseline measurement).
 
 ### 11.4 Storage Keys
 
@@ -384,9 +387,9 @@ Note: `ProposalVotes` uses a dynamic prefix that includes the `proposal_id`, ens
 
 **Methods requiring flush discipline** (each modifies multiple collections in a single call):
 
-| Method | Collections modified |
-|---|---|
-| Blocklist callback | `pending_blocklist_op`, `blocklist` |
+| Method               | Collections modified                                             |
+| -------------------- | ---------------------------------------------------------------- |
+| Blocklist callback   | `pending_blocklist_op`, `blocklist`                              |
 | `cast_vote` callback | `pending_votes`, per-proposal `IterableMap` (votes), `proposals` |
 
 ### 11.6 JSON Serialization Safety (U64/NearToken Wrappers)
@@ -397,32 +400,32 @@ JavaScript can only safely represent integers up to 2^53 - 1 (approximately 9.0 
 
 **Fields requiring U64 wrapping** (nanosecond timestamps, ~1.7e18):
 
-| Field | Locations |
-|---|---|
-| `created_at` | ProposalView, ProposalCreated event |
-| `start_at` | ProposalView, ProposalCreated event |
-| `ends_at` | ProposalView, ProposalCreated event |
+| Field                | Locations                           |
+| -------------------- | ----------------------------------- |
+| `created_at`         | ProposalView, ProposalCreated event |
+| `start_at`           | ProposalView, ProposalCreated event |
+| `ends_at`            | ProposalView, ProposalCreated event |
 | `pending_expires_at` | ProposalView, ProposalCreated event |
-| `voted_at` | VoteView, VoteCast event |
+| `voted_at`           | VoteView, VoteCast event            |
 
 **Fields using NearToken** (yoctoNEAR token amounts):
 
-| Field | Locations |
-|---|---|
+| Field               | Locations                                       |
+| ------------------- | ----------------------------------------------- |
 | `min_proposal_bond` | Config, ConfigUpdated event, init/update params |
-| `voter_deposit` | PendingVote |
-| `deposit_refunded` | PendingVoteCleared event |
+| `voter_deposit`     | PendingVote                                     |
+| `deposit_refunded`  | PendingVoteCleared event                        |
 
 `NearToken` serializes to JSON as a quoted string of the yoctoNEAR amount (e.g., `"1000000000000000000000000"` for 1 NEAR), identical to `U128`. No breaking change for frontends or indexers.
 
 **JS-safe native types** (no wrapping needed):
 
-| Type | Fields | Max value | Rationale |
-|---|---|---|---|
-| `u32` | `proposal_id`, `from_index`, `limit`, `get_proposal_count` | ~4.29B | `Vector` index; JS-safe |
-| `u16` | `quorum_bps` | 10,000 | Basis points; JS-safe |
+| Type  | Fields                                                                                                | Max value                        | Rationale                               |
+| ----- | ----------------------------------------------------------------------------------------------------- | -------------------------------- | --------------------------------------- |
+| `u32` | `proposal_id`, `from_index`, `limit`, `get_proposal_count`                                            | ~4.29B                           | `Vector` index; JS-safe                 |
+| `u16` | `quorum_bps`                                                                                          | 10,000                           | Basis points; JS-safe                   |
 | `u64` | `snapshot_verified_count`, `pending_vote_count`, `yes_votes`, `no_votes`, `quorum`, `quorum_required` | ~4.29B (bounded by u32 snapshot) | Vote counts sourced from `u32`; JS-safe |
-| `u64` | `voting_period_secs`, `pending_expiry_secs`, `finalize_grace_period_secs`, `max_start_delay_secs` | 7,776,000 (~7.8M) | Config durations in seconds; JS-safe |
+| `u64` | `voting_period_secs`, `pending_expiry_secs`, `finalize_grace_period_secs`, `max_start_delay_secs`     | 7,776,000 (~7.8M)                | Config durations in seconds; JS-safe    |
 
 **`get_verified_count() -> u32` from the verified-accounts contract is safe**: `u32` max value is approximately 4.29 x 10^9, well within the JS safe integer range. The governance contract converts this to `u64` for internal storage (`snapshot_verified_count`).
 
@@ -533,29 +536,29 @@ Event names and payloads:
 
 - **Access control**: Use `predecessor_account_id()` for all admin checks, not `signer_account_id()`. The following table maps every mutating method to its caller identity mechanism:
 
-  | Method | Caller identity | Notes |
-  |---|---|---|
-  | `add_admin` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `remove_admin` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `create_proposal` | `predecessor_account_id()` | Admin check; stored as `proposal.creator`. Bond >= 1 NEAR provides stronger protection than 1 yocto (see one-yocto table below). |
-  | `cancel_proposal` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `expire_pending_proposal` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `clear_stale_pending_vote` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `clear_stale_blocklist_op` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `cast_vote` | `predecessor_account_id()` | Used as voter identity and pending vote lock key |
-  | `finalize_proposal` | (no caller identity needed) | Public; no access control |
-  | `blocklist_account` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `unblocklist_account` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `update_quorum_bps` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `update_voting_period_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `update_pending_expiry_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `update_verified_accounts_contract` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` |
-  | `update_min_proposal_bond` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
-  | `update_finalize_grace_period_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
-  | `update_max_start_delay_secs` | `predecessor_account_id()` | Admin check + `assert_one_yocto()` (updatable anytime) |
-  | `migrate` | `predecessor_account_id()` | Admin check + 1 yoctoNEAR |
-  | Snapshot callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Original caller identity read from stored `proposal.creator`. |
-  | Vote callback (`#[private]`) | (not applicable) | `predecessor_account_id()` is the contract itself. Voter identity passed as callback parameter or read from pending vote lock key `(proposal_id, account_id)`. |
+  | Method                              | Caller identity             | Notes                                                                                                                                                          |
+  | ----------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `add_admin`                         | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `remove_admin`                      | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `create_proposal`                   | `predecessor_account_id()`  | Admin check; stored as `proposal.creator`. Bond >= 1 NEAR provides stronger protection than 1 yocto (see one-yocto table below).                               |
+  | `cancel_proposal`                   | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `expire_pending_proposal`           | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `clear_stale_pending_vote`          | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `clear_stale_blocklist_op`          | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `cast_vote`                         | `predecessor_account_id()`  | Used as voter identity and pending vote lock key                                                                                                               |
+  | `finalize_proposal`                 | (no caller identity needed) | Public; no access control                                                                                                                                      |
+  | `blocklist_account`                 | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `unblocklist_account`               | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `update_quorum_bps`                 | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `update_voting_period_secs`         | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `update_pending_expiry_secs`        | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `update_verified_accounts_contract` | `predecessor_account_id()`  | Admin check + `assert_one_yocto()`                                                                                                                             |
+  | `update_min_proposal_bond`          | `predecessor_account_id()`  | Admin check + `assert_one_yocto()` (updatable anytime)                                                                                                         |
+  | `update_finalize_grace_period_secs` | `predecessor_account_id()`  | Admin check + `assert_one_yocto()` (updatable anytime)                                                                                                         |
+  | `update_max_start_delay_secs`       | `predecessor_account_id()`  | Admin check + `assert_one_yocto()` (updatable anytime)                                                                                                         |
+  | `migrate`                           | `predecessor_account_id()`  | Admin check + 1 yoctoNEAR                                                                                                                                      |
+  | Snapshot callback (`#[private]`)    | (not applicable)            | `predecessor_account_id()` is the contract itself. Original caller identity read from stored `proposal.creator`.                                               |
+  | Vote callback (`#[private]`)        | (not applicable)            | `predecessor_account_id()` is the contract itself. Voter identity passed as callback parameter or read from pending vote lock key `(proposal_id, account_id)`. |
 
 - **Callback identity rule**: In `#[private]` callback methods, `predecessor_account_id()` returns the contract's own account (since the contract called itself via `.then()`). Original caller identity must be passed as a callback parameter or read from stored state. Specifically:
   - **Snapshot callback**: The proposal creator is read from `proposal.creator` (stored at create time from `predecessor_account_id()` of the `create_proposal` call).
@@ -565,25 +568,26 @@ Event names and payloads:
   - This ensures that when a contract acts as an intermediary, the refund returns to the intermediary contract (the predecessor), not to the human signer behind the transaction.
 - **One-yocto**: Use `assert_one_yocto()` (from `near_sdk`) on all admin state changes to prevent function-call key abuse. This function asserts exactly 1 yoctoNEAR is attached and must be used with `#[payable]` methods. NEAR function-call access keys cannot attach deposits at the protocol level (`InvalidAccessKeyError::DepositWithFunctionCall`), so requiring any deposit forces Full Access Key usage and wallet confirmation. The following table is a comprehensive checklist of every admin-mutating method:
 
-  | Admin-mutating method | `assert_one_yocto()` | Rationale |
-  |---|---|---|
-  | `add_admin` | Required | Admin state change |
-  | `remove_admin` | Required | Admin state change |
-  | `create_proposal` | **Exempt** | Requires bond >= 1 NEAR, which forces Full Access Key usage (same as 1 yocto) and additionally provides economic spam prevention. Adding `assert_one_yocto()` would be redundant and would complicate attached deposit semantics (the full attached amount is the bond). |
-  | `cancel_proposal` | Required | Admin state change; without it, a function-call key could cancel proposals without wallet confirmation |
-  | `expire_pending_proposal` | Required | Admin state change |
-  | `clear_stale_pending_vote` | Required | Admin state change |
-  | `clear_stale_blocklist_op` | Required | Admin state change |
-  | `blocklist_account` | Required | Admin state change |
-  | `unblocklist_account` | Required | Admin state change |
-  | `update_quorum_bps` | Required | Config change |
-  | `update_voting_period_secs` | Required | Config change |
-  | `update_pending_expiry_secs` | Required | Config change |
-  | `update_verified_accounts_contract` | Required | Config change |
-  | `update_min_proposal_bond` | Required | Config change |
-  | `update_finalize_grace_period_secs` | Required | Config change |
-  | `update_max_start_delay_secs` | Required | Config change |
-  | `migrate` | Required (1 yoctoNEAR) | Upgrade protection |
+  | Admin-mutating method               | `assert_one_yocto()`   | Rationale                                                                                                                                                                                                                                                                |
+  | ----------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `add_admin`                         | Required               | Admin state change                                                                                                                                                                                                                                                       |
+  | `remove_admin`                      | Required               | Admin state change                                                                                                                                                                                                                                                       |
+  | `create_proposal`                   | **Exempt**             | Requires bond >= 1 NEAR, which forces Full Access Key usage (same as 1 yocto) and additionally provides economic spam prevention. Adding `assert_one_yocto()` would be redundant and would complicate attached deposit semantics (the full attached amount is the bond). |
+  | `cancel_proposal`                   | Required               | Admin state change; without it, a function-call key could cancel proposals without wallet confirmation                                                                                                                                                                   |
+  | `expire_pending_proposal`           | Required               | Admin state change                                                                                                                                                                                                                                                       |
+  | `clear_stale_pending_vote`          | Required               | Admin state change                                                                                                                                                                                                                                                       |
+  | `clear_stale_blocklist_op`          | Required               | Admin state change                                                                                                                                                                                                                                                       |
+  | `blocklist_account`                 | Required               | Admin state change                                                                                                                                                                                                                                                       |
+  | `unblocklist_account`               | Required               | Admin state change                                                                                                                                                                                                                                                       |
+  | `update_quorum_bps`                 | Required               | Config change                                                                                                                                                                                                                                                            |
+  | `update_voting_period_secs`         | Required               | Config change                                                                                                                                                                                                                                                            |
+  | `update_pending_expiry_secs`        | Required               | Config change                                                                                                                                                                                                                                                            |
+  | `update_verified_accounts_contract` | Required               | Config change                                                                                                                                                                                                                                                            |
+  | `update_min_proposal_bond`          | Required               | Config change                                                                                                                                                                                                                                                            |
+  | `update_finalize_grace_period_secs` | Required               | Config change                                                                                                                                                                                                                                                            |
+  | `update_max_start_delay_secs`       | Required               | Config change                                                                                                                                                                                                                                                            |
+  | `migrate`                           | Required (1 yoctoNEAR) | Upgrade protection                                                                                                                                                                                                                                                       |
+
 - **Private callbacks**: Mark callbacks `#[private]`, verify `promise_results_count`, and handle `promise_result` errors.
 - **Async safety**: Treat cross-contract calls as asynchronous; only finalize proposal/vote state in callbacks.
 - **Vote race protection**: Record a `PendingVote` (containing `submitted_at`, `choice`, and `voter_deposit`) before the async call to prevent concurrent submissions and preserve submission context; remove on callback completion (success or failure). Lock is enforced per proposal and per account.
@@ -673,119 +677,119 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 
 **Access control:**
 
-| Constant | Condition |
-|---|---|
-| `ERR_NOT_ADMIN` | `predecessor_account_id()` is not in admins set |
-| `ERR_CANNOT_REMOVE_LAST_ADMIN` | `remove_admin` would leave zero admins |
-| `ERR_ADMIN_ALREADY_EXISTS` | `add_admin`: account already present in admins set |
-| `ERR_ADMIN_NOT_FOUND` | `remove_admin`: account not present in admins set |
+| Constant                       | Condition                                          |
+| ------------------------------ | -------------------------------------------------- |
+| `ERR_NOT_ADMIN`                | `predecessor_account_id()` is not in admins set    |
+| `ERR_CANNOT_REMOVE_LAST_ADMIN` | `remove_admin` would leave zero admins             |
+| `ERR_ADMIN_ALREADY_EXISTS`     | `add_admin`: account already present in admins set |
+| `ERR_ADMIN_NOT_FOUND`          | `remove_admin`: account not present in admins set  |
 
 **Proposal lifecycle:**
 
-| Constant | Condition |
-|---|---|
-| `ERR_PROPOSAL_NOT_FOUND` | Proposal ID does not exist in `proposals` Vector |
-| `ERR_PROPOSAL_NOT_ACTIVE` | Proposal status is not `Active` |
-| `ERR_PROPOSAL_NOT_PENDING` | Proposal status is not `Pending` |
-| `ERR_PROPOSAL_ALREADY_FINALIZED` | Proposal status is `Succeeded` or `Failed` |
-| `ERR_PROPOSAL_ALREADY_CANCELLED` | Proposal status is `Cancelled` |
-| `ERR_PROPOSAL_NOT_STARTED` | `env::block_timestamp() < proposal.start_at` |
-| `ERR_PROPOSAL_ENDED` | `env::block_timestamp() > proposal.ends_at` |
-| `ERR_PROPOSAL_NOT_EXPIRED` | Pending proposal has not reached `pending_expires_at` |
-| `ERR_FINALIZE_NOT_ENDED` | `env::block_timestamp() <= proposal.ends_at` |
+| Constant                                | Condition                                             |
+| --------------------------------------- | ----------------------------------------------------- |
+| `ERR_PROPOSAL_NOT_FOUND`                | Proposal ID does not exist in `proposals` Vector      |
+| `ERR_PROPOSAL_NOT_ACTIVE`               | Proposal status is not `Active`                       |
+| `ERR_PROPOSAL_NOT_PENDING`              | Proposal status is not `Pending`                      |
+| `ERR_PROPOSAL_ALREADY_FINALIZED`        | Proposal status is `Succeeded` or `Failed`            |
+| `ERR_PROPOSAL_ALREADY_CANCELLED`        | Proposal status is `Cancelled`                        |
+| `ERR_PROPOSAL_NOT_STARTED`              | `env::block_timestamp() < proposal.start_at`          |
+| `ERR_PROPOSAL_ENDED`                    | `env::block_timestamp() > proposal.ends_at`           |
+| `ERR_PROPOSAL_NOT_EXPIRED`              | Pending proposal has not reached `pending_expires_at` |
+| `ERR_FINALIZE_NOT_ENDED`                | `env::block_timestamp() <= proposal.ends_at`          |
 | `ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES` | `pending_vote_count > 0` and grace period not elapsed |
 
 **Proposal creation:**
 
-| Constant | Condition |
-|---|---|
-| `ERR_TITLE_EMPTY` | `title.is_empty()` |
-| `ERR_AUTHOR_EMPTY` | `author.is_empty()` |
-| `ERR_DESCRIPTION_EMPTY` | `description.is_empty()` |
-| `ERR_TITLE_TOO_LONG` | `title.len() > 140` |
-| `ERR_AUTHOR_TOO_LONG` | `author.len() > 120` |
-| `ERR_DESCRIPTION_TOO_LONG` | `description.len() > 10_000` |
-| `ERR_INSUFFICIENT_BOND` | Attached deposit < `config.min_proposal_bond` |
-| `ERR_START_AT_BEFORE_CREATED` | `start_at < created_at` |
-| `ERR_START_AT_TOO_FAR` | `start_at > created_at + (max_start_delay_secs * 1_000_000_000)` |
+| Constant                      | Condition                                                        |
+| ----------------------------- | ---------------------------------------------------------------- |
+| `ERR_TITLE_EMPTY`             | `title.is_empty()`                                               |
+| `ERR_AUTHOR_EMPTY`            | `author.is_empty()`                                              |
+| `ERR_DESCRIPTION_EMPTY`       | `description.is_empty()`                                         |
+| `ERR_TITLE_TOO_LONG`          | `title.len() > 140`                                              |
+| `ERR_AUTHOR_TOO_LONG`         | `author.len() > 120`                                             |
+| `ERR_DESCRIPTION_TOO_LONG`    | `description.len() > 10_000`                                     |
+| `ERR_INSUFFICIENT_BOND`       | Attached deposit < `config.min_proposal_bond`                    |
+| `ERR_START_AT_BEFORE_CREATED` | `start_at < created_at`                                          |
+| `ERR_START_AT_TOO_FAR`        | `start_at > created_at + (max_start_delay_secs * 1_000_000_000)` |
 
 **Voting:**
 
-| Constant | Condition |
-|---|---|
-| `ERR_BLOCKLISTED` | Voter is in the blocklist (pre-check in `cast_vote`, not re-checked in callback because blocklist changes are locked during proposals) |
-| `ERR_ALREADY_VOTED` | A final vote already exists for `(proposal_id, voter)` |
-| `ERR_VOTE_ALREADY_PENDING` | A `PendingVote` already exists for `(proposal_id, voter)` |
-| `ERR_INSUFFICIENT_DEPOSIT` | Contract balance insufficient for vote storage and attached deposit too low |
+| Constant                   | Condition                                                                                                                              |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `ERR_BLOCKLISTED`          | Voter is in the blocklist (pre-check in `cast_vote`, not re-checked in callback because blocklist changes are locked during proposals) |
+| `ERR_ALREADY_VOTED`        | A final vote already exists for `(proposal_id, voter)`                                                                                 |
+| `ERR_VOTE_ALREADY_PENDING` | A `PendingVote` already exists for `(proposal_id, voter)`                                                                              |
+| `ERR_INSUFFICIENT_DEPOSIT` | Contract balance insufficient for vote storage and attached deposit too low                                                            |
 
 **Blocklist:**
 
-| Constant | Condition |
-|---|---|
-| `ERR_BLOCKLIST_LOCKED` | Any proposal is Pending or Active |
-| `ERR_BLOCKLIST_OP_PENDING` | A `PendingBlocklistOp` is already in flight |
-| `ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED` | Blocklist callback: account has no verification record |
-| `ERR_ACCOUNT_NOT_BLOCKLISTED` | `unblocklist_account`: account is not in the blocklist |
-| `ERR_BLOCKLIST_OP_NOT_PENDING` | `clear_stale_blocklist_op`: no pending blocklist op exists |
+| Constant                             | Condition                                                  |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `ERR_BLOCKLIST_LOCKED`               | Any proposal is Pending or Active                          |
+| `ERR_BLOCKLIST_OP_PENDING`           | A `PendingBlocklistOp` is already in flight                |
+| `ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED` | Blocklist callback: account has no verification record     |
+| `ERR_ACCOUNT_NOT_BLOCKLISTED`        | `unblocklist_account`: account is not in the blocklist     |
+| `ERR_BLOCKLIST_OP_NOT_PENDING`       | `clear_stale_blocklist_op`: no pending blocklist op exists |
 
 **Config validation (init + update methods):**
 
-| Constant | Condition |
-|---|---|
-| `ERR_NO_ADMINS` | `admins` vec is empty at init |
-| `ERR_CONFIG_LOCKED` | `voting_period_secs` or `verified_accounts_contract` update while any proposal is Pending or Active |
-| `ERR_QUORUM_BPS_OUT_OF_RANGE` | `quorum_bps < 1` or `> 10_000` |
-| `ERR_VOTING_PERIOD_OUT_OF_RANGE` | `voting_period_secs < 86_400` or `> 7_776_000` |
-| `ERR_PENDING_EXPIRY_OUT_OF_RANGE` | `pending_expiry_secs < 300` or `> 86_400` |
-| `ERR_MIN_BOND_OUT_OF_RANGE` | `min_proposal_bond < 1 NEAR` or `> 100 NEAR` |
-| `ERR_GRACE_PERIOD_OUT_OF_RANGE` | `finalize_grace_period_secs < 300` or `> 86_400` |
-| `ERR_MAX_START_DELAY_OUT_OF_RANGE` | `max_start_delay_secs > 7_776_000` |
+| Constant                           | Condition                                                                                           |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `ERR_NO_ADMINS`                    | `admins` vec is empty at init                                                                       |
+| `ERR_CONFIG_LOCKED`                | `voting_period_secs` or `verified_accounts_contract` update while any proposal is Pending or Active |
+| `ERR_QUORUM_BPS_OUT_OF_RANGE`      | `quorum_bps < 1` or `> 10_000`                                                                      |
+| `ERR_VOTING_PERIOD_OUT_OF_RANGE`   | `voting_period_secs < 86_400` or `> 7_776_000`                                                      |
+| `ERR_PENDING_EXPIRY_OUT_OF_RANGE`  | `pending_expiry_secs < 300` or `> 86_400`                                                           |
+| `ERR_MIN_BOND_OUT_OF_RANGE`        | `min_proposal_bond < 1 NEAR` or `> 100 NEAR`                                                        |
+| `ERR_GRACE_PERIOD_OUT_OF_RANGE`    | `finalize_grace_period_secs < 300` or `> 86_400`                                                    |
+| `ERR_MAX_START_DELAY_OUT_OF_RANGE` | `max_start_delay_secs > 7_776_000`                                                                  |
 
 **Admin recovery:**
 
-| Constant | Condition |
-|---|---|
+| Constant                     | Condition                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------- |
 | `ERR_PENDING_VOTE_NOT_FOUND` | `clear_stale_pending_vote`: no `PendingVote` at `(proposal_id, account_id)` |
 
 **Pagination:**
 
-| Constant | Condition |
-|---|---|
+| Constant              | Condition                                  |
+| --------------------- | ------------------------------------------ |
 | `ERR_LIMIT_TOO_LARGE` | `limit > 100` in any paginated view method |
 
 **Callback-phase (logged via `env::log_str()`, not panics — callbacks return false):**
 
-| Constant | Used in |
-|---|---|
+| Constant                                 | Used in                                                                                                          |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `ERR_PENDING_VOTE_NOT_FOUND_IN_CALLBACK` | Vote callback: `PendingVote` record missing (internal error; indicates storage corruption or concurrent removal) |
-| `ERR_SNAPSHOT_CALLBACK_FAILED` | Snapshot callback: promise failed or returned invalid JSON |
-| `ERR_ZERO_SNAPSHOT` | Snapshot callback: effective verified count is 0 after blocklist subtraction |
-| `ERR_INVALID_PROMISE_RESULTS` | Callback: `promise_results_count() != 1` (unexpected receipts) |
-| `ERR_VOTE_COUNT_OVERFLOW` | Vote callback: overflow when updating vote counts (defensive guard) |
+| `ERR_SNAPSHOT_CALLBACK_FAILED`           | Snapshot callback: promise failed or returned invalid JSON                                                       |
+| `ERR_ZERO_SNAPSHOT`                      | Snapshot callback: effective verified count is 0 after blocklist subtraction                                     |
+| `ERR_INVALID_PROMISE_RESULTS`            | Callback: `promise_results_count() != 1` (unexpected receipts)                                                   |
+| `ERR_VOTE_COUNT_OVERFLOW`                | Vote callback: overflow when updating vote counts (defensive guard)                                              |
 
 ### 17.2 Per-Method Error Reference
 
-| Method | `assert_one_yocto()` | Synchronous errors |
-|---|---|---|
-| `new` | No | `ERR_NO_ADMINS`, `ERR_QUORUM_BPS_OUT_OF_RANGE`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE`, `ERR_MIN_BOND_OUT_OF_RANGE`, `ERR_GRACE_PERIOD_OUT_OF_RANGE`, `ERR_MAX_START_DELAY_OUT_OF_RANGE` |
-| `add_admin` | Yes | `ERR_NOT_ADMIN`, `ERR_ADMIN_ALREADY_EXISTS` |
-| `remove_admin` | Yes | `ERR_NOT_ADMIN`, `ERR_CANNOT_REMOVE_LAST_ADMIN`, `ERR_ADMIN_NOT_FOUND` |
-| `create_proposal` | No (bond >= 1 NEAR) | `ERR_NOT_ADMIN`, `ERR_TITLE_EMPTY`, `ERR_AUTHOR_EMPTY`, `ERR_DESCRIPTION_EMPTY`, `ERR_TITLE_TOO_LONG`, `ERR_AUTHOR_TOO_LONG`, `ERR_DESCRIPTION_TOO_LONG`, `ERR_INSUFFICIENT_BOND`, `ERR_START_AT_BEFORE_CREATED`, `ERR_START_AT_TOO_FAR`, `ERR_BLOCKLIST_OP_PENDING` |
-| `cancel_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_ALREADY_FINALIZED`, `ERR_PROPOSAL_ALREADY_CANCELLED` |
-| `expire_pending_proposal` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_PENDING`, `ERR_PROPOSAL_NOT_EXPIRED` |
-| `clear_stale_pending_vote` | Yes | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PENDING_VOTE_NOT_FOUND` |
-| `finalize_proposal` | No (public) | `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_ACTIVE`, `ERR_FINALIZE_NOT_ENDED`, `ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES` |
-| `cast_vote` | No | `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_ACTIVE`, `ERR_PROPOSAL_NOT_STARTED`, `ERR_PROPOSAL_ENDED`, `ERR_BLOCKLISTED`, `ERR_ALREADY_VOTED`, `ERR_VOTE_ALREADY_PENDING`, `ERR_INSUFFICIENT_DEPOSIT` |
-| `blocklist_account` | Yes | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING` |
-| `unblocklist_account` | Yes | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING`, `ERR_ACCOUNT_NOT_BLOCKLISTED` |
-| `update_quorum_bps` | Yes | `ERR_NOT_ADMIN`, `ERR_QUORUM_BPS_OUT_OF_RANGE` |
-| `update_voting_period_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED`, `ERR_VOTING_PERIOD_OUT_OF_RANGE` |
-| `update_pending_expiry_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE` |
-| `update_verified_accounts_contract` | Yes | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED` |
-| `update_min_proposal_bond` | Yes | `ERR_NOT_ADMIN`, `ERR_MIN_BOND_OUT_OF_RANGE` |
-| `update_finalize_grace_period_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_GRACE_PERIOD_OUT_OF_RANGE` |
-| `update_max_start_delay_secs` | Yes | `ERR_NOT_ADMIN`, `ERR_MAX_START_DELAY_OUT_OF_RANGE` |
-| `migrate` | Yes (1 yoctoNEAR) | `ERR_NOT_ADMIN` |
+| Method                              | `assert_one_yocto()` | Synchronous errors                                                                                                                                                                                                                                                   |
+| ----------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `new`                               | No                   | `ERR_NO_ADMINS`, `ERR_QUORUM_BPS_OUT_OF_RANGE`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE`, `ERR_MIN_BOND_OUT_OF_RANGE`, `ERR_GRACE_PERIOD_OUT_OF_RANGE`, `ERR_MAX_START_DELAY_OUT_OF_RANGE`                                                |
+| `add_admin`                         | Yes                  | `ERR_NOT_ADMIN`, `ERR_ADMIN_ALREADY_EXISTS`                                                                                                                                                                                                                          |
+| `remove_admin`                      | Yes                  | `ERR_NOT_ADMIN`, `ERR_CANNOT_REMOVE_LAST_ADMIN`, `ERR_ADMIN_NOT_FOUND`                                                                                                                                                                                               |
+| `create_proposal`                   | No (bond >= 1 NEAR)  | `ERR_NOT_ADMIN`, `ERR_TITLE_EMPTY`, `ERR_AUTHOR_EMPTY`, `ERR_DESCRIPTION_EMPTY`, `ERR_TITLE_TOO_LONG`, `ERR_AUTHOR_TOO_LONG`, `ERR_DESCRIPTION_TOO_LONG`, `ERR_INSUFFICIENT_BOND`, `ERR_START_AT_BEFORE_CREATED`, `ERR_START_AT_TOO_FAR`, `ERR_BLOCKLIST_OP_PENDING` |
+| `cancel_proposal`                   | Yes                  | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_ALREADY_FINALIZED`, `ERR_PROPOSAL_ALREADY_CANCELLED`                                                                                                                                                        |
+| `expire_pending_proposal`           | Yes                  | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_PENDING`, `ERR_PROPOSAL_NOT_EXPIRED`                                                                                                                                                                    |
+| `clear_stale_pending_vote`          | Yes                  | `ERR_NOT_ADMIN`, `ERR_PROPOSAL_NOT_FOUND`, `ERR_PENDING_VOTE_NOT_FOUND`                                                                                                                                                                                              |
+| `finalize_proposal`                 | No (public)          | `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_ACTIVE`, `ERR_FINALIZE_NOT_ENDED`, `ERR_FINALIZE_BLOCKED_BY_PENDING_VOTES`                                                                                                                                               |
+| `cast_vote`                         | No                   | `ERR_PROPOSAL_NOT_FOUND`, `ERR_PROPOSAL_NOT_ACTIVE`, `ERR_PROPOSAL_NOT_STARTED`, `ERR_PROPOSAL_ENDED`, `ERR_BLOCKLISTED`, `ERR_ALREADY_VOTED`, `ERR_VOTE_ALREADY_PENDING`, `ERR_INSUFFICIENT_DEPOSIT`                                                                |
+| `blocklist_account`                 | Yes                  | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING`                                                                                                                                                                                                  |
+| `unblocklist_account`               | Yes                  | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING`, `ERR_ACCOUNT_NOT_BLOCKLISTED`                                                                                                                                                                   |
+| `update_quorum_bps`                 | Yes                  | `ERR_NOT_ADMIN`, `ERR_QUORUM_BPS_OUT_OF_RANGE`                                                                                                                                                                                                                       |
+| `update_voting_period_secs`         | Yes                  | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`                                                                                                                                                                                               |
+| `update_pending_expiry_secs`        | Yes                  | `ERR_NOT_ADMIN`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE`                                                                                                                                                                                                                   |
+| `update_verified_accounts_contract` | Yes                  | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED`                                                                                                                                                                                                                                 |
+| `update_min_proposal_bond`          | Yes                  | `ERR_NOT_ADMIN`, `ERR_MIN_BOND_OUT_OF_RANGE`                                                                                                                                                                                                                         |
+| `update_finalize_grace_period_secs` | Yes                  | `ERR_NOT_ADMIN`, `ERR_GRACE_PERIOD_OUT_OF_RANGE`                                                                                                                                                                                                                     |
+| `update_max_start_delay_secs`       | Yes                  | `ERR_NOT_ADMIN`, `ERR_MAX_START_DELAY_OUT_OF_RANGE`                                                                                                                                                                                                                  |
+| `migrate`                           | Yes (1 yoctoNEAR)    | `ERR_NOT_ADMIN`                                                                                                                                                                                                                                                      |
 
 Paginated view methods (`list_admins`, `list_blocklist`, `list_proposals`, `list_votes`): `ERR_LIMIT_TOO_LARGE`.
 
@@ -879,6 +883,7 @@ Paginated view methods (`list_admins`, `list_blocklist`, `list_proposals`, `list
 **Real verified-accounts contract (primary)**: Deploy the real verified-accounts contract WASM to a `near-workspaces` sandbox. Set up state using real transactions: initialize with a backend wallet, call `store_verification` with valid NEP-413 signatures to create verified accounts. This matches the pattern in `contracts/verified-accounts/tests/integration/helpers.rs`. Governance test helpers should reuse or mirror these utilities. Used for: happy-path lifecycle, vote eligibility, snapshot counts, blocklist interactions, pagination, and all realistic integration scenarios.
 
 **Mock contracts (failure modes only)**: Separate, purpose-built mock contracts for each failure scenario — not a single generic configurable mock. Each mock is a minimal contract implementing only the interface methods needed for its specific test case:
+
 - **`mock-panic-on-count`**: `get_verified_count()` panics — tests snapshot callback failure path.
 - **`mock-panic-on-verification`**: `get_verification()` panics — tests vote callback failure path when the cross-contract call itself fails.
 - **`mock-malformed-response`**: Returns invalid JSON from `get_verified_count()` or `get_verification()` — tests deserialization failure handling in callbacks.
@@ -887,6 +892,7 @@ Paginated view methods (`list_admins`, `list_blocklist`, `list_proposals`, `list
 Each mock is compiled to its own WASM and stored in `fixtures/`.
 
 **Test directory structure**: Mirror the verified-accounts test layout:
+
 ```
 contracts/governance/tests/
 ├── unit/          — unit test modules
