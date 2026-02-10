@@ -9,7 +9,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { deserialize } from "borsh"
 import { PublicKey, KeyType } from "@near-js/crypto"
 import { sha256 } from "@noble/hashes/sha2.js"
-import { SCHEMA, actionCreators, encodeDelegateAction, type DelegateAction, type Signature } from "@near-js/transactions"
+import {
+  SCHEMA,
+  actionCreators,
+  encodeDelegateAction,
+  type DelegateAction,
+  type Signature,
+} from "@near-js/transactions"
 import type { Provider } from "@near-js/providers"
 import { NEAR_CONFIG } from "@/lib/config"
 import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
@@ -19,7 +25,12 @@ import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { governanceReader } from "@/lib/contracts/governance/client"
 import { relayRequestSchema, voteChoiceSchema } from "@/lib/schemas/governance-contract"
 import { trackServerEvent } from "@/lib/analytics-server"
-import { nearAccessKeyResponseSchema, nearAccountIdSchema, type NearAccessKeyPermission, type NearAccountId } from "@/lib/schemas/near"
+import {
+  nearAccessKeyResponseSchema,
+  nearAccountIdSchema,
+  type NearAccessKeyPermission,
+  type NearAccountId,
+} from "@/lib/schemas/near"
 import type { FinalExecutionOutcome } from "@near-js/types"
 
 const RATE_LIMIT_TTL = 60 // 1 relay per voter per minute

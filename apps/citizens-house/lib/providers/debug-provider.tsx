@@ -22,7 +22,8 @@ export function useDebugContext() {
 }
 
 function getInitialDebugState(): { enabled: boolean; open: boolean } {
-  if (process.env.NODE_ENV === "production") return { enabled: false, open: false }
+  if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_VERCEL_ENV !== "preview")
+    return { enabled: false, open: false }
   if (typeof window === "undefined") return { enabled: false, open: false }
   const params = new URLSearchParams(window.location.search)
   if (params.get("debug") === "1") return { enabled: true, open: true }
@@ -36,7 +37,7 @@ export function DebugProvider({ children }: { children: ReactNode }) {
   const keyTimestamps = useRef<number[]>([])
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return
+    if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_VERCEL_ENV !== "preview") return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {

@@ -10,7 +10,7 @@ import { checkIsVerified } from "@/app/citizens/actions"
 type Status = "idle" | "signing" | "submitting" | "success" | "error"
 
 export function DebugPanel() {
-  if (process.env.NODE_ENV === "production") return null
+  if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_VERCEL_ENV !== "preview") return null
   return <DebugPanelInner />
 }
 
