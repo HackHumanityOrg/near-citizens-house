@@ -42,53 +42,53 @@ pnpm dev
 
 Copy `.env.example` to `.env` and configure the required variables. See `.env.example` for detailed documentation.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_NEAR_NETWORK` | Yes | NEAR network (`testnet` or `mainnet`) |
-| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | Yes | Verification contract ID |
-| `NEXT_PUBLIC_APP_URL` | Yes | Deployed app URL |
-| `NEAR_ACCOUNT_ID` | Yes | Backend wallet account ID |
-| `NEAR_PRIVATE_KEY` | Yes | Backend wallet private key (server-side only) |
-| `REDIS_URL` | Yes | Redis URL for session storage |
-| `SUMSUB_APP_TOKEN` | Yes | SumSub API token |
-| `SUMSUB_SECRET_KEY` | Yes | SumSub secret key |
-| `SUMSUB_WEBHOOK_SECRET` | Yes | SumSub webhook signature secret |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | No | WalletConnect project ID for wallet support |
-| `NEXT_PUBLIC_POSTHOG_KEY` | No | PostHog API key for analytics |
+| Variable                                 | Required | Description                                   |
+| ---------------------------------------- | -------- | --------------------------------------------- |
+| `NEXT_PUBLIC_NEAR_NETWORK`               | Yes      | NEAR network (`testnet` or `mainnet`)         |
+| `NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT` | Yes      | Verification contract ID                      |
+| `NEXT_PUBLIC_APP_URL`                    | Yes      | Deployed app URL                              |
+| `NEAR_ACCOUNT_ID`                        | Yes      | Backend wallet account ID                     |
+| `NEAR_PRIVATE_KEY`                       | Yes      | Backend wallet private key (server-side only) |
+| `REDIS_URL`                              | Yes      | Redis URL for session storage                 |
+| `SUMSUB_APP_TOKEN`                       | Yes      | SumSub API token                              |
+| `SUMSUB_SECRET_KEY`                      | Yes      | SumSub secret key                             |
+| `SUMSUB_WEBHOOK_SECRET`                  | Yes      | SumSub webhook signature secret               |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`   | No       | WalletConnect project ID for wallet support   |
+| `NEXT_PUBLIC_POSTHOG_KEY`                | No       | PostHog API key for analytics                 |
 
 ## Available Scripts
 
 **Development**
 
-| Script | Description |
-|--------|-------------|
-| `pnpm dev` | Run development server (port 3000) |
-| `pnpm build` | Build for production |
-| `pnpm lint` | Run linting |
-| `pnpm format` | Format code with Prettier |
+| Script        | Description                        |
+| ------------- | ---------------------------------- |
+| `pnpm dev`    | Run development server (port 3000) |
+| `pnpm build`  | Build for production               |
+| `pnpm lint`   | Run linting                        |
+| `pnpm format` | Format code with Prettier          |
 
 **Testing**
 
-| Script | Description |
-|--------|-------------|
-| `pnpm test` | Run unit tests |
-| `pnpm test:watch` | Run tests in watch mode |
-| `pnpm test:e2e` | Run Playwright E2E tests |
-| `pnpm test:contract:verification` | Run contract unit tests |
+| Script                            | Description              |
+| --------------------------------- | ------------------------ |
+| `pnpm test`                       | Run unit tests           |
+| `pnpm test:watch`                 | Run tests in watch mode  |
+| `pnpm test:e2e`                   | Run Playwright E2E tests |
+| `pnpm test:contract:verification` | Run contract unit tests  |
 
 **Contracts**
 
-| Script | Description |
-|--------|-------------|
+| Script                             | Description                                     |
+| ---------------------------------- | ----------------------------------------------- |
 | `pnpm build:contract:verification` | Build verification contract (reproducible WASM) |
-| `pnpm deploy:testnet:verification` | Deploy verification contract to testnet |
+| `pnpm deploy:testnet:verification` | Deploy verification contract to testnet         |
 
 **Operations**
 
-| Script | Description |
-|--------|-------------|
+| Script                       | Description                              |
+| ---------------------------- | ---------------------------------------- |
 | `pnpm register-backend-keys` | Register backend wallet keys on contract |
-| `pnpm clean` | Clean build artifacts and node_modules |
+| `pnpm clean`                 | Clean build artifacts and node_modules   |
 
 ## About Identity Verification
 
@@ -120,6 +120,7 @@ Your wallet will ask you to sign a NEP-413 message. This cryptographic signature
 **Step 3: Complete Identity Verification**
 
 Complete the SumSub verification flow directly in your browser:
+
 - Upload a photo of your government-issued ID (Passport, Driver's License, National ID Card, or Residence Permit)
 - Complete a selfie liveness check
 - Wait for instant or manual review (typically seconds to minutes)

@@ -242,6 +242,7 @@ node index.js clear-state --account <CONTRACT_ACCOUNT> --network <NETWORK>
 ```
 
 The output will show base64-encoded storage keys like:
+
 ```
 [
   "AWkJAAAAYWltbC5uZWFy",

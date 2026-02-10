@@ -2,10 +2,12 @@ packages:
   - apps/*
 
 onlyBuiltDependencies:
+  - '@posthog/cli'
   - blake-hash
   - esbuild
   - near-sandbox
   - near-workspaces
+  - protobufjs
   - secp256k1
   - sharp
   - unrs-resolver

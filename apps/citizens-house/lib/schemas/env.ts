@@ -68,6 +68,9 @@ export const env = createEnv({
 
     // WalletConnect project ID (optional - enables WalletConnect wallets)
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: z.string().optional(),
+
+    // Governance contract address (optional - governance section disabled when unset)
+    NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT: z.string().optional(),
   },
 
   /**
@@ -96,6 +99,7 @@ export const env = createEnv({
     NEXT_PUBLIC_USERJOT_PROJECT_ID: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+    NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT,
   },
 
   /**

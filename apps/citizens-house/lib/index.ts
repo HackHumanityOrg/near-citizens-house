@@ -6,6 +6,8 @@ export * from "./schemas"
 
 // Contracts (database interface only; schemas in ./schemas/)
 export * from "./contracts/verification/verification-contract"
+export * from "./contracts/governance/governance-contract"
+export * from "./contracts/governance/transactions"
 
 // Providers
 export { NearWalletProvider, useNearWallet } from "./providers/near-wallet-provider"
