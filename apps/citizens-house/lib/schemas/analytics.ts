@@ -120,6 +120,18 @@ const N = {
   response: "response",
 } as const
 
+/** Governance domain actions */
+const G = {
+  proposal_view: "proposal_view",
+  vote_cast: "vote_cast",
+  vote_cast_fail: "vote_cast_fail",
+  proposal_create: "proposal_create",
+  proposal_create_fail: "proposal_create_fail",
+  proposal_cancel: "proposal_cancel",
+  proposal_finalize: "proposal_finalize",
+  admin_action: "admin_action",
+} as const
+
 /** Errors domain actions */
 const E = {
   exception_captured: "exception_captured",
@@ -983,6 +995,96 @@ const consentResponseEventSchema = z
 const consentEventSchema = z.discriminatedUnion("action", [consentResponseEventSchema])
 
 // =============================================================================
+// Domain: Governance
+// =============================================================================
+
+const governanceEventBase = { domain: z.literal("governance") } as const
+
+const governanceProposalViewedEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposal_view),
+    proposalId: z.number(),
+  })
+  .strict()
+
+const governanceVoteCastEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.vote_cast),
+    proposalId: z.number(),
+    choice: z.enum(["yes", "no"]),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const governanceVoteCastFailedEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.vote_cast_fail),
+    proposalId: z.number(),
+    errorMessage: z.string(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const governanceProposalCreateEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposal_create),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const governanceProposalCreateFailedEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposal_create_fail),
+    errorMessage: z.string(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const governanceProposalCancelEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposal_cancel),
+    proposalId: z.number(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const governanceProposalFinalizeEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposal_finalize),
+    proposalId: z.number(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+const governanceAdminActionEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.admin_action),
+    adminAction: z.string(),
+    accountId: nearAccountIdSchema,
+  })
+  .strict()
+
+/** All governance events - discriminated by action */
+const governanceEventSchema = z.discriminatedUnion("action", [
+  governanceProposalViewedEventSchema,
+  governanceVoteCastEventSchema,
+  governanceVoteCastFailedEventSchema,
+  governanceProposalCreateEventSchema,
+  governanceProposalCreateFailedEventSchema,
+  governanceProposalCancelEventSchema,
+  governanceProposalFinalizeEventSchema,
+  governanceAdminActionEventSchema,
+])
+
+// =============================================================================
 // Domain: Errors
 // =============================================================================
 
@@ -1017,6 +1119,7 @@ const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCaptured
 export const analyticsEventSchema = z.union([
   verificationEventSchema,
   citizensEventSchema,
+  governanceEventSchema,
   consentEventSchema,
   errorsEventSchema,
 ])
@@ -1053,6 +1156,10 @@ export type CitizensEventName = (typeof CITIZENS_EVENTS)[keyof typeof CITIZENS_E
 export const CONSENT_EVENTS = createEventNames("consent", N)
 export type ConsentEventName = (typeof CONSENT_EVENTS)[keyof typeof CONSENT_EVENTS]
 
+/** Governance event names for PostHog queries */
+export const GOVERNANCE_EVENTS = createEventNames("governance", G)
+export type GovernanceEventName = (typeof GOVERNANCE_EVENTS)[keyof typeof GOVERNANCE_EVENTS]
+
 /** Errors event names for PostHog queries */
 export const ERRORS_EVENTS = createEventNames("errors", E)
 export type ErrorsEventName = (typeof ERRORS_EVENTS)[keyof typeof ERRORS_EVENTS]
@@ -1061,9 +1168,15 @@ export type ErrorsEventName = (typeof ERRORS_EVENTS)[keyof typeof ERRORS_EVENTS]
 export const ANALYTICS_EVENTS = {
   verification: VERIFICATION_EVENTS,
   citizens: CITIZENS_EVENTS,
+  governance: GOVERNANCE_EVENTS,
   consent: CONSENT_EVENTS,
   errors: ERRORS_EVENTS,
 } as const
 
 /** Union of all event names */
-export type AnalyticsEventName = VerificationEventName | CitizensEventName | ConsentEventName | ErrorsEventName
+export type AnalyticsEventName =
+  | VerificationEventName
+  | CitizensEventName
+  | GovernanceEventName
+  | ConsentEventName
+  | ErrorsEventName

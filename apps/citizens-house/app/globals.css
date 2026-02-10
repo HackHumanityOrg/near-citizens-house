@@ -7,6 +7,8 @@
 @import "tw-animate-css";
 @import "../styles/theme.css";
 
+@plugin "@tailwindcss/typography";
+
 /* Tell Tailwind v4 which files to scan for CSS classes */
 @source "../components";
 @source "../app";

@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import {
   Button,
   ThemeToggle,
@@ -16,11 +17,22 @@ import {
 } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
+import { checkIsAdmin } from "@/app/governance/actions"
 
 export function Header() {
   const pathname = usePathname()
   const isLandingOrVerification = pathname === "/" || pathname?.startsWith("/verification")
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
+  const [adminCheck, setAdminCheck] = useState<{ accountId: string; isAdmin: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!isConnected || !accountId) return
+    checkIsAdmin(accountId).then((admin) => {
+      setAdminCheck({ accountId, isAdmin: admin })
+    })
+  }, [isConnected, accountId])
+
+  const isAdmin = isConnected && adminCheck?.accountId === accountId && adminCheck.isAdmin
 
   return (
     <header className="relative z-50 bg-transparent">
@@ -32,7 +44,16 @@ export function Header() {
         </Link>
 
         {/* Mobile Navigation - Center */}
-        <nav className="flex items-center gap-4">{/* Navigation links can be added here */}</nav>
+        <nav className="flex items-center gap-4">
+          <Link href="/governance" className="font-fk-grotesk text-[14px] text-black dark:text-white">
+            Governance
+          </Link>
+          {isAdmin && (
+            <Link href="/governance/admin" className="font-fk-grotesk text-[14px] text-black dark:text-white">
+              Admin
+            </Link>
+          )}
+        </nav>
 
         {/* Mobile Right Side: Wallet + Theme Toggle */}
         <div className="flex items-center gap-4">
@@ -82,7 +103,22 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="flex items-center gap-20">{/* Navigation links can be added here */}</nav>
+        <nav className="flex items-center gap-20">
+          <Link
+            href="/governance"
+            className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity"
+          >
+            Governance
+          </Link>
+          {isAdmin && (
+            <Link
+              href="/governance/admin"
+              className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity"
+            >
+              Admin
+            </Link>
+          )}
+        </nav>
 
         {/* Desktop Right Side: Wallet + Theme Toggle */}
         {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}

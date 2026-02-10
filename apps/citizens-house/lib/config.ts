@@ -20,6 +20,7 @@ export const NEAR_CONFIG = {
   rpcUrl: getFastNearUrl(),
   // Contract addresses
   verificationContractId: env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,
+  governanceContractId: env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT,
   // Explorer URLs
   get explorerUrl() {
     return this.networkId === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io"

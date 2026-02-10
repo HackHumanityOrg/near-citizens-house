@@ -12,6 +12,13 @@ export function Footer() {
         <div className="flex items-center gap-[24px]">
           <div className="flex items-center gap-[11px]">
             <Link
+              href="/governance"
+              className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk"
+            >
+              Governance
+            </Link>
+            <span className="text-[14px] leading-[1.2] text-[#040404] dark:text-white tracking-[0.14px]">•</span>
+            <Link
               href="/citizens"
               className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk"
             >
@@ -91,6 +98,12 @@ export function Footer() {
       {/* Mobile Footer - Links */}
       <div className="flex md:hidden flex-col items-end p-[24px] border-t border-[rgba(0,0,0,0.1)] dark:border-[#2a2c3b]">
         <div className="flex flex-col gap-[32px] items-end">
+          <Link
+            href="/governance"
+            className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk text-right"
+          >
+            Governance
+          </Link>
           <Link
             href="/citizens"
             className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk text-right"
