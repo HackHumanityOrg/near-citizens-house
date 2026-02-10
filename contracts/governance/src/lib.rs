@@ -25,10 +25,18 @@ const GAS_FOR_BLOCKLIST_CALLBACK: Gas = Gas::from_tgas(20);
 // ==================== Validation Constants ====================
 
 /// Conservative estimate of vote storage size in bytes for deposit checks.
-pub const ESTIMATED_VOTE_BYTES: StorageUsage = 200;
+/// IterableMap creates 2 trie entries per vote (Vector + LookupMap):
+///   Entry 1 (Vector):   key=10B, value=(4+N)B, overhead=40B → 54+N
+///   Entry 2 (LookupMap): key=32B (sha256), value=13B, overhead=40B → 85
+///   Total: 139+N where N = account ID length (max 64 for implicit accounts)
+///   Worst case: 203 bytes. Padded to 250 for safety margin.
+pub const ESTIMATED_VOTE_BYTES: StorageUsage = 250;
 
 /// Conservative estimate of pending vote storage size in bytes for deposit checks.
-pub const ESTIMATED_PENDING_VOTE_BYTES: StorageUsage = 180;
+/// LookupMap creates 1 trie entry per pending vote:
+///   key=(9+N)B, value=25B, overhead=40B → 74+N
+///   Worst case (N=64): 138 bytes. Padded to 200 for safety margin.
+pub const ESTIMATED_PENDING_VOTE_BYTES: StorageUsage = 200;
 
 const MAX_TITLE_LEN: usize = 140;
 const MAX_AUTHOR_LEN: usize = 120;
