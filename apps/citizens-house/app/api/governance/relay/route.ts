@@ -23,13 +23,20 @@ import { backendKeyPool, setBackendKeyPoolRedis } from "@/lib/backend-key-pool"
 import { getRedisClient } from "@/lib/redis"
 import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { governanceReader } from "@/lib/contracts/governance/client"
-import { MAX_SIGNED_DELEGATE_BYTES, relayRequestSchema } from "@/lib/schemas/governance-contract"
+import {
+  castVoteArgsSchema,
+  contractConfigSchema,
+  contractProposalViewSchema,
+  MAX_SIGNED_DELEGATE_BYTES,
+  relayRequestSchema,
+} from "@/lib/schemas/governance-contract"
 import {
   nearAccessKeyResponseSchema,
   nearAccountIdSchema,
   type NearAccessKeyPermission,
   type NearAccountId,
 } from "@/lib/schemas/near"
+import { contractVerificationSummarySchema } from "@/lib/schemas/verification-contract"
 import type { FinalExecutionOutcome } from "@near-js/types"
 
 const RATE_LIMIT_TTL = 60 // 1 relay per voter per minute
@@ -73,6 +80,8 @@ interface ParsedKeyData {
   keyType: KeyType
   data: Uint8Array
 }
+
+type JsonObject = Record<string, unknown>
 
 function relayError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status })
@@ -159,6 +168,26 @@ function parseSignature(signature: Record<string, unknown>): ParsedKeyData | nul
   }
 
   return null
+}
+
+function parseCastVoteArgs(args: unknown): { proposalId: number } | null {
+  const argsBytes =
+    args instanceof Uint8Array
+      ? args
+      : Array.isArray(args) && args.every((value) => typeof value === "number")
+        ? Uint8Array.from(args)
+        : null
+
+  if (!argsBytes) return null
+
+  try {
+    const parsedJson = JSON.parse(Buffer.from(argsBytes).toString("utf-8"))
+    const parsedArgs = castVoteArgsSchema.safeParse(parsedJson)
+    if (!parsedArgs.success) return null
+    return { proposalId: parsedArgs.data.proposal_id }
+  } catch {
+    return null
+  }
 }
 
 function isAccessKeyPermissionAllowed(
@@ -325,13 +354,71 @@ export async function POST(request: NextRequest) {
       return relayError(accessKeyResult.error ?? "Invalid access key")
     }
 
-    // 8. isVoteFree check — relay only makes sense when voting is free
+    // 8. Parse and validate cast_vote arguments
+    const castVoteArgs = parseCastVoteArgs(functionCallData.args)
+    if (!castVoteArgs) {
+      return relayError("Invalid cast_vote arguments")
+    }
+
+    // 9. Eligibility preflight — only sponsor verified voters eligible for this proposal
+    try {
+      const [proposalResult, governanceConfigRaw] = await Promise.all([
+        provider.callFunction<JsonObject>(governanceContractId, "get_proposal", {
+          proposal_id: castVoteArgs.proposalId,
+        }),
+        provider.callFunction<JsonObject>(governanceContractId, "get_config", {}),
+      ])
+      const proposalRaw = proposalResult as JsonObject | null
+
+      if (!proposalRaw) {
+        return relayError("Proposal not found", 404)
+      }
+
+      const parsedProposal = contractProposalViewSchema.safeParse(proposalRaw)
+      if (!parsedProposal.success) {
+        return relayError("Invalid proposal response from RPC", 502)
+      }
+
+      const parsedConfig = contractConfigSchema.safeParse(governanceConfigRaw)
+      if (!parsedConfig.success) {
+        return relayError("Invalid governance config response from RPC", 502)
+      }
+
+      const verificationResult = await provider.callFunction<JsonObject>(
+        parsedConfig.data.verifiedAccountsContract,
+        "get_verification",
+        { account_id: validatedAccountId },
+      )
+      const verificationRaw = verificationResult as JsonObject | null
+
+      if (!verificationRaw) {
+        return relayError("Only verified accounts can use gasless voting", 403)
+      }
+
+      const parsedVerification = contractVerificationSummarySchema.safeParse(verificationRaw)
+      if (!parsedVerification.success) {
+        return relayError("Invalid verification response from RPC", 502)
+      }
+
+      if (parsedVerification.data.nearAccountId !== validatedAccountId) {
+        return relayError("Verification record mismatch", 422)
+      }
+
+      if (parsedVerification.data.verifiedAt > parsedProposal.data.createdAt) {
+        return relayError("Account was verified after proposal creation", 403)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return relayError(`Eligibility preflight failed: ${message}`, 503)
+    }
+
+    // 10. isVoteFree check — relay only makes sense when voting is free
     const isVoteFree = await governanceReader.isVoteFree()
     if (!isVoteFree) {
       return relayError("Voting currently requires a storage deposit; relay unavailable", 409)
     }
 
-    // 9. Rate limit: 1 relay per voter per minute
+    // 11. Rate limit: 1 relay per voter per minute
     const redis = await getRedisClient()
     const rateLimitKey = `relay:vote:${validatedAccountId}`
     const existing = await redis.get(rateLimitKey)

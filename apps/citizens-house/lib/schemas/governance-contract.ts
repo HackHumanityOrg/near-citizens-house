@@ -134,6 +134,13 @@ export type GovernanceConfig = z.output<typeof contractConfigSchema>
 // Relay Schemas
 // =============================================================================
 
+export const castVoteArgsSchema = z.object({
+  proposal_id: z.number().int().min(0),
+  choice: voteChoiceSchema,
+})
+
+export type CastVoteArgs = z.infer<typeof castVoteArgsSchema>
+
 export const MAX_SIGNED_DELEGATE_BYTES = 16 * 1024
 export const MAX_SIGNED_DELEGATE_BASE64_LENGTH = Math.ceil(MAX_SIGNED_DELEGATE_BYTES / 3) * 4
 
