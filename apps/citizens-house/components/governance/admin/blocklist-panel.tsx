@@ -13,7 +13,6 @@ import {
   revalidateGovernance,
   type BlocklistLockInfo,
 } from "@/app/governance/actions"
-import { trackEvent } from "@/lib/analytics"
 
 export function BlocklistPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
@@ -41,7 +40,6 @@ export function BlocklistPanel() {
     setTxLoading(true)
     try {
       await signAndSendTransaction(buildBlocklistAccountTx(newAccount.trim()))
-      trackEvent({ domain: "governance", action: "admin_action", adminAction: "blocklist_add", accountId })
       startTransition(() => {
         revalidateGovernance()
       })
@@ -62,7 +60,6 @@ export function BlocklistPanel() {
     setTxLoading(true)
     try {
       await signAndSendTransaction(buildUnblocklistAccountTx(target))
-      trackEvent({ domain: "governance", action: "admin_action", adminAction: "blocklist_remove", accountId })
       startTransition(() => {
         revalidateGovernance()
       })

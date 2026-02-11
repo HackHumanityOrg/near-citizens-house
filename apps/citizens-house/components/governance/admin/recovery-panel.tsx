@@ -12,7 +12,6 @@ import {
   getPendingVotesCount,
   type BlocklistLockInfo,
 } from "@/app/governance/actions"
-import { trackEvent } from "@/lib/analytics"
 
 export function RecoveryPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
@@ -56,7 +55,6 @@ export function RecoveryPanel() {
     setTxLoading(true)
     try {
       await signAndSendTransaction(buildClearStalePendingVoteTx(parseInt(proposalId), voteAccountId.trim()))
-      trackEvent({ domain: "governance", action: "admin_action", adminAction: "clear_stale_vote", accountId })
       startTransition(() => {
         revalidateGovernance()
       })
@@ -77,7 +75,6 @@ export function RecoveryPanel() {
     setTxLoading(true)
     try {
       await signAndSendTransaction(buildClearStaleBlocklistOpTx())
-      trackEvent({ domain: "governance", action: "admin_action", adminAction: "clear_stale_blocklist", accountId })
       startTransition(() => {
         revalidateGovernance()
       })

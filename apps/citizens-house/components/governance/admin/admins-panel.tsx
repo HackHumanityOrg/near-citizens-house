@@ -8,7 +8,6 @@ import { ExternalLink, Loader2, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { buildAddAdminTx, buildRemoveAdminTx } from "@/lib/contracts/governance/transactions"
 import { getAdminList, revalidateGovernance } from "@/app/governance/actions"
-import { trackEvent } from "@/lib/analytics"
 
 export function AdminsPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
@@ -30,7 +29,6 @@ export function AdminsPanel() {
     setTxLoading(true)
     try {
       await signAndSendTransaction(buildAddAdminTx(newAdmin.trim()))
-      trackEvent({ domain: "governance", action: "admin_action", adminAction: "add_admin", accountId })
       startTransition(() => {
         revalidateGovernance()
       })
@@ -51,7 +49,6 @@ export function AdminsPanel() {
     setTxLoading(true)
     try {
       await signAndSendTransaction(buildRemoveAdminTx(adminId))
-      trackEvent({ domain: "governance", action: "admin_action", adminAction: "remove_admin", accountId })
       startTransition(() => {
         revalidateGovernance()
       })
