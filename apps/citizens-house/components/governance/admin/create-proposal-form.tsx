@@ -9,7 +9,6 @@ import { toast } from "sonner"
 import { nearToYocto, yoctoToNear } from "@/lib/schemas/governance-contract"
 import { buildCreateProposalTx } from "@/lib/contracts/governance/transactions"
 import { revalidateGovernance } from "@/app/governance/actions"
-import { trackEvent } from "@/lib/analytics"
 
 interface Props {
   minProposalBond: string // yoctoNEAR
@@ -54,7 +53,6 @@ export function CreateProposalForm({ minProposalBond }: Props) {
       await signAndSendTransaction(
         buildCreateProposalTx(title.trim(), author.trim(), description.trim(), bondYocto, startAtNs),
       )
-      trackEvent({ domain: "governance", action: "proposal_create", accountId })
       startTransition(() => {
         revalidateGovernance()
       })
@@ -62,7 +60,6 @@ export function CreateProposalForm({ minProposalBond }: Props) {
       router.push("/governance")
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
-      trackEvent({ domain: "governance", action: "proposal_create_fail", errorMessage, accountId })
       toast.error(errorMessage)
     } finally {
       setTxLoading(false)

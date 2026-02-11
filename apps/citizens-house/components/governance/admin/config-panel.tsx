@@ -17,7 +17,6 @@ import {
   buildUpdateVerifiedAccountsContractTx,
 } from "@/lib/contracts/governance/transactions"
 import { getGovernanceConfig, revalidateGovernance } from "@/app/governance/actions"
-import { trackEvent } from "@/lib/analytics"
 
 function secsToDisplay(secs: number): string {
   if (secs < 3600) return `${Math.round(secs / 60)} minutes`
@@ -56,7 +55,6 @@ export function ConfigPanel() {
       if (!builder) return
 
       await signAndSendTransaction(builder())
-      trackEvent({ domain: "governance", action: "admin_action", adminAction: `update_${field}`, accountId })
       startTransition(() => {
         revalidateGovernance()
       })

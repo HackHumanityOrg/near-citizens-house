@@ -39,7 +39,7 @@ export function MarkdownContent({ children }: Props) {
         remarkPlugins={[remarkGfm]}
         skipHtml
         components={{
-          a: ({ node, ...props }) => <a target="_blank" rel="noopener noreferrer" {...props} />,
+          a: ({ node: _node, ...props }) => <a target="_blank" rel="noopener noreferrer" {...props} />,
         }}
       >
         {children}

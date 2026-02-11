@@ -15,7 +15,6 @@ import {
   revalidateGovernance,
 } from "@/app/governance/actions"
 import { checkIsVerified } from "@/app/citizens/actions"
-import { trackEvent } from "@/lib/analytics"
 import { NEAR_CONFIG } from "@/lib/config"
 import { encodeSignedDelegate } from "@near-js/transactions"
 
@@ -115,7 +114,6 @@ export function VotePanel({ proposal }: Props) {
         await signAndSendTransaction(buildCastVoteTx(proposal.id, choice, deposit))
       }
 
-      trackEvent({ domain: "governance", action: "vote_cast", proposalId: proposal.id, choice, accountId })
       startTransition(() => {
         revalidateGovernance()
       })
@@ -125,7 +123,6 @@ export function VotePanel({ proposal }: Props) {
       setEligibility((prev) => (prev ? { ...prev, existingVote: vote } : null))
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
-      trackEvent({ domain: "governance", action: "vote_cast_fail", proposalId: proposal.id, errorMessage, accountId })
       toast.error(errorMessage)
     } finally {
       setTxLoading(false)

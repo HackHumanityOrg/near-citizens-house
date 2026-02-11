@@ -23,8 +23,7 @@ import { backendKeyPool, setBackendKeyPoolRedis } from "@/lib/backend-key-pool"
 import { getRedisClient } from "@/lib/redis"
 import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { governanceReader } from "@/lib/contracts/governance/client"
-import { relayRequestSchema, voteChoiceSchema } from "@/lib/schemas/governance-contract"
-import { trackServerEvent } from "@/lib/analytics-server"
+import { MAX_SIGNED_DELEGATE_BYTES, relayRequestSchema } from "@/lib/schemas/governance-contract"
 import {
   nearAccessKeyResponseSchema,
   nearAccountIdSchema,
@@ -119,22 +118,6 @@ function extractExecutionFailure(result: FinalExecutionOutcome): string | null {
     }
   }
 
-  return null
-}
-
-/**
- * Try to parse cast_vote args from the FunctionCall bytes.
- * Returns { proposal_id, choice } or null if parsing fails.
- */
-function parseCastVoteArgs(args: Uint8Array): { proposal_id: number; choice: string } | null {
-  try {
-    const json = JSON.parse(Buffer.from(args).toString("utf-8"))
-    if (typeof json.proposal_id === "number" && typeof json.choice === "string") {
-      return json
-    }
-  } catch {
-    // Invalid args
-  }
   return null
 }
 
@@ -247,6 +230,9 @@ export async function POST(request: NextRequest) {
 
     // Decode base64 → bytes → deserialize SignedDelegate
     const bytes = Buffer.from(parseResult.data.signedDelegate, "base64")
+    if (bytes.length > MAX_SIGNED_DELEGATE_BYTES) {
+      return relayError("SignedDelegate payload too large", 413)
+    }
     let deserialized: DeserializedSignedDelegate
     try {
       deserialized = deserialize(SCHEMA.SignedDelegate, new Uint8Array(bytes)) as DeserializedSignedDelegate
@@ -379,54 +365,19 @@ export async function POST(request: NextRequest) {
 
     const txHash = result.transaction_outcome.id
 
-    // Parse vote args for analytics (best-effort)
-    const voteArgs = parseCastVoteArgs(functionCallData.args)
-    const choiceParsed = voteChoiceSchema.safeParse(voteArgs?.choice)
-
     // Check if the on-chain execution actually succeeded.
     // The transaction can be included in a block but the inner function call may still fail
     // (e.g. ERR_PROPOSAL_ENDED, ERR_ALREADY_VOTED, contract panic).
     const executionFailed = extractExecutionFailure(result)
     if (executionFailed) {
       console.error(`[relay] On-chain execution failed for ${validatedAccountId}: ${executionFailed}`, { txHash })
-
-      if (voteArgs) {
-        await trackServerEvent(validatedAccountId, {
-          domain: "governance",
-          action: "vote_cast_fail",
-          proposalId: voteArgs.proposal_id,
-          errorMessage: `On-chain: ${executionFailed}`,
-          accountId: validatedAccountId,
-        }).catch(() => {})
-      }
-
       return relayError(executionFailed, 422)
-    }
-
-    if (voteArgs && choiceParsed.success) {
-      await trackServerEvent(validatedAccountId, {
-        domain: "governance",
-        action: "vote_cast",
-        proposalId: voteArgs.proposal_id,
-        choice: choiceParsed.data,
-        accountId: validatedAccountId,
-      })
     }
 
     return NextResponse.json({ success: true, txHash }, { status: 200 })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error"
     console.error(`[relay] Error for ${validatedAccountId ?? "unknown"}:`, errorMessage)
-
-    if (validatedAccountId) {
-      await trackServerEvent(validatedAccountId, {
-        domain: "governance",
-        action: "vote_cast_fail",
-        proposalId: 0,
-        errorMessage: `Relay error: ${errorMessage}`,
-        accountId: validatedAccountId,
-      }).catch(() => {})
-    }
 
     return relayError(errorMessage, 500)
   }
