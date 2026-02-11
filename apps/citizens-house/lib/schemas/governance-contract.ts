@@ -41,6 +41,10 @@ export type FailureKind = z.infer<typeof failureKindSchema>
 export const voteChoiceSchema = z.enum(["yes", "no"])
 export type VoteChoice = z.infer<typeof voteChoiceSchema>
 
+const base64StringSchema = z.string().regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/, {
+  message: "Must be valid base64",
+})
+
 // =============================================================================
 // Contract Output Schemas (snake_case -> camelCase)
 // =============================================================================
@@ -130,8 +134,11 @@ export type GovernanceConfig = z.output<typeof contractConfigSchema>
 // Relay Schemas
 // =============================================================================
 
+export const MAX_SIGNED_DELEGATE_BYTES = 16 * 1024
+export const MAX_SIGNED_DELEGATE_BASE64_LENGTH = Math.ceil(MAX_SIGNED_DELEGATE_BYTES / 3) * 4
+
 export const relayRequestSchema = z.object({
-  signedDelegate: z.string().min(1),
+  signedDelegate: base64StringSchema.min(1).max(MAX_SIGNED_DELEGATE_BASE64_LENGTH),
 })
 
 export type RelayRequest = z.infer<typeof relayRequestSchema>

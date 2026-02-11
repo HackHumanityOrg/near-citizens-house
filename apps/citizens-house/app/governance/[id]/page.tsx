@@ -8,8 +8,6 @@ import {
   ProposalDescription,
   VotingProgressCard,
   ProposalTimeline,
-  FinalizeButton,
-  ProposalAdminActions,
 } from "@/components/governance/proposal-detail"
 
 interface Props {
@@ -64,8 +62,6 @@ export default async function ProposalPage({ params }: Props) {
               <VotePanel proposal={proposal} />
               <VotingProgressCard proposal={proposal} />
               <ProposalTimeline proposal={proposal} />
-              <FinalizeButton proposal={proposal} />
-              <ProposalAdminActions proposal={proposal} />
               <VotesTable proposalId={proposalId} initialVotes={votesResult.votes} totalVotes={totalVotes} />
             </div>
           </div>

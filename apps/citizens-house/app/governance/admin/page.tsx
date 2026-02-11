@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react"
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@near-citizens/ui"
 import { checkIsAdmin, getGovernanceConfig } from "../actions"
 import type { GovernanceConfig } from "@/lib/schemas/governance-contract"
+import { ProposalsPanel } from "@/components/governance/admin/proposals-panel"
 import { CreateProposalForm } from "@/components/governance/admin/create-proposal-form"
 import { ConfigPanel } from "@/components/governance/admin/config-panel"
 import { AdminsPanel } from "@/components/governance/admin/admins-panel"
@@ -73,6 +74,9 @@ export default function AdminPage() {
               <TabsTrigger value="proposals" className="flex-1">
                 Proposals
               </TabsTrigger>
+              <TabsTrigger value="create" className="flex-1">
+                Create
+              </TabsTrigger>
               <TabsTrigger value="config" className="flex-1">
                 Config
               </TabsTrigger>
@@ -87,6 +91,9 @@ export default function AdminPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="proposals" className="mt-6">
+              <ProposalsPanel />
+            </TabsContent>
+            <TabsContent value="create" className="mt-6">
               {config && <CreateProposalForm minProposalBond={config.minProposalBond} />}
             </TabsContent>
             <TabsContent value="config" className="mt-6">

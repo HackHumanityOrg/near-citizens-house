@@ -19,7 +19,7 @@ import {
   isApplicantDeactivatedError,
 } from "@/lib/providers/sumsub-provider"
 import { clearVerificationStatus } from "@/lib/verification-status"
-import { reserveSignatureNonce } from "@/lib/nonce-store"
+import { reserveSignatureNonce, SIGNATURE_NONCE_TTL_SECONDS } from "@/lib/nonce-store"
 import { env } from "@/lib/schemas/env"
 import { verificationTokenRequestSchema, verificationTokenResponseSchema } from "@/lib/schemas/api/verification"
 import { type SumSubMetadataItem, type SumSubApplicant } from "@/lib/schemas/providers/sumsub"
@@ -172,8 +172,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Reserve nonce to prevent replay attacks
-    const NONCE_TTL_SECONDS = 10 * 60 // 10 minutes - matches signature freshness window
-    const nonceReserved = await reserveSignatureNonce(nearSignature.accountId, nearSignature.nonce, NONCE_TTL_SECONDS)
+    const nonceReserved = await reserveSignatureNonce(
+      nearSignature.accountId,
+      nearSignature.nonce,
+      SIGNATURE_NONCE_TTL_SECONDS,
+    )
     if (!nonceReserved) {
       await trackServerEvent(
         nearSignature.accountId,

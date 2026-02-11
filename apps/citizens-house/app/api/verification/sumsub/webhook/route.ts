@@ -372,7 +372,7 @@ export async function POST(request: NextRequest) {
       return apiError("NEAR_SIGNATURE_INVALID", errorMsg, 400)
     }
 
-    // NOTE: Nonce is reserved in token API with 24h TTL to cover SumSub's full retry window.
+    // NOTE: Nonce is reserved in token API with 10-minute TTL (signature freshness window).
     // Webhook retries are now naturally idempotent via contract-level checks
     // (ACCOUNT_ALREADY_VERIFIED, DUPLICATE_IDENTITY).
 

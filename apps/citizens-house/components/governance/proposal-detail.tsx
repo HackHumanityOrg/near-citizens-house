@@ -1,22 +1,13 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
-import { Button } from "@near-citizens/ui"
-import { NEAR_CONFIG, useNearWallet } from "@/lib"
+import { useState } from "react"
+import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
-import { ExternalLink, Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import { ExternalLink } from "lucide-react"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { StatusBadge } from "./status-badge"
 import { VoteProgressBar } from "./vote-progress-bar"
 import { CountdownTimer } from "./countdown-timer"
-import {
-  buildCancelProposalTx,
-  buildExpirePendingProposalTx,
-  buildFinalizeProposalTx,
-} from "@/lib/contracts/governance/transactions"
-import { checkIsAdmin, revalidateGovernance } from "@/app/governance/actions"
-import { trackEvent } from "@/lib/analytics"
 import { MarkdownContent } from "./markdown-content"
 
 function formatDate(timestamp: number): string {
@@ -131,116 +122,6 @@ export function ProposalTimeline({ proposal }: ProposalProps) {
             <CountdownTimer targetMs={proposal.startAt} endedLabel="Starting..." />
           </div>
         ) : null}
-      </div>
-    </div>
-  )
-}
-
-export function FinalizeButton({ proposal }: ProposalProps) {
-  const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
-  const [isPending, startTransition] = useTransition()
-  const [txLoading, setTxLoading] = useState(false)
-
-  if (proposal.status !== "active" || Date.now() <= proposal.endsAt) return null
-
-  const loading = isPending || txLoading
-
-  const handleFinalize = async () => {
-    if (!isConnected || !accountId) return
-
-    setTxLoading(true)
-    try {
-      await signAndSendTransaction(buildFinalizeProposalTx(proposal.id))
-      trackEvent({
-        domain: "governance",
-        action: "proposal_finalize",
-        proposalId: proposal.id,
-        accountId,
-      })
-      startTransition(() => {
-        revalidateGovernance()
-      })
-      toast.success("Proposal finalized successfully")
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
-    } finally {
-      setTxLoading(false)
-    }
-  }
-
-  return (
-    <Button variant="citizens-primary" size="citizens-lg" onClick={handleFinalize} disabled={loading || !isConnected}>
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-      Finalize Proposal
-    </Button>
-  )
-}
-
-export function ProposalAdminActions({ proposal }: ProposalProps) {
-  const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
-  const [isPending, startTransition] = useTransition()
-  const [txLoading, setTxLoading] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    if (!isConnected || !accountId) return
-    checkIsAdmin(accountId).then(setIsAdmin)
-  }, [isConnected, accountId])
-
-  if (!isAdmin) return null
-
-  const handleAdminAction = async (action: "cancel" | "expire") => {
-    if (!isConnected || !accountId) return
-
-    setTxLoading(true)
-    try {
-      const tx = action === "cancel" ? buildCancelProposalTx(proposal.id) : buildExpirePendingProposalTx(proposal.id)
-      await signAndSendTransaction(tx)
-      trackEvent({
-        domain: "governance",
-        action: "proposal_cancel",
-        proposalId: proposal.id,
-        accountId,
-      })
-      startTransition(() => {
-        revalidateGovernance()
-      })
-      toast.success(`Proposal ${action === "cancel" ? "cancelled" : "expired"} successfully`)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
-    } finally {
-      setTxLoading(false)
-    }
-  }
-
-  const loading = isPending || txLoading
-
-  return (
-    <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-      <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-4">Admin Actions</h3>
-      <div className="flex flex-wrap gap-3">
-        {(proposal.status === "pending" || proposal.status === "active") && (
-          <Button
-            variant="citizens-outline"
-            size="citizens-lg"
-            onClick={() => handleAdminAction("cancel")}
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Cancel Proposal
-          </Button>
-        )}
-        {proposal.status === "pending" && Date.now() > proposal.pendingExpiresAt && (
-          <Button
-            variant="citizens-outline"
-            size="citizens-lg"
-            onClick={() => handleAdminAction("expire")}
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Expire Pending
-          </Button>
-        )}
       </div>
     </div>
   )
