@@ -11,3 +11,15 @@ export const maintenanceMode = flag<boolean>({
     { value: true, label: "On" },
   ],
 })
+
+export const appMode = flag<"verification" | "waiting" | "voting">({
+  key: "app-mode",
+  adapter: vercelAdapter(),
+  defaultValue: "waiting",
+  description: "Controls app phase: verification homepage, waiting page, or voting homepage",
+  options: [
+    { value: "verification", label: "Verification" },
+    { value: "waiting", label: "Waiting" },
+    { value: "voting", label: "Voting" },
+  ],
+})

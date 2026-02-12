@@ -19,20 +19,20 @@ import { useNearWallet } from "@/lib"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
 import { checkIsAdmin } from "@/app/governance/actions"
 
-export function Header() {
+export function Header({ isVoting }: { isVoting: boolean }) {
   const pathname = usePathname()
   const isLandingOrVerification = pathname === "/" || pathname?.startsWith("/verification")
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
   const [adminCheck, setAdminCheck] = useState<{ accountId: string; isAdmin: boolean } | null>(null)
 
   useEffect(() => {
-    if (!isConnected || !accountId) return
+    if (!isVoting || !isConnected || !accountId) return
     checkIsAdmin(accountId).then((admin) => {
       setAdminCheck({ accountId, isAdmin: admin })
     })
-  }, [isConnected, accountId])
+  }, [isVoting, isConnected, accountId])
 
-  const isAdmin = isConnected && adminCheck?.accountId === accountId && adminCheck.isAdmin
+  const isAdmin = isVoting && isConnected && adminCheck?.accountId === accountId && adminCheck.isAdmin
 
   return (
     <header className="relative z-50 bg-transparent">
@@ -43,21 +43,17 @@ export function Header() {
           <Image src="/logo-mobile.svg" alt="NEAR Citizens House" width={80} height={34} className="dark:invert" />
         </Link>
 
-        {/* Mobile Navigation - Center */}
-        <nav className="flex items-center gap-4">
-          <Link href="/governance" className="font-fk-grotesk text-[14px] text-black dark:text-white">
-            Governance
-          </Link>
-          {isAdmin && (
+        {/* Mobile Navigation */}
+        {isAdmin && (
+          <nav className="flex items-center gap-4">
             <Link href="/governance/admin" className="font-fk-grotesk text-[14px] text-black dark:text-white">
               Admin
             </Link>
-          )}
-        </nav>
+          </nav>
+        )}
 
         {/* Mobile Right Side: Wallet + Theme Toggle */}
         <div className="flex items-center gap-4">
-          {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
           {isLandingOrVerification && !isConnected ? null : isLoading ? (
             <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -103,25 +99,18 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="flex items-center gap-20">
-          <Link
-            href="/governance"
-            className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity"
-          >
-            Governance
-          </Link>
-          {isAdmin && (
+        {isAdmin && (
+          <nav className="flex items-center gap-20">
             <Link
               href="/governance/admin"
               className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity"
             >
               Admin
             </Link>
-          )}
-        </nav>
+          </nav>
+        )}
 
         {/* Desktop Right Side: Wallet + Theme Toggle */}
-        {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
         <div className="flex items-center gap-10 ml-auto">
           {isLandingOrVerification && !isConnected ? null : isLoading ? (
             <Button variant="citizens-primary" size="citizens-3xl" disabled>
