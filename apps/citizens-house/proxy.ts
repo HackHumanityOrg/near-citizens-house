@@ -2,14 +2,31 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { maintenanceMode, appMode } from "./flags"
 
-const EXEMPT_PATHS = ["/privacy", "/terms", "/maintenance", "/waiting"]
+const EXEMPT_PATHS = ["/privacy", "/terms"]
 const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest", "/.well-known"]
 const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".css", ".js", ".woff", ".woff2"]
+
+const STAGE_HOME = {
+  verification: "/verification",
+  waiting: "/waiting",
+  voting: "/governance",
+} as const
+
+type AppStage = keyof typeof STAGE_HOME
 
 function redirectTo(request: NextRequest, pathname: string): NextResponse {
   const url = request.nextUrl.clone()
   url.pathname = pathname
   return NextResponse.redirect(url)
+}
+
+function isAllowedStagePath(mode: AppStage, pathname: string): boolean {
+  if (mode === "waiting") {
+    return pathname === "/waiting" || pathname === "/citizens"
+  }
+
+  const stageHome = STAGE_HOME[mode]
+  return pathname === stageHome || pathname.startsWith(`${stageHome}/`)
 }
 
 function isExemptPath(pathname: string): boolean {
@@ -33,29 +50,22 @@ export async function proxy(request: NextRequest) {
   try {
     const maintenance = await maintenanceMode()
     if (maintenance) {
+      if (pathname === "/maintenance") {
+        return NextResponse.next()
+      }
+
       return redirectTo(request, "/maintenance")
     }
 
     const mode = await appMode()
+    const stageHome = STAGE_HOME[mode]
 
-    if (mode === "waiting" && pathname !== "/citizens") {
-      return redirectTo(request, "/waiting")
+    if (pathname === "/" || pathname === "/maintenance") {
+      return redirectTo(request, stageHome)
     }
 
-    if (mode === "verification" && pathname.startsWith("/governance")) {
-      return redirectTo(request, "/verification")
-    }
-
-    if (mode === "voting" && pathname.startsWith("/verification")) {
-      return redirectTo(request, "/governance")
-    }
-
-    if (pathname === "/") {
-      if (mode === "waiting") {
-        return redirectTo(request, "/waiting")
-      }
-
-      return redirectTo(request, mode === "voting" ? "/governance" : "/verification")
+    if (!isAllowedStagePath(mode, pathname)) {
+      return redirectTo(request, stageHome)
     }
   } catch {
     return redirectTo(request, "/maintenance")
