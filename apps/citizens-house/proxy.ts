@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { maintenanceMode, appMode } from "./flags"
 
-const EXEMPT_PATHS = ["/privacy", "/terms"]
+const EXEMPT_PATHS = ["/privacy", "/terms", "/_not-found"]
 const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest", "/.well-known"]
 const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".css", ".js", ".woff", ".woff2"]
 
@@ -68,6 +68,10 @@ export async function proxy(request: NextRequest) {
       return redirectTo(request, stageHome)
     }
   } catch {
+    if (pathname === "/maintenance" || pathname === "/_not-found") {
+      return NextResponse.next()
+    }
+
     return redirectTo(request, "/maintenance")
   }
 

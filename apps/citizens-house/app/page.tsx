@@ -2,23 +2,28 @@ import { redirect } from "next/navigation"
 import { appMode, maintenanceMode } from "@/flags"
 
 export default async function HomePage() {
+  const destination = await getHomeDestination()
+  redirect(destination)
+}
+
+async function getHomeDestination(): Promise<string> {
   try {
     if (await maintenanceMode()) {
-      redirect("/maintenance")
+      return "/maintenance"
     }
 
     const mode = await appMode()
 
     if (mode === "voting") {
-      redirect("/governance")
+      return "/governance"
     }
 
     if (mode === "waiting") {
-      redirect("/waiting")
+      return "/waiting"
     }
 
-    redirect("/verification")
+    return "/verification"
   } catch {
-    redirect("/maintenance")
+    return "/maintenance"
   }
 }
