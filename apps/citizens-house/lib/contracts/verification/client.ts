@@ -31,6 +31,7 @@ import type {
   Verification,
   VerificationSummary,
 } from "./verification-contract"
+import { GAS_100_TGAS } from "../gas"
 import { NEAR_SERVER_CONFIG } from "../../config.server"
 import { createRpcProvider } from "../../providers/rpc-provider"
 import { backendKeyPool, setBackendKeyPoolRedis } from "../../backend-key-pool"
@@ -231,7 +232,7 @@ export class NearContractDatabase implements IVerificationDatabase {
             signature_data: nearSigData,
             user_context_data: userContextData,
           },
-          gas: "30000000000000", // 30 TGas
+          gas: GAS_100_TGAS,
           deposit: "1", // 1 yoctoNEAR deposit (required by assert_one_yocto)
           waitUntil: "EXECUTED_OPTIMISTIC",
         }),

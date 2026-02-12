@@ -1,8 +1,10 @@
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
+use near_sdk::Gas;
 
 use crate::helpers::{
-    activate_proposal, build_context, create_basic_proposal, new_contract, with_deposit};
+    activate_proposal, assert_panics_with, build_context, create_basic_proposal, new_contract,
+    with_deposit};
 
 #[test]
 #[allure_parent_suite("Near Citizens House")]
@@ -227,6 +229,26 @@ fn ut_block_011_blocklist_without_one_yocto() {
     let builder = build_context(accounts(0));
     crate::helpers::set_context(builder);
     contract.blocklist_account(accounts(2));
+}
+
+#[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Blocklist")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "blocklist")]
+#[allure_description("Verifies block 011b blocklist requires sufficient prepaid gas.")]
+#[allure_test]
+fn ut_block_011b_blocklist_requires_sufficient_prepaid_gas() {
+    let mut contract = new_contract();
+    let mut builder = build_context(accounts(0));
+    with_deposit(&mut builder, 1);
+    builder.prepaid_gas(Gas::from_tgas(79));
+    crate::helpers::set_context(builder);
+    assert_panics_with(
+        || contract.blocklist_account(accounts(2)),
+        "ERR_INSUFFICIENT_PREPAID_GAS",
+    );
 }
 
 #[test]

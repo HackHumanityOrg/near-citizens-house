@@ -17,6 +17,7 @@ import {
 import { checkIsVerified } from "@/app/citizens/actions"
 import { NEAR_CONFIG } from "@/lib/config"
 import { encodeSignedDelegate } from "@near-js/transactions"
+import { GAS_100_TGAS } from "@/lib/contracts/gas"
 
 interface Props {
   proposal: ProposalView
@@ -89,7 +90,7 @@ export function VotePanel({ proposal }: Props) {
                   params: {
                     methodName: "cast_vote",
                     args: { proposal_id: proposal.id, choice },
-                    gas: "100000000000000",
+                    gas: GAS_100_TGAS,
                     deposit: "0",
                   },
                 },

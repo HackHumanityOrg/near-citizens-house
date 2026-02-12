@@ -23,6 +23,7 @@ import { backendKeyPool, setBackendKeyPoolRedis } from "@/lib/backend-key-pool"
 import { getRedisClient } from "@/lib/redis"
 import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { governanceReader } from "@/lib/contracts/governance/client"
+import { GAS_100_TGAS_BIGINT, GAS_120_TGAS_BIGINT } from "@/lib/contracts/gas"
 import {
   castVoteArgsSchema,
   contractConfigSchema,
@@ -41,6 +42,8 @@ import type { FinalExecutionOutcome } from "@near-js/types"
 
 const RATE_LIMIT_TTL = 60 // 1 relay per voter per minute
 const MAX_BLOCK_HEIGHT_WINDOW = 500
+const MIN_CAST_VOTE_GAS = GAS_100_TGAS_BIGINT
+const MAX_CAST_VOTE_GAS = GAS_120_TGAS_BIGINT
 
 // Initialize Redis for backend key pool
 let redisInitialized = false
@@ -329,6 +332,14 @@ export async function POST(request: NextRequest) {
     // 5. Deposit check — must be zero
     if (functionCallData.deposit !== BigInt(0)) {
       return relayError("Relay does not support attached deposits")
+    }
+
+    // 5b. Gas check — require enough gas for governance cast_vote flow, but cap relayer exposure
+    if (functionCallData.gas < MIN_CAST_VOTE_GAS) {
+      return relayError("Insufficient gas for cast_vote")
+    }
+    if (functionCallData.gas > MAX_CAST_VOTE_GAS) {
+      return relayError("Gas exceeds relay policy")
     }
 
     // 6. Block height check
