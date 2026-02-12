@@ -10,7 +10,7 @@ import {
   nearAccountIdSchema,
   type NearAccountId,
 } from "@/lib"
-import type { TransformedVerification } from "@/lib/schemas/verification-contract"
+import type { TransformedVerification, TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
 import { verificationDb } from "@/lib/contracts/verification/client"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 import { signatureVerificationDataSchema, type SignatureVerificationData } from "@/lib/schemas/verification-signature"
@@ -152,5 +152,24 @@ export async function checkIsVerified(nearAccountId: NearAccountId): Promise<boo
     return await verificationDb.isVerified(parsed.data)
   } catch {
     return false
+  }
+}
+
+/**
+ * Server action to fetch a verification summary (including verifiedAt).
+ * Used by governance UI to determine proposal-time voting eligibility.
+ */
+export async function getVerificationSummary(
+  nearAccountId: NearAccountId,
+): Promise<TransformedVerificationSummary | null> {
+  const parsed = nearAccountIdSchema.safeParse(nearAccountId)
+  if (!parsed.success) {
+    return null
+  }
+
+  try {
+    return await verificationDb.getVerification(parsed.data)
+  } catch {
+    return null
   }
 }

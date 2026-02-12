@@ -6,18 +6,28 @@ import { useNearWallet } from "@/lib"
 import { Loader2, Check } from "lucide-react"
 import { toast } from "sonner"
 import type { ProposalView, VoteChoice, VoteView } from "@/lib/schemas/governance-contract"
+import type { TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
 import { buildCastVoteTx } from "@/lib/contracts/governance/transactions"
 import {
   checkHasVoted,
   getVote,
   checkIsVoteFree,
   checkAccountBalance,
+  checkIsBlocklisted,
   revalidateGovernance,
 } from "@/app/governance/actions"
-import { checkIsVerified } from "@/app/citizens/actions"
+import { getVerificationSummary } from "@/app/citizens/actions"
 import { NEAR_CONFIG } from "@/lib/config"
 import { encodeSignedDelegate } from "@near-js/transactions"
 import { GAS_100_TGAS } from "@/lib/contracts/gas"
+import {
+  getTransactionFailureMessage,
+  getVoteRejectionReasonMessage,
+  isVoteRejectionReason,
+  parseGovernanceVoteOutcome,
+  resolveGovernanceVoteOutcome,
+  type GovernanceVoteOutcome,
+} from "@/lib/contracts/governance/vote-outcome"
 
 interface Props {
   proposal: ProposalView
@@ -29,9 +39,29 @@ const MIN_GAS_BALANCE = BigInt("10000000000000000000000")
 interface EligibilityResult {
   accountId: string
   existingVote: VoteView | null
-  isVerified: boolean
+  verification: TransformedVerificationSummary | null
+  isBlocklisted: boolean
   isVoteFree: boolean
   balance: string
+}
+
+function getVoteOutcomeToast(
+  outcome: GovernanceVoteOutcome,
+  choice: VoteChoice,
+): { type: "success" | "error" | "warning"; message: string } {
+  if (outcome.kind === "vote_cast") {
+    return { type: "success", message: `Vote "${outcome.choice ?? choice}" cast successfully` }
+  }
+
+  if (outcome.kind === "vote_rejected") {
+    return { type: "error", message: getVoteRejectionReasonMessage(outcome.reason) }
+  }
+
+  if (outcome.kind === "tx_failed") {
+    return { type: "error", message: getTransactionFailureMessage(outcome.error) }
+  }
+
+  return { type: "warning", message: "Vote submitted, but the final outcome could not be confirmed." }
 }
 
 export function VotePanel({ proposal }: Props) {
@@ -53,11 +83,12 @@ export function VotePanel({ proposal }: Props) {
 
     Promise.all([
       checkHasVoted(proposal.id, accountId).then((voted) => (voted ? getVote(proposal.id, accountId) : null)),
-      checkIsVerified(accountId),
+      getVerificationSummary(accountId),
+      checkIsBlocklisted(accountId),
       checkIsVoteFree(),
       checkAccountBalance(accountId),
-    ]).then(([vote, verified, voteFree, balance]) => {
-      setEligibility({ accountId, existingVote: vote, isVerified: verified, isVoteFree: voteFree, balance })
+    ]).then(([vote, verification, isBlocklisted, voteFree, balance]) => {
+      setEligibility({ accountId, existingVote: vote, verification, isBlocklisted, isVoteFree: voteFree, balance })
     })
   }, [isConnected, accountId, proposal.id])
 
@@ -65,7 +96,10 @@ export function VotePanel({ proposal }: Props) {
   const current = eligibility?.accountId === accountId ? eligibility : null
   const checking = isConnected && !!accountId && !current
   const existingVote = current?.existingVote ?? null
-  const isVerified = current ? current.isVerified : null
+  const verification = current?.verification ?? null
+  const isVerified = verification !== null
+  const isVerifiedAfterProposalCreation = verification ? verification.verifiedAt > proposal.createdAt : false
+  const isBlocklisted = current?.isBlocklisted ?? false
   const isVoteFree = current?.isVoteFree ?? false
   const isZeroBalance = current ? BigInt(current.balance) < MIN_GAS_BALANCE : false
   const needsRelay = isZeroBalance && isVoteFree && supportsMetaTransactions
@@ -75,6 +109,8 @@ export function VotePanel({ proposal }: Props) {
 
     setTxLoading(true)
     try {
+      let voteOutcome: GovernanceVoteOutcome = { kind: "unknown" }
+
       if (needsRelay && signDelegateActions) {
         // Meta-transaction path: wallet signs a DelegateAction, relayer pays gas
         const contractId = NEAR_CONFIG.governanceContractId
@@ -105,26 +141,50 @@ export function VotePanel({ proposal }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ signedDelegate: Buffer.from(encoded).toString("base64") }),
         })
+
+        const relayBody = await res.json().catch(() => null)
         if (!res.ok) {
-          const errorBody = await res.json().catch(() => null)
-          throw new Error(errorBody?.error ?? `Relay failed (${res.status})`)
+          const relayError = relayBody as { error?: unknown; reason?: unknown } | null
+          const reason = typeof relayError?.reason === "string" ? relayError.reason : null
+
+          if (reason && isVoteRejectionReason(reason)) {
+            toast.error(getVoteRejectionReasonMessage(reason))
+          } else {
+            const message = typeof relayError?.error === "string" ? relayError.error : `Relay failed (${res.status})`
+            toast.error(message)
+          }
+          return
         }
+
+        const relayResponse = relayBody as { outcome?: unknown } | null
+        voteOutcome = parseGovernanceVoteOutcome(relayResponse?.outcome) ?? { kind: "unknown" }
       } else {
         // Direct transaction path
         const deposit = isVoteFree ? "0" : "10000000000000000000000" // 0.01 NEAR storage deposit
-        await signAndSendTransaction(buildCastVoteTx(proposal.id, choice, deposit))
+        const result = await signAndSendTransaction(buildCastVoteTx(proposal.id, choice, deposit))
+        voteOutcome = resolveGovernanceVoteOutcome(result)
       }
 
-      startTransition(() => {
-        revalidateGovernance()
-      })
-      toast.success(`Vote "${choice}" cast successfully`)
-      // Refresh vote state
-      const vote = await getVote(proposal.id, accountId)
-      setEligibility((prev) => (prev ? { ...prev, existingVote: vote } : null))
+      const voteToast = getVoteOutcomeToast(voteOutcome, choice)
+      if (voteToast.type === "success") {
+        toast.success(voteToast.message)
+      } else if (voteToast.type === "error") {
+        toast.error(voteToast.message)
+      } else {
+        toast.warning(voteToast.message)
+      }
+
+      if (voteOutcome.kind !== "tx_failed") {
+        startTransition(() => {
+          revalidateGovernance()
+        })
+        // Refresh vote state
+        const vote = await getVote(proposal.id, accountId)
+        setEligibility((prev) => (prev ? { ...prev, existingVote: vote } : null))
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
-      toast.error(errorMessage)
+      toast.error(getTransactionFailureMessage(errorMessage))
     } finally {
       setTxLoading(false)
     }
@@ -214,13 +274,35 @@ export function VotePanel({ proposal }: Props) {
     )
   }
 
+  if (isBlocklisted) {
+    return (
+      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
+        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
+        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+          Your account is blocklisted and cannot vote on proposals.
+        </p>
+      </div>
+    )
+  }
+
   // Not verified
-  if (isVerified === false) {
+  if (!isVerified) {
     return (
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
         <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
           Only verified accounts can vote. Please complete identity verification first.
+        </p>
+      </div>
+    )
+  }
+
+  if (isVerifiedAfterProposalCreation) {
+    return (
+      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
+        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
+        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+          You were verified after this proposal was created, so this vote is not eligible.
         </p>
       </div>
     )

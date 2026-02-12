@@ -31,6 +31,7 @@ import {
   MAX_SIGNED_DELEGATE_BYTES,
   relayRequestSchema,
 } from "@/lib/schemas/governance-contract"
+import { resolveGovernanceVoteOutcome, type VoteRejectionReason } from "@/lib/contracts/governance/vote-outcome"
 import {
   nearAccessKeyResponseSchema,
   nearAccountIdSchema,
@@ -38,7 +39,6 @@ import {
   type NearAccountId,
 } from "@/lib/schemas/near"
 import { contractVerificationSummarySchema } from "@/lib/schemas/verification-contract"
-import type { FinalExecutionOutcome } from "@near-js/types"
 
 const RATE_LIMIT_TTL = 60 // 1 relay per voter per minute
 const MAX_BLOCK_HEIGHT_WINDOW = 500
@@ -86,51 +86,8 @@ interface ParsedKeyData {
 
 type JsonObject = Record<string, unknown>
 
-function relayError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status })
-}
-
-/**
- * Recursively search a nested object for a string value.
- * NEAR RPC failure objects are deeply nested — e.g.:
- *   { ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: ERR_..." } } } }
- * This walks the tree and returns the deepest string found.
- */
-function deepExtractErrorMessage(obj: unknown): string | null {
-  if (typeof obj === "string") return obj
-  if (typeof obj !== "object" || obj === null) return null
-
-  for (const value of Object.values(obj)) {
-    const found = deepExtractErrorMessage(value)
-    if (found) return found
-  }
-
-  return null
-}
-
-/**
- * Extract the first execution failure from a FinalExecutionOutcome.
- * Returns the error message string, or null if execution succeeded.
- *
- * A transaction can be included in a block (HTTP 200 from RPC) but the inner
- * function call may still fail (e.g. contract panic, ERR_PROPOSAL_ENDED).
- * We check both the top-level status and all receipt outcomes.
- */
-function extractExecutionFailure(result: FinalExecutionOutcome): string | null {
-  // Check top-level status
-  if (typeof result.status === "object" && "Failure" in result.status && result.status.Failure) {
-    return deepExtractErrorMessage(result.status.Failure) ?? "Transaction execution failed"
-  }
-
-  // Check receipt outcomes — the inner function call failure shows up here
-  for (const receipt of result.receipts_outcome) {
-    const receiptStatus = receipt.outcome.status
-    if (typeof receiptStatus === "object" && "Failure" in receiptStatus && receiptStatus.Failure) {
-      return deepExtractErrorMessage(receiptStatus.Failure) ?? "Receipt execution failed"
-    }
-  }
-
-  return null
+function relayError(message: string, status = 400, reason?: VoteRejectionReason) {
+  return NextResponse.json(reason ? { error: message, reason } : { error: message }, { status })
 }
 
 function parsePublicKey(publicKey: Record<string, unknown>): ParsedKeyData | null {
@@ -403,7 +360,7 @@ export async function POST(request: NextRequest) {
       const verificationRaw = verificationResult as JsonObject | null
 
       if (!verificationRaw) {
-        return relayError("Only verified accounts can use gasless voting", 403)
+        return relayError("Only verified accounts can use gasless voting", 403, "not_verified")
       }
 
       const parsedVerification = contractVerificationSummarySchema.safeParse(verificationRaw)
@@ -416,7 +373,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (parsedVerification.data.verifiedAt > parsedProposal.data.createdAt) {
-        return relayError("Account was verified after proposal creation", 403)
+        return relayError("Account was verified after proposal creation", 403, "verified_after_creation")
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
@@ -463,16 +420,13 @@ export async function POST(request: NextRequest) {
 
     const txHash = result.transaction_outcome.id
 
-    // Check if the on-chain execution actually succeeded.
-    // The transaction can be included in a block but the inner function call may still fail
-    // (e.g. ERR_PROPOSAL_ENDED, ERR_ALREADY_VOTED, contract panic).
-    const executionFailed = extractExecutionFailure(result)
-    if (executionFailed) {
-      console.error(`[relay] On-chain execution failed for ${validatedAccountId}: ${executionFailed}`, { txHash })
-      return relayError(executionFailed, 422)
+    const outcome = resolveGovernanceVoteOutcome(result)
+    if (outcome.kind === "tx_failed") {
+      console.error(`[relay] On-chain execution failed for ${validatedAccountId}: ${outcome.error}`, { txHash })
+      return relayError(outcome.error, 422)
     }
 
-    return NextResponse.json({ success: true, txHash }, { status: 200 })
+    return NextResponse.json({ success: true, txHash, outcome }, { status: 200 })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error"
     console.error(`[relay] Error for ${validatedAccountId ?? "unknown"}:`, errorMessage)

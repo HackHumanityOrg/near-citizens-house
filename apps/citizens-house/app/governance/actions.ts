@@ -109,6 +109,17 @@ export async function checkIsAdmin(accountId: string): Promise<boolean> {
   }
 }
 
+export async function checkIsBlocklisted(accountId: string): Promise<boolean> {
+  const parsed = nearAccountIdSchema.safeParse(accountId)
+  if (!parsed.success) return false
+
+  try {
+    return await governanceReader.isBlocklisted(parsed.data)
+  } catch {
+    return false
+  }
+}
+
 export async function checkIsSuperAdmin(): Promise<boolean> {
   try {
     return await superAdmin()
