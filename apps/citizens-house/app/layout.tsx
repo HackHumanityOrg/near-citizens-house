@@ -10,6 +10,7 @@ import { Footer } from "@/components/layout/footer"
 import { ConsentBanner } from "@/components/layout/consent-banner"
 import { Toaster } from "@/components/ui/sonner"
 import { DebugPanel } from "@/components/debug/debug-panel"
+import { appMode } from "@/flags"
 import { Providers } from "./providers"
 import "./globals.css"
 
@@ -33,11 +34,18 @@ export const metadata: Metadata = {
     "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  let isVoting = false
+  try {
+    isVoting = (await appMode()) === "voting"
+  } catch {
+    // Flag evaluation failed — default to non-voting
+  }
+
   return (
     // suppressHydrationWarning required for next-themes - theme stored in localStorage causes hydration mismatch
     <html lang="en" suppressHydrationWarning>
@@ -46,7 +54,7 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
-            <Header />
+            <Header isVoting={isVoting} />
             <main className="flex-1">{children}</main>
             <Footer />
             <ConsentBanner />
