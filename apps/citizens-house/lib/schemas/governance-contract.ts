@@ -41,6 +41,16 @@ export type FailureKind = z.infer<typeof failureKindSchema>
 export const voteChoiceSchema = z.enum(["yes", "no"])
 export type VoteChoice = z.infer<typeof voteChoiceSchema>
 
+export const voteRejectionReasonSchema = z.enum([
+  "proposal_cancelled",
+  "not_verified",
+  "verified_after_creation",
+  "proposal_expired",
+  "callback_failed",
+  "post_finalize",
+])
+export type VoteRejectionReason = z.infer<typeof voteRejectionReasonSchema>
+
 const base64StringSchema = z.string().regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/, {
   message: "Must be valid base64",
 })
@@ -150,12 +160,37 @@ export const relayRequestSchema = z.object({
 
 export type RelayRequest = z.infer<typeof relayRequestSchema>
 
+export const governanceVoteOutcomeSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("vote_cast"),
+    proposalId: z.number().optional(),
+    voter: z.string().optional(),
+    choice: voteChoiceSchema.optional(),
+  }),
+  z.object({
+    kind: z.literal("vote_rejected"),
+    reason: voteRejectionReasonSchema.or(z.literal("unknown")),
+    proposalId: z.number().optional(),
+    voter: z.string().optional(),
+  }),
+  z.object({ kind: z.literal("tx_failed"), error: z.string() }),
+  z.object({ kind: z.literal("unknown") }),
+])
+export type GovernanceVoteOutcome = z.infer<typeof governanceVoteOutcomeSchema>
+
 export const relayResponseSchema = z.object({
   success: z.literal(true),
   txHash: z.string(),
+  outcome: governanceVoteOutcomeSchema.optional(),
 })
 
 export type RelayResponse = z.infer<typeof relayResponseSchema>
+
+export const relayErrorResponseSchema = z.object({
+  error: z.string(),
+  reason: voteRejectionReasonSchema.optional(),
+})
+export type RelayErrorResponse = z.infer<typeof relayErrorResponseSchema>
 
 // =============================================================================
 // Utility Functions
