@@ -230,3 +230,79 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Events")]
+#[allure_severity("critical")]
+#[allure_tags("integration", "governance", "events")]
+#[allure_description("Verifies event 002 admin wallet still requires verification to vote.")]
+#[allure_test]
+async fn it_event_002_admin_wallet_still_requires_verification_to_vote() -> anyhow::Result<()> {
+    let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
+
+    let proposal_id =
+        create_proposal(&admin, &governance, "admin-not-verified", None, NearToken::from_millinear(10)).await?;
+
+    // Sanity check: this account is an admin but intentionally not verified in setup_env().
+    let is_admin: bool = governance
+        .view("is_admin")
+        .args_json(json!({ "account_id": admin.id().as_str() }))
+        .await?
+        .json()?;
+    assert!(is_admin);
+
+    let had_voted_before: bool = governance
+        .view("has_voted")
+        .args_json(json!({ "proposal_id": proposal_id, "account_id": admin.id().as_str() }))
+        .await?
+        .json()?;
+    assert!(!had_voted_before);
+
+    let res = admin
+        .call(governance.id(), "cast_vote")
+        .gas(crate::helpers::GAS_HEAVY)
+        .args_json(json!({ "proposal_id": proposal_id, "choice": "yes" }))
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let success = res.unwrap();
+    let logs = success.logs();
+    let event = extract_event(&logs, "vote_rejected");
+    let data = if event["data"].is_array() {
+        &event["data"][0]
+    } else {
+        &event["data"]
+    };
+    assert_eq!(data["proposal_id"], json!(proposal_id));
+    assert_eq!(data["voter"], json!(admin.id().as_str()));
+    assert_eq!(data["reason"], json!("not_verified"));
+
+    let has_voted: bool = governance
+        .view("has_voted")
+        .args_json(json!({ "proposal_id": proposal_id, "account_id": admin.id().as_str() }))
+        .await?
+        .json()?;
+    assert!(!has_voted);
+
+    let proposal = get_proposal(&governance, proposal_id).await?;
+    assert_eq!(proposal.yes_votes, 0);
+    assert_eq!(proposal.no_votes, 0);
+    assert_eq!(proposal.pending_vote_count, 0);
+
+    // Control: verified user can still vote on the same proposal.
+    let control = crate::helpers::user(&users, 0)
+        .call(governance.id(), "cast_vote")
+        .gas(crate::helpers::GAS_HEAVY)
+        .args_json(json!({ "proposal_id": proposal_id, "choice": "yes" }))
+        .transact()
+        .await?;
+    assert!(control.is_success());
+
+    let proposal_after_control = get_proposal(&governance, proposal_id).await?;
+    assert_eq!(proposal_after_control.yes_votes, 1);
+
+    Ok(())
+}
