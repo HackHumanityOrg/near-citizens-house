@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { maintenanceMode, appMode } from "./flags"
 
 const EXEMPT_PATHS = ["/privacy", "/terms", "/maintenance", "/waiting"]
-const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest"]
+const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest", "/.well-known"]
 const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".css", ".js", ".woff", ".woff2"]
 
 function redirectTo(request: NextRequest, pathname: string): NextResponse {
