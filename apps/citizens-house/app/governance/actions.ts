@@ -3,6 +3,7 @@
 import { unstable_cache, revalidateTag } from "next/cache"
 import { nearAccountIdSchema } from "@/lib"
 import { governanceReader } from "@/lib/contracts/governance/client"
+import { superAdmin } from "@/flags"
 import type { AccountViewRaw } from "@near-js/types"
 import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
@@ -103,6 +104,14 @@ export async function checkIsAdmin(accountId: string): Promise<boolean> {
 
   try {
     return await governanceReader.isAdmin(parsed.data)
+  } catch {
+    return false
+  }
+}
+
+export async function checkIsSuperAdmin(): Promise<boolean> {
+  try {
+    return await superAdmin()
   } catch {
     return false
   }
