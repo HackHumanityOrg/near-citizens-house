@@ -24,6 +24,7 @@
     "posthog:all": "npx tsx scripts/posthog-dashboards/setup.ts all"
   },
   "dependencies": {
+    "@flags-sdk/vercel": "^1.0.0",
     "@hot-labs/near-connect": "^0.9.0",
     "@near-js/accounts": "^2.5.1",
     "@near-js/crypto": "^2.5.1",
@@ -54,7 +55,6 @@
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tailwindcss/typography": "^0.5.19",
     "@vercel/analytics": "^1.6.1",
-    "@vercel/edge-config": "^1.4.3",
     "@vercel/toolbar": "^0.2.2",
     "@walletconnect/sign-client": "^2.23.5",
     "borsh": "^2.0.0",
@@ -62,6 +62,7 @@
     "buffer": "^6.0.3",
     "class-variance-authority": "0.7.1",
     "clsx": "^2.1.1",
+    "flags": "^4.0.3",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
     "next": "^16.1.6",
