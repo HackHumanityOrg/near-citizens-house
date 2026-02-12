@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
@@ -35,10 +36,16 @@ export function ProposalHeader({ proposal }: ProposalProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3 flex-wrap">
-        <StatusBadge status={displayStatus} failureKind={proposal.failureKind} />
-        <span className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">#{proposal.id}</span>
-      </div>
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center gap-2 text-[14px] font-inter text-[#64748b] dark:text-[#94a3b8]"
+      >
+        <Link href="/governance" className="hover:underline">
+          Proposals
+        </Link>
+        <span>/</span>
+        <span>Proposal</span>
+      </nav>
       <h1 className="font-fk-grotesk font-medium text-[28px] md:text-[36px] leading-[32px] md:leading-[40px] text-black dark:text-white">
         {proposal.title}
       </h1>
@@ -54,6 +61,9 @@ export function ProposalHeader({ proposal }: ProposalProps) {
           <MiddleTruncate text={proposal.creator} className="max-w-[140px]" />
           <ExternalLink className="h-3 w-3 shrink-0" />
         </a>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <StatusBadge status={displayStatus} failureKind={proposal.failureKind} />
       </div>
     </div>
   )
