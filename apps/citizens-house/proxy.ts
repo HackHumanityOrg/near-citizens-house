@@ -21,8 +21,8 @@ function redirectTo(request: NextRequest, pathname: string): NextResponse {
 }
 
 function isAllowedStagePath(mode: AppStage, pathname: string): boolean {
-  if (mode === "waiting") {
-    return pathname === "/waiting" || pathname === "/citizens"
+  if (pathname === "/citizens" || pathname.startsWith("/citizens/")) {
+    return true
   }
 
   const stageHome = STAGE_HOME[mode]
