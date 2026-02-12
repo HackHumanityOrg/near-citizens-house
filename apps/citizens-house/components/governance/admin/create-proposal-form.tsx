@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { nearToYocto, yoctoToNear } from "@/lib/schemas/governance-contract"
 import { buildCreateProposalTx } from "@/lib/contracts/governance/transactions"
 import { revalidateGovernance } from "@/app/governance/actions"
+import { MarkdownContent } from "@/components/governance/markdown-content"
 
 interface Props {
   minProposalBond: string // yoctoNEAR
@@ -22,7 +23,8 @@ export function CreateProposalForm({ minProposalBond }: Props) {
   const [title, setTitle] = useState("")
   const [author, setAuthor] = useState("")
   const [description, setDescription] = useState("")
-  const [scheduled, setScheduled] = useState(false)
+  const [descriptionMode, setDescriptionMode] = useState<"edit" | "preview">("edit")
+  const [scheduled, setScheduled] = useState(true)
   const [startAt, setStartAt] = useState("")
   const [bondNear, setBondNear] = useState("")
   const [txLoading, setTxLoading] = useState(false)
@@ -107,23 +109,74 @@ export function CreateProposalForm({ minProposalBond }: Props) {
           <Label htmlFor="description" className="font-fk-grotesk text-[14px] text-black dark:text-white">
             Description
           </Label>
-          <span className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">{description.length}/10000</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setDescriptionMode("edit")}
+                className={`px-2 py-1 text-[12px] rounded-md border transition-colors ${
+                  descriptionMode === "edit"
+                    ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                    : "bg-transparent text-[#64748b] border-input hover:bg-[#f8fafc] dark:hover:bg-white/[0.03]"
+                }`}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setDescriptionMode("preview")}
+                className={`px-2 py-1 text-[12px] rounded-md border transition-colors ${
+                  descriptionMode === "preview"
+                    ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                    : "bg-transparent text-[#64748b] border-input hover:bg-[#f8fafc] dark:hover:bg-white/[0.03]"
+                }`}
+              >
+                Preview
+              </button>
+            </div>
+            <span className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
+              {description.length}/10000
+            </span>
+          </div>
         </div>
-        <textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value.slice(0, 10000))}
-          placeholder="Describe the proposal..."
-          maxLength={10000}
-          required
-          rows={8}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-        />
+        {descriptionMode === "edit" ? (
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value.slice(0, 10000))}
+            placeholder="Describe the proposal..."
+            maxLength={10000}
+            required
+            rows={8}
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+          />
+        ) : (
+          <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6 min-h-[220px]">
+            {description.trim() ? (
+              <MarkdownContent>{description}</MarkdownContent>
+            ) : (
+              <p className="text-[14px] text-[#64748b] dark:text-[#94a3b8] font-inter">
+                Nothing to preview yet. Add description content in Edit mode.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
         <Label className="font-fk-grotesk text-[14px] text-black dark:text-white">Voting Start</Label>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setScheduled(true)}
+            className={`flex-1 px-3 py-2 text-sm rounded-md border transition-colors ${
+              scheduled
+                ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                : "bg-transparent text-[#64748b] border-input hover:bg-[#f8fafc] dark:hover:bg-white/[0.03]"
+            }`}
+          >
+            Scheduled
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -137,17 +190,6 @@ export function CreateProposalForm({ minProposalBond }: Props) {
             }`}
           >
             Immediately
-          </button>
-          <button
-            type="button"
-            onClick={() => setScheduled(true)}
-            className={`flex-1 px-3 py-2 text-sm rounded-md border transition-colors ${
-              scheduled
-                ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                : "bg-transparent text-[#64748b] border-input hover:bg-[#f8fafc] dark:hover:bg-white/[0.03]"
-            }`}
-          >
-            Scheduled
           </button>
         </div>
         {scheduled && (

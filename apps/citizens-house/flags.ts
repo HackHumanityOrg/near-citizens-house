@@ -23,3 +23,14 @@ export const appMode = flag<"verification" | "waiting" | "voting">({
     { value: "voting", label: "Voting" },
   ],
 })
+
+export const superAdmin = flag<boolean>({
+  key: "super-admin",
+  adapter: vercelAdapter(),
+  defaultValue: false,
+  description: "Enables advanced governance admin sections",
+  options: [
+    { value: false, label: "Off" },
+    { value: true, label: "On" },
+  ],
+})

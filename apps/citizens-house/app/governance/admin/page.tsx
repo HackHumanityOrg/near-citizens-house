@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useNearWallet } from "@/lib"
 import { Loader2 } from "lucide-react"
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@near-citizens/ui"
-import { checkIsAdmin, getGovernanceConfig } from "../actions"
+import { checkIsAdmin, checkIsSuperAdmin, getGovernanceConfig } from "../actions"
 import type { GovernanceConfig } from "@/lib/schemas/governance-contract"
 import { ProposalsPanel } from "@/components/governance/admin/proposals-panel"
 import { CreateProposalForm } from "@/components/governance/admin/create-proposal-form"
@@ -19,23 +19,28 @@ export default function AdminPage() {
   const router = useRouter()
   const { accountId, isConnected, connect, isLoading } = useNearWallet()
   const [adminCheck, setAdminCheck] = useState<{ accountId: string; isAdmin: boolean } | null>(null)
+  const [superAdminEnabled, setSuperAdminEnabled] = useState<boolean | null>(null)
   const [config, setConfig] = useState<GovernanceConfig | null>(null)
 
   useEffect(() => {
     if (!isConnected || !accountId) return
-    Promise.all([checkIsAdmin(accountId), getGovernanceConfig()]).then(([admin, cfg]) => {
-      setAdminCheck({ accountId, isAdmin: admin })
-      setConfig(cfg)
-      if (!admin) router.replace("/governance")
-    })
+    Promise.all([checkIsAdmin(accountId), getGovernanceConfig(), checkIsSuperAdmin()]).then(
+      ([admin, cfg, isSuperAdmin]) => {
+        setAdminCheck({ accountId, isAdmin: admin })
+        setConfig(cfg)
+        setSuperAdminEnabled(isSuperAdmin)
+        if (!admin) router.replace("/governance")
+      },
+    )
   }, [isConnected, accountId, router])
 
   // Derive admin status from check result, accounting for account changes
   const isAdmin = adminCheck?.accountId === accountId ? adminCheck.isAdmin : null
   const adminLoading = isConnected && accountId && isAdmin === null
+  const superAdminLoading = isConnected && accountId && superAdminEnabled === null
 
   function renderContent() {
-    if (isLoading || adminLoading) {
+    if (isLoading || adminLoading || superAdminLoading) {
       return (
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-6 w-6 animate-spin text-[#64748b]" />
@@ -62,6 +67,21 @@ export default function AdminPage() {
           <p className="font-fk-grotesk text-[16px] text-[#64748b] dark:text-[#94a3b8]">
             Only admins can access this page.
           </p>
+        </div>
+      )
+    }
+
+    const canAccessAdvancedAdminSections = superAdminEnabled === true
+
+    if (!canAccessAdvancedAdminSections) {
+      return (
+        <div className="w-full px-4 md:px-[82px] py-8 md:py-12">
+          <div className="flex flex-col gap-6 max-w-[800px] mx-auto">
+            <h2 className="font-fk-grotesk font-bold text-[24px] md:text-[28px] leading-[32px] text-black dark:text-white">
+              Create
+            </h2>
+            {config && <CreateProposalForm minProposalBond={config.minProposalBond} />}
+          </div>
         </div>
       )
     }
