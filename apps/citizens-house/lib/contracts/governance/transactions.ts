@@ -8,8 +8,8 @@
 import type { SignAndSendTransactionParams } from "@hot-labs/near-connect"
 import { NEAR_CONFIG } from "../../config"
 import type { VoteChoice } from "../../schemas/governance-contract"
+import { GAS_100_TGAS } from "../gas"
 
-const GAS_100T = "100000000000000" // 100 TGas
 const ONE_YOCTO = "1"
 const ZERO_DEPOSIT = "0"
 
@@ -23,7 +23,7 @@ function buildFunctionCallTx(
   methodName: string,
   args: Record<string, unknown>,
   deposit: string,
-  gas: string = GAS_100T,
+  gas: string = GAS_100_TGAS,
 ): SignAndSendTransactionParams {
   return {
     receiverId: getContractId(),

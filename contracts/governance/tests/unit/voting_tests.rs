@@ -2,7 +2,7 @@ use allure_rs::prelude::*;
 use governance::{
     FailureKind, ProposalStatus, VoteChoice, ESTIMATED_PENDING_VOTE_BYTES, ESTIMATED_VOTE_BYTES};
 use near_sdk::test_utils::accounts;
-use near_sdk::{env, NearToken};
+use near_sdk::{env, Gas, NearToken};
 
 use crate::helpers::{
     activate_proposal, assert_panics_with, build_context, create_basic_proposal, insert_pending_vote,
@@ -86,6 +86,30 @@ fn ut_vote_001_rejects_non_active_succeeded() {
     let builder = build_context(accounts(2));
     crate::helpers::set_context(builder);
     contract.cast_vote(id, VoteChoice::Yes);
+}
+
+#[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Voting")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "voting")]
+#[allure_description("Verifies vote 001b cast vote requires sufficient prepaid gas.")]
+#[allure_test]
+fn ut_vote_001b_cast_vote_requires_sufficient_prepaid_gas() {
+    let mut contract = new_contract();
+    let id = create_basic_proposal(&mut contract, accounts(0));
+    activate_proposal(&mut contract, id, 10);
+    let proposal = contract.get_proposal(id).unwrap();
+
+    let mut builder = build_context(accounts(2));
+    with_block_timestamp(&mut builder, proposal.start_at.0 + 1);
+    builder.prepaid_gas(Gas::from_tgas(99));
+    crate::helpers::set_context(builder);
+    assert_panics_with(
+        || contract.cast_vote(id, VoteChoice::Yes),
+        "ERR_INSUFFICIENT_PREPAID_GAS",
+    );
 }
 
 #[test]

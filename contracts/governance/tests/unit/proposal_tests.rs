@@ -1,7 +1,7 @@
 use allure_rs::prelude::*;
 use governance::{FailureKind, PendingVote, VerificationSummary, VersionedContract, VoteChoice};
 use near_sdk::test_utils::accounts;
-use near_sdk::{json_types::U64, NearToken, PromiseResult};
+use near_sdk::{json_types::U64, Gas, NearToken, PromiseResult};
 
 use crate::helpers::{
     assert_panics_with, build_context, new_contract, set_context_with_promise_results,
@@ -73,6 +73,28 @@ fn ut_prop_000_create_proposal_non_admin() {
     builder.attached_deposit(NearToken::from_millinear(10));
     crate::helpers::set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
+}
+
+#[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Proposals")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "proposals")]
+#[allure_description("Verifies prop 000b create proposal requires sufficient prepaid gas.")]
+#[allure_test]
+fn ut_prop_000b_create_proposal_requires_sufficient_prepaid_gas() {
+    let mut contract = new_contract();
+    let mut builder = build_context(accounts(0));
+    builder.attached_deposit(NearToken::from_millinear(10));
+    builder.prepaid_gas(Gas::from_tgas(79));
+    crate::helpers::set_context(builder);
+    assert_panics_with(
+        || {
+            contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
+        },
+        "ERR_INSUFFICIENT_PREPAID_GAS",
+    );
 }
 
 #[test]

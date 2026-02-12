@@ -18,9 +18,16 @@ pub use interface::{ext_verified_accounts, VerificationSummary};
 
 // ==================== Gas Constants ====================
 
-const GAS_FOR_SNAPSHOT_CALLBACK: Gas = Gas::from_tgas(20);
-const GAS_FOR_VOTE_CALLBACK: Gas = Gas::from_tgas(30);
-const GAS_FOR_BLOCKLIST_CALLBACK: Gas = Gas::from_tgas(20);
+const GAS_FOR_SNAPSHOT_QUERY: Gas = Gas::from_tgas(10);
+const GAS_FOR_VERIFICATION_QUERY: Gas = Gas::from_tgas(12);
+
+const GAS_FOR_SNAPSHOT_CALLBACK: Gas = Gas::from_tgas(25);
+const GAS_FOR_VOTE_CALLBACK: Gas = Gas::from_tgas(45);
+const GAS_FOR_BLOCKLIST_CALLBACK: Gas = Gas::from_tgas(25);
+
+const MIN_PREPAID_GAS_FOR_CREATE_PROPOSAL: Gas = Gas::from_tgas(80);
+const MIN_PREPAID_GAS_FOR_CAST_VOTE: Gas = Gas::from_tgas(100);
+const MIN_PREPAID_GAS_FOR_BLOCKLIST_ACCOUNT: Gas = Gas::from_tgas(80);
 
 // ==================== Validation Constants ====================
 
@@ -107,6 +114,7 @@ pub const ERR_BLOCKLISTED: &str = "ERR_BLOCKLISTED";
 pub const ERR_ALREADY_VOTED: &str = "ERR_ALREADY_VOTED";
 pub const ERR_VOTE_ALREADY_PENDING: &str = "ERR_VOTE_ALREADY_PENDING";
 pub const ERR_INSUFFICIENT_DEPOSIT: &str = "ERR_INSUFFICIENT_DEPOSIT";
+pub const ERR_INSUFFICIENT_PREPAID_GAS: &str = "ERR_INSUFFICIENT_PREPAID_GAS";
 
 // Blocklist
 pub const ERR_BLOCKLIST_LOCKED: &str = "ERR_BLOCKLIST_LOCKED";
@@ -486,6 +494,13 @@ pub trait GovernanceCallbacks {
 // ==================== Private Helper Methods ====================
 
 impl VersionedContract {
+    fn assert_min_prepaid_gas(required: Gas) {
+        require!(
+            env::prepaid_gas().as_gas() >= required.as_gas(),
+            ERR_INSUFFICIENT_PREPAID_GAS
+        );
+    }
+
     fn assert_admin(&self) {
         let contract = self.contract();
         require!(
@@ -707,6 +722,7 @@ impl VersionedContract {
         start_at: Option<U64>,
     ) -> u32 {
         self.assert_admin();
+        Self::assert_min_prepaid_gas(MIN_PREPAID_GAS_FOR_CREATE_PROPOSAL);
 
         // Validate field lengths
         require!(!title.is_empty(), ERR_TITLE_EMPTY);
@@ -822,10 +838,12 @@ impl VersionedContract {
 
         // Cross-contract: get_verified_count -> on_snapshot
         ext_verified_accounts::ext(verified_accounts_contract)
+            .with_static_gas(GAS_FOR_SNAPSHOT_QUERY)
             .get_verified_count()
             .then(
                 ext_self::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_SNAPSHOT_CALLBACK)
+                    .with_unused_gas_weight(0)
                     .on_snapshot(proposal_id),
             )
             .detach();
@@ -1066,6 +1084,7 @@ impl VersionedContract {
 
     #[payable]
     pub fn cast_vote(&mut self, proposal_id: u32, choice: VoteChoice) {
+        Self::assert_min_prepaid_gas(MIN_PREPAID_GAS_FOR_CAST_VOTE);
         let voter = env::predecessor_account_id();
         let deposit = env::attached_deposit();
         let now = env::block_timestamp();
@@ -1137,10 +1156,12 @@ impl VersionedContract {
 
         // Cross-contract: get_verification -> on_vote_verification
         ext_verified_accounts::ext(verified_accounts_contract)
+            .with_static_gas(GAS_FOR_VERIFICATION_QUERY)
             .get_verification(voter.clone())
             .then(
                 ext_self::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_VOTE_CALLBACK)
+                    .with_unused_gas_weight(0)
                     .on_vote_verification(proposal_id, voter),
             )
             .detach();
@@ -1203,6 +1224,7 @@ impl VersionedContract {
     #[payable]
     pub fn blocklist_account(&mut self, account_id: AccountId) {
         assert_one_yocto();
+        Self::assert_min_prepaid_gas(MIN_PREPAID_GAS_FOR_BLOCKLIST_ACCOUNT);
         self.assert_admin();
         require!(
             !self.has_pending_or_active_proposals(),
@@ -1225,10 +1247,12 @@ impl VersionedContract {
 
         // Cross-contract: get_verification -> on_blocklist_verification
         ext_verified_accounts::ext(verified_accounts_contract)
+            .with_static_gas(GAS_FOR_VERIFICATION_QUERY)
             .get_verification(account_id.clone())
             .then(
                 ext_self::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_BLOCKLIST_CALLBACK)
+                    .with_unused_gas_weight(0)
                     .on_blocklist_verification(account_id),
             )
             .detach();
