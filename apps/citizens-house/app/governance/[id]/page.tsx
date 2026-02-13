@@ -1,14 +1,8 @@
 import { notFound } from "next/navigation"
 import { getProposal, getProposalVotes } from "../actions"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
-import { VotePanel } from "@/components/governance/vote-panel"
-import { VotesTable } from "@/components/governance/votes-table"
-import {
-  ProposalHeader,
-  ProposalDescription,
-  VotingProgressCard,
-  ProposalTimeline,
-} from "@/components/governance/proposal-detail"
+import { ProposalVotingSidebar } from "@/components/governance/proposal-voting-sidebar"
+import { ProposalHeader, ProposalDescription } from "@/components/governance/proposal-detail"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -22,13 +16,13 @@ export default async function ProposalPage({ params }: Props) {
     notFound()
   }
 
-  const [proposal, votesResult] = await Promise.all([getProposal(proposalId), getProposalVotes(proposalId, 0, 20)])
-
+  const proposal = await getProposal(proposalId)
   if (!proposal) {
     notFound()
   }
 
   const totalVotes = proposal.yesVotes + proposal.noVotes
+  const votesResult = await getProposalVotes(proposalId, 0, 20, totalVotes)
 
   return (
     <div className="w-full">
@@ -59,10 +53,12 @@ export default async function ProposalPage({ params }: Props) {
 
             {/* Right column: sidebar */}
             <div className="w-full lg:w-[380px] lg:shrink-0 flex flex-col gap-6">
-              <VotePanel proposal={proposal} />
-              <VotingProgressCard proposal={proposal} />
-              <ProposalTimeline proposal={proposal} />
-              <VotesTable proposalId={proposalId} initialVotes={votesResult.votes} totalVotes={totalVotes} />
+              <ProposalVotingSidebar
+                proposal={proposal}
+                proposalId={proposalId}
+                initialVotes={votesResult.votes}
+                totalVotes={totalVotes}
+              />
             </div>
           </div>
         </div>
