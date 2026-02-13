@@ -4,15 +4,31 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { StatusBadge } from "./status-badge"
-import { VoteProgressBar } from "./vote-progress-bar"
 import { CountdownTimer } from "./countdown-timer"
 
 interface Props {
   proposal: ProposalView
 }
 
+function ProposalCardVoteSummary({ yesVotes, noVotes }: { yesVotes: number; noVotes: number }) {
+  const totalVotes = yesVotes + noVotes
+  const yesPct = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0
+  const yesPctRounded = Math.round(yesPct)
+  const noPctRounded = totalVotes > 0 ? Math.max(0, 100 - yesPctRounded) : 0
+
+  return (
+    <div className="min-w-[100px]">
+      <span className="text-[11px] whitespace-nowrap font-inter">
+        <span className="text-[#166534] dark:text-[#bbf7d0]">{yesPctRounded}% Yes</span>
+        <span className="text-[#64748b] dark:text-[#94a3b8]"> · </span>
+        <span className="text-[#991b1b] dark:text-[#fecaca]">{noPctRounded}% No</span>
+      </span>
+    </div>
+  )
+}
+
 export function ProposalCard({ proposal }: Props) {
-  const { id, title, author, status, yesVotes, noVotes, quorumBps, snapshotVerifiedCount, startAt, endsAt } = proposal
+  const { id, title, author, status, yesVotes, noVotes, startAt, endsAt } = proposal
   const [now, setNow] = useState(Date.now)
   const isScheduled = status === "active" && startAt > now
   const isFinished = status === "active" && endsAt < now
@@ -37,13 +53,7 @@ export function ProposalCard({ proposal }: Props) {
           <StatusBadge status={displayStatus} failureKind={proposal.failureKind} />
         </div>
         <div className="flex items-center justify-between gap-4">
-          <VoteProgressBar
-            yesVotes={yesVotes}
-            noVotes={noVotes}
-            quorumBps={quorumBps}
-            snapshotVerifiedCount={snapshotVerifiedCount}
-            compact
-          />
+          <ProposalCardVoteSummary yesVotes={yesVotes} noVotes={noVotes} />
           {isScheduled ? (
             <CountdownTimer targetMs={startAt} label="Starts in" endedLabel="Starting..." />
           ) : status === "active" ? (
@@ -66,13 +76,7 @@ export function ProposalCard({ proposal }: Props) {
           <StatusBadge status={displayStatus} failureKind={proposal.failureKind} />
         </div>
         <div className="flex justify-center">
-          <VoteProgressBar
-            yesVotes={yesVotes}
-            noVotes={noVotes}
-            quorumBps={quorumBps}
-            snapshotVerifiedCount={snapshotVerifiedCount}
-            compact
-          />
+          <ProposalCardVoteSummary yesVotes={yesVotes} noVotes={noVotes} />
         </div>
         <div className="flex justify-center">
           {isScheduled ? (
