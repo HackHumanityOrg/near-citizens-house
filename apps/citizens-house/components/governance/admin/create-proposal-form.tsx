@@ -7,6 +7,7 @@ import { useNearWallet } from "@/lib"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { nearToYocto, yoctoToNear } from "@/lib/schemas/governance-contract"
+import { epochMsToNanoseconds, formatUtcDateTime, parseDatetimeLocalToEpochMs } from "@/lib/governance-dates"
 import { buildCreateProposalTx } from "@/lib/contracts/governance/transactions"
 import { revalidateGovernance } from "@/app/governance/actions"
 import { MarkdownContent } from "@/components/governance/markdown-content"
@@ -30,6 +31,7 @@ export function CreateProposalForm({ minProposalBond }: Props) {
   const [txLoading, setTxLoading] = useState(false)
 
   const loading = txLoading || isPending
+  const selectedStartMs = startAt ? parseDatetimeLocalToEpochMs(startAt) : null
 
   // Convert minProposalBond (yoctoNEAR) to NEAR for display
   const minBondNear = parseFloat(yoctoToNear(minProposalBond))
@@ -42,14 +44,22 @@ export function CreateProposalForm({ minProposalBond }: Props) {
       toast.error("Please fill in all required fields")
       return
     }
+    if (scheduled && !startAt) {
+      toast.error("Please choose a voting start date and time")
+      return
+    }
 
     setTxLoading(true)
     try {
       const bondYocto = bondNear ? nearToYocto(bondNear) : minProposalBond
       let startAtNs: string | undefined
       if (startAt) {
-        const ms = new Date(startAt).getTime()
-        startAtNs = (BigInt(ms) * BigInt(1_000_000)).toString()
+        const startMs = parseDatetimeLocalToEpochMs(startAt)
+        if (startMs === null) {
+          toast.error("Invalid voting start date and time")
+          return
+        }
+        startAtNs = epochMsToNanoseconds(startMs)
       }
 
       await signAndSendTransaction(
@@ -164,7 +174,7 @@ export function CreateProposalForm({ minProposalBond }: Props) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label className="font-fk-grotesk text-[14px] text-black dark:text-white">Voting Start</Label>
+        <Label className="font-fk-grotesk text-[14px] text-black dark:text-white">Voting Start (UTC)</Label>
         <div className="flex gap-2">
           <button
             type="button"
@@ -193,11 +203,22 @@ export function CreateProposalForm({ minProposalBond }: Props) {
           </button>
         </div>
         {scheduled && (
-          <Input id="startAt" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+          <Input
+            id="startAt"
+            type="datetime-local"
+            value={startAt}
+            onChange={(e) => setStartAt(e.target.value)}
+            required={scheduled}
+          />
+        )}
+        {scheduled && startAt && selectedStartMs !== null && (
+          <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
+            UTC preview: {formatUtcDateTime(selectedStartMs)}
+          </p>
         )}
         <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
           {scheduled
-            ? "Voting opens at the scheduled time. Must be within the max start delay."
+            ? "Choose a UTC date/time. This value is submitted on-chain as UTC."
             : "Voting opens as soon as the proposal is confirmed on-chain."}
         </p>
       </div>

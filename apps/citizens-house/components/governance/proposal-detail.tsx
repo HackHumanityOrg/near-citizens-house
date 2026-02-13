@@ -6,23 +6,11 @@ import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
 import { ExternalLink } from "lucide-react"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
+import { formatUtcDateTime } from "@/lib/governance-dates"
 import { StatusBadge } from "./status-badge"
 import { VoteProgressBar } from "./vote-progress-bar"
 import { CountdownTimer } from "./countdown-timer"
 import { MarkdownContent } from "./markdown-content"
-
-function formatDate(timestamp: number): string {
-  const date = new Date(timestamp)
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-  const month = months[date.getUTCMonth()]
-  const day = date.getUTCDate()
-  const year = date.getUTCFullYear()
-  const hours = date.getUTCHours()
-  const minutes = date.getUTCMinutes().toString().padStart(2, "0")
-  const ampm = hours >= 12 ? "PM" : "AM"
-  const hour12 = hours % 12 || 12
-  return `${month} ${day}, ${year}, ${hour12}:${minutes} ${ampm} UTC`
-}
 
 interface ProposalProps {
   proposal: ProposalView
@@ -106,15 +94,15 @@ export function ProposalTimeline({ proposal }: ProposalProps) {
       <div className="flex flex-col gap-2 text-[13px] font-inter text-[#475569] dark:text-[#94a3b8]">
         <div className="flex justify-between">
           <span>Created</span>
-          <span>{formatDate(proposal.createdAt)}</span>
+          <span>{formatUtcDateTime(proposal.createdAt)}</span>
         </div>
         <div className="flex justify-between">
           <span>Voting starts</span>
-          <span>{formatDate(proposal.startAt)}</span>
+          <span>{formatUtcDateTime(proposal.startAt)}</span>
         </div>
         <div className="flex justify-between">
           <span>Voting ends</span>
-          <span>{formatDate(proposal.endsAt)}</span>
+          <span>{formatUtcDateTime(proposal.endsAt)}</span>
         </div>
         {isScheduled ? (
           <div className="flex justify-between items-center pt-1 border-t border-[#e2e8f0] dark:border-white/10 mt-1">

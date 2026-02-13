@@ -7,6 +7,7 @@ import { useNearWallet } from "@/lib"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
+import { formatUtcDateTime } from "@/lib/governance-dates"
 import { StatusBadge, type DisplayStatus } from "../status-badge"
 import {
   buildCancelProposalTx,
@@ -111,6 +112,10 @@ export function ProposalsPanel() {
               </div>
               <StatusBadge status={getDisplayStatus(proposal)} failureKind={proposal.failureKind} />
             </div>
+            <p className="text-[11px] text-[#64748b] dark:text-[#94a3b8] font-inter leading-[1.3]">
+              Created {formatUtcDateTime(proposal.createdAt)} · Starts {formatUtcDateTime(proposal.startAt)} · Ends{" "}
+              {formatUtcDateTime(proposal.endsAt)}
+            </p>
             {(canCancel || canExpire || canFinalize) && (
               <div className="flex flex-wrap gap-2">
                 {canCancel && (
