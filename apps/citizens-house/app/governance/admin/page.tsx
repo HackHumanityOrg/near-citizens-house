@@ -80,7 +80,12 @@ export default function AdminPage() {
             <h2 className="font-fk-grotesk font-bold text-[24px] md:text-[28px] leading-[32px] text-black dark:text-white">
               Create
             </h2>
-            {config && <CreateProposalForm minProposalBond={config.minProposalBond} />}
+            {config && (
+              <CreateProposalForm
+                minProposalBond={config.minProposalBond}
+                maxStartDelaySecs={config.maxStartDelaySecs}
+              />
+            )}
           </div>
         </div>
       )
@@ -114,7 +119,12 @@ export default function AdminPage() {
               <ProposalsPanel />
             </TabsContent>
             <TabsContent value="create" className="mt-6">
-              {config && <CreateProposalForm minProposalBond={config.minProposalBond} />}
+              {config && (
+                <CreateProposalForm
+                  minProposalBond={config.minProposalBond}
+                  maxStartDelaySecs={config.maxStartDelaySecs}
+                />
+              )}
             </TabsContent>
             <TabsContent value="config" className="mt-6">
               <ConfigPanel />
