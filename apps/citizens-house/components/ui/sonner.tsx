@@ -19,7 +19,7 @@ export function Toaster() {
           toast:
             "flex items-center gap-3 bg-verified text-white dark:text-black rounded-[8px] pl-4 pr-4 py-2 shadow-lg",
           error: "!bg-[#dc2626] dark:!bg-[#dc2626]",
-          title: "font-fk-grotesk text-[14px] leading-[1.4] text-white dark:text-black",
+          title: "font-fk-grotesk text-[14px] leading-[1.4]",
         },
       }}
     />

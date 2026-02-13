@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Loader2, Check } from "lucide-react"
@@ -28,9 +29,14 @@ import {
   resolveGovernanceVoteOutcome,
   type GovernanceVoteOutcome,
 } from "@/lib/contracts/governance/vote-outcome"
+import type { OptimisticVote, VoteLifecyclePayload } from "./optimistic-vote"
 
 interface Props {
   proposal: ProposalView
+  optimisticVote?: OptimisticVote | null
+  onVoteProcessing?: (payload: VoteLifecyclePayload) => void
+  onVoteSuccess?: (payload: VoteLifecyclePayload) => void
+  onVoteFailure?: () => void
 }
 
 // Minimum balance to cover gas (~0.01 NEAR in yoctoNEAR)
@@ -45,10 +51,16 @@ interface EligibilityResult {
   balance: string
 }
 
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
 function getVoteOutcomeToast(
   outcome: GovernanceVoteOutcome,
   choice: VoteChoice,
-): { type: "success" | "error" | "warning"; message: string } {
+): { type: "success" | "error"; message: string } {
   if (outcome.kind === "vote_cast") {
     return { type: "success", message: `Vote "${outcome.choice ?? choice}" cast successfully` }
   }
@@ -61,10 +73,11 @@ function getVoteOutcomeToast(
     return { type: "error", message: getTransactionFailureMessage(outcome.error) }
   }
 
-  return { type: "warning", message: "Vote submitted, but the final outcome could not be confirmed." }
+  return { type: "error", message: "Vote outcome could not be confirmed. Please refresh and check again." }
 }
 
-export function VotePanel({ proposal }: Props) {
+export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSuccess, onVoteFailure }: Props) {
+  const router = useRouter()
   const {
     accountId,
     walletName,
@@ -92,6 +105,30 @@ export function VotePanel({ proposal }: Props) {
     })
   }, [isConnected, accountId, proposal.id])
 
+  useEffect(() => {
+    if (!isConnected || !accountId) return
+
+    let cancelled = false
+
+    getVote(proposal.id, accountId)
+      .then((vote) => {
+        if (cancelled || !vote) return
+
+        setEligibility((prev) => {
+          if (!prev || prev.accountId !== accountId) return prev
+          if (prev.existingVote?.choice === vote.choice && prev.existingVote.votedAt === vote.votedAt) return prev
+          return { ...prev, existingVote: vote }
+        })
+      })
+      .catch((error) => {
+        console.error("[vote-panel] Failed to sync vote state from server:", error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isConnected, accountId, proposal.id, proposal.yesVotes, proposal.noVotes])
+
   // Derive current state — stale results for a different account are ignored
   const current = eligibility?.accountId === accountId ? eligibility : null
   const checking = isConnected && !!accountId && !current
@@ -103,11 +140,82 @@ export function VotePanel({ proposal }: Props) {
   const isVoteFree = current?.isVoteFree ?? false
   const isZeroBalance = current ? BigInt(current.balance) < MIN_GAS_BALANCE : false
   const needsRelay = isZeroBalance && isVoteFree && supportsMetaTransactions
+  const optimisticForCurrentAccount =
+    optimisticVote && accountId && optimisticVote.proposalId === proposal.id && optimisticVote.voter === accountId
+      ? optimisticVote
+      : null
+  const optimisticPendingChoice =
+    optimisticForCurrentAccount?.status === "pending" ? optimisticForCurrentAccount.choice : null
+  const confirmedChoice =
+    existingVote?.choice ??
+    (optimisticForCurrentAccount?.status === "confirmed" ? optimisticForCurrentAccount.choice : null)
 
   const handleVote = async (choice: VoteChoice) => {
     if (!isConnected || !accountId) return
 
+    const voteLifecyclePayload: VoteLifecyclePayload = {
+      proposalId: proposal.id,
+      voter: accountId,
+      choice,
+      votedAt: Date.now(),
+    }
+
     setTxLoading(true)
+    let pendingToastId: string | number | null = null
+
+    const startProcessingFeedback = () => {
+      onVoteProcessing?.(voteLifecyclePayload)
+      pendingToastId = toast.loading("Vote submitted. Processing on-chain...", {
+        duration: Infinity,
+        className: "!bg-[#f1f5f9] !text-[#0f172a] dark:!bg-[#334155] dark:!text-[#e2e8f0]",
+        icon: <Loader2 className="h-4 w-4 animate-spin text-[#475569] dark:text-[#cbd5e1]" />,
+      })
+    }
+    const safeRefreshGovernanceView = async () => {
+      try {
+        await revalidateGovernance()
+      } catch (error) {
+        console.error("[vote-panel] Failed to revalidate governance cache after vote:", error)
+      } finally {
+        startTransition(() => {
+          router.refresh()
+        })
+      }
+    }
+    const syncVoteFromChain = async (targetAccountId: string, attempts: number) => {
+      let syncedVote: VoteView | null = null
+
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+          syncedVote = await getVote(proposal.id, targetAccountId)
+        } catch (error) {
+          console.error("[vote-panel] Failed to fetch vote state after submission:", error)
+          syncedVote = null
+        }
+
+        if (syncedVote) break
+        if (attempt < attempts - 1) {
+          await wait(250 * (attempt + 1))
+        }
+      }
+
+      if (syncedVote) {
+        setEligibility((prev) => {
+          if (!prev || prev.accountId !== targetAccountId) return prev
+          if (
+            prev.existingVote?.choice === syncedVote.choice &&
+            prev.existingVote.votedAt === syncedVote.votedAt &&
+            prev.existingVote.voter === syncedVote.voter
+          ) {
+            return prev
+          }
+          return { ...prev, existingVote: syncedVote }
+        })
+      }
+
+      return syncedVote
+    }
+
     try {
       let voteOutcome: GovernanceVoteOutcome = { kind: "unknown" }
 
@@ -134,8 +242,11 @@ export function VotePanel({ proposal }: Props) {
             },
           ],
         })
+        const signedDelegate = results[0]?.signedDelegate
+        if (!signedDelegate) throw new Error("Wallet did not return a signed delegate action")
 
-        const encoded = encodeSignedDelegate(results[0].signedDelegate)
+        startProcessingFeedback()
+        const encoded = encodeSignedDelegate(signedDelegate)
         const res = await fetch("/api/governance/relay", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -148,11 +259,15 @@ export function VotePanel({ proposal }: Props) {
           const reason = typeof relayError?.reason === "string" ? relayError.reason : null
 
           if (reason && isVoteRejectionReason(reason)) {
+            if (pendingToastId !== null) toast.dismiss(pendingToastId)
             toast.error(getVoteRejectionReasonMessage(reason))
           } else {
             const message = typeof relayError?.error === "string" ? relayError.error : `Relay failed (${res.status})`
+            if (pendingToastId !== null) toast.dismiss(pendingToastId)
             toast.error(message)
           }
+          await safeRefreshGovernanceView()
+          onVoteFailure?.()
           return
         }
 
@@ -162,30 +277,43 @@ export function VotePanel({ proposal }: Props) {
         // Direct transaction path
         const deposit = isVoteFree ? "0" : "10000000000000000000000" // 0.01 NEAR storage deposit
         const result = await signAndSendTransaction(buildCastVoteTx(proposal.id, choice, deposit))
+        startProcessingFeedback()
         voteOutcome = resolveGovernanceVoteOutcome(result)
       }
 
-      const voteToast = getVoteOutcomeToast(voteOutcome, choice)
-      if (voteToast.type === "success") {
-        toast.success(voteToast.message)
-      } else if (voteToast.type === "error") {
-        toast.error(voteToast.message)
-      } else {
-        toast.warning(voteToast.message)
+      let syncedVote: VoteView | null = null
+      if (voteOutcome.kind !== "tx_failed") {
+        await safeRefreshGovernanceView()
+        const retries = voteOutcome.kind === "vote_rejected" ? 1 : 3
+        syncedVote = await syncVoteFromChain(accountId, retries)
       }
 
-      if (voteOutcome.kind !== "tx_failed") {
-        startTransition(() => {
-          revalidateGovernance()
-        })
-        // Refresh vote state
-        const vote = await getVote(proposal.id, accountId)
-        setEligibility((prev) => (prev ? { ...prev, existingVote: vote } : null))
+      const effectiveOutcome: GovernanceVoteOutcome = syncedVote
+        ? {
+            kind: "vote_cast",
+            proposalId: syncedVote.proposalId,
+            voter: syncedVote.voter,
+            choice: syncedVote.choice,
+          }
+        : voteOutcome
+
+      const voteToast = getVoteOutcomeToast(effectiveOutcome, choice)
+      if (voteToast.type === "success") {
+        if (pendingToastId !== null) toast.dismiss(pendingToastId)
+        toast.success(voteToast.message)
+        onVoteSuccess?.(voteLifecyclePayload)
+      } else {
+        if (pendingToastId !== null) toast.dismiss(pendingToastId)
+        toast.error(voteToast.message)
+        onVoteFailure?.()
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
+      if (pendingToastId !== null) toast.dismiss(pendingToastId)
       toast.error(getTransactionFailureMessage(errorMessage))
+      onVoteFailure?.()
     } finally {
+      if (pendingToastId !== null) toast.dismiss(pendingToastId)
       setTxLoading(false)
     }
   }
@@ -256,8 +384,26 @@ export function VotePanel({ proposal }: Props) {
     )
   }
 
+  if (optimisticPendingChoice) {
+    return (
+      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
+        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-5 w-5 animate-spin text-[#64748b] dark:text-[#94a3b8]" />
+          <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
+            Your vote{" "}
+            <strong className={optimisticPendingChoice === "yes" ? "text-[#22c55e]" : "text-[#ef4444]"}>
+              {optimisticPendingChoice.toUpperCase()}
+            </strong>{" "}
+            is being processed.
+          </span>
+        </div>
+      </div>
+    )
+  }
+
   // Already voted
-  if (existingVote) {
+  if (confirmedChoice) {
     return (
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
@@ -265,8 +411,8 @@ export function VotePanel({ proposal }: Props) {
           <Check className="h-5 w-5 text-[#22c55e]" />
           <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
             You voted{" "}
-            <strong className={existingVote.choice === "yes" ? "text-[#22c55e]" : "text-[#ef4444]"}>
-              {existingVote.choice.toUpperCase()}
+            <strong className={confirmedChoice === "yes" ? "text-[#22c55e]" : "text-[#ef4444]"}>
+              {confirmedChoice.toUpperCase()}
             </strong>
           </span>
         </div>

@@ -1,6 +1,6 @@
 "use server"
 
-import { unstable_cache, revalidateTag } from "next/cache"
+import { unstable_cache, updateTag } from "next/cache"
 import { nearAccountIdSchema } from "@/lib"
 import { governanceReader } from "@/lib/contracts/governance/client"
 import { superAdmin } from "@/flags"
@@ -59,14 +59,28 @@ const getCachedVotes = unstable_cache(
   { tags: ["governance"], revalidate: 15 },
 )
 
-export async function getProposalVotes(proposalId: number, page: number, pageSize: number) {
+export async function getProposalVotes(proposalId: number, page: number, pageSize: number, knownTotalVotes?: number) {
   const params = paginationSchema.safeParse({ page, pageSize })
   if (!params.success) return { votes: [] as VoteView[], total: 0 }
 
   try {
-    const fromIndex = params.data.page * params.data.pageSize
-    const votes = await getCachedVotes(proposalId, fromIndex, params.data.pageSize)
-    return { votes, total: -1 } // total unknown from list_votes
+    let totalVotes = typeof knownTotalVotes === "number" && Number.isFinite(knownTotalVotes) ? knownTotalVotes : null
+
+    if (totalVotes === null) {
+      const proposal = await getCachedProposal(proposalId)
+      if (!proposal) return { votes: [] as VoteView[], total: 0 }
+      totalVotes = proposal.yesVotes + proposal.noVotes
+    }
+
+    if (totalVotes <= 0) return { votes: [] as VoteView[], total: 0 }
+
+    const offset = params.data.page * params.data.pageSize
+    if (offset >= totalVotes) return { votes: [] as VoteView[], total: totalVotes }
+
+    const limit = Math.min(params.data.pageSize, totalVotes - offset)
+    const fromIndex = Math.max(totalVotes - offset - limit, 0)
+    const votes = await getCachedVotes(proposalId, fromIndex, limit)
+    return { votes: [...votes].reverse(), total: totalVotes }
   } catch {
     return { votes: [] as VoteView[], total: 0 }
   }
@@ -268,5 +282,5 @@ export async function checkAccountBalance(accountId: string): Promise<string> {
 // =============================================================================
 
 export async function revalidateGovernance() {
-  revalidateTag("governance", "max")
+  updateTag("governance")
 }
