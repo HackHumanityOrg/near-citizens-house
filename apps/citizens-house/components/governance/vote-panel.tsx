@@ -436,7 +436,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
         <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          Only verified accounts can vote. Please complete identity verification first.
+          This is not a NEAR Verified Account. Disconnect and Connect a NEAR Verified Account to vote.
         </p>
       </div>
     )
@@ -447,7 +447,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
         <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          You were verified after this proposal was created, so this vote is not eligible.
+          This account was verified after the proposal was created, so you won't be able to vote on this proposal with this account.
         </p>
       </div>
     )
