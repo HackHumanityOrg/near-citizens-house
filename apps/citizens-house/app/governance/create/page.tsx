@@ -65,7 +65,9 @@ export default function CreateProposalPage() {
         <h1 className="font-fk-grotesk font-medium text-[28px] md:text-[36px] leading-[32px] md:leading-[40px] text-black dark:text-white">
           Create Proposal
         </h1>
-        {config && <CreateProposalForm minProposalBond={config.minProposalBond} />}
+        {config && (
+          <CreateProposalForm minProposalBond={config.minProposalBond} maxStartDelaySecs={config.maxStartDelaySecs} />
+        )}
       </div>
     </div>
   )
