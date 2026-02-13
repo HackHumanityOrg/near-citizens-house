@@ -150,6 +150,8 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
   const confirmedChoice =
     existingVote?.choice ??
     (optimisticForCurrentAccount?.status === "confirmed" ? optimisticForCurrentAccount.choice : null)
+  const now = Date.now()
+  const hasEnded = proposal.status !== "pending" && (proposal.status !== "active" || proposal.endsAt <= now)
 
   const handleVote = async (choice: VoteChoice) => {
     if (!isConnected || !accountId) return
@@ -336,30 +338,52 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
     )
   }
 
-  // Proposal not active
-  if (proposal.status !== "active") {
+  // Proposal pending
+  if (proposal.status === "pending") {
     return (
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Voting</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          {proposal.status === "pending" ? "Voting has not started yet." : "Voting has ended for this proposal."}
-        </p>
+        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">Voting has not started yet.</p>
       </div>
     )
   }
 
-  // Active but voting period has passed (not yet finalized)
-  if (proposal.endsAt <= Date.now()) {
+  // Proposal ended (finalized or voting period elapsed)
+  if (hasEnded) {
+    if (checking) {
+      return (
+        <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
+          <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
+          <div className="flex items-center gap-2 text-[#64748b]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="font-inter text-[14px]">Checking your vote...</span>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Voting</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">Voting has ended for this proposal.</p>
+        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
+        {confirmedChoice ? (
+          <div className="flex items-center gap-2">
+            <Check className="h-5 w-5 text-[#22c55e]" />
+            <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
+              You voted{" "}
+              <strong className={confirmedChoice === "yes" ? "text-[#22c55e]" : "text-[#ef4444]"}>
+                {confirmedChoice.toUpperCase()}
+              </strong>
+            </span>
+          </div>
+        ) : (
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">You did not vote</p>
+        )}
       </div>
     )
   }
 
   // Active but voting hasn't started yet (scheduled)
-  if (proposal.startAt > Date.now()) {
+  if (proposal.startAt > now) {
     return (
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Voting</h3>
