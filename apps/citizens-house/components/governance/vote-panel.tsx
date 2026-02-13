@@ -8,6 +8,7 @@ import { Loader2, Check } from "lucide-react"
 import { toast } from "sonner"
 import type { ProposalView, VoteChoice, VoteView } from "@/lib/schemas/governance-contract"
 import type { TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
+import { formatUtcDate } from "@/lib/governance-dates"
 import { buildCastVoteTx } from "@/lib/contracts/governance/transactions"
 import {
   checkHasVoted,
@@ -363,9 +364,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Voting</h3>
         <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          Voting has not started yet. Scheduled to open on{" "}
-          {new Date(proposal.startAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}{" "}
-          UTC.
+          Voting has not started yet. Scheduled to open on {formatUtcDate(proposal.startAt)} UTC.
         </p>
       </div>
     )

@@ -6,23 +6,11 @@ import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
 import { ExternalLink, Loader2 } from "lucide-react"
 import type { VoteView } from "@/lib/schemas/governance-contract"
+import { formatUtcDateTime } from "@/lib/governance-dates"
 import { getProposalVotes } from "@/app/governance/actions"
 import type { OptimisticVote } from "./optimistic-vote"
 
 const PAGE_SIZE = 20
-
-function formatDate(timestamp: number): string {
-  const date = new Date(timestamp)
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-  const month = months[date.getUTCMonth()]
-  const day = date.getUTCDate()
-  const year = date.getUTCFullYear()
-  const hours = date.getUTCHours()
-  const minutes = date.getUTCMinutes().toString().padStart(2, "0")
-  const ampm = hours >= 12 ? "PM" : "AM"
-  const hour12 = hours % 12 || 12
-  return `${month} ${day}, ${year}, ${hour12}:${minutes} ${ampm} UTC`
-}
 
 interface Props {
   proposalId: number
@@ -140,7 +128,7 @@ export function VotesTable({
               </span>
             </div>
             <span className="font-inter text-[11px] text-[#64748b] dark:text-[#94a3b8]">
-              {formatDate(vote.votedAt)}
+              {formatUtcDateTime(vote.votedAt)}
             </span>
           </div>
         ))
