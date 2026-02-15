@@ -1,5 +1,4 @@
 import { StarPattern } from "@/components/verification/icons/star-pattern"
-import { VerificationQA } from "@/components/verification/verification-qa"
 
 export default function WaitingPage() {
   return (
@@ -38,12 +37,11 @@ export default function WaitingPage() {
               The NEAR Verification is now closed.
             </h2>
             <p className="font-fk-grotesk font-normal text-[#111] dark:text-[#f5f7fa] text-[18px] leading-[26px] md:text-[24px] md:leading-[34px]">
-              It&apos;s your time to read and analyze the proposal on the forum.
+              It&apos;s time to read and analyze the proposals on the forum.
             </p>
           </div>
         </div>
       </section>
-      <VerificationQA />
     </>
   )
 }
