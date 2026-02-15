@@ -1,4 +1,3 @@
-import { ShieldCheckIcon } from "@/components/verification/icons/shield-check-icon"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 import { VerificationQA } from "@/components/verification/verification-qa"
 
@@ -31,42 +30,16 @@ export default function WaitingPage() {
             <StarPattern className="w-full h-full text-[#FFDA1E] dark:text-[#FFDA1E]/30" />
           </div>
 
-          {/* Header: Tag + Title + Description */}
-          <div className="relative flex flex-col gap-[16px] md:gap-[14px] items-center shrink-0 w-full max-w-[932px] z-10">
-            <div className="flex gap-[8px] items-center justify-center min-w-[97px] px-0 py-[7px] w-full shrink-0">
-              <div className="bg-[rgba(255,218,30,0.9)] flex gap-[8px] items-center px-[16px] py-[8px] rounded-[40px] shrink-0">
-                <ShieldCheckIcon className="h-[24px] w-[24px] shrink-0" />
-                <p className="text-[14px] font-medium leading-[14px] text-[#5e4f02] font-fk-grotesk whitespace-nowrap">
-                  Identity Verification
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col justify-center font-fk-grotesk font-medium text-[#111] dark:text-[#f5f7fa] text-center w-full shrink-0">
-              <h1 className="text-[30px] leading-[36px] md:text-[62px] md:leading-[72px]">
-                Create your
-                <br aria-hidden="true" />
-                NEAR Verified Account
-              </h1>
-            </div>
-
-            <div className="flex flex-col justify-center font-fk-grotesk font-normal text-[#111] dark:text-[#f5f7fa] text-center w-full shrink-0">
-              <p className="text-[20px] leading-[28px]">
-                Verify your account to participate in NEAR governance with enhanced trust and credibility.
-              </p>
-            </div>
-          </div>
-
-          {/* Waiting Message Card */}
-          <div className="relative z-10 bg-white dark:bg-[#191a23] flex items-center justify-center p-[24px] xl:p-[40px] rounded-[24px] shrink-0 w-full max-w-[1000px]">
-            <div className="flex flex-col gap-[12px] items-center text-center w-full max-w-[720px]">
-              <p className="text-[20px] leading-[28px] text-[#090909] dark:text-white font-fk-grotesk font-medium">
-                The next phase is being prepared.
-              </p>
-              <p className="text-[16px] leading-[26px] text-[#757575] dark:text-[#8a8f98] font-fk-grotesk font-normal">
-                Please check back soon.
-              </p>
-            </div>
+          <div className="relative z-10 flex flex-col gap-[16px] md:gap-[20px] items-center text-center w-full max-w-[960px]">
+            <h1 className="font-fk-grotesk font-medium text-[#111] dark:text-[#f5f7fa] text-[30px] leading-[36px] md:text-[52px] md:leading-[60px]">
+              Thank you for creating your NEAR Verified Account
+            </h1>
+            <h2 className="font-fk-grotesk font-medium text-[#111] dark:text-[#f5f7fa] text-[24px] leading-[30px] md:text-[36px] md:leading-[44px]">
+              The NEAR Verification is now closed.
+            </h2>
+            <p className="font-fk-grotesk font-normal text-[#111] dark:text-[#f5f7fa] text-[18px] leading-[26px] md:text-[24px] md:leading-[34px]">
+              It&apos;s your time to read and analyze the proposal on the forum.
+            </p>
           </div>
         </div>
       </section>
