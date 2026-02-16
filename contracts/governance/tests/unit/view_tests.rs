@@ -5,7 +5,8 @@ use near_sdk::{NearToken, PromiseResult};
 
 use crate::helpers::{
     activate_proposal, build_context, create_basic_proposal, insert_pending_vote, new_contract,
-    set_context_with_promise_results, verify_vote, with_deposit};
+    set_context_with_promise_results, verify_vote, with_deposit,
+};
 
 #[test]
 #[allure_parent_suite("Near Citizens House")]
@@ -139,7 +140,8 @@ fn ut_view_007_is_blocklisted_true_false() {
     contract.on_blocklist_verification(
         Ok(Some(VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000})),
+            verified_at: 1_700_000_000_000_000_000,
+        })),
         accounts(2),
     );
 
@@ -256,7 +258,8 @@ fn ut_view_005_list_blocklist_pagination_and_bounds() {
     contract.on_blocklist_verification(
         Ok(Some(VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000})),
+            verified_at: 1_700_000_000_000_000_000,
+        })),
         accounts(2),
     );
 
@@ -271,7 +274,8 @@ fn ut_view_005_list_blocklist_pagination_and_bounds() {
     contract.on_blocklist_verification(
         Ok(Some(VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: 1_700_000_000_000_000_000})),
+            verified_at: 1_700_000_000_000_000_000,
+        })),
         accounts(3),
     );
 

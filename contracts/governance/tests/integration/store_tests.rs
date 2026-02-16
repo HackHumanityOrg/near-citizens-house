@@ -5,15 +5,15 @@ use serde_json::json;
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
     init_mock_verified_accounts, seed_mock_verified_accounts, setup_env, store_verification,
-    sum_tokens_burnt, GAS_HEAVY};
+    sum_tokens_burnt, GAS_HEAVY,
+};
 use tokio::time::{sleep, Duration};
 
 const STORAGE_PRICE_PER_BYTE: u128 = 10_000_000_000_000_000_000;
 
 fn estimated_storage_cost() -> u128 {
     let bytes = u128::from(
-        governance::ESTIMATED_PENDING_VOTE_BYTES
-            .saturating_add(governance::ESTIMATED_VOTE_BYTES),
+        governance::ESTIMATED_PENDING_VOTE_BYTES.saturating_add(governance::ESTIMATED_VOTE_BYTES),
     );
     bytes.saturating_mul(STORAGE_PRICE_PER_BYTE)
 }
@@ -46,12 +46,7 @@ async fn drain_contract_to_available(
     Ok(())
 }
 
-fn refund_from_voter_balance(
-    before: u128,
-    after: u128,
-    deposit: u128,
-    gas_burnt: u128,
-) -> u128 {
+fn refund_from_voter_balance(before: u128, after: u128, deposit: u128, gas_burnt: u128) -> u128 {
     after
         .saturating_add(deposit)
         .saturating_add(gas_burnt)
@@ -101,8 +96,14 @@ async fn wait_for_pending_votes(
 #[allure_test]
 async fn it_store_001_free_vote_when_contract_has_balance() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "store1", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "store1",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let voter_before = account_details(&worker, crate::helpers::user(&users, 0).id()).await?;
     let result = crate::helpers::user(&users, 0)
@@ -134,8 +135,14 @@ async fn it_store_001_free_vote_when_contract_has_balance() -> anyhow::Result<()
 #[allure_test]
 async fn it_store_001b_deposit_attached_when_free_partial_refund() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "store1b", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "store1b",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let contract_before = account_details(&worker, governance.id()).await?;
     let deposit = NearToken::from_millinear(10).as_yoctonear();
@@ -166,8 +173,14 @@ async fn it_store_001b_deposit_attached_when_free_partial_refund() -> anyhow::Re
 #[allure_test]
 async fn it_store_002_deposit_required_and_excess_refunded() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "store2", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "store2",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
@@ -209,8 +222,14 @@ async fn it_store_003_deposit_refunded_on_rejection() -> anyhow::Result<()> {
 
     seed_mock_verified_accounts(&mock_verified, &[voter.clone()], 0).await?;
 
-    let proposal_id =
-        create_proposal(&admin, &governance, "store3", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "store3",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
@@ -249,8 +268,14 @@ async fn it_store_003_deposit_refunded_on_rejection() -> anyhow::Result<()> {
 #[allure_test]
 async fn it_store_004_refund_calculation_accuracy() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "store4", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "store4",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
@@ -292,8 +317,14 @@ async fn it_refund_001_full_refund_on_callback_failed() -> anyhow::Result<()> {
 
     seed_mock_verified_accounts(&mock_verified, &[voter.clone()], 0).await?;
 
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref1", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref1",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
@@ -333,8 +364,14 @@ async fn it_refund_001_full_refund_on_callback_failed() -> anyhow::Result<()> {
 async fn it_refund_002_full_refund_on_not_verified() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
     let unverified = worker.dev_create_account().await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref2", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref2",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
@@ -374,8 +411,14 @@ async fn it_refund_002_full_refund_on_not_verified() -> anyhow::Result<()> {
 async fn it_refund_003_full_refund_on_verified_after_creation() -> anyhow::Result<()> {
     let (worker, governance, verified, admin, backend, users) = setup_env(1).await?;
     let late_user = worker.dev_create_account().await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref3", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref3",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     // Verify after proposal creation
     store_verification(&backend, &verified, &late_user, "later", [9u8; 32]).await?;
@@ -424,14 +467,21 @@ async fn it_refund_004_full_refund_on_proposal_cancelled() -> anyhow::Result<()>
     let governance = init_governance(&worker, &mock_verified, &admin).await?;
     let users = vec![worker.dev_create_account().await?];
     seed_mock_verified_accounts(&mock_verified, &users, 0).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref4", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref4",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
         .await?;
 
-    let cancel_voter_before = account_details(&worker, crate::helpers::user(&users, 0).id()).await?;
+    let cancel_voter_before =
+        account_details(&worker, crate::helpers::user(&users, 0).id()).await?;
     let deposit = storage_cost + NearToken::from_millinear(5).as_yoctonear();
     let vote_tx = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
@@ -483,8 +533,14 @@ async fn it_refund_005_full_refund_on_post_finalize() -> anyhow::Result<()> {
     let governance = init_governance(&worker, &mock_verified, &admin).await?;
     let users = vec![worker.dev_create_account().await?];
     seed_mock_verified_accounts(&mock_verified, &users, 0).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref5", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref5",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
     let storage_cost = estimated_storage_cost();
@@ -537,8 +593,14 @@ async fn it_refund_005_full_refund_on_post_finalize() -> anyhow::Result<()> {
 #[allure_test]
 async fn it_refund_006_full_refund_on_proposal_expired() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref6", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref6",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
     let storage_cost = estimated_storage_cost();
@@ -579,8 +641,14 @@ async fn it_refund_006_full_refund_on_proposal_expired() -> anyhow::Result<()> {
 #[allure_test]
 async fn it_refund_007_partial_refund_on_success() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref7", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref7",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
@@ -614,8 +682,14 @@ async fn it_refund_007_partial_refund_on_success() -> anyhow::Result<()> {
 #[allure_test]
 async fn it_refund_008_zero_refund_when_deposit_equals_storage_cost() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(2).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref8", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref8",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let storage_cost = estimated_storage_cost();
     drain_contract_to_available(&worker, &governance, &admin, storage_cost.saturating_sub(1))
@@ -678,8 +752,14 @@ async fn it_refund_008_zero_refund_when_deposit_equals_storage_cost() -> anyhow:
 #[allure_test]
 async fn it_refund_009_no_transfer_when_voting_is_free() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "ref9", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "ref9",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let voter_before = account_details(&worker, crate::helpers::user(&users, 0).id()).await?;
     let result = crate::helpers::user(&users, 0)

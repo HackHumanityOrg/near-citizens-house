@@ -4,8 +4,9 @@ use serde_json::json;
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
-    init_mock_verified_accounts, proposal_storage_keys, setup_env,
-    DEFAULT_GRACE_PERIOD_SECS, GAS_HEAVY};
+    init_mock_verified_accounts, proposal_storage_keys, setup_env, DEFAULT_GRACE_PERIOD_SECS,
+    GAS_HEAVY,
+};
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
 
@@ -30,8 +31,14 @@ async fn pending_votes_count(
 #[allure_test]
 async fn it_vote_async_001_submitted_before_end_callback_after_end() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "async1", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "async1",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
     let result = crate::helpers::user(&users, 0)
@@ -65,12 +72,21 @@ async fn it_vote_async_001_submitted_before_end_callback_after_end() -> anyhow::
 #[allure_test]
 async fn it_vote_async_002_callback_executes_after_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "async2", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "async2",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
-    fast_forward_to_timestamp(&worker, proposal.ends_at.0 + (DEFAULT_GRACE_PERIOD_SECS * 1_000_000_000))
-        .await?;
+    fast_forward_to_timestamp(
+        &worker,
+        proposal.ends_at.0 + (DEFAULT_GRACE_PERIOD_SECS * 1_000_000_000),
+    )
+    .await?;
     let finalize = admin
         .call(governance.id(), "finalize_proposal")
         .gas(GAS_HEAVY)
@@ -115,8 +131,14 @@ async fn it_vote_async_003_callback_error_leaves_no_pending_lock() -> anyhow::Re
         .await?;
     assert!(result.is_success());
 
-    let proposal_id =
-        create_proposal(&admin, &governance, "async3", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "async3",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     let result = voter
         .call(governance.id(), "cast_vote")
@@ -141,8 +163,14 @@ async fn it_vote_async_003_callback_error_leaves_no_pending_lock() -> anyhow::Re
 #[allure_test]
 async fn it_vote_async_004_stuck_pending_vote_cleared_by_admin() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "async4", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "async4",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     // Inject a pending vote deterministically.
     let pending_key = (proposal_id, crate::helpers::user(&users, 0).id().clone());
@@ -152,7 +180,8 @@ async fn it_vote_async_004_stuck_pending_vote_cleared_by_admin() -> anyhow::Resu
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0)};
+        voter_deposit: NearToken::from_near(0),
+    };
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;
@@ -163,7 +192,9 @@ async fn it_vote_async_004_stuck_pending_vote_cleared_by_admin() -> anyhow::Resu
             let mut proposal: governance::Proposal = governance::Proposal::try_from_slice(raw)?;
             proposal.pending_vote_count = 1;
             let bytes = to_vec(&proposal)?;
-            worker.patch_state(governance.id(), proposal_key, &bytes).await?;
+            worker
+                .patch_state(governance.id(), proposal_key, &bytes)
+                .await?;
         }
     }
     let state = worker.view_state(governance.id()).await?;
@@ -195,8 +226,14 @@ async fn it_vote_async_004_stuck_pending_vote_cleared_by_admin() -> anyhow::Resu
 #[allure_test]
 async fn it_vote_async_005_clear_stale_pending_vote_unblocks_finalize() -> anyhow::Result<()> {
     let (worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "async5", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "async5",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
 
     // Inject pending vote and count.
@@ -207,7 +244,8 @@ async fn it_vote_async_005_clear_stale_pending_vote_unblocks_finalize() -> anyho
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0)};
+        voter_deposit: NearToken::from_near(0),
+    };
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;
@@ -218,7 +256,9 @@ async fn it_vote_async_005_clear_stale_pending_vote_unblocks_finalize() -> anyho
             let mut proposal: governance::Proposal = governance::Proposal::try_from_slice(raw)?;
             proposal.pending_vote_count = 1;
             let bytes = to_vec(&proposal)?;
-            worker.patch_state(governance.id(), proposal_key, &bytes).await?;
+            worker
+                .patch_state(governance.id(), proposal_key, &bytes)
+                .await?;
         }
     }
 
@@ -227,11 +267,12 @@ async fn it_vote_async_005_clear_stale_pending_vote_unblocks_finalize() -> anyho
     if pending_after == 0 {
         for proposal_key in &proposal_keys {
             if let Some(raw) = worker.view_state(governance.id()).await?.get(proposal_key) {
-                let mut proposal: governance::Proposal =
-                    governance::Proposal::try_from_slice(raw)?;
+                let mut proposal: governance::Proposal = governance::Proposal::try_from_slice(raw)?;
                 proposal.pending_vote_count = 1;
                 let bytes = to_vec(&proposal)?;
-                worker.patch_state(governance.id(), proposal_key, &bytes).await?;
+                worker
+                    .patch_state(governance.id(), proposal_key, &bytes)
+                    .await?;
             }
         }
     }

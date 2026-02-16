@@ -2,7 +2,13 @@
 //!
 //! Run with: cargo test --test integration
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
 
 #[path = "integration/helpers.rs"]
 mod helpers;

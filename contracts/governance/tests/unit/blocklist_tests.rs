@@ -4,7 +4,8 @@ use near_sdk::Gas;
 
 use crate::helpers::{
     activate_proposal, assert_panics_with, build_context, create_basic_proposal, new_contract,
-    with_deposit};
+    with_deposit,
+};
 
 #[test]
 #[allure_parent_suite("Near Citizens House")]

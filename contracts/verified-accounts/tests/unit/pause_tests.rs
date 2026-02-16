@@ -157,11 +157,7 @@ fn test_store_verification_when_paused() {
                     recipient: accounts(0),
                 };
 
-                contract.store_verification(
-                    user,
-                    sig_data,
-                    "test_user_context_data".to_string(),
-                );
+                contract.store_verification(user, sig_data, "test_user_context_data".to_string());
             },
             "Contract is paused - no new verifications allowed",
         );

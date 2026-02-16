@@ -21,8 +21,7 @@ export function ProposalsList({ proposals, total, page, pageSize: _pageSize, tot
   return (
     <div className="flex flex-col items-center w-full px-4 md:px-[82px]">
       <div className="w-full max-w-[1276px] flex flex-col gap-4">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <h2 className="font-fk-grotesk font-bold text-[24px] leading-[30px] text-black dark:text-white">Proposals</h2>
+        <div className="flex justify-end">
           {contractId && (
             <a
               href={NEAR_CONFIG.explorerAccountUrl(contractId)}

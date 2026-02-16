@@ -1,23 +1,21 @@
 use allure_rs::prelude::*;
-use near_workspaces::types::NearToken;
 use borsh::{to_vec, BorshDeserialize};
 use near_sdk::IntoStorageKey;
+use near_workspaces::types::NearToken;
 use serde_json::json;
 use tokio::time::{sleep, Duration};
 
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_mock_verified_accounts,
-    proposal_storage_key, setup_env};
+    proposal_storage_key, setup_env,
+};
 
 fn extract_event(logs: &[&str], event_name: &str) -> serde_json::Value {
     let entry = logs
         .iter()
         .find(|l| l.contains("\"event\":\"") && l.contains(event_name))
         .expect("event not found");
-    let json = entry
-        .strip_prefix("EVENT_JSON:")
-        .unwrap_or(entry)
-        .trim();
+    let json = entry.strip_prefix("EVENT_JSON:").unwrap_or(entry).trim();
     serde_json::from_str(json).expect("invalid event json")
 }
 
@@ -136,8 +134,14 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
     extract_event(&logs, "blocklist_removed");
 
     // proposal_finalized
-    let proposal_id =
-        create_proposal(&admin, &governance, "event2", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "event2",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
         .gas(crate::helpers::GAS_HEAVY)
@@ -158,8 +162,14 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
     extract_event(&logs, "proposal_finalized");
 
     // pending_vote_cleared
-    let proposal_id =
-        create_proposal(&admin, &governance, "event3", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "event3",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let pending_key = (proposal_id, crate::helpers::user(&users, 0).id().clone());
     let key_prefix = governance::StorageKey::PendingVotes.into_storage_key();
     let mut key = key_prefix.clone();
@@ -167,7 +177,8 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
     let pending_vote = governance::PendingVote {
         submitted_at: 0,
         choice: governance::VoteChoice::Yes,
-        voter_deposit: NearToken::from_near(0)};
+        voter_deposit: NearToken::from_near(0),
+    };
     worker
         .patch_state(governance.id(), &key, &to_vec(&pending_vote)?)
         .await?;
@@ -176,7 +187,9 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
         let mut proposal: governance::Proposal = governance::Proposal::try_from_slice(raw)?;
         proposal.pending_vote_count = 1;
         let bytes = to_vec(&proposal)?;
-        worker.patch_state(governance.id(), &proposal_key, &bytes).await?;
+        worker
+            .patch_state(governance.id(), &proposal_key, &bytes)
+            .await?;
     }
     let res = admin
         .call(governance.id(), "clear_stale_pending_vote")
@@ -242,8 +255,14 @@ async fn it_event_001_all_mutating_actions_emit_events() -> anyhow::Result<()> {
 async fn it_event_002_admin_wallet_still_requires_verification_to_vote() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, users) = setup_env(1).await?;
 
-    let proposal_id =
-        create_proposal(&admin, &governance, "admin-not-verified", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "admin-not-verified",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
 
     // Sanity check: this account is an admin but intentionally not verified in setup_env().
     let is_admin: bool = governance
