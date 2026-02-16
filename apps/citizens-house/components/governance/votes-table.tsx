@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react"
 import { Button } from "@near-citizens/ui"
 import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ExternalLink, Loader2 } from "lucide-react"
 import type { VoteView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
@@ -92,11 +93,7 @@ export function VotesTable({
         </h3>
       </div>
 
-      {isPending ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-[#64748b]" />
-        </div>
-      ) : renderedVotes.length === 0 ? (
+      {renderedVotes.length === 0 ? (
         <div className="flex items-center justify-center py-8">
           <p className="font-inter text-[14px] text-[#828282] dark:text-neutral-400">No votes yet.</p>
         </div>
@@ -131,6 +128,23 @@ export function VotesTable({
             </span>
           </div>
         ))
+      )}
+
+      {isPending && renderedVotes.length > 0 && (
+        <>
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div
+              key={`loading-row-${index}`}
+              className="px-4 py-3 flex flex-col gap-2 border-t border-[#cbd5e1] dark:border-white/10"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <Skeleton className="h-[16px] w-[172px]" />
+                <Skeleton className="h-[20px] w-[70px] rounded-full" />
+              </div>
+              <Skeleton className="h-[16px] w-[136px]" />
+            </div>
+          ))}
+        </>
       )}
 
       {/* Lazy loading */}

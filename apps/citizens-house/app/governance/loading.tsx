@@ -1,11 +1,42 @@
+import { Skeleton } from "@/components/ui/skeleton"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
+function ProposalCardSkeleton() {
+  return (
+    <div className="h-full bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-5 md:p-6">
+      <div className="flex flex-col gap-4 h-full">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-[26px] md:h-[28px] w-[82%]" />
+            <Skeleton className="h-[26px] md:h-[28px] w-[62%] mt-1" />
+            <Skeleton className="h-[16px] w-[150px] mt-2" />
+          </div>
+          <Skeleton className="h-[24px] w-[84px] rounded-full" />
+        </div>
+
+        <div className="rounded-[12px] border border-[#e2e8f0] dark:border-white/10 p-4 mt-auto">
+          <Skeleton className="h-[20px] w-[140px] mb-3" />
+          <Skeleton className="h-2 w-full rounded-full" />
+
+          <div className="mt-4 flex flex-col gap-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="flex min-h-6 items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-5 w-5 rounded-full" />
+                  <Skeleton className="h-[15px] w-[52px]" />
+                </div>
+                <Skeleton className="h-[15px] w-[48px]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function GovernanceLoading() {
-  const rows = Array.from({ length: 5 })
+  const cards = Array.from({ length: 9 })
 
   return (
     <div className="w-full">
@@ -32,50 +63,29 @@ export default function GovernanceLoading() {
         </div>
       </section>
 
-      {/* Skeleton Table */}
+      {/* Proposals list skeleton */}
       <div className="relative z-10 -mt-[240px] md:-mt-[280px] pb-[80px]">
         <div className="flex flex-col items-center w-full px-4 md:px-[82px]">
-          <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 flex flex-col items-start rounded-[16px] w-full max-w-[1276px]">
-            {/* Header skeleton */}
-            <div className="flex flex-col gap-2 items-start px-4 py-4 md:px-10 w-full">
-              <Skeleton className="h-7 w-[120px]" />
-              <Skeleton className="h-3.5 w-[220px]" />
+          <div className="w-full max-w-[1276px] flex flex-col gap-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <Skeleton className="h-[30px] w-[154px]" />
+              <Skeleton className="h-[28px] w-[112px]" />
             </div>
+            <Skeleton className="h-[14px] w-[240px]" />
 
-            {/* Desktop header */}
-            <div className="hidden md:block bg-[#e2e8f0] dark:bg-white/10 border-b border-[#cbd5e1] dark:border-white/10 px-10 py-4 w-full">
-              <div className="grid grid-cols-[minmax(0,1fr)_120px_140px_140px] gap-4">
-                <Skeleton className="h-7 w-[60px]" />
-                <Skeleton className="h-7 w-[60px] mx-auto" />
-                <Skeleton className="h-7 w-[60px] mx-auto" />
-                <Skeleton className="h-7 w-[60px] mx-auto" />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {cards.map((_, index) => (
+                <ProposalCardSkeleton key={index} />
+              ))}
             </div>
+          </div>
 
-            {/* Row skeletons */}
-            {rows.map((_, i) => (
-              <div
-                key={i}
-                className={`px-4 py-4 md:px-10 w-full ${i !== rows.length - 1 ? "border-b border-[#cbd5e1] dark:border-white/10" : ""}`}
-              >
-                <div className="md:hidden flex flex-col gap-3">
-                  <Skeleton className="h-5 w-[200px]" />
-                  <div className="flex justify-between">
-                    <Skeleton className="h-6 w-[80px] rounded-full" />
-                    <Skeleton className="h-4 w-[100px]" />
-                  </div>
-                </div>
-                <div className="hidden md:grid grid-cols-[minmax(0,1fr)_120px_140px_140px] gap-4 items-center">
-                  <div>
-                    <Skeleton className="h-5 w-[240px]" />
-                    <Skeleton className="h-3 w-[100px] mt-1" />
-                  </div>
-                  <Skeleton className="h-6 w-[80px] mx-auto rounded-full" />
-                  <Skeleton className="h-3 w-[100px] mx-auto" />
-                  <Skeleton className="h-3 w-[80px] mx-auto" />
-                </div>
-              </div>
-            ))}
+          <div className="flex flex-col gap-3 items-center md:flex-row md:justify-between mt-6 w-full max-w-[1276px]">
+            <Skeleton className="h-[14px] w-[92px] order-2 md:order-1" />
+            <div className="flex gap-3 order-1 md:order-2">
+              <Skeleton className="h-[36px] w-[114px] rounded-[4px]" />
+              <Skeleton className="h-[36px] w-[92px] rounded-[4px]" />
+            </div>
           </div>
         </div>
       </div>
