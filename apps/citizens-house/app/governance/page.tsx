@@ -2,7 +2,7 @@ import { getProposals } from "./actions"
 import { ProposalsList } from "@/components/governance/proposals-list"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 9
 
 interface Props {
   searchParams: Promise<{ page?: string }>
