@@ -1,6 +1,7 @@
 "use client"
 
-import { Check, X } from "lucide-react"
+import { Check, Minus } from "lucide-react"
+import { VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 
 interface Props {
   yesVotes: number
@@ -16,40 +17,74 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
   const quorumRequired = Math.ceil((snapshotVerifiedCount * quorumBps) / 10_000)
   const quorumMet = totalVotes >= quorumRequired
 
+  const compact = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  })
+  const formatCount = (value: number) => compact.format(value)
+
   return (
-    <div className="flex flex-col gap-3">
-      {/* Vote bar */}
-      <div className="relative h-3 bg-[#e2e8f0] dark:bg-white/10 rounded-full overflow-hidden flex">
+    <div className="flex flex-col gap-5">
+      <div className="relative h-2 overflow-hidden rounded-full bg-[#dce3ea] dark:bg-white/10">
         {totalVotes > 0 && (
-          <>
-            <div className="bg-[#22c55e] h-full transition-all" style={{ width: `${yesPct}%` }} />
-            <div className="bg-[#ef4444] h-full transition-all" style={{ width: `${noPct}%` }} />
-          </>
+          <div className="flex h-full w-full">
+            <div
+              className={`h-full transition-all ${VOTE_CHOICE_COLOR_TOKENS.yes.progressSegment}`}
+              style={{ width: `${yesPct}%` }}
+            />
+            <div
+              className={`h-full transition-all ${VOTE_CHOICE_COLOR_TOKENS.no.progressSegment}`}
+              style={{ width: `${noPct}%` }}
+            />
+          </div>
         )}
       </div>
 
-      {/* Labels */}
-      <div className="flex items-center justify-between text-xs font-inter">
-        <span className="text-[#166534] dark:text-[#bbf7d0]">Yes: {yesVotes}</span>
-        <span className="text-[#991b1b] dark:text-[#fecaca]">No: {noVotes}</span>
-      </div>
+      <div className="flex flex-col gap-3">
+        <div className="flex min-h-6 items-center justify-between gap-3">
+          <div className="flex min-h-6 items-center gap-3">
+            <span
+              className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${VOTE_CHOICE_COLOR_TOKENS.yes.legendChip}`}
+            />
+            <span className={`font-fk-grotesk text-[15px] leading-none ${VOTE_CHOICE_COLOR_TOKENS.yes.text}`}>Yes</span>
+          </div>
+          <span className="font-inter text-[15px] leading-none text-[#1e293b] dark:text-white">
+            {formatCount(yesVotes)}
+          </span>
+        </div>
 
-      {/* Quorum */}
-      <div className="flex items-center gap-1.5 text-[13px] font-inter">
-        {quorumMet ? (
-          <Check className="h-4 w-4 text-[#22c55e] shrink-0" />
-        ) : (
-          <X className="h-4 w-4 text-[#ef4444] shrink-0" />
-        )}
-        <span className={quorumMet ? "text-[#22c55e]" : "text-[#64748b] dark:text-[#94a3b8]"}>
-          Quorum {totalVotes}/{quorumRequired} votes
-        </span>
-      </div>
+        <div className="flex min-h-6 items-center justify-between gap-3">
+          <div className="flex min-h-6 items-center gap-3">
+            <span
+              className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${VOTE_CHOICE_COLOR_TOKENS.no.legendChip}`}
+            />
+            <span className={`font-fk-grotesk text-[15px] leading-none ${VOTE_CHOICE_COLOR_TOKENS.no.text}`}>No</span>
+          </div>
+          <span className="font-inter text-[15px] leading-none text-[#1e293b] dark:text-white">
+            {formatCount(noVotes)}
+          </span>
+        </div>
 
-      {/* Voter snapshot */}
-      <p className="text-[11px] text-[#94a3b8] dark:text-[#64748b] font-inter">
-        Voter snapshot: {snapshotVerifiedCount} verified account{snapshotVerifiedCount !== 1 ? "s" : ""}
-      </p>
+        <div className="flex min-h-6 items-center justify-between gap-3">
+          <div className="flex min-h-6 items-center gap-3">
+            <span
+              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
+                quorumMet ? "bg-[#dcfce7] dark:bg-[#14532d]" : "bg-[#e2e8f0] dark:bg-[#334155]"
+              }`}
+            >
+              {quorumMet ? (
+                <Check className="block h-3.5 w-3.5 text-[#166534] dark:text-[#bbf7d0]" strokeWidth={3} />
+              ) : (
+                <Minus className="block h-3.5 w-3.5 text-[#64748b] dark:text-[#cbd5e1]" strokeWidth={3} />
+              )}
+            </span>
+            <span className="font-fk-grotesk text-[15px] leading-none text-[#1e293b] dark:text-white">Quorum</span>
+          </div>
+          <span className="font-inter text-[15px] leading-none text-[#1e293b] dark:text-white">
+            {formatCount(totalVotes)} of {formatCount(quorumRequired)}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
