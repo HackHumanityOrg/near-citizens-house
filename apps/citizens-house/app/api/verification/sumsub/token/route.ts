@@ -10,6 +10,7 @@
  * the signature freshness window during the step 1 → step 2 transition.
  */
 import { type NextRequest } from "next/server"
+import { appMode, maintenanceMode } from "@/flags"
 import {
   createApplicant,
   generateAccessToken,
@@ -53,6 +54,17 @@ function tryParseAccountId(body: unknown): string | undefined {
 }
 
 export async function POST(request: NextRequest) {
+  // Stage gate: only allow new verification sessions in verification mode.
+  try {
+    const [maintenance, mode] = await Promise.all([maintenanceMode(), appMode()])
+    if (maintenance || mode !== "verification") {
+      return apiError("CONTRACT_PAUSED", "Verification is currently closed", 403)
+    }
+  } catch {
+    // Fail closed if flags are unavailable.
+    return apiError("CONTRACT_PAUSED", "Verification is currently closed", 403)
+  }
+
   // Extract PostHog context for session replay linkage
   const posthogContext = extractPostHogContext(request)
   const trackingOptions: TrackServerEventOptions = { sessionId: posthogContext.sessionId }
