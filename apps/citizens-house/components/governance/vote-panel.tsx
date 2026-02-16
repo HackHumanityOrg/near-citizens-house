@@ -79,15 +79,8 @@ function getVoteOutcomeToast(
 
 export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSuccess, onVoteFailure }: Props) {
   const router = useRouter()
-  const {
-    accountId,
-    walletName,
-    isConnected,
-    connect,
-    signAndSendTransaction,
-    signDelegateActions,
-    supportsMetaTransactions,
-  } = useNearWallet()
+  const { accountId, walletName, isConnected, signAndSendTransaction, signDelegateActions, supportsMetaTransactions } =
+    useNearWallet()
   const [eligibility, setEligibility] = useState<EligibilityResult | null>(null)
   const [txLoading, setTxLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -331,9 +324,6 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
         <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8] mb-4">
           Connect your wallet to vote on this proposal.
         </p>
-        <Button variant="citizens-primary" size="citizens-lg" onClick={connect}>
-          Connect Wallet
-        </Button>
       </div>
     )
   }
