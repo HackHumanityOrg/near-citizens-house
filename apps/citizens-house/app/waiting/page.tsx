@@ -37,7 +37,16 @@ export default function WaitingPage() {
               The NEAR Verification is now closed.
             </h2>
             <p className="font-fk-grotesk font-normal text-[#111] dark:text-[#f5f7fa] text-[18px] leading-[26px] md:text-[24px] md:leading-[34px]">
-              It&apos;s time to read and analyze the proposals on the forum.
+              It&apos;s time to read and analyze the proposal on the{" "}
+              <a
+                href="https://gov.near.org/t/proposal-to-terminate-the-near-community-purpose-trust-by-the-transfer-of-all-of-its-assets-to-the-house-of-stake-foundation/42051"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-[1.5px] underline-offset-4"
+              >
+                forum
+              </a>
+              .
             </p>
           </div>
         </div>
