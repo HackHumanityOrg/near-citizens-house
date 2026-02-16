@@ -31,6 +31,7 @@ import {
   type GovernanceVoteOutcome,
 } from "@/lib/contracts/governance/vote-outcome"
 import type { OptimisticVote, VoteLifecyclePayload } from "./optimistic-vote"
+import { VOTE_CHOICE_COLOR_TOKENS, VOTE_POSITIVE_TEXT_CLASS } from "./vote-colors"
 
 interface Props {
   proposal: ProposalView
@@ -357,10 +358,10 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
         {confirmedChoice ? (
           <div className="flex items-center gap-2">
-            <Check className="h-5 w-5 text-[#22c55e]" />
+            <Check className={`h-5 w-5 ${VOTE_POSITIVE_TEXT_CLASS}`} />
             <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
               You voted{" "}
-              <strong className={confirmedChoice === "yes" ? "text-[#22c55e]" : "text-[#ef4444]"}>
+              <strong className={VOTE_CHOICE_COLOR_TOKENS[confirmedChoice].actionText}>
                 {confirmedChoice.toUpperCase()}
               </strong>
             </span>
@@ -405,7 +406,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
           <Loader2 className="h-5 w-5 animate-spin text-[#64748b] dark:text-[#94a3b8]" />
           <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
             Your vote{" "}
-            <strong className={optimisticPendingChoice === "yes" ? "text-[#22c55e]" : "text-[#ef4444]"}>
+            <strong className={VOTE_CHOICE_COLOR_TOKENS[optimisticPendingChoice].actionText}>
               {optimisticPendingChoice.toUpperCase()}
             </strong>{" "}
             is being processed.
@@ -421,10 +422,10 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
         <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
         <div className="flex items-center gap-2">
-          <Check className="h-5 w-5 text-[#22c55e]" />
+          <Check className={`h-5 w-5 ${VOTE_POSITIVE_TEXT_CLASS}`} />
           <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
             You voted{" "}
-            <strong className={confirmedChoice === "yes" ? "text-[#22c55e]" : "text-[#ef4444]"}>
+            <strong className={VOTE_CHOICE_COLOR_TOKENS[confirmedChoice].actionText}>
               {confirmedChoice.toUpperCase()}
             </strong>
           </span>
@@ -474,7 +475,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-4">Cast Your Vote</h3>
       <div className="flex gap-3">
         <Button
-          className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-white font-fk-grotesk font-bold"
+          className={`flex-1 font-fk-grotesk font-bold ${VOTE_CHOICE_COLOR_TOKENS.yes.button}`}
           size="citizens-lg"
           onClick={() => handleVote("yes")}
           disabled={loading}
@@ -483,7 +484,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
           Yes
         </Button>
         <Button
-          className="flex-1 bg-[#ef4444] hover:bg-[#dc2626] text-white font-fk-grotesk font-bold"
+          className={`flex-1 font-fk-grotesk font-bold ${VOTE_CHOICE_COLOR_TOKENS.no.button}`}
           size="citizens-lg"
           onClick={() => handleVote("no")}
           disabled={loading}
@@ -493,7 +494,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
         </Button>
       </div>
       {needsRelay ? (
-        <p className="font-inter text-[11px] text-[#22c55e] mt-2">Gas sponsored — no NEAR required</p>
+        <p className={`font-inter text-[11px] mt-2 ${VOTE_POSITIVE_TEXT_CLASS}`}>Gas sponsored — no NEAR required</p>
       ) : isZeroBalance && isVoteFree && !supportsMetaTransactions ? (
         <p className="font-inter text-[11px] text-[#f59e0b] mt-2">
           {walletName ?? "Your wallet"} doesn&apos;t support gasless voting. Please add NEAR for gas fees or switch to

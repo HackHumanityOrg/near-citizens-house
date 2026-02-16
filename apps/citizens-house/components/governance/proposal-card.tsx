@@ -5,6 +5,7 @@ import Link from "next/link"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { StatusBadge } from "./status-badge"
 import { CountdownTimer } from "./countdown-timer"
+import { VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 
 interface Props {
   proposal: ProposalView
@@ -19,9 +20,9 @@ function ProposalCardVoteSummary({ yesVotes, noVotes }: { yesVotes: number; noVo
   return (
     <div className="min-w-[100px]">
       <span className="text-[11px] whitespace-nowrap font-inter">
-        <span className="text-[#166534] dark:text-[#bbf7d0]">{yesPctRounded}% Yes</span>
+        <span className={VOTE_CHOICE_COLOR_TOKENS.yes.text}>{yesPctRounded}% Yes</span>
         <span className="text-[#64748b] dark:text-[#94a3b8]"> · </span>
-        <span className="text-[#991b1b] dark:text-[#fecaca]">{noPctRounded}% No</span>
+        <span className={VOTE_CHOICE_COLOR_TOKENS.no.text}>{noPctRounded}% No</span>
       </span>
     </div>
   )

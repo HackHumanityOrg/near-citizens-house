@@ -17,11 +17,6 @@ interface ProposalProps {
 }
 
 export function ProposalHeader({ proposal }: ProposalProps) {
-  const [now] = useState(Date.now)
-  const isScheduled = proposal.status === "active" && proposal.startAt > now
-  const isFinished = proposal.status === "active" && proposal.endsAt < now
-  const displayStatus = isScheduled ? "scheduled" : isFinished ? "finished" : proposal.status
-
   return (
     <div className="flex flex-col gap-3">
       <nav
@@ -51,9 +46,6 @@ export function ProposalHeader({ proposal }: ProposalProps) {
           <ExternalLink className="h-3 w-3 shrink-0" />
         </a>
       </div>
-      <div className="flex items-center gap-3 flex-wrap">
-        <StatusBadge status={displayStatus} failureKind={proposal.failureKind} />
-      </div>
     </div>
   )
 }
@@ -67,9 +59,17 @@ export function ProposalDescription({ proposal }: ProposalProps) {
 }
 
 export function VotingProgressCard({ proposal }: ProposalProps) {
+  const [now] = useState(Date.now)
+  const isScheduled = proposal.status === "active" && proposal.startAt > now
+  const isFinished = proposal.status === "active" && proposal.endsAt < now
+  const displayStatus = isScheduled ? "scheduled" : isFinished ? "finished" : proposal.status
+
   return (
     <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-      <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-4">Voting Progress</h3>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white">Voting Progress</h3>
+        <StatusBadge status={displayStatus} failureKind={proposal.failureKind} />
+      </div>
       <VoteProgressBar
         yesVotes={proposal.yesVotes}
         noVotes={proposal.noVotes}

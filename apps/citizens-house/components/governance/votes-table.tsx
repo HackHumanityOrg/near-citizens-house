@@ -9,6 +9,7 @@ import type { VoteView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { getProposalVotes } from "@/app/governance/actions"
 import type { OptimisticVote } from "./optimistic-vote"
+import { VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 
 const PAGE_SIZE = 20
 
@@ -119,9 +120,7 @@ export function VotesTable({
                 className={`text-[12px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
                   vote.status === "pending"
                     ? "bg-[#e2e8f0] text-[#334155] dark:bg-[#334155] dark:text-[#cbd5e1]"
-                    : vote.choice === "yes"
-                      ? "bg-[#dcfce7] text-[#166534] dark:bg-[#14532d] dark:text-[#bbf7d0]"
-                      : "bg-[#fecaca] text-[#991b1b] dark:bg-[#7f1d1d] dark:text-[#fecaca]"
+                    : VOTE_CHOICE_COLOR_TOKENS[vote.choice].badge
                 }`}
               >
                 {vote.status === "pending" ? "PENDING" : vote.choice.toUpperCase()}
