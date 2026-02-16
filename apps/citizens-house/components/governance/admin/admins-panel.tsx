@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, useCallback } from "react"
 import { Button, Input } from "@near-citizens/ui"
-import { NEAR_CONFIG, useNearWallet } from "@/lib"
+import { NEAR_CONFIG, nearAccountIdSchema, useNearWallet } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
 import { ExternalLink, Loader2, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { buildAddAdminTx, buildRemoveAdminTx } from "@/lib/contracts/governance/transactions"
-import { getAdminList, revalidateGovernance } from "@/app/governance/actions"
+import { extractExecutionFailure, getTransactionFailureMessage } from "@/lib/contracts/governance/vote-outcome"
+import { checkIsAdmin, getAdminList, revalidateGovernance } from "@/app/governance/actions"
 
 export function AdminsPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
@@ -16,28 +17,65 @@ export function AdminsPanel() {
   const [txLoading, setTxLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  useEffect(() => {
-    getAdminList(0, 100).then((result) => setAdmins(result.admins))
+  const refreshAdmins = useCallback(async () => {
+    const result = await getAdminList(0, 100)
+    setAdmins(result.admins)
   }, [])
 
+  useEffect(() => {
+    void refreshAdmins()
+  }, [refreshAdmins])
+
   const loading = txLoading || isPending
+  const normalizedNewAdmin = newAdmin.trim()
+  const hasAdminInput = normalizedNewAdmin.length > 0
+  const isAdminInputValid = !hasAdminInput || nearAccountIdSchema.safeParse(normalizedNewAdmin).success
+  const isAdminAlreadyListed = hasAdminInput && admins.includes(normalizedNewAdmin)
+  const addAdminInputError = !hasAdminInput
+    ? null
+    : !isAdminInputValid
+      ? "Enter a valid NEAR account ID."
+      : isAdminAlreadyListed
+        ? "This account is already an admin."
+        : null
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isConnected || !accountId || !newAdmin.trim()) return
+    if (!isConnected || !accountId || !hasAdminInput) return
+    if (!isAdminInputValid) {
+      toast.error("Enter a valid NEAR account ID.")
+      return
+    }
+    if (isAdminAlreadyListed) {
+      toast.error("This account is already an admin.")
+      return
+    }
 
     setTxLoading(true)
     try {
-      await signAndSendTransaction(buildAddAdminTx(newAdmin.trim()))
+      const alreadyAdmin = await checkIsAdmin(normalizedNewAdmin)
+      if (alreadyAdmin) {
+        toast.error("This account is already an admin.")
+        await refreshAdmins()
+        return
+      }
+
+      const result = await signAndSendTransaction(buildAddAdminTx(normalizedNewAdmin))
+      const executionFailure = extractExecutionFailure(result)
+      if (executionFailure) {
+        throw new Error(executionFailure)
+      }
+
       startTransition(() => {
         revalidateGovernance()
       })
-      toast.success(`Added ${newAdmin.trim()} as admin`)
+      toast.success(`Added ${normalizedNewAdmin} as admin`)
       setNewAdmin("")
-      const result = await getAdminList(0, 100)
-      setAdmins(result.admins)
+      await refreshAdmins()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      toast.error(errorMessage)
+      await refreshAdmins()
     } finally {
       setTxLoading(false)
     }
@@ -48,15 +86,21 @@ export function AdminsPanel() {
 
     setTxLoading(true)
     try {
-      await signAndSendTransaction(buildRemoveAdminTx(adminId))
+      const result = await signAndSendTransaction(buildRemoveAdminTx(adminId))
+      const executionFailure = extractExecutionFailure(result)
+      if (executionFailure) {
+        throw new Error(executionFailure)
+      }
+
       startTransition(() => {
         revalidateGovernance()
       })
       toast.success(`Removed ${adminId} from admins`)
-      const result = await getAdminList(0, 100)
-      setAdmins(result.admins)
+      await refreshAdmins()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      toast.error(errorMessage)
+      await refreshAdmins()
     } finally {
       setTxLoading(false)
     }
@@ -65,18 +109,27 @@ export function AdminsPanel() {
   return (
     <div className="flex flex-col gap-4">
       {/* Add admin form */}
-      <form onSubmit={handleAddAdmin} className="flex items-center gap-2">
-        <Input
-          value={newAdmin}
-          onChange={(e) => setNewAdmin(e.target.value)}
-          placeholder="account.near"
-          className="flex-1 h-9 text-sm"
-        />
-        <Button variant="citizens-primary" size="sm" type="submit" disabled={loading || !newAdmin.trim()}>
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
-          Add
-        </Button>
-      </form>
+      <div className="flex flex-col gap-1">
+        <form onSubmit={handleAddAdmin} className="flex items-center gap-2">
+          <Input
+            value={newAdmin}
+            onChange={(e) => setNewAdmin(e.target.value)}
+            placeholder="account.near"
+            className="flex-1 h-9 text-sm"
+            aria-invalid={!!addAdminInputError}
+          />
+          <Button
+            variant="citizens-primary"
+            size="sm"
+            type="submit"
+            disabled={loading || !hasAdminInput || !isAdminInputValid || isAdminAlreadyListed}
+          >
+            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+            Add
+          </Button>
+        </form>
+        {addAdminInputError && <p className="font-inter text-[12px] text-red-500 px-1">{addAdminInputError}</p>}
+      </div>
 
       {/* Admin list */}
       <div className="flex flex-col gap-1">
