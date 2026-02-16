@@ -20,8 +20,8 @@ const statusLabels: Record<DisplayStatus, string> = {
   active: "Active",
   scheduled: "Scheduled",
   finished: "Finished",
-  succeeded: "Passed",
-  failed: "Rejected",
+  succeeded: "Succeeded",
+  failed: "Failed",
   cancelled: "Cancelled",
 }
 
@@ -39,17 +39,13 @@ interface Props {
 }
 
 export function StatusBadge({ status, failureKind }: Props) {
-  const showFailureReasonOnly = status === "failed" && !!failureKind
-
   return (
     <span className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
-      {!showFailureReasonOnly && (
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 ${statusStyles[status]}`}
-        >
-          {statusLabels[status]}
-        </span>
-      )}
+      <span
+        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 ${statusStyles[status]}`}
+      >
+        {statusLabels[status]}
+      </span>
       {failureKind && (
         <span
           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 ${statusStyles[status]}`}
