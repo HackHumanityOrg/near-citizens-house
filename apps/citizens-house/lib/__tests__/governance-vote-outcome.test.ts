@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import {
   VOTE_REJECTION_REASONS,
+  getTransactionFailureMessage,
   parseGovernanceVoteOutcome,
   resolveGovernanceVoteOutcome,
 } from "../contracts/governance/vote-outcome"
@@ -168,5 +169,22 @@ describe("parseGovernanceVoteOutcome", () => {
       proposalId: 42,
       voter: undefined,
     })
+  })
+})
+
+describe("getTransactionFailureMessage", () => {
+  it("maps admin and blocklist contract codes to readable messages", () => {
+    expect(getTransactionFailureMessage("Smart contract panicked: ERR_ADMIN_ALREADY_EXISTS")).toBe(
+      "This account is already an admin.",
+    )
+    expect(getTransactionFailureMessage("Smart contract panicked: ERR_BLOCKLIST_OP_PENDING")).toBe(
+      "Another blocklist operation is pending. Please wait and try again.",
+    )
+  })
+
+  it("normalizes generic transaction prefixes for unknown errors", () => {
+    expect(getTransactionFailureMessage("Transaction failed: Smart contract panicked: Some custom message")).toBe(
+      "Some custom message",
+    )
   })
 })

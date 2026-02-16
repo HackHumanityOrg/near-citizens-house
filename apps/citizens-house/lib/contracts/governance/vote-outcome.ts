@@ -185,11 +185,20 @@ export function getVoteRejectionReasonMessage(reason: VoteRejectionReason | "unk
 }
 
 const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
+  ERR_NOT_ADMIN: "Only admins can perform this action.",
+  ERR_CANNOT_REMOVE_LAST_ADMIN: "At least one admin must remain.",
+  ERR_ADMIN_NOT_FOUND: "This account is not an admin.",
+  ERR_ADMIN_ALREADY_EXISTS: "This account is already an admin.",
   ERR_PROPOSAL_NOT_FOUND: "Proposal not found.",
   ERR_PROPOSAL_NOT_ACTIVE: "Proposal is not active.",
   ERR_PROPOSAL_NOT_STARTED: "Voting has not started yet.",
   ERR_PROPOSAL_ENDED: "Voting has already ended.",
   ERR_BLOCKLISTED: "Your account is blocklisted and cannot vote.",
+  ERR_BLOCKLIST_LOCKED: "Blocklist is locked while governance proposals are pending or active.",
+  ERR_BLOCKLIST_OP_PENDING: "Another blocklist operation is pending. Please wait and try again.",
+  ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED: "Only verified accounts can be blocklisted.",
+  ERR_ACCOUNT_NOT_BLOCKLISTED: "This account is not blocklisted.",
+  ERR_BLOCKLIST_OP_NOT_PENDING: "No pending blocklist operation exists.",
   ERR_ALREADY_VOTED: "You already voted on this proposal.",
   ERR_VOTE_ALREADY_PENDING: "You already have a pending vote. Please wait for completion.",
   ERR_INSUFFICIENT_DEPOSIT: "A storage deposit is required to vote right now.",

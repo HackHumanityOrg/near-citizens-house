@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, useCallback } from "react"
 import { Button, Input } from "@near-citizens/ui"
-import { NEAR_CONFIG, useNearWallet } from "@/lib"
+import { NEAR_CONFIG, nearAccountIdSchema, useNearWallet } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
 import { ExternalLink, Loader2, Trash2, ShieldBan, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { buildBlocklistAccountTx, buildUnblocklistAccountTx } from "@/lib/contracts/governance/transactions"
+import { extractExecutionFailure, getTransactionFailureMessage } from "@/lib/contracts/governance/vote-outcome"
 import {
+  checkIsBlocklisted,
   getBlocklist,
   getBlocklistLockInfo,
   revalidateGovernance,
@@ -22,33 +24,72 @@ export function BlocklistPanel() {
   const [txLoading, setTxLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
+  const refreshBlocklistState = useCallback(async () => {
+    const [result, info] = await Promise.all([getBlocklist(0, 100), getBlocklistLockInfo()])
+    setAccounts(result.accounts)
+    setLockInfo(info)
+  }, [])
+
   const isLocked = lockInfo?.locked ?? false
 
   useEffect(() => {
-    Promise.all([getBlocklist(0, 100), getBlocklistLockInfo()]).then(([result, info]) => {
-      setAccounts(result.accounts)
-      setLockInfo(info)
-    })
-  }, [])
+    void refreshBlocklistState()
+  }, [refreshBlocklistState])
 
   const loading = txLoading || isPending
+  const normalizedNewAccount = newAccount.trim()
+  const hasAccountInput = normalizedNewAccount.length > 0
+  const isAccountInputValid = !hasAccountInput || nearAccountIdSchema.safeParse(normalizedNewAccount).success
+  const isAccountAlreadyListed = hasAccountInput && accounts.includes(normalizedNewAccount)
+  const addBlocklistInputError = !hasAccountInput
+    ? null
+    : !isAccountInputValid
+      ? "Enter a valid NEAR account ID."
+      : isAccountAlreadyListed
+        ? "This account is already blocklisted."
+        : null
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isConnected || !accountId || !newAccount.trim()) return
+    if (!isConnected || !accountId || !hasAccountInput) return
+    if (isLocked) {
+      toast.error("Blocklist is locked while governance proposals are pending or active.")
+      return
+    }
+    if (!isAccountInputValid) {
+      toast.error("Enter a valid NEAR account ID.")
+      return
+    }
+    if (isAccountAlreadyListed) {
+      toast.error("This account is already blocklisted.")
+      return
+    }
 
     setTxLoading(true)
     try {
-      await signAndSendTransaction(buildBlocklistAccountTx(newAccount.trim()))
+      const alreadyBlocklisted = await checkIsBlocklisted(normalizedNewAccount)
+      if (alreadyBlocklisted) {
+        toast.error("This account is already blocklisted.")
+        await refreshBlocklistState()
+        return
+      }
+
+      const result = await signAndSendTransaction(buildBlocklistAccountTx(normalizedNewAccount))
+      const executionFailure = extractExecutionFailure(result)
+      if (executionFailure) {
+        throw new Error(executionFailure)
+      }
+
       startTransition(() => {
         revalidateGovernance()
       })
-      toast.success(`Blocklisted ${newAccount.trim()}`)
+      toast.success(`Blocklisted ${normalizedNewAccount}`)
       setNewAccount("")
-      const result = await getBlocklist(0, 100)
-      setAccounts(result.accounts)
+      await refreshBlocklistState()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      toast.error(errorMessage)
+      await refreshBlocklistState()
     } finally {
       setTxLoading(false)
     }
@@ -59,15 +100,21 @@ export function BlocklistPanel() {
 
     setTxLoading(true)
     try {
-      await signAndSendTransaction(buildUnblocklistAccountTx(target))
+      const result = await signAndSendTransaction(buildUnblocklistAccountTx(target))
+      const executionFailure = extractExecutionFailure(result)
+      if (executionFailure) {
+        throw new Error(executionFailure)
+      }
+
       startTransition(() => {
         revalidateGovernance()
       })
       toast.success(`Removed ${target} from blocklist`)
-      const result = await getBlocklist(0, 100)
-      setAccounts(result.accounts)
+      await refreshBlocklistState()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      toast.error(errorMessage)
+      await refreshBlocklistState()
     } finally {
       setTxLoading(false)
     }
@@ -86,19 +133,28 @@ export function BlocklistPanel() {
         </div>
       )}
 
-      <form onSubmit={handleAdd} className="flex items-center gap-2">
-        <Input
-          value={newAccount}
-          onChange={(e) => setNewAccount(e.target.value)}
-          placeholder="account.near"
-          className="flex-1 h-9 text-sm"
-          disabled={isLocked}
-        />
-        <Button variant="citizens-primary" size="sm" type="submit" disabled={loading || !newAccount.trim() || isLocked}>
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldBan className="h-3 w-3" />}
-          Add
-        </Button>
-      </form>
+      <div className="flex flex-col gap-1">
+        <form onSubmit={handleAdd} className="flex items-center gap-2">
+          <Input
+            value={newAccount}
+            onChange={(e) => setNewAccount(e.target.value)}
+            placeholder="account.near"
+            className="flex-1 h-9 text-sm"
+            disabled={isLocked}
+            aria-invalid={!!addBlocklistInputError}
+          />
+          <Button
+            variant="citizens-primary"
+            size="sm"
+            type="submit"
+            disabled={loading || !hasAccountInput || !isAccountInputValid || isAccountAlreadyListed || isLocked}
+          >
+            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldBan className="h-3 w-3" />}
+            Add
+          </Button>
+        </form>
+        {addBlocklistInputError && <p className="font-inter text-[12px] text-red-500 px-1">{addBlocklistInputError}</p>}
+      </div>
 
       <div className="flex flex-col gap-1">
         {accounts.map((account) => (
