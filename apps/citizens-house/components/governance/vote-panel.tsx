@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Loader2, Check } from "lucide-react"
 import { toast } from "sonner"
 import type { ProposalView, VoteChoice, VoteView } from "@/lib/schemas/governance-contract"
@@ -76,6 +77,29 @@ function getVoteOutcomeToast(
   }
 
   return { type: "error", message: "Vote outcome could not be confirmed. Please refresh and check again." }
+}
+
+function VotePanelSkeletonState({ title, withActions }: { title: string; withActions: boolean }) {
+  return (
+    <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
+      <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">{title}</h3>
+
+      {withActions ? (
+        <>
+          <div className="flex gap-3">
+            <Skeleton className="h-[36px] flex-1 rounded-[4px]" />
+            <Skeleton className="h-[36px] flex-1 rounded-[4px]" />
+          </div>
+          <Skeleton className="h-[16px] w-[190px] mt-3" />
+        </>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-[20px] w-[85%]" />
+          <Skeleton className="h-[20px] w-[66%]" />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSuccess, onVoteFailure }: Props) {
@@ -342,15 +366,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
   // Proposal ended (finalized or voting period elapsed)
   if (hasEnded) {
     if (checking) {
-      return (
-        <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-          <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
-          <div className="flex items-center gap-2 text-[#64748b]">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="font-inter text-[14px]">Checking your vote...</span>
-          </div>
-        </div>
-      )
+      return <VotePanelSkeletonState title="Your Vote" withActions={false} />
     }
 
     return (
@@ -387,15 +403,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
 
   // Loading state
   if (checking) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
-        <div className="flex items-center gap-2 text-[#64748b]">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="font-inter text-[14px]">Checking eligibility...</span>
-        </div>
-      </div>
-    )
+    return <VotePanelSkeletonState title="Cast Your Vote" withActions />
   }
 
   if (optimisticPendingChoice) {
