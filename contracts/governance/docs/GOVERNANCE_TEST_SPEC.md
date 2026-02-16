@@ -919,15 +919,17 @@ Expected results:
 1. Step 1 succeeds.
 2. Step 2 panics `ERR_QUORUM_BPS_OUT_OF_RANGE`.
 
-UT-CONFIG-002: update_voting_period_secs locked by pending/active
+UT-CONFIG-002: update_voting_period_secs allowed by pending/active
 Preconditions: Pending or Active proposal exists
 Steps:
 1. Admin calls `update_voting_period_secs`.
+2. Read existing proposal timing before and after update.
 Expected results:
-1. Panics `ERR_CONFIG_LOCKED`.
+1. Update succeeds.
+2. Existing proposal `ends_at` remains unchanged.
 
 UT-CONFIG-002b: update_voting_period_secs boundaries
-Preconditions: No pending/active proposals
+Preconditions: Admin caller with 1 yocto
 Steps:
 1. Call with min and max.
 2. Call below min and above max.
@@ -1642,12 +1644,16 @@ Steps:
 Expected results:
 1. Succeeds and emits `config_updated`.
 
-IT-CONFIG-002: Update voting period locked during active
+IT-CONFIG-002: Update voting period during active (future proposals only)
 Preconditions: Active proposal exists
 Steps:
 1. Admin calls `update_voting_period_secs`.
+2. Read existing active proposal timing before and after update.
+3. Create a new proposal after the update.
 Expected results:
-1. Reverts with `ERR_CONFIG_LOCKED`.
+1. Call succeeds.
+2. Existing active proposal keeps its original `ends_at`.
+3. New proposal uses the updated voting period.
 
 IT-CONFIG-003: Update verified_accounts_contract when idle
 Preconditions: No pending/active proposals

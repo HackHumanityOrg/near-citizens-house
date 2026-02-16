@@ -110,7 +110,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **Blocklist lock**: `blocklist_account` and `unblocklist_account` must reject with `ERR_BLOCKLIST_LOCKED` if any proposal is Pending or Active. Proposal creation must also reject if a blocklist change is pending.
 - **Zero snapshot**: If the snapshot callback returns `verified_count == 0`, or if `verified_count - blocklist_size` results in an effective `snapshot_verified_count == 0`, proposal creation fails (`proposal_creation_failed` event emitted). As a defensive fallback, `finalize` also checks for `snapshot_verified_count == 0` and fails the proposal with `failure_kind: ZeroSnapshot`, though this path should not be reachable in normal operation.
 - **Cancellation window**: Admins may cancel any Pending or Active proposal at any time before finalization, including after `ends_at`.
-- **Config updates**: Updates to `voting_period_secs` and `verified_accounts_contract` are blocked while any proposal is Pending or Active. `quorum_bps`, `pending_expiry_secs`, `min_proposal_bond`, and `finalize_grace_period_secs` may be updated at any time since they only affect future proposals or are checked dynamically at finalize time.
+- **Config updates**: `voting_period_secs`, `quorum_bps`, `pending_expiry_secs`, `min_proposal_bond`, and `finalize_grace_period_secs` may be updated at any time (as documented per field) since they affect future proposals or are checked dynamically at finalize time. `verified_accounts_contract` updates are blocked while any proposal is Pending or Active.
 - **Storage funding**: See storage model in Section 5 Assumptions.
 
 ---
@@ -263,7 +263,7 @@ This PRD defines a custom NEAR governance smart contract that replaces SputnikDA
 - **update_quorum_bps(new_bps)**: Admin-only. May be updated at any time; only affects future proposals since each proposal snapshots its own `quorum_bps` at creation.
   - Must be within `[1, 10_000]`.
   - Uses `assert_one_yocto()`.
-- **update_voting_period_secs(new_period)**: Admin-only; blocked while any proposal is Pending or Active.
+- **update_voting_period_secs(new_period)**: Admin-only. May be updated at any time; only affects future proposals since each proposal snapshots `ends_at` at creation.
   - Must be >= 86,400 (1 day) and <= 7,776,000 (90 days).
   - Uses `assert_one_yocto()`.
 - **update_pending_expiry_secs(new_period)**: Admin-only. May be updated at any time; only affects future proposals since each proposal snapshots its own `pending_expires_at` at creation.
@@ -738,7 +738,7 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 | Constant                           | Condition                                                                                           |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `ERR_NO_ADMINS`                    | `admins` vec is empty at init                                                                       |
-| `ERR_CONFIG_LOCKED`                | `voting_period_secs` or `verified_accounts_contract` update while any proposal is Pending or Active |
+| `ERR_CONFIG_LOCKED`                | `verified_accounts_contract` update while any proposal is Pending or Active |
 | `ERR_QUORUM_BPS_OUT_OF_RANGE`      | `quorum_bps < 1` or `> 10_000`                                                                      |
 | `ERR_VOTING_PERIOD_OUT_OF_RANGE`   | `voting_period_secs < 86_400` or `> 7_776_000`                                                      |
 | `ERR_PENDING_EXPIRY_OUT_OF_RANGE`  | `pending_expiry_secs < 300` or `> 86_400`                                                           |
@@ -784,7 +784,7 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 | `blocklist_account`                 | Yes                  | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING`                                                                                                                                                                                                  |
 | `unblocklist_account`               | Yes                  | `ERR_NOT_ADMIN`, `ERR_BLOCKLIST_LOCKED`, `ERR_BLOCKLIST_OP_PENDING`, `ERR_ACCOUNT_NOT_BLOCKLISTED`                                                                                                                                                                   |
 | `update_quorum_bps`                 | Yes                  | `ERR_NOT_ADMIN`, `ERR_QUORUM_BPS_OUT_OF_RANGE`                                                                                                                                                                                                                       |
-| `update_voting_period_secs`         | Yes                  | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`                                                                                                                                                                                               |
+| `update_voting_period_secs`         | Yes                  | `ERR_NOT_ADMIN`, `ERR_VOTING_PERIOD_OUT_OF_RANGE`                                                                                                                                                                                                                    |
 | `update_pending_expiry_secs`        | Yes                  | `ERR_NOT_ADMIN`, `ERR_PENDING_EXPIRY_OUT_OF_RANGE`                                                                                                                                                                                                                   |
 | `update_verified_accounts_contract` | Yes                  | `ERR_NOT_ADMIN`, `ERR_CONFIG_LOCKED`                                                                                                                                                                                                                                 |
 | `update_min_proposal_bond`          | Yes                  | `ERR_NOT_ADMIN`, `ERR_MIN_BOND_OUT_OF_RANGE`                                                                                                                                                                                                                         |
@@ -818,7 +818,7 @@ Paginated view methods (`list_admins`, `list_blocklist`, `list_proposals`, `list
   - Deposit refund: verify excess deposit is refunded after storage delta computed.
   - Bond never refunded: verify bond is not refunded on any lifecycle outcome (success, failure, cancellation, pending expiry, callback failure).
   - `is_vote_free` view method returns correct state.
-  - Config update granularity: verify `quorum_bps`, `pending_expiry_secs`, and `min_proposal_bond` can be updated during active proposals; verify `voting_period_secs` and `verified_accounts_contract` are blocked while proposals are Active.
+  - Config update granularity: verify `voting_period_secs`, `quorum_bps`, `pending_expiry_secs`, and `min_proposal_bond` can be updated during active proposals; verify `verified_accounts_contract` remains blocked while proposals are Active.
   - Blocklist locking: verify blocklist changes are rejected when any proposal is Pending/Active and accepted otherwise.
   - Blocklist pending op: verify only one pending blocklist op is allowed and `create_proposal` is rejected while a blocklist op is pending.
   - Blocklist verification: verify blocklist rejects unverified accounts via callback and succeeds for verified accounts.
