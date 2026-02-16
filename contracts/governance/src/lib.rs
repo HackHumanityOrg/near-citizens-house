@@ -1322,7 +1322,6 @@ impl VersionedContract {
     pub fn update_voting_period_secs(&mut self, new_period_secs: u64) {
         assert_one_yocto();
         self.assert_admin();
-        require!(!self.has_pending_or_active_proposals(), ERR_CONFIG_LOCKED);
         require!(
             (MIN_VOTING_PERIOD_SECS..=MAX_VOTING_PERIOD_SECS).contains(&new_period_secs),
             ERR_VOTING_PERIOD_OUT_OF_RANGE

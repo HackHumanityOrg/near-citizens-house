@@ -64,12 +64,17 @@ async fn it_config_001_update_quorum_while_active() -> anyhow::Result<()> {
 #[allure_sub_suite("Configuration")]
 #[allure_severity("normal")]
 #[allure_tags("integration", "governance", "config")]
-#[allure_description("Verifies config 002 update voting period locked during active.")]
+#[allure_description(
+    "Verifies config 002 update voting period during active affects only future proposals."
+)]
 #[allure_test]
-async fn it_config_002_update_voting_period_locked_during_active() -> anyhow::Result<()> {
-    let (_worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
-    let _proposal_id =
+async fn it_config_002_update_voting_period_during_active() -> anyhow::Result<()> {
+    let (worker, governance, _verified, admin, _backend, _users) = setup_env(1).await?;
+    let existing_id =
         create_proposal(&admin, &governance, "vp", None, NearToken::from_millinear(10)).await?;
+    wait_for_active(&worker, &governance, existing_id).await?;
+    let existing_before = get_proposal(&governance, existing_id).await?;
+
     let result = admin
         .call(governance.id(), "update_voting_period_secs")
         .gas(crate::helpers::GAS_HEAVY)
@@ -77,7 +82,18 @@ async fn it_config_002_update_voting_period_locked_during_active() -> anyhow::Re
         .args_json(json!({ "new_period_secs": 86_400 }))
         .transact()
         .await?;
-    assert!(result.is_failure());
+    assert!(result.is_success());
+
+    let existing_after = get_proposal(&governance, existing_id).await?;
+    assert_eq!(existing_after.ends_at.0, existing_before.ends_at.0);
+
+    let new_id =
+        create_proposal(&admin, &governance, "vp-new", None, NearToken::from_millinear(10)).await?;
+    let new_proposal = get_proposal(&governance, new_id).await?;
+    assert_eq!(
+        new_proposal.ends_at.0 - new_proposal.start_at.0,
+        86_400u64 * 1_000_000_000
+    );
     Ok(())
 }
 

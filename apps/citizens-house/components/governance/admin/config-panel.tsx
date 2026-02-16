@@ -93,7 +93,7 @@ export function ConfigPanel() {
       key: "votingPeriodSecs",
       label: "Voting Period",
       description:
-        "How long voting stays open after a proposal starts. Blocked while any proposal is Pending or Active.",
+        "How long voting stays open after a proposal starts. Can be updated anytime — existing proposals keep their original end time.",
       value: secsToDisplay(config.votingPeriodSecs),
       placeholder: "Seconds (e.g. 1209600 for 14 days)",
     },

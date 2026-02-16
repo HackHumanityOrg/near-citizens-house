@@ -43,16 +43,30 @@ fn ut_config_001_update_quorum_bps_boundaries() {
 #[allure_sub_suite("Configuration")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "governance", "config")]
-#[allure_description("Verifies config 002 update voting period locked by pending.")]
-#[should_panic(expected = "ERR_CONFIG_LOCKED")]
+#[allure_description(
+    "Verifies config 002 update voting period while pending and applies only to future proposals."
+)]
 #[allure_test]
-fn ut_config_002_update_voting_period_locked_by_pending() {
+fn ut_config_002_update_voting_period_while_pending() {
     let mut contract = new_contract();
-    create_basic_proposal(&mut contract, accounts(0));
+    let existing_id = create_basic_proposal(&mut contract, accounts(0));
+    let existing_before = contract.get_proposal(existing_id).unwrap();
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
     crate::helpers::set_context(builder);
-    contract.update_voting_period_secs(60);
+    contract.update_voting_period_secs(120);
+
+    assert_eq!(contract.get_config().voting_period_secs, 120);
+
+    let existing_after = contract.get_proposal(existing_id).unwrap();
+    assert_eq!(existing_after.ends_at.0, existing_before.ends_at.0);
+
+    let new_id = create_basic_proposal(&mut contract, accounts(0));
+    let new_proposal = contract.get_proposal(new_id).unwrap();
+    assert_eq!(
+        new_proposal.ends_at.0 - new_proposal.start_at.0,
+        120 * 1_000_000_000
+    );
 }
 
 #[test]
@@ -61,17 +75,32 @@ fn ut_config_002_update_voting_period_locked_by_pending() {
 #[allure_sub_suite("Configuration")]
 #[allure_severity("normal")]
 #[allure_tags("unit", "governance", "config")]
-#[allure_description("Verifies config 002 update voting period locked by active.")]
-#[should_panic(expected = "ERR_CONFIG_LOCKED")]
+#[allure_description(
+    "Verifies config 002 update voting period while active and preserves existing proposal end time."
+)]
 #[allure_test]
-fn ut_config_002_update_voting_period_locked_by_active() {
+fn ut_config_002_update_voting_period_while_active() {
     let mut contract = new_contract();
-    let id = create_basic_proposal(&mut contract, accounts(0));
-    activate_proposal(&mut contract, id, 10);
+    let existing_id = create_basic_proposal(&mut contract, accounts(0));
+    activate_proposal(&mut contract, existing_id, 10);
+    let existing_before = contract.get_proposal(existing_id).unwrap();
+
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
     crate::helpers::set_context(builder);
-    contract.update_voting_period_secs(60);
+    contract.update_voting_period_secs(180);
+
+    assert_eq!(contract.get_config().voting_period_secs, 180);
+
+    let existing_after = contract.get_proposal(existing_id).unwrap();
+    assert_eq!(existing_after.ends_at.0, existing_before.ends_at.0);
+
+    let new_id = create_basic_proposal(&mut contract, accounts(0));
+    let new_proposal = contract.get_proposal(new_id).unwrap();
+    assert_eq!(
+        new_proposal.ends_at.0 - new_proposal.start_at.0,
+        180 * 1_000_000_000
+    );
 }
 
 #[test]
