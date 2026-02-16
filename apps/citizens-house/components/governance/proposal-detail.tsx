@@ -38,8 +38,9 @@ export function ProposalHeader({ proposal }: ProposalProps) {
         {proposal.title}
       </h1>
       <div className="flex items-center gap-2 text-[14px] font-inter text-[#64748b] dark:text-[#94a3b8]">
-        <span>by {proposal.author}</span>
+        <span>Authored by {proposal.author}</span>
         <span>·</span>
+        <span>Published by</span>
         <a
           href={NEAR_CONFIG.explorerAccountUrl(proposal.creator)}
           target="_blank"
