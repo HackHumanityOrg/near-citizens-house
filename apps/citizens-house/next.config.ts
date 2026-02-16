@@ -4,6 +4,7 @@ import "./lib/schemas/env"
 
 import type { NextConfig } from "next"
 import { withPostHogConfig } from "@posthog/nextjs-config"
+import createWithVercelToolbar from "@vercel/toolbar/plugins/next"
 
 const nextConfig: NextConfig = {
   typescript: {
@@ -23,6 +24,10 @@ const nextConfig: NextConfig = {
         module: /require-in-the-middle/,
         message:
           /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
+      },
+      {
+        module: /@vercel\/flags-core/,
+        message: /Can't resolve '@vercel\/flags-definitions'/,
       },
     ]
     return config
@@ -61,7 +66,9 @@ const nextConfig: NextConfig = {
 const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
 const hasPostHogSourceMaps = isProduction && process.env.POSTHOG_PERSONAL_API_KEY && process.env.POSTHOG_PROJECT_ID
 
-export default hasPostHogSourceMaps
+const withVercelToolbar = createWithVercelToolbar()
+
+const finalConfig = hasPostHogSourceMaps
   ? withPostHogConfig(nextConfig, {
       personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY!,
       envId: process.env.POSTHOG_PROJECT_ID!,
@@ -73,3 +80,5 @@ export default hasPostHogSourceMaps
       },
     })
   : nextConfig
+
+export default withVercelToolbar(finalConfig)

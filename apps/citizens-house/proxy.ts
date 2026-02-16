@@ -1,78 +1,42 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { get } from "@vercel/edge-config"
+import { maintenanceMode, appMode } from "./flags"
 
-// Routes that should remain accessible during maintenance
-const EXEMPT_PATHS = ["/privacy", "/terms", "/maintenance"]
-const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest"]
+const EXEMPT_PATHS = ["/privacy", "/terms", "/_not-found"]
+const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest", "/.well-known"]
 const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".css", ".js", ".woff", ".woff2"]
 
-const MAINTENANCE_KEY = "maintenance"
-const PREVIEW_MAINTENANCE_PREFIX = "maintenance_preview_"
-const PREVIEW_MAINTENANCE_FALLBACK = "maintenance_preview"
-const MAX_EDGE_CONFIG_KEY_LENGTH = 256
+const STAGE_HOME = {
+  verification: "/verification",
+  waiting: "/waiting",
+  voting: "/governance",
+} as const
 
-function sanitizeKeySegment(value: string): { value: string; changed: boolean } {
-  const sanitized = value.replace(/[^A-Za-z0-9_-]+/g, "_")
-  return { value: sanitized, changed: sanitized !== value }
+type AppStage = keyof typeof STAGE_HOME
+
+function redirectTo(request: NextRequest, pathname: string): NextResponse {
+  const url = request.nextUrl.clone()
+  url.pathname = pathname
+  return NextResponse.redirect(url)
 }
 
-function hashKeySegment(value: string): string {
-  let hash = 2166136261
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0")
-}
-
-function buildPreviewKey(branch?: string): string {
-  if (!branch) {
-    return PREVIEW_MAINTENANCE_FALLBACK
-  }
-
-  const { value, changed } = sanitizeKeySegment(branch)
-  let key = `${PREVIEW_MAINTENANCE_PREFIX}${value}`
-
-  if (changed) {
-    key = `${key}_${hashKeySegment(branch)}`
-  }
-
-  if (key.length > MAX_EDGE_CONFIG_KEY_LENGTH) {
-    const hash = hashKeySegment(branch)
-    const available = MAX_EDGE_CONFIG_KEY_LENGTH - PREVIEW_MAINTENANCE_PREFIX.length - 1 - hash.length
-    const trimmed = value.slice(0, Math.max(0, available))
-    key = `${PREVIEW_MAINTENANCE_PREFIX}${trimmed}_${hash}`
-  }
-
-  return key
-}
-
-function getMaintenanceKey(): string {
-  if (process.env.VERCEL_ENV === "preview") {
-    return buildPreviewKey(process.env.VERCEL_GIT_COMMIT_REF)
-  }
-
-  return MAINTENANCE_KEY
-}
-
-function isExemptPath(pathname: string): boolean {
-  if (EXEMPT_PATHS.includes(pathname)) {
+function isAllowedStagePath(mode: AppStage, pathname: string): boolean {
+  if (pathname === "/citizens" || pathname.startsWith("/citizens/")) {
     return true
   }
 
+  const stageHome = STAGE_HOME[mode]
+  return pathname === stageHome || pathname.startsWith(`${stageHome}/`)
+}
+
+function isExemptPath(pathname: string): boolean {
+  if (EXEMPT_PATHS.includes(pathname)) return true
   for (const prefix of EXEMPT_PREFIXES) {
-    if (pathname.startsWith(prefix)) {
-      return true
-    }
+    if (pathname.startsWith(prefix)) return true
   }
-
   for (const ext of STATIC_EXTENSIONS) {
-    if (pathname.endsWith(ext)) {
-      return true
-    }
+    if (pathname.endsWith(ext)) return true
   }
-
   return false
 }
 
@@ -84,14 +48,31 @@ export async function proxy(request: NextRequest) {
   }
 
   try {
-    const maintenance = await get(getMaintenanceKey())
+    const maintenance = await maintenanceMode()
+    if (maintenance) {
+      if (pathname === "/maintenance") {
+        return NextResponse.next()
+      }
 
-    if (maintenance === true || maintenance === "true") {
-      request.nextUrl.pathname = "/maintenance"
-      return NextResponse.rewrite(request.nextUrl)
+      return redirectTo(request, "/maintenance")
+    }
+
+    const mode = await appMode()
+    const stageHome = STAGE_HOME[mode]
+
+    if (pathname === "/" || pathname === "/maintenance") {
+      return redirectTo(request, stageHome)
+    }
+
+    if (!isAllowedStagePath(mode, pathname)) {
+      return redirectTo(request, stageHome)
     }
   } catch {
-    // Edge Config read failed - continue without maintenance mode
+    if (pathname === "/maintenance" || pathname === "/_not-found") {
+      return NextResponse.next()
+    }
+
+    return redirectTo(request, "/maintenance")
   }
 
   return NextResponse.next()
