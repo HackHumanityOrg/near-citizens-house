@@ -1,11 +1,12 @@
-use allure_rs::prelude::*;
-use near_workspaces::types::NearToken;
-use borsh::{to_vec, BorshDeserialize};
-use near_sdk::IntoStorageKey;
-use serde_json::json;
 use crate::helpers::{
     create_proposal, get_proposal, init_governance, init_mock_verified_accounts,
-    init_verified_accounts, proposal_storage_key, setup_env};
+    init_verified_accounts, proposal_storage_key, setup_env,
+};
+use allure_rs::prelude::*;
+use borsh::{to_vec, BorshDeserialize};
+use near_sdk::IntoStorageKey;
+use near_workspaces::types::NearToken;
+use serde_json::json;
 
 #[tokio::test]
 #[allure_parent_suite("Near Citizens House")]
@@ -32,8 +33,14 @@ async fn it_snap_001_snapshot_callback_failure() -> anyhow::Result<()> {
         .await?;
     assert!(result.is_success());
 
-    let proposal_id =
-        create_proposal(&admin, &governance, "snapfail", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "snapfail",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let proposal: Option<governance::ProposalView> = governance
         .view("get_proposal")
         .args_json(json!({ "proposal_id": proposal_id }))
@@ -75,8 +82,14 @@ async fn it_snap_001_snapshot_callback_failure() -> anyhow::Result<()> {
 #[allure_test]
 async fn it_snap_002_zero_snapshot_rejection() -> anyhow::Result<()> {
     let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "zerosnap", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "zerosnap",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let proposal = get_proposal(&governance, proposal_id).await?;
     assert_eq!(proposal.status, governance::ProposalStatus::Failed);
     assert_eq!(
@@ -99,8 +112,14 @@ async fn it_pending_001_pending_expiry() -> anyhow::Result<()> {
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
     let admin = worker.dev_create_account().await?;
     let governance = init_governance(&worker, &mock_verified, &admin).await?;
-    let proposal_id =
-        create_proposal(&admin, &governance, "pending", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "pending",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let _proposal = get_proposal(&governance, proposal_id).await?;
     let block = worker.view_block().await?;
     let forced_expiry = block.timestamp();

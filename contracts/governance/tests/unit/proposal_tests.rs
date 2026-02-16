@@ -5,13 +5,19 @@ use near_sdk::{json_types::U64, Gas, NearToken, PromiseResult};
 
 use crate::helpers::{
     assert_panics_with, build_context, new_contract, set_context_with_promise_results,
-    with_block_timestamp, with_deposit};
+    with_block_timestamp, with_deposit,
+};
 
 fn create_basic_proposal(contract: &mut VersionedContract, creator: usize) -> u32 {
     let mut builder = build_context(accounts(creator));
     builder.attached_deposit(NearToken::from_millinear(10));
     crate::helpers::set_context(builder);
-    contract.create_proposal("title".to_string(), "author".to_string(), "desc".to_string(), None)
+    contract.create_proposal(
+        "title".to_string(),
+        "author".to_string(),
+        "desc".to_string(),
+        None,
+    )
 }
 
 fn activate_proposal(contract: &mut VersionedContract, proposal_id: u32, verified_count: u32) {
@@ -33,7 +39,8 @@ fn insert_pending_vote(
         Some(PendingVote {
             submitted_at,
             choice,
-            voter_deposit: NearToken::from_yoctonear(0)}),
+            voter_deposit: NearToken::from_yoctonear(0),
+        }),
     );
     let proposal = c.proposals.get_mut(proposal_id).unwrap();
     proposal.pending_vote_count = proposal.pending_vote_count.saturating_add(1);
@@ -41,18 +48,14 @@ fn insert_pending_vote(
     c.proposals.flush();
 }
 
-fn verify_vote(
-    contract: &mut VersionedContract,
-    proposal_id: u32,
-    voter: usize,
-    verified_at: u64,
-) {
+fn verify_vote(contract: &mut VersionedContract, proposal_id: u32, voter: usize, verified_at: u64) {
     let builder = build_context(accounts(0));
     set_context_with_promise_results(builder, vec![PromiseResult::Successful(vec![])]);
     contract.on_vote_verification(
         Ok(Some(VerificationSummary {
             near_account_id: accounts(voter),
-            verified_at})),
+            verified_at,
+        })),
         proposal_id,
         accounts(voter),
     );
@@ -262,7 +265,9 @@ fn ut_prop_002b_utf8_byte_length_boundary() {
 fn ut_prop_003_insufficient_bond() {
     let mut contract = new_contract();
     let mut builder = build_context(accounts(0));
-    builder.attached_deposit(NearToken::from_yoctonear(NearToken::from_millinear(10).as_yoctonear() - 1));
+    builder.attached_deposit(NearToken::from_yoctonear(
+        NearToken::from_millinear(10).as_yoctonear() - 1,
+    ));
     crate::helpers::set_context(builder);
     contract.create_proposal("t".to_string(), "a".to_string(), "d".to_string(), None);
 }
@@ -709,7 +714,13 @@ fn ut_prop_011_finalize_blocked_by_pending_votes() {
     let id = create_basic_proposal(&mut contract, 0);
     activate_proposal(&mut contract, id, 10);
     let proposal = contract.get_proposal(id).unwrap();
-    insert_pending_vote(&mut contract, id, 2, VoteChoice::Yes, proposal.start_at.0 + 1);
+    insert_pending_vote(
+        &mut contract,
+        id,
+        2,
+        VoteChoice::Yes,
+        proposal.start_at.0 + 1,
+    );
 
     let grace = contract.get_config().finalize_grace_period_secs * 1_000_000_000;
     let mut builder = build_context(accounts(0));
@@ -964,12 +975,7 @@ fn ut_prop_whitespace_only_fields_allowed() {
     let mut builder = build_context(accounts(0));
     builder.attached_deposit(NearToken::from_millinear(10));
     crate::helpers::set_context(builder);
-    let id = contract.create_proposal(
-        "   ".to_string(),
-        "  ".to_string(),
-        " ".to_string(),
-        None,
-    );
+    let id = contract.create_proposal("   ".to_string(), "  ".to_string(), " ".to_string(), None);
     let proposal = contract.get_proposal(id).unwrap();
     assert_eq!(proposal.title, "   ");
     assert_eq!(proposal.author, "  ");
@@ -1051,10 +1057,7 @@ fn ut_prop_max_config_no_overflow() {
 
     let proposal = contract.get_proposal(id).unwrap();
     assert_eq!(proposal.start_at.0, start_at);
-    assert_eq!(
-        proposal.ends_at.0,
-        start_at + max_secs * 1_000_000_000
-    );
+    assert_eq!(proposal.ends_at.0, start_at + max_secs * 1_000_000_000);
 }
 
 #[test]
@@ -1283,7 +1286,13 @@ fn ut_prop_014_cancel_does_not_clear_pending_votes() {
     activate_proposal(&mut contract, id, 10);
     let proposal = contract.get_proposal(id).unwrap();
 
-    insert_pending_vote(&mut contract, id, 2, VoteChoice::Yes, proposal.start_at.0 + 1);
+    insert_pending_vote(
+        &mut contract,
+        id,
+        2,
+        VoteChoice::Yes,
+        proposal.start_at.0 + 1,
+    );
 
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);

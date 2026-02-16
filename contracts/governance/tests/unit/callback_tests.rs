@@ -6,7 +6,8 @@ use serde_json::Value;
 
 use crate::helpers::{
     activate_proposal, build_context, create_basic_proposal, insert_pending_vote, new_contract,
-    set_context_with_promise_results, verify_vote, with_block_timestamp, with_deposit};
+    set_context_with_promise_results, verify_vote, with_block_timestamp, with_deposit,
+};
 
 fn call_on_snapshot(
     contract: &mut governance::VersionedContract,
@@ -47,10 +48,7 @@ fn extract_event(logs: &[String], event_name: &str) -> Value {
         .iter()
         .find(|l| l.contains("\"event\":\"") && l.contains(event_name))
         .expect("event not found");
-    let json = entry
-        .strip_prefix("EVENT_JSON:")
-        .unwrap_or(entry)
-        .trim();
+    let json = entry.strip_prefix("EVENT_JSON:").unwrap_or(entry).trim();
     serde_json::from_str(json).expect("invalid event json")
 }
 
@@ -146,7 +144,10 @@ fn ut_snap_002_invalid_promise_results_count() {
     assert!(!result);
     let proposal = contract.get_proposal(id).unwrap();
     assert_eq!(proposal.status, ProposalStatus::Failed);
-    assert_eq!(proposal.failure_kind, Some(FailureKind::SnapshotCallbackFailed));
+    assert_eq!(
+        proposal.failure_kind,
+        Some(FailureKind::SnapshotCallbackFailed)
+    );
 }
 
 #[test]
@@ -169,7 +170,10 @@ fn ut_snap_003_callback_error() {
     assert!(!result);
     let proposal = contract.get_proposal(id).unwrap();
     assert_eq!(proposal.status, ProposalStatus::Failed);
-    assert_eq!(proposal.failure_kind, Some(FailureKind::SnapshotCallbackFailed));
+    assert_eq!(
+        proposal.failure_kind,
+        Some(FailureKind::SnapshotCallbackFailed)
+    );
 }
 
 #[test]
@@ -268,7 +272,8 @@ fn ut_vote_cb_001b_proposal_missing_after_pending_vote() {
         Some(governance::PendingVote {
             submitted_at: 1_700_000_000_000_000_000,
             choice: VoteChoice::Yes,
-            voter_deposit: NearToken::from_near(1)}),
+            voter_deposit: NearToken::from_near(1),
+        }),
     );
     c.pending_votes.flush();
     let result = call_on_vote_verification(
@@ -278,7 +283,8 @@ fn ut_vote_cb_001b_proposal_missing_after_pending_vote() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000})),
+            verified_at: 1_700_000_000_000_000_000,
+        })),
     );
     assert!(!result);
     let receipts = get_created_receipts();
@@ -306,13 +312,7 @@ fn ut_vote_cb_002_invalid_promise_results_count() {
         proposal.start_at.0 + 1,
         NearToken::from_near(1),
     );
-    let result = call_on_vote_verification(
-        &mut contract,
-        id,
-        accounts(2),
-        vec![],
-        Ok(None),
-    );
+    let result = call_on_vote_verification(&mut contract, id, accounts(2), vec![], Ok(None));
     assert!(!result);
     let receipts = get_created_receipts();
     assert_eq!(receipts.len(), 1);
@@ -351,7 +351,8 @@ fn ut_vote_cb_003_proposal_cancelled_or_finalized() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(!result);
 
@@ -378,7 +379,8 @@ fn ut_vote_cb_003_proposal_cancelled_or_finalized() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: created_at})),
+            verified_at: created_at,
+        })),
     );
     assert!(!result);
 }
@@ -410,7 +412,8 @@ fn ut_vote_cb_003b_proposal_pending() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(!result);
 }
@@ -491,7 +494,8 @@ fn ut_vote_cb_005_verified_after_creation() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0 + 1})),
+            verified_at: proposal.created_at.0 + 1,
+        })),
     );
     assert!(!result);
 }
@@ -524,7 +528,8 @@ fn ut_vote_cb_006_submitted_outside_window() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(!result);
 
@@ -543,7 +548,8 @@ fn ut_vote_cb_006_submitted_outside_window() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(!result);
 }
@@ -577,7 +583,8 @@ fn ut_vote_cb_006b_submitted_at_boundary_accepts() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(result);
     let vote = contract.get_vote(id, accounts(2)).unwrap();
@@ -598,7 +605,8 @@ fn ut_vote_cb_006b_submitted_at_boundary_accepts() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(result);
     let vote = contract.get_vote(id, accounts(3)).unwrap();
@@ -634,7 +642,8 @@ fn ut_vote_cb_007_success_records_vote_and_refunds_excess() {
     let result = contract.on_vote_verification(
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
         id,
         accounts(2),
     );
@@ -658,21 +667,26 @@ fn ut_vote_cb_007_success_records_vote_and_refunds_excess() {
         .iter()
         .filter_map(|a| match a {
             MockAction::Transfer { deposit, .. } => Some(deposit.as_yoctonear()),
-            _ => None})
+            _ => None,
+        })
         .sum();
     assert_eq!(amount, expected_refund.as_yoctonear());
 
     let event = extract_event(&get_logs(), "vote_cast");
-    let data = event
-        .get("data")
-        .expect("vote_cast data missing");
+    let data = event.get("data").expect("vote_cast data missing");
     let proposal_id = data
         .get("proposal_id")
         .and_then(Value::as_u64)
         .expect("proposal_id missing");
     assert_eq!(proposal_id, id as u64);
-    assert_eq!(data.get("voter").unwrap(), &Value::String(accounts(2).to_string()));
-    assert_eq!(data.get("choice").unwrap(), &Value::String("yes".to_string()));
+    assert_eq!(
+        data.get("voter").unwrap(),
+        &Value::String(accounts(2).to_string())
+    );
+    assert_eq!(
+        data.get("choice").unwrap(),
+        &Value::String("yes".to_string())
+    );
     assert_eq!(
         data.get("voted_at").unwrap(),
         &Value::String(submitted_at.to_string())
@@ -709,7 +723,8 @@ fn ut_vote_cb_verified_at_zero_is_accepted() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 0})),
+            verified_at: 0,
+        })),
     );
     assert!(result);
     let vote = contract.get_vote(id, accounts(2)).unwrap();
@@ -746,7 +761,8 @@ fn ut_vote_cb_near_account_id_mismatch_is_not_checked() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(3),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(!result);
     assert!(contract.get_vote(id, accounts(2)).is_none());
@@ -781,7 +797,8 @@ fn ut_vote_cb_007b_voted_at_equals_submitted_at() {
     contract.on_vote_verification(
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
         id,
         accounts(2),
     );
@@ -848,7 +865,8 @@ fn ut_vote_cb_008_vote_count_overflow() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: proposal.created_at.0})),
+            verified_at: proposal.created_at.0,
+        })),
     );
     assert!(!result);
     let receipts = get_created_receipts();
@@ -952,7 +970,8 @@ fn ut_block_cb_004_success_adds_to_blocklist() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000})),
+            verified_at: 1_700_000_000_000_000_000,
+        })),
     );
     assert!(result);
     assert!(contract.is_blocklisted(accounts(2)));
@@ -981,7 +1000,8 @@ fn ut_block_cb_005_success_already_blocklisted() {
         vec![PromiseResult::Successful(vec![])],
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000})),
+            verified_at: 1_700_000_000_000_000_000,
+        })),
     );
     assert!(result);
     assert!(contract.is_blocklisted(accounts(2)));

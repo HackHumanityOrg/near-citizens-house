@@ -3,7 +3,7 @@ use governance::VersionedContract;
 use near_sdk::test_utils::accounts;
 use near_sdk::NearToken;
 
-use crate::helpers::{build_context};
+use crate::helpers::build_context;
 
 #[test]
 #[allure_parent_suite("Near Citizens House")]

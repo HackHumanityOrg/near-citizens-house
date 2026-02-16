@@ -92,7 +92,12 @@ pub fn create_basic_proposal(contract: &mut VersionedContract, creator: AccountI
     let mut builder = build_context(creator);
     builder.attached_deposit(NearToken::from_millinear(10));
     set_context(builder);
-    contract.create_proposal("title".to_string(), "author".to_string(), "desc".to_string(), None)
+    contract.create_proposal(
+        "title".to_string(),
+        "author".to_string(),
+        "desc".to_string(),
+        None,
+    )
 }
 
 pub fn activate_proposal(contract: &mut VersionedContract, proposal_id: u32, verified_count: u32) {

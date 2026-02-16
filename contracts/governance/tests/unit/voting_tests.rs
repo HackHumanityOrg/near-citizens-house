@@ -1,12 +1,15 @@
 use allure_rs::prelude::*;
 use governance::{
-    FailureKind, ProposalStatus, VoteChoice, ESTIMATED_PENDING_VOTE_BYTES, ESTIMATED_VOTE_BYTES};
+    FailureKind, ProposalStatus, VoteChoice, ESTIMATED_PENDING_VOTE_BYTES, ESTIMATED_VOTE_BYTES,
+};
 use near_sdk::test_utils::accounts;
-use near_sdk::{env, Gas, NearToken};
+use near_sdk::{env, Gas, NearToken, PromiseResult};
 
 use crate::helpers::{
-    activate_proposal, assert_panics_with, build_context, create_basic_proposal, insert_pending_vote,
-    new_contract, with_block_timestamp};
+    activate_proposal, assert_panics_with, build_context, create_basic_proposal,
+    insert_pending_vote, new_contract, set_context_with_promise_results, verify_vote,
+    with_block_timestamp,
+};
 
 #[test]
 #[allure_parent_suite("Near Citizens House")]
@@ -129,7 +132,10 @@ fn ut_vote_002_cast_vote_timing_boundaries() {
     let mut builder = build_context(accounts(2));
     with_block_timestamp(&mut builder, proposal.start_at.0 - 1);
     crate::helpers::set_context(builder);
-    assert_panics_with(|| contract.cast_vote(id, VoteChoice::Yes), "ERR_PROPOSAL_NOT_STARTED");
+    assert_panics_with(
+        || contract.cast_vote(id, VoteChoice::Yes),
+        "ERR_PROPOSAL_NOT_STARTED",
+    );
 
     let mut builder = build_context(accounts(2));
     with_block_timestamp(&mut builder, proposal.start_at.0);
@@ -148,7 +154,10 @@ fn ut_vote_002_cast_vote_timing_boundaries() {
     let mut builder = build_context(accounts(4));
     with_block_timestamp(&mut builder, proposal.ends_at.0 + 1);
     crate::helpers::set_context(builder);
-    assert_panics_with(|| contract.cast_vote(id, VoteChoice::Yes), "ERR_PROPOSAL_ENDED");
+    assert_panics_with(
+        || contract.cast_vote(id, VoteChoice::Yes),
+        "ERR_PROPOSAL_ENDED",
+    );
 }
 
 #[test]
@@ -169,6 +178,67 @@ fn ut_vote_003_blocklisted_voter_rejected() {
     let builder = build_context(accounts(2));
     crate::helpers::set_context(builder);
     contract.cast_vote(id, VoteChoice::Yes);
+}
+
+#[test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Unit Tests")]
+#[allure_sub_suite("Voting")]
+#[allure_severity("normal")]
+#[allure_tags("unit", "governance", "voting", "blocklist")]
+#[allure_description("Verifies vote 003b verified and blocklisted voter rejected.")]
+#[allure_test]
+fn ut_vote_003b_verified_and_blocklisted_voter_rejected() {
+    let mut contract = new_contract();
+
+    // Add account through blocklist flow and confirm callback success.
+    let mut builder = build_context(accounts(0));
+    builder.attached_deposit(NearToken::from_yoctonear(1));
+    crate::helpers::set_context(builder);
+    contract.blocklist_account(accounts(2));
+
+    let builder = build_context(accounts(0));
+    set_context_with_promise_results(builder, vec![PromiseResult::Successful(vec![])]);
+    let callback_result = contract.on_blocklist_verification(
+        Ok(Some(governance::VerificationSummary {
+            near_account_id: accounts(2),
+            verified_at: 0,
+        })),
+        accounts(2),
+    );
+    assert!(callback_result);
+    assert!(contract.is_blocklisted(accounts(2)));
+
+    let id = create_basic_proposal(&mut contract, accounts(0));
+    activate_proposal(&mut contract, id, 10);
+    let proposal = contract.get_proposal(id).unwrap();
+
+    // Verified + blocklisted account must be rejected in cast_vote path.
+    let mut builder = build_context(accounts(2));
+    with_block_timestamp(&mut builder, proposal.start_at.0 + 1);
+    crate::helpers::set_context(builder);
+    assert_panics_with(
+        || contract.cast_vote(id, VoteChoice::Yes),
+        "ERR_BLOCKLISTED",
+    );
+
+    let blocked_attempt = contract.get_proposal(id).unwrap();
+    assert_eq!(blocked_attempt.yes_votes, 0);
+    assert_eq!(blocked_attempt.no_votes, 0);
+    assert!(!contract.has_voted(id, accounts(2)));
+
+    // A non-blocklisted voter can still vote and that vote is counted.
+    let mut builder = build_context(accounts(3));
+    with_block_timestamp(&mut builder, proposal.start_at.0 + 2);
+    crate::helpers::set_context(builder);
+    contract.cast_vote(id, VoteChoice::Yes);
+    verify_vote(&mut contract, id, accounts(3), proposal.created_at.0);
+
+    let after_valid_vote = contract.get_proposal(id).unwrap();
+    assert_eq!(after_valid_vote.yes_votes, 1);
+    assert_eq!(after_valid_vote.no_votes, 0);
+    assert!(contract.has_voted(id, accounts(3)));
+    assert!(!contract.has_voted(id, accounts(2)));
 }
 
 #[test]

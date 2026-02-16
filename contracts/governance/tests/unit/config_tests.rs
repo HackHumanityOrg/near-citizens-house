@@ -4,7 +4,8 @@ use near_sdk::NearToken;
 
 use crate::helpers::{
     activate_proposal, assert_panics_with, build_context, create_basic_proposal, new_contract,
-    with_deposit};
+    with_deposit,
+};
 
 #[test]
 #[allure_parent_suite("Near Citizens House")]
@@ -29,12 +30,18 @@ fn ut_config_001_update_quorum_bps_boundaries() {
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
     crate::helpers::set_context(builder);
-    assert_panics_with(|| contract.update_quorum_bps(0), "ERR_QUORUM_BPS_OUT_OF_RANGE");
+    assert_panics_with(
+        || contract.update_quorum_bps(0),
+        "ERR_QUORUM_BPS_OUT_OF_RANGE",
+    );
 
     let mut builder = build_context(accounts(0));
     with_deposit(&mut builder, 1);
     crate::helpers::set_context(builder);
-    assert_panics_with(|| contract.update_quorum_bps(10_001), "ERR_QUORUM_BPS_OUT_OF_RANGE");
+    assert_panics_with(
+        || contract.update_quorum_bps(10_001),
+        "ERR_QUORUM_BPS_OUT_OF_RANGE",
+    );
 }
 
 #[test]
@@ -191,7 +198,10 @@ fn ut_config_003b_update_verified_contract_allowed_when_idle() {
     with_deposit(&mut builder, 1);
     crate::helpers::set_context(builder);
     contract.update_verified_accounts_contract(accounts(5));
-    assert_eq!(contract.get_config().verified_accounts_contract, accounts(5));
+    assert_eq!(
+        contract.get_config().verified_accounts_contract,
+        accounts(5)
+    );
 }
 
 #[test]
@@ -455,10 +465,7 @@ fn ut_config_013_config_updates_by_non_admin() {
     let mut builder = build_context(accounts(4));
     with_deposit(&mut builder, 1);
     crate::helpers::set_context(builder);
-    assert_panics_with(
-        || contract.update_pending_expiry_secs(20),
-        "ERR_NOT_ADMIN",
-    );
+    assert_panics_with(|| contract.update_pending_expiry_secs(20), "ERR_NOT_ADMIN");
 
     let mut builder = build_context(accounts(4));
     with_deposit(&mut builder, 1);
@@ -479,10 +486,7 @@ fn ut_config_013_config_updates_by_non_admin() {
     let mut builder = build_context(accounts(4));
     with_deposit(&mut builder, 1);
     crate::helpers::set_context(builder);
-    assert_panics_with(
-        || contract.update_max_start_delay_secs(20),
-        "ERR_NOT_ADMIN",
-    );
+    assert_panics_with(|| contract.update_max_start_delay_secs(20), "ERR_NOT_ADMIN");
 }
 
 #[test]
@@ -497,7 +501,10 @@ fn ut_config_014_config_updates_without_one_yocto() {
     let mut contract = new_contract();
     let builder = build_context(accounts(0));
     crate::helpers::set_context(builder);
-    assert_panics_with(|| contract.update_quorum_bps(800), "Requires attached deposit");
+    assert_panics_with(
+        || contract.update_quorum_bps(800),
+        "Requires attached deposit",
+    );
 
     let builder = build_context(accounts(0));
     crate::helpers::set_context(builder);

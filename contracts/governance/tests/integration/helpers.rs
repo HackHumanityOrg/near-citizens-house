@@ -18,12 +18,14 @@ async fn compile_project_with_features(
     features: &str,
 ) -> anyhow::Result<Vec<u8>> {
     let project_path = std::fs::canonicalize(project_path)?;
-    let manifest_path = cargo_near_build::camino::Utf8PathBuf::from_path_buf(
-        project_path.join("Cargo.toml"),
-    )
-    .map_err(|error_path| {
-        anyhow::anyhow!("Unable to construct UTF-8 path from {}", error_path.display())
-    })?;
+    let manifest_path =
+        cargo_near_build::camino::Utf8PathBuf::from_path_buf(project_path.join("Cargo.toml"))
+            .map_err(|error_path| {
+                anyhow::anyhow!(
+                    "Unable to construct UTF-8 path from {}",
+                    error_path.display()
+                )
+            })?;
 
     let build_opts = cargo_near_build::BuildOpts::builder()
         .no_locked(true)
@@ -31,8 +33,7 @@ async fn compile_project_with_features(
         .features(features.to_string())
         .build();
 
-    let wasm_path =
-        cargo_near_build::build_with_cli(build_opts).map_err(|e| anyhow::anyhow!(e))?;
+    let wasm_path = cargo_near_build::build_with_cli(build_opts).map_err(|e| anyhow::anyhow!(e))?;
     let wasm_path = wasm_path.canonicalize()?;
     Ok(tokio::fs::read(wasm_path).await?)
 }
@@ -179,7 +180,14 @@ pub async fn init_governance(
 
 pub async fn setup_env(
     verified_accounts: usize,
-) -> anyhow::Result<(Worker<Sandbox>, Contract, Contract, Account, Account, Vec<Account>)> {
+) -> anyhow::Result<(
+    Worker<Sandbox>,
+    Contract,
+    Contract,
+    Account,
+    Account,
+    Vec<Account>,
+)> {
     let worker = near_workspaces::sandbox().await?;
     let (verified_contract, backend) = init_verified_accounts(&worker).await?;
     let admin = worker.dev_create_account().await?;
@@ -202,8 +210,8 @@ pub fn generate_nep413_signature(
     nonce: &[u8; 32],
     recipient: &str,
 ) -> (String, String) {
-    let secret_key = SecretKey::from_str(&account.secret_key().to_string())
-        .expect("parse secret key");
+    let secret_key =
+        SecretKey::from_str(&account.secret_key().to_string()).expect("parse secret key");
     let public_key = secret_key.public_key();
     let public_key_str = public_key.to_string();
 
@@ -351,12 +359,11 @@ pub async fn fast_forward_to_timestamp(
     Ok(())
 }
 
-pub async fn fast_forward_seconds(
-    worker: &Worker<Sandbox>,
-    seconds: u64,
-) -> anyhow::Result<()> {
+pub async fn fast_forward_seconds(worker: &Worker<Sandbox>, seconds: u64) -> anyhow::Result<()> {
     let block = worker.view_block().await?;
-    let target = block.timestamp().saturating_add(seconds.saturating_mul(1_000_000_000));
+    let target = block
+        .timestamp()
+        .saturating_add(seconds.saturating_mul(1_000_000_000));
     fast_forward_to_timestamp(worker, target).await
 }
 

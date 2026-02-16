@@ -3,7 +3,7 @@ use governance::VersionedContract;
 use near_sdk::test_utils::accounts;
 use near_sdk::{env, NearToken};
 
-use crate::helpers::{build_context};
+use crate::helpers::build_context;
 
 fn write_state_with_admin(admin: near_sdk::AccountId) {
     let mut state = VersionedContract::new(

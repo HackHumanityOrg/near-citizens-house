@@ -2,7 +2,13 @@
 //!
 //! Run with: cargo test --features testing --test unit
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
 
 #[path = "unit/helpers.rs"]
 pub mod helpers;

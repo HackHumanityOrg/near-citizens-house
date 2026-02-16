@@ -6,17 +6,15 @@ use serde_json::Value;
 
 use crate::helpers::{
     activate_proposal, build_context, create_basic_proposal, insert_pending_vote, new_contract,
-    set_context_with_promise_results, verify_vote, with_block_timestamp, with_deposit};
+    set_context_with_promise_results, verify_vote, with_block_timestamp, with_deposit,
+};
 
 fn extract_event(logs: &[String], event_name: &str) -> Value {
     let entry = logs
         .iter()
         .find(|l| l.contains("\"event\":\"") && l.contains(event_name))
         .expect("event not found");
-    let json = entry
-        .strip_prefix("EVENT_JSON:")
-        .unwrap_or(entry)
-        .trim();
+    let json = entry.strip_prefix("EVENT_JSON:").unwrap_or(entry).trim();
     serde_json::from_str(json).expect("invalid event json")
 }
 
@@ -370,7 +368,8 @@ fn ut_event_010_blocklist_added_removed_payload_types() {
     contract.on_blocklist_verification(
         Ok(Some(governance::VerificationSummary {
             near_account_id: accounts(2),
-            verified_at: 1_700_000_000_000_000_000})),
+            verified_at: 1_700_000_000_000_000_000,
+        })),
         accounts(2),
     );
     let event = extract_event(&get_logs(), "blocklist_added");

@@ -1,10 +1,15 @@
 use allure_rs::prelude::*;
 use near_sdk::test_utils::accounts;
-use near_sdk::{mock::MockAction, test_utils::{get_created_receipts, get_logs}, NearToken};
+use near_sdk::{
+    mock::MockAction,
+    test_utils::{get_created_receipts, get_logs},
+    NearToken,
+};
 use serde_json::Value;
 
 use crate::helpers::{
-    build_context, create_basic_proposal, insert_pending_vote, new_contract, with_deposit};
+    build_context, create_basic_proposal, insert_pending_vote, new_contract, with_deposit,
+};
 
 #[test]
 #[allure_parent_suite("Near Citizens House")]
@@ -266,7 +271,8 @@ fn ut_admin_010b_clear_stale_pending_vote_refunds_deposit() {
         .iter()
         .filter_map(|a| match a {
             MockAction::Transfer { deposit, .. } => Some(deposit.as_yoctonear()),
-            _ => None})
+            _ => None,
+        })
         .sum();
     assert_eq!(amount, NearToken::from_near(1).as_yoctonear());
 
@@ -282,10 +288,7 @@ fn ut_admin_010b_clear_stale_pending_vote_refunds_deposit() {
         .and_then(|data| data.get("deposit_refunded"))
         .and_then(Value::as_str)
         .expect("deposit_refunded missing");
-    assert_eq!(
-        refunded,
-        NearToken::from_near(1).as_yoctonear().to_string()
-    );
+    assert_eq!(refunded, NearToken::from_near(1).as_yoctonear().to_string());
 }
 
 #[test]

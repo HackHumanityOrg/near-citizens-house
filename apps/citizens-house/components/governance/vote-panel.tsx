@@ -488,7 +488,6 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
           onClick={() => handleVote("yes")}
           disabled={loading}
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Yes
         </Button>
         <Button
@@ -497,7 +496,6 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
           onClick={() => handleVote("no")}
           disabled={loading}
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           No
         </Button>
       </div>

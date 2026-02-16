@@ -735,16 +735,16 @@ Methods requiring `assert_one_yocto()` use the SDK's built-in function, which pa
 
 **Config validation (init + update methods):**
 
-| Constant                           | Condition                                                                                           |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `ERR_NO_ADMINS`                    | `admins` vec is empty at init                                                                       |
+| Constant                           | Condition                                                                   |
+| ---------------------------------- | --------------------------------------------------------------------------- |
+| `ERR_NO_ADMINS`                    | `admins` vec is empty at init                                               |
 | `ERR_CONFIG_LOCKED`                | `verified_accounts_contract` update while any proposal is Pending or Active |
-| `ERR_QUORUM_BPS_OUT_OF_RANGE`      | `quorum_bps < 1` or `> 10_000`                                                                      |
-| `ERR_VOTING_PERIOD_OUT_OF_RANGE`   | `voting_period_secs < 86_400` or `> 7_776_000`                                                      |
-| `ERR_PENDING_EXPIRY_OUT_OF_RANGE`  | `pending_expiry_secs < 300` or `> 86_400`                                                           |
-| `ERR_MIN_BOND_OUT_OF_RANGE`        | `min_proposal_bond < 1 NEAR` or `> 100 NEAR` (testing: `< 0.01 NEAR`)                               |
-| `ERR_GRACE_PERIOD_OUT_OF_RANGE`    | `finalize_grace_period_secs < 300` or `> 86_400`                                                    |
-| `ERR_MAX_START_DELAY_OUT_OF_RANGE` | `max_start_delay_secs > 7_776_000`                                                                  |
+| `ERR_QUORUM_BPS_OUT_OF_RANGE`      | `quorum_bps < 1` or `> 10_000`                                              |
+| `ERR_VOTING_PERIOD_OUT_OF_RANGE`   | `voting_period_secs < 86_400` or `> 7_776_000`                              |
+| `ERR_PENDING_EXPIRY_OUT_OF_RANGE`  | `pending_expiry_secs < 300` or `> 86_400`                                   |
+| `ERR_MIN_BOND_OUT_OF_RANGE`        | `min_proposal_bond < 1 NEAR` or `> 100 NEAR` (testing: `< 0.01 NEAR`)       |
+| `ERR_GRACE_PERIOD_OUT_OF_RANGE`    | `finalize_grace_period_secs < 300` or `> 86_400`                            |
+| `ERR_MAX_START_DELAY_OUT_OF_RANGE` | `max_start_delay_secs > 7_776_000`                                          |
 
 **Admin recovery:**
 

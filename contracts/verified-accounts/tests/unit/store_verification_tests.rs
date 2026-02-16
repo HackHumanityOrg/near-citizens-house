@@ -54,11 +54,7 @@ fn test_happy_path_store_verification() {
         });
 
     bdd::when("storing the verification with valid signature", || {
-        contract.store_verification(
-            user.clone(),
-            sig_data,
-            "test_user_context_data".to_string(),
-        );
+        contract.store_verification(user.clone(), sig_data, "test_user_context_data".to_string());
     });
 
     bdd::then("account is verified with correct state and events", || {

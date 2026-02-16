@@ -78,8 +78,14 @@ async fn it_mig_002_migrate_preserves_state() -> anyhow::Result<()> {
     assert!(result.is_success());
 
     // Create proposal and cast vote
-    let proposal_id =
-        create_proposal(&admin, &governance, "mig", None, NearToken::from_millinear(10)).await?;
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "mig",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
     let result = crate::helpers::user(&users, 0)
         .call(governance.id(), "cast_vote")
         .gas(crate::helpers::GAS_HEAVY)

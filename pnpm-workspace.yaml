@@ -2,7 +2,7 @@ packages:
   - apps/*
 
 onlyBuiltDependencies:
-  - '@posthog/cli'
+  - "@posthog/cli"
   - blake-hash
   - esbuild
   - near-sandbox
