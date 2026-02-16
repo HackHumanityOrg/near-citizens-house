@@ -20,13 +20,16 @@ import { MarkdownContent } from "@/components/governance/markdown-content"
 
 interface Props {
   minProposalBond: string // yoctoNEAR
+  votingPeriodSecs: number
   maxStartDelaySecs: number
 }
 
-export function CreateProposalForm({ minProposalBond, maxStartDelaySecs }: Props) {
+export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStartDelaySecs }: Props) {
   const router = useRouter()
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
   const [isPending, startTransition] = useTransition()
+
+  const minBondNear = yoctoToNear(minProposalBond)
 
   const [title, setTitle] = useState("")
   const [author, setAuthor] = useState("")
@@ -34,17 +37,18 @@ export function CreateProposalForm({ minProposalBond, maxStartDelaySecs }: Props
   const [descriptionMode, setDescriptionMode] = useState<"edit" | "preview">("edit")
   const [scheduled, setScheduled] = useState(true)
   const [startAt, setStartAt] = useState("")
-  const [bondNear, setBondNear] = useState("")
+  const [bondNear, setBondNear] = useState(minBondNear)
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [txLoading, setTxLoading] = useState(false)
 
   const loading = txLoading || isPending
   const selectedStartMs = startAt ? parseDatetimeLocalToEpochMs(startAt) : null
+  const inferredEndMs = selectedStartMs !== null ? selectedStartMs + votingPeriodSecs * 1000 : null
 
-  const minBondNear = yoctoToNear(minProposalBond)
   const titleByteLength = utf8ByteLength(title)
   const authorByteLength = utf8ByteLength(author)
   const descriptionByteLength = utf8ByteLength(description)
+  const votingPeriodLabel = formatSecondsDuration(votingPeriodSecs)
   const maxStartDelayLabel = formatSecondsDuration(maxStartDelaySecs)
   const validation = validateCreateProposalInput({
     title,
@@ -62,7 +66,7 @@ export function CreateProposalForm({ minProposalBond, maxStartDelaySecs }: Props
   const showAuthorError = submitAttempted && Boolean(validation.errors.author)
   const showDescriptionError = submitAttempted && Boolean(validation.errors.description)
   const showStartAtError = submitAttempted && Boolean(validation.errors.startAt)
-  const hasUserInteracted = Boolean(title || author || description || startAt || bondNear)
+  const hasUserInteracted = Boolean(title || author || description || startAt || bondNear !== minBondNear)
   const showBondError = (submitAttempted || hasUserInteracted) && Boolean(validation.errors.bondNear)
   const firstValidationError = firstCreateProposalValidationError(validation.errors)
   const submitDisabled = loading || !validation.isValid
@@ -243,13 +247,17 @@ export function CreateProposalForm({ minProposalBond, maxStartDelaySecs }: Props
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label className="font-fk-grotesk text-[14px] text-black dark:text-white">Voting Start (UTC)</Label>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 rounded-[16px] border border-[rgba(0,0,0,0.1)] dark:border-white/20 bg-white/[0.6] dark:bg-white/[0.02] p-4 md:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <Label className="font-fk-grotesk text-[14px] text-black dark:text-white">Voting Window (UTC)</Label>
+          <span className="text-[12px] font-inter text-[#64748b] dark:text-[#94a3b8]">Period: {votingPeriodLabel}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setScheduled(true)}
-            className={`flex-1 px-3 py-2 text-sm rounded-md border transition-colors ${
+            className={`px-3 py-2 text-sm rounded-md border transition-colors ${
               scheduled
                 ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
                 : "bg-transparent text-[#64748b] border-input hover:bg-[#f8fafc] dark:hover:bg-white/[0.03]"
@@ -263,7 +271,7 @@ export function CreateProposalForm({ minProposalBond, maxStartDelaySecs }: Props
               setScheduled(false)
               setStartAt("")
             }}
-            className={`flex-1 px-3 py-2 text-sm rounded-md border transition-colors ${
+            className={`px-3 py-2 text-sm rounded-md border transition-colors ${
               !scheduled
                 ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
                 : "bg-transparent text-[#64748b] border-input hover:bg-[#f8fafc] dark:hover:bg-white/[0.03]"
@@ -272,26 +280,55 @@ export function CreateProposalForm({ minProposalBond, maxStartDelaySecs }: Props
             Immediately
           </button>
         </div>
-        {scheduled && (
-          <Input
-            id="startAt"
-            type="datetime-local"
-            value={startAt}
-            onChange={(e) => setStartAt(e.target.value)}
-            aria-invalid={showStartAtError}
-            className={showStartAtError ? "border-[#ef4444] focus-visible:ring-[#ef4444]" : undefined}
-          />
+
+        {scheduled ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="startAt" className="font-fk-grotesk text-[13px] text-black dark:text-white">
+                Start at
+              </Label>
+              <Input
+                id="startAt"
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                aria-invalid={showStartAtError}
+                className={showStartAtError ? "border-[#ef4444] focus-visible:ring-[#ef4444]" : undefined}
+              />
+              {startAt && selectedStartMs !== null && (
+                <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
+                  {formatUtcDateTime(selectedStartMs)}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label className="font-fk-grotesk text-[13px] text-black dark:text-white">End at (inferred)</Label>
+              <div className="h-10 rounded-md border border-input px-3 flex items-center text-sm text-[#0f172a] dark:text-[#e2e8f0] bg-background">
+                {inferredEndMs !== null ? formatUtcDateTime(inferredEndMs) : "Set a start time to infer end time"}
+              </div>
+              <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
+                Computed as start + {votingPeriodLabel}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[12px] border border-input bg-background p-3 flex flex-col gap-1">
+            <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
+              <span className="text-black dark:text-white">Start at:</span> when the proposal transaction is confirmed.
+            </p>
+            <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
+              <span className="text-black dark:text-white">End at:</span> start + {votingPeriodLabel}.
+            </p>
+          </div>
         )}
-        {scheduled && startAt && selectedStartMs !== null && (
-          <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
-            UTC preview: {formatUtcDateTime(selectedStartMs)}
-          </p>
-        )}
+
         <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
           {scheduled
-            ? `Choose a UTC date/time. Must be within ${maxStartDelayLabel} from now.`
-            : "Voting opens as soon as the proposal is confirmed on-chain."}
+            ? `Scheduled start must be within ${maxStartDelayLabel} from now.`
+            : "Immediate mode uses on-chain confirmation time as start."}
         </p>
+
         {showStartAtError && (
           <p className="text-[12px] text-[#991b1b] dark:text-[#fecaca] font-inter">{validation.errors.startAt}</p>
         )}

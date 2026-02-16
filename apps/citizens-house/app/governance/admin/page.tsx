@@ -83,6 +83,7 @@ export default function AdminPage() {
             {config && (
               <CreateProposalForm
                 minProposalBond={config.minProposalBond}
+                votingPeriodSecs={config.votingPeriodSecs}
                 maxStartDelaySecs={config.maxStartDelaySecs}
               />
             )}
@@ -122,6 +123,7 @@ export default function AdminPage() {
               {config && (
                 <CreateProposalForm
                   minProposalBond={config.minProposalBond}
+                  votingPeriodSecs={config.votingPeriodSecs}
                   maxStartDelaySecs={config.maxStartDelaySecs}
                 />
               )}

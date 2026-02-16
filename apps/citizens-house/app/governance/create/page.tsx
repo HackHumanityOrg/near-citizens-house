@@ -66,7 +66,11 @@ export default function CreateProposalPage() {
           Create Proposal
         </h1>
         {config && (
-          <CreateProposalForm minProposalBond={config.minProposalBond} maxStartDelaySecs={config.maxStartDelaySecs} />
+          <CreateProposalForm
+            minProposalBond={config.minProposalBond}
+            votingPeriodSecs={config.votingPeriodSecs}
+            maxStartDelaySecs={config.maxStartDelaySecs}
+          />
         )}
       </div>
     </div>
