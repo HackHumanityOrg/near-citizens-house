@@ -10,6 +10,7 @@ import { Footer } from "@/components/layout/footer"
 import { ConsentBanner } from "@/components/layout/consent-banner"
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "./providers"
+import { appMode } from "@/flags"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -32,11 +33,18 @@ export const metadata: Metadata = {
     "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  let hideWalletControls = false
+  try {
+    hideWalletControls = (await appMode()) === "waiting"
+  } catch {
+    hideWalletControls = false
+  }
+
   return (
     // suppressHydrationWarning required for next-themes - theme stored in localStorage causes hydration mismatch
     <html lang="en" suppressHydrationWarning>
@@ -45,7 +53,7 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
-            <Header />
+            <Header hideWalletControls={hideWalletControls} />
             <main className="flex-1">{children}</main>
             <Footer />
             <ConsentBanner />
