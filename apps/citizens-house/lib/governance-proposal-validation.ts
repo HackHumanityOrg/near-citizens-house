@@ -101,7 +101,7 @@ export function validateCreateProposalInput(input: CreateProposalValidationInput
       if (startMs === null) {
         errors.startAt = "Invalid voting start date and time."
       } else if (startMs < input.nowMs) {
-        errors.startAt = "Voting start time must be in the future (UTC)."
+        errors.startAt = "Voting start time must be in the future."
       } else {
         const maxStartMs = input.nowMs + maxStartDelaySecs * 1000
         if (startMs > maxStartMs) {

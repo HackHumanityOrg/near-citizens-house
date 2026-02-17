@@ -412,7 +412,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       return (
         <VotePanelCard title="Voting">
           <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-            Voting has not started yet. Scheduled to open on {formatUtcDate(panelState.startAt)} UTC.
+            Voting has not started yet. Scheduled to open on {formatUtcDate(panelState.startAt)}.
           </p>
         </VotePanelCard>
       )
