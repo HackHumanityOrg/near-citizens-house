@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
@@ -33,6 +33,7 @@ import {
 } from "@/lib/contracts/governance/vote-outcome"
 import type { OptimisticVote, VoteLifecyclePayload } from "./optimistic-vote"
 import { VOTE_CHOICE_COLOR_TOKENS, VOTE_POSITIVE_TEXT_CLASS } from "./vote-colors"
+import { deriveVotePanelState } from "./vote-panel-state"
 
 interface Props {
   proposal: ProposalView
@@ -98,6 +99,26 @@ function VotePanelSkeletonState({ title, withActions }: { title: string; withAct
           <Skeleton className="h-[20px] w-[66%]" />
         </div>
       )}
+    </div>
+  )
+}
+
+function VotePanelCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
+      <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function ConfirmedVoteMessage({ choice }: { choice: VoteChoice }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Check className={`h-5 w-5 ${VOTE_POSITIVE_TEXT_CLASS}`} />
+      <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
+        You voted <strong className={VOTE_CHOICE_COLOR_TOKENS[choice].actionText}>{choice.toUpperCase()}</strong>
+      </span>
     </div>
   )
 }
@@ -169,7 +190,17 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
     existingVote?.choice ??
     (optimisticForCurrentAccount?.status === "confirmed" ? optimisticForCurrentAccount.choice : null)
   const now = Date.now()
-  const hasEnded = proposal.status !== "pending" && (proposal.status !== "active" || proposal.endsAt <= now)
+  const panelState = deriveVotePanelState({
+    proposal,
+    now,
+    isConnected,
+    checking,
+    optimisticPendingChoice,
+    confirmedChoice,
+    isBlocklisted,
+    isVerified,
+    isVerifiedAfterProposalCreation,
+  })
 
   const handleVote = async (choice: VoteChoice) => {
     if (!isConnected || !accountId) return
@@ -340,177 +371,128 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
   }
 
   const loading = txLoading || isPending || checking
-
-  // Not connected
-  if (!isConnected) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8] mb-4">
-          Connect your wallet to vote on this proposal.
-        </p>
-      </div>
-    )
-  }
-
-  // Proposal pending
-  if (proposal.status === "pending") {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Voting</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">Voting has not started yet.</p>
-      </div>
-    )
-  }
-
-  // Proposal ended (finalized or voting period elapsed)
-  if (hasEnded) {
-    if (checking) {
-      return <VotePanelSkeletonState title="Your Vote" withActions={false} />
-    }
-
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
-        {confirmedChoice ? (
+  switch (panelState.kind) {
+    case "vote_processing":
+      return (
+        <VotePanelCard title="Your Vote">
           <div className="flex items-center gap-2">
-            <Check className={`h-5 w-5 ${VOTE_POSITIVE_TEXT_CLASS}`} />
+            <Loader2 className="h-5 w-5 animate-spin text-[#64748b] dark:text-[#94a3b8]" />
             <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
-              You voted{" "}
-              <strong className={VOTE_CHOICE_COLOR_TOKENS[confirmedChoice].actionText}>
-                {confirmedChoice.toUpperCase()}
-              </strong>
+              Your vote{" "}
+              <strong className={VOTE_CHOICE_COLOR_TOKENS[panelState.choice].actionText}>
+                {panelState.choice.toUpperCase()}
+              </strong>{" "}
+              is being processed.
             </span>
           </div>
-        ) : (
-          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">You did not vote</p>
-        )}
-      </div>
-    )
+        </VotePanelCard>
+      )
+    case "proposal_not_started_pending":
+      return (
+        <VotePanelCard title="Voting">
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">Voting has not started yet.</p>
+        </VotePanelCard>
+      )
+    case "proposal_not_started_scheduled":
+      return (
+        <VotePanelCard title="Voting">
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+            Voting has not started yet. Scheduled to open on {formatUtcDate(panelState.startAt)} UTC.
+          </p>
+        </VotePanelCard>
+      )
+    case "proposal_ended_loading":
+      return <VotePanelSkeletonState title="Your Vote" withActions={false} />
+    case "proposal_ended_with_vote":
+      return (
+        <VotePanelCard title="Your Vote">
+          <ConfirmedVoteMessage choice={panelState.choice} />
+        </VotePanelCard>
+      )
+    case "proposal_ended_without_vote":
+      return (
+        <VotePanelCard title="Your Vote">
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+            Voting has ended. You did not vote.
+          </p>
+        </VotePanelCard>
+      )
+    case "wallet_not_connected":
+      return (
+        <VotePanelCard title="Cast Your Vote">
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+            Connect your wallet to check eligibility and vote while voting is active.
+          </p>
+        </VotePanelCard>
+      )
+    case "eligibility_loading":
+      return <VotePanelSkeletonState title="Cast Your Vote" withActions />
+    case "already_voted":
+      return (
+        <VotePanelCard title="Your Vote">
+          <ConfirmedVoteMessage choice={panelState.choice} />
+        </VotePanelCard>
+      )
+    case "ineligible_blocklisted":
+      return (
+        <VotePanelCard title="Cast Your Vote">
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+            Your account is blocklisted and cannot vote on proposals.
+          </p>
+        </VotePanelCard>
+      )
+    case "ineligible_unverified":
+      return (
+        <VotePanelCard title="Cast Your Vote">
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+            This account is not NEAR Verified and cannot vote on this proposal.
+          </p>
+        </VotePanelCard>
+      )
+    case "ineligible_verified_after_snapshot":
+      return (
+        <VotePanelCard title="Cast Your Vote">
+          <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
+            This account was verified after this proposal was created and is not eligible to vote on it.
+          </p>
+        </VotePanelCard>
+      )
+    case "eligible_can_vote":
+      return (
+        <VotePanelCard title="Cast Your Vote">
+          <div className="flex gap-3">
+            <Button
+              className={`flex-1 font-fk-grotesk font-bold ${VOTE_CHOICE_COLOR_TOKENS.yes.button}`}
+              size="citizens-lg"
+              onClick={() => handleVote("yes")}
+              disabled={loading}
+            >
+              Yes
+            </Button>
+            <Button
+              className={`flex-1 font-fk-grotesk font-bold ${VOTE_CHOICE_COLOR_TOKENS.no.button}`}
+              size="citizens-lg"
+              onClick={() => handleVote("no")}
+              disabled={loading}
+            >
+              No
+            </Button>
+          </div>
+          {needsRelay ? (
+            <p className={`font-inter text-[11px] mt-2 ${VOTE_POSITIVE_TEXT_CLASS}`}>
+              Gas sponsored — no NEAR required
+            </p>
+          ) : isZeroBalance && isVoteFree && !supportsMetaTransactions ? (
+            <p className="font-inter text-[11px] text-[#f59e0b] mt-2">
+              {walletName ?? "Your wallet"} doesn&apos;t support gasless voting. Please add NEAR for gas fees or switch
+              to Meteor Wallet.
+            </p>
+          ) : !isVoteFree ? (
+            <p className="font-inter text-[11px] text-[#94a3b8] mt-2">
+              A small storage deposit (0.01 NEAR) is required for your vote.
+            </p>
+          ) : null}
+        </VotePanelCard>
+      )
   }
-
-  // Active but voting hasn't started yet (scheduled)
-  if (proposal.startAt > now) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Voting</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          Voting has not started yet. Scheduled to open on {formatUtcDate(proposal.startAt)} UTC.
-        </p>
-      </div>
-    )
-  }
-
-  // Loading state
-  if (checking) {
-    return <VotePanelSkeletonState title="Cast Your Vote" withActions />
-  }
-
-  if (optimisticPendingChoice) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin text-[#64748b] dark:text-[#94a3b8]" />
-          <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
-            Your vote{" "}
-            <strong className={VOTE_CHOICE_COLOR_TOKENS[optimisticPendingChoice].actionText}>
-              {optimisticPendingChoice.toUpperCase()}
-            </strong>{" "}
-            is being processed.
-          </span>
-        </div>
-      </div>
-    )
-  }
-
-  // Already voted
-  if (confirmedChoice) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Your Vote</h3>
-        <div className="flex items-center gap-2">
-          <Check className={`h-5 w-5 ${VOTE_POSITIVE_TEXT_CLASS}`} />
-          <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
-            You voted{" "}
-            <strong className={VOTE_CHOICE_COLOR_TOKENS[confirmedChoice].actionText}>
-              {confirmedChoice.toUpperCase()}
-            </strong>
-          </span>
-        </div>
-      </div>
-    )
-  }
-
-  if (isBlocklisted) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          Your account is blocklisted and cannot vote on proposals.
-        </p>
-      </div>
-    )
-  }
-
-  // Not verified
-  if (!isVerified) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          This is not a NEAR Verified Account. Disconnect and Connect a NEAR Verified Account to vote.
-        </p>
-      </div>
-    )
-  }
-
-  if (isVerifiedAfterProposalCreation) {
-    return (
-      <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-        <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-3">Cast Your Vote</h3>
-        <p className="font-inter text-[14px] text-[#64748b] dark:text-[#94a3b8]">
-          This account was verified after the proposal was created, so you won't be able to vote on this proposal with
-          this account.
-        </p>
-      </div>
-    )
-  }
-
-  // Vote buttons
-  return (
-    <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
-      <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-4">Cast Your Vote</h3>
-      <div className="flex gap-3">
-        <Button
-          className={`flex-1 font-fk-grotesk font-bold ${VOTE_CHOICE_COLOR_TOKENS.yes.button}`}
-          size="citizens-lg"
-          onClick={() => handleVote("yes")}
-          disabled={loading}
-        >
-          Yes
-        </Button>
-        <Button
-          className={`flex-1 font-fk-grotesk font-bold ${VOTE_CHOICE_COLOR_TOKENS.no.button}`}
-          size="citizens-lg"
-          onClick={() => handleVote("no")}
-          disabled={loading}
-        >
-          No
-        </Button>
-      </div>
-      {needsRelay ? (
-        <p className={`font-inter text-[11px] mt-2 ${VOTE_POSITIVE_TEXT_CLASS}`}>Gas sponsored — no NEAR required</p>
-      ) : isZeroBalance && isVoteFree && !supportsMetaTransactions ? (
-        <p className="font-inter text-[11px] text-[#f59e0b] mt-2">
-          {walletName ?? "Your wallet"} doesn&apos;t support gasless voting. Please add NEAR for gas fees or switch to
-          Meteor Wallet.
-        </p>
-      ) : !isVoteFree ? (
-        <p className="font-inter text-[11px] text-[#94a3b8] mt-2">
-          A small storage deposit (0.01 NEAR) is required for your vote.
-        </p>
-      ) : null}
-    </div>
-  )
 }
