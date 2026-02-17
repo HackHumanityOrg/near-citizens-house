@@ -17,7 +17,11 @@ import {
 import { useNearWallet } from "@/lib"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
 
-export function Header() {
+type HeaderProps = {
+  hideWalletControls?: boolean
+}
+
+export function Header({ hideWalletControls = false }: HeaderProps) {
   const pathname = usePathname()
   const isLandingOrVerification = pathname === "/" || pathname?.startsWith("/verification")
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
@@ -37,7 +41,7 @@ export function Header() {
         {/* Mobile Right Side: Wallet + Theme Toggle */}
         <div className="flex items-center gap-4">
           {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
-          {isLandingOrVerification && !isConnected ? null : isLoading ? (
+          {hideWalletControls ? null : isLandingOrVerification && !isConnected ? null : isLoading ? (
             <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
               <Loader2 className="h-5 w-5 animate-spin" />
             </button>
@@ -87,7 +91,7 @@ export function Header() {
         {/* Desktop Right Side: Wallet + Theme Toggle */}
         {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
         <div className="flex items-center gap-10 ml-auto">
-          {isLandingOrVerification && !isConnected ? null : isLoading ? (
+          {hideWalletControls ? null : isLandingOrVerification && !isConnected ? null : isLoading ? (
             <Button variant="citizens-primary" size="citizens-3xl" disabled>
               <Loader2 className="h-4 w-4 animate-spin" />
               Connecting...
