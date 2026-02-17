@@ -51,7 +51,7 @@ import {
 } from "./helpers/deterministic-voter-keys"
 import { readManifest, resolveDefaultManifestPath, writeJsonFile } from "./helpers/deterministic-voter-io"
 import { loadNearestEnvFile } from "./helpers/load-env"
-import { createScriptRpcProvider, getDefaultRpcUrl, withRateLimitRetry } from "./helpers/rpc"
+import { createScriptRpcProvider, getDefaultRpcUrl, rethrowIfRateLimit, withRateLimitRetry } from "./helpers/rpc"
 
 interface BootstrapOptions {
   startIndex: number
@@ -284,7 +284,8 @@ async function accountExists(provider: JsonRpcProvider, accountId: string): Prom
       account_id: accountId,
     })
     return true
-  } catch {
+  } catch (error) {
+    rethrowIfRateLimit(error)
     return false
   }
 }
@@ -300,7 +301,8 @@ async function hasFullAccessKey(provider: JsonRpcProvider, accountId: string, pu
     const parsed = nearAccessKeyResponseSchema.safeParse(response)
     if (!parsed.success) return false
     return isFullAccess(parsed.data.permission)
-  } catch {
+  } catch (error) {
+    rethrowIfRateLimit(error)
     return false
   }
 }
@@ -315,7 +317,8 @@ async function isVerified(
       account_id: accountId,
     })
     return result ?? false
-  } catch {
+  } catch (error) {
+    rethrowIfRateLimit(error)
     return false
   }
 }
@@ -500,24 +503,39 @@ async function processIndex(params: {
   } else {
     const voterKeyHasAccess = await hasFullAccessKey(provider, accountId, voterPublicKey)
     if (!voterKeyHasAccess) {
-      return {
-        ...baseRecord,
-        status: "failed",
-        error: "Existing account is missing deterministic voter full-access key",
+      // Try to recover: if parent key exists, use it to add the voter key
+      const parentHasAccess = await hasFullAccessKey(provider, accountId, parentPublicKey)
+      if (!parentHasAccess) {
+        return {
+          ...baseRecord,
+          status: "failed",
+          error: "Existing account is missing both voter and parent full-access keys",
+        }
       }
-    }
-
-    const parentHasAccess = await hasFullAccessKey(provider, accountId, parentPublicKey)
-    if (!parentHasAccess) {
-      const voterSigner = new KeyPairSigner(voterKey)
-      const voterAccount = new Account(accountId, provider, voterSigner)
+      const parentSigner = new KeyPairSigner(KeyPair.fromString(parentPrivateKey as KeyPairString))
+      const parentOwnedAccount = new Account(accountId, provider, parentSigner)
       try {
-        const addOutcome = await voterAccount.addFullAccessKey(parentPublicKey)
-        baseRecord.createTxHash = extractTxHash(addOutcome)
+        await parentOwnedAccount.addFullAccessKey(voterKey.getPublicKey().toString())
       } catch (error) {
         const msg = formatError(error).toLowerCase()
         if (!msg.includes("already exists") && !msg.includes("already used")) {
           throw error
+        }
+      }
+    } else {
+      // Voter key exists — ensure parent key is also present
+      const parentHasAccess = await hasFullAccessKey(provider, accountId, parentPublicKey)
+      if (!parentHasAccess) {
+        const voterSigner = new KeyPairSigner(voterKey)
+        const voterAccount = new Account(accountId, provider, voterSigner)
+        try {
+          const addOutcome = await voterAccount.addFullAccessKey(parentPublicKey)
+          baseRecord.createTxHash = extractTxHash(addOutcome)
+        } catch (error) {
+          const msg = formatError(error).toLowerCase()
+          if (!msg.includes("already exists") && !msg.includes("already used")) {
+            throw error
+          }
         }
       }
     }
