@@ -1,4 +1,4 @@
-import { getProposals } from "./actions"
+import { getPublicProposals } from "./actions"
 import { ProposalsList } from "@/components/governance/proposals-list"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
@@ -13,12 +13,12 @@ export default async function GovernancePage({ searchParams }: Props) {
   const rawPage = parseInt(params.page || "0", 10)
   const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
 
-  let { proposals, total } = await getProposals(requestedPage, PAGE_SIZE)
+  let { proposals, total } = await getPublicProposals(requestedPage, PAGE_SIZE)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const clampedPage = Math.min(requestedPage, totalPages - 1)
   if (clampedPage !== requestedPage && total > 0) {
-    const result = await getProposals(clampedPage, PAGE_SIZE)
+    const result = await getPublicProposals(clampedPage, PAGE_SIZE)
     proposals = result.proposals
     total = result.total
   }

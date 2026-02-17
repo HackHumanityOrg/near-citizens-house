@@ -12,6 +12,7 @@ import type { ProposalView, VoteView, GovernanceConfig } from "@/lib/contracts/g
 export type { ProposalView, VoteView, GovernanceConfig }
 
 const governanceContractId = NEAR_CONFIG.governanceContractId ?? ""
+const GOVERNANCE_BATCH_SIZE = 100
 
 // =============================================================================
 // Proposals
@@ -38,6 +39,63 @@ export async function getProposals(page: number, pageSize: number) {
     return await getCachedProposals(params.data)
   } catch {
     return { proposals: [], total: 0 }
+  }
+}
+
+async function fetchPublicProposals() {
+  const total = await governanceReader.getProposalCount()
+  if (total <= 0) return [] as ProposalView[]
+
+  const totalBatches = Math.ceil(total / GOVERNANCE_BATCH_SIZE)
+  const proposals: ProposalView[] = []
+
+  for (let batch = 0; batch < totalBatches; batch += 1) {
+    const remaining = Math.max(total - batch * GOVERNANCE_BATCH_SIZE, 0)
+    if (remaining === 0) break
+
+    const limit = Math.min(GOVERNANCE_BATCH_SIZE, remaining)
+    const fromIndex = Math.max(total - (batch + 1) * GOVERNANCE_BATCH_SIZE, 0)
+    const chunk = await governanceReader.listProposals(fromIndex, limit)
+
+    if (chunk.length === 0) continue
+
+    // Keep newest-first ordering while removing cancelled proposals from the public page.
+    for (const proposal of chunk.reverse()) {
+      if (proposal.status !== "cancelled") {
+        proposals.push(proposal)
+      }
+    }
+  }
+
+  return proposals
+}
+
+const getCachedPublicProposals = unstable_cache(
+  () => fetchPublicProposals(),
+  ["governance-public-proposals", governanceContractId],
+  {
+    tags: ["governance"],
+    revalidate: 30,
+  },
+)
+
+export async function getPublicProposals(page: number, pageSize: number) {
+  const params = paginationSchema.safeParse({ page, pageSize })
+  if (!params.success) return { proposals: [], total: 0 }
+
+  try {
+    const proposals = await getCachedPublicProposals()
+    const total = proposals.length
+    const offset = params.data.page * params.data.pageSize
+
+    if (offset >= total) return { proposals: [] as ProposalView[], total }
+
+    return {
+      proposals: proposals.slice(offset, offset + params.data.pageSize),
+      total,
+    }
+  } catch {
+    return { proposals: [] as ProposalView[], total: 0 }
   }
 }
 
