@@ -51,6 +51,7 @@ import {
 } from "./helpers/deterministic-voter-keys"
 import { readManifest, resolveDefaultManifestPath, writeJsonFile } from "./helpers/deterministic-voter-io"
 import { loadNearestEnvFile } from "./helpers/load-env"
+import { createScriptRpcProvider, getDefaultRpcUrl, withRateLimitRetry } from "./helpers/rpc"
 
 interface BootstrapOptions {
   startIndex: number
@@ -152,18 +153,6 @@ function asString(value: string | boolean | undefined): string | undefined {
 
 function getNetwork(): "mainnet" | "testnet" {
   return process.env.NEXT_PUBLIC_NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet"
-}
-
-function getDefaultRpcUrl(network: "mainnet" | "testnet"): string {
-  return network === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
-}
-
-function getRpcHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {}
-  if (process.env.FASTNEAR_API_KEY) {
-    headers["X-API-Key"] = process.env.FASTNEAR_API_KEY
-  }
-  return headers
 }
 
 function getSigningMessage(verificationContractId: string): string {
@@ -588,7 +577,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 
   const network = getNetwork()
-  const provider = new JsonRpcProvider({ url: options.rpcUrl, headers: getRpcHeaders() })
+  const provider = createScriptRpcProvider(options.rpcUrl)
   const effectiveFundYocto = options.fundYocto ?? (await resolveDefaultFundingYocto(provider))
   const resolvedOptions: ResolvedBootstrapOptions = {
     ...options,
@@ -632,16 +621,18 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   for (let i = options.startIndex; i < options.startIndex + options.count; i++) {
     try {
-      const record = await processIndex({
-        index: i,
-        options: resolvedOptions,
-        provider,
-        parentAccount,
-        parentAccountId,
-        parentPublicKey,
-        parentPrivateKey,
-        verificationContractId,
-      })
+      const record = await withRateLimitRetry(() =>
+        processIndex({
+          index: i,
+          options: resolvedOptions,
+          provider,
+          parentAccount,
+          parentAccountId,
+          parentPublicKey,
+          parentPrivateKey,
+          verificationContractId,
+        }),
+      )
 
       manifest.accounts = upsertManifestRecord(manifest.accounts, record)
       processed.push(record)
