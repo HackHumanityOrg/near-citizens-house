@@ -39,7 +39,7 @@ function getStep(model: ReturnType<typeof deriveProposalTimelineModel>, key: Pro
   return step!
 }
 
-type ProposalViewStepKey = "created" | "voting_start" | "viewer_vote" | "voting_in_progress" | "voting_end"
+type ProposalViewStepKey = "created" | "voting_start" | "voting_in_progress" | "voting_end"
 
 function expectTitle(actual: string, expected: string | RegExp) {
   if (expected instanceof RegExp) {
@@ -309,83 +309,15 @@ describe("deriveProposalTimelineModel lifecycle coverage (contract-aligned)", ()
 
 describe("deriveProposalTimelineModel title modes", () => {
   it("supports static tense labels when countdown text is disabled", () => {
-    const beforeStart = deriveProposalTimelineModel(makeProposal({ status: "active" }), TIMES.preStart, null, {
+    const beforeStart = deriveProposalTimelineModel(makeProposal({ status: "active" }), TIMES.preStart, {
       includeRelativeCountdownInTitles: false,
     })
     expect(getStep(beforeStart, "voting_start").title).toBe("Voting starts")
     expect(getStep(beforeStart, "voting_end").title).toBe("Voting will end")
 
-    const duringVoting = deriveProposalTimelineModel(makeProposal({ status: "active" }), TIMES.during, null, {
+    const duringVoting = deriveProposalTimelineModel(makeProposal({ status: "active" }), TIMES.during, {
       includeRelativeCountdownInTitles: false,
     })
     expect(getStep(duringVoting, "voting_end").title).toBe("Voting will end")
-  })
-})
-
-describe("deriveProposalTimelineModel viewer vote insertion", () => {
-  it("suppresses viewer vote steps for pending proposals", () => {
-    const model = deriveProposalTimelineModel(
-      makeProposal({ status: "pending", snapshotVerifiedCount: 0 }),
-      TIMES.during,
-      { votedAt: 2_300 },
-    )
-    expect(model.steps.map((step) => step.key)).toEqual(["created", "voting_start", "voting_end"])
-  })
-
-  it("inserts a vote before start when cast before voting window opens", () => {
-    const model = deriveProposalTimelineModel(makeProposal({ status: "active" }), TIMES.during, { votedAt: 1_500 })
-    expect(model.steps.map((step) => step.key)).toEqual([
-      "created",
-      "viewer_vote",
-      "voting_start",
-      "voting_in_progress",
-      "voting_end",
-    ])
-  })
-
-  it("inserts a vote at start directly after voting_start", () => {
-    const model = deriveProposalTimelineModel(makeProposal({ status: "active" }), TIMES.during, { votedAt: 2_000 })
-    expect(model.steps.map((step) => step.key)).toEqual([
-      "created",
-      "voting_start",
-      "viewer_vote",
-      "voting_in_progress",
-      "voting_end",
-    ])
-  })
-
-  it("inserts a vote during active voting before in_progress marker", () => {
-    const model = deriveProposalTimelineModel(makeProposal({ status: "active" }), TIMES.during, { votedAt: 2_300 })
-    expect(model.steps.map((step) => step.key)).toEqual([
-      "created",
-      "voting_start",
-      "viewer_vote",
-      "voting_in_progress",
-      "voting_end",
-    ])
-  })
-
-  it("inserts a vote for succeeded proposals after voting completion", () => {
-    const model = deriveProposalTimelineModel(makeProposal({ status: "succeeded" }), TIMES.postEnd, { votedAt: 4_200 })
-    expect(model.steps.map((step) => step.key)).toEqual(["created", "voting_start", "viewer_vote", "voting_end"])
-    expect(getStep(model, "viewer_vote").title).toBe("You voted")
-  })
-
-  it("inserts a vote for failed proposals finalized from active", () => {
-    const model = deriveProposalTimelineModel(
-      makeProposal({ status: "failed", failureKind: "quorum_not_met", snapshotVerifiedCount: 100 }),
-      TIMES.postEnd,
-      { votedAt: 2_300 },
-    )
-    expect(model.steps.map((step) => step.key)).toEqual(["created", "voting_start", "viewer_vote", "voting_end"])
-  })
-
-  it("inserts a vote for cancelled proposals that were active", () => {
-    const model = deriveProposalTimelineModel(
-      makeProposal({ status: "cancelled", snapshotVerifiedCount: 100 }),
-      TIMES.postEnd,
-      { votedAt: 2_300 },
-    )
-    expect(model.steps.map((step) => step.key)).toEqual(["created", "voting_start", "viewer_vote", "voting_end"])
   })
 })

@@ -1,9 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import type { ProposalView, VoteView } from "@/lib/schemas/governance-contract"
-import { useNearWallet } from "@/lib"
-import { getVote } from "@/app/governance/actions"
 import { VotePanel } from "./vote-panel"
 import { VotesTable } from "./votes-table"
 import { ProposalTimeline, VotingProgressCard } from "./proposal-detail"
@@ -18,35 +16,8 @@ interface Props {
 }
 
 export function ProposalVotingSidebar({ proposal, proposalId, initialVotes, totalVotes }: Props) {
-  const { accountId, isConnected } = useNearWallet()
   const [optimisticVote, setOptimisticVote] = useState<OptimisticVote | null>(null)
   const [optimisticBaseline, setOptimisticBaseline] = useState<OptimisticVoteBaseline | null>(null)
-  const [viewerVote, setViewerVote] = useState<VoteView | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (!isConnected || !accountId) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    getVote(proposalId, accountId)
-      .then((vote) => {
-        if (cancelled) return
-        setViewerVote(vote)
-      })
-      .catch((error) => {
-        if (cancelled) return
-        console.error("[proposal-voting-sidebar] Failed to fetch viewer vote:", error)
-        setViewerVote(null)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [isConnected, accountId, proposalId, proposal.yesVotes, proposal.noVotes])
 
   const handleVoteProcessing = useCallback(
     (payload: VoteLifecyclePayload) => {
@@ -79,8 +50,6 @@ export function ProposalVotingSidebar({ proposal, proposalId, initialVotes, tota
 
   const optimisticVoteForPanel = optimisticVote
   const optimisticVoteForAggregates = shouldApplyAggregates ? optimisticVote : null
-  const viewerVoteForTimeline =
-    isConnected && accountId && viewerVote && viewerVote.voter === accountId ? { votedAt: viewerVote.votedAt } : null
   const optimisticTotalDelta = optimisticVoteForAggregates ? 1 : 0
   const proposalForProgress = useMemo(() => {
     if (!optimisticVoteForAggregates) return proposal
@@ -112,7 +81,7 @@ export function ProposalVotingSidebar({ proposal, proposalId, initialVotes, tota
         onVoteFailure={handleVoteFailure}
       />
       <VotingProgressCard proposal={proposalForProgress} />
-      <ProposalTimeline proposal={proposal} viewerVote={viewerVoteForTimeline} />
+      <ProposalTimeline proposal={proposal} />
       <VotesTable
         key={votesTableKey}
         proposalId={proposalId}

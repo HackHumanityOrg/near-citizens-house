@@ -28,6 +28,10 @@ export const VOTE_CHOICE_COLOR_TOKENS: Record<VoteChoice, VoteChoiceColorTokens>
   },
 }
 
+export function formatVoteChoiceLabel(choice: VoteChoice): "Yes" | "No" {
+  return choice === "yes" ? "Yes" : "No"
+}
+
 export const VOTE_POSITIVE_TEXT_CLASS = VOTE_CHOICE_COLOR_TOKENS.yes.actionText
 
 export const VOTE_STATUS_COLOR_TOKENS = {
