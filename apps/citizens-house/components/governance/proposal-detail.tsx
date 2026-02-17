@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
 import { Clock3, ExternalLink, Flag, Play, Plus, Vote } from "lucide-react"
@@ -9,7 +9,6 @@ import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { StatusBadge } from "./status-badge"
 import { VoteProgressBar } from "./vote-progress-bar"
-import { CountdownTimer } from "./countdown-timer"
 import { MarkdownContent } from "./markdown-content"
 import {
   deriveProposalTimelineModel,
@@ -20,6 +19,21 @@ import {
 
 interface ProposalProps {
   proposal: ProposalView
+}
+
+function useNow(): number | null {
+  const [now, setNow] = useState<number | null>(null)
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setNow(Date.now()), 0)
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
+  }, [])
+
+  return now
 }
 
 function renderTimelineIcon(icon: TimelineStepIcon) {
@@ -39,32 +53,32 @@ function renderTimelineIcon(icon: TimelineStepIcon) {
 
 function stepNodeClasses(step: ProposalTimelineStep) {
   if (step.state === "current") {
-    return "border-[#d97706] bg-[#fde68a] dark:border-[#facc15] dark:bg-[#78350f]"
+    return "border-[#FFE66C] bg-[#FFE66C] dark:border-[#E9C85A] dark:bg-[#E9C85A]"
   }
 
   if (step.state === "upcoming") {
-    return "border-[#cbd5e1] bg-[#f8fafc] dark:border-[#475569] dark:bg-[#0f172a]"
+    return "border-[#d1d5db] bg-white dark:border-[#cbd5e1] dark:bg-[#f8fafc]"
   }
 
-  return "border-[#16a34a] bg-[#dcfce7] dark:border-[#22c55e] dark:bg-[#14532d]"
+  return "border-[#94a3b8] bg-[#e2e8f0] dark:border-[#94a3b8] dark:bg-[#64748b]"
 }
 
 function stepIconClasses(step: ProposalTimelineStep) {
   if (step.state === "current") {
-    return "text-[#78350f] dark:text-[#fde68a]"
+    return "text-black dark:text-black"
   }
 
   if (step.state === "upcoming") {
-    return "text-[#64748b] dark:text-[#94a3b8]"
+    return "text-[#64748b] dark:text-[#475569]"
   }
 
-  return "text-[#166534] dark:text-[#bbf7d0]"
+  return "text-[#475569] dark:text-[#f8fafc]"
 }
 
 function stepTitleClasses(step: ProposalTimelineStep) {
   if (step.state === "current") return "text-black dark:text-white"
-  if (step.state === "upcoming") return "text-[#94a3b8] dark:text-[#64748b]"
-  return "text-[#0f172a] dark:text-[#e2e8f0]"
+  if (step.state === "upcoming") return "text-[#0f172a] dark:text-white"
+  return "text-[#64748b] dark:text-[#94a3b8]"
 }
 
 export function ProposalHeader({ proposal }: ProposalProps) {
@@ -110,9 +124,9 @@ export function ProposalDescription({ proposal }: ProposalProps) {
 }
 
 export function VotingProgressCard({ proposal }: ProposalProps) {
-  const [now] = useState(Date.now)
-  const isScheduled = proposal.status === "active" && proposal.startAt > now
-  const isFinished = proposal.status === "active" && proposal.endsAt < now
+  const now = useNow()
+  const isScheduled = now !== null && proposal.status === "active" && proposal.startAt > now
+  const isFinished = now !== null && proposal.status === "active" && proposal.endsAt < now
   const displayStatus = isScheduled ? "scheduled" : isFinished ? "finished" : proposal.status
 
   return (
@@ -141,8 +155,11 @@ interface ProposalTimelineProps extends ProposalProps {
 }
 
 export function ProposalTimeline({ proposal, viewerVote = null }: ProposalTimelineProps) {
-  const [now] = useState(Date.now)
-  const timeline = deriveProposalTimelineModel(proposal, now, viewerVote)
+  const now = useNow()
+  const timelineNow = now ?? proposal.createdAt
+  const timeline = deriveProposalTimelineModel(proposal, timelineNow, viewerVote, {
+    includeRelativeCountdownInTitles: now !== null,
+  })
 
   return (
     <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
@@ -163,13 +180,13 @@ export function ProposalTimeline({ proposal, viewerVote = null }: ProposalTimeli
                     <p className="font-inter text-[12px] leading-[16px] text-[#64748b] dark:text-[#94a3b8]">
                       {formatUtcDateTime(step.timestampMs)}
                     </p>
-                    <p className={`font-fk-grotesk font-medium text-[20px] leading-[26px] ${stepTitleClasses(step)}`}>
+                    <p className={`font-fk-grotesk font-medium text-[18px] leading-[24px] ${stepTitleClasses(step)}`}>
                       {step.title}
                     </p>
                   </>
                 ) : (
                   <div className="flex h-9 items-center">
-                    <p className={`font-fk-grotesk font-medium text-[20px] leading-[36px] ${stepTitleClasses(step)}`}>
+                    <p className={`font-fk-grotesk font-medium text-[18px] leading-[30px] ${stepTitleClasses(step)}`}>
                       {step.title}
                     </p>
                   </div>
@@ -184,12 +201,6 @@ export function ProposalTimeline({ proposal, viewerVote = null }: ProposalTimeli
           ))}
         </ol>
       </div>
-      {timeline.countdown ? (
-        <div className="flex justify-between items-center pt-3 border-t border-[#e2e8f0] dark:border-white/10 mt-4">
-          <span className="font-medium text-black dark:text-white">{timeline.countdown.label}</span>
-          <CountdownTimer targetMs={timeline.countdown.targetMs} endedLabel={timeline.countdown.endedLabel} />
-        </div>
-      ) : null}
     </div>
   )
 }
