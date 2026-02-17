@@ -2,6 +2,7 @@
 
 import { unstable_cache } from "next/cache"
 import {
+  NEAR_CONFIG,
   parseUserContextData,
   verifyNearSignature,
   buildSignatureVerificationData,
@@ -111,7 +112,7 @@ async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetV
  */
 const getCachedVerifications = unstable_cache(
   (pagination: Pagination) => fetchAndVerifyVerifications(pagination),
-  ["verifications"],
+  ["verifications", NEAR_CONFIG.verificationContractId],
   {
     tags: ["verifications"],
     revalidate: 60, // Revalidate every 60 seconds (1 minute)

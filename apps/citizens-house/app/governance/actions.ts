@@ -1,7 +1,7 @@
 "use server"
 
 import { unstable_cache, updateTag } from "next/cache"
-import { nearAccountIdSchema } from "@/lib"
+import { nearAccountIdSchema, NEAR_CONFIG } from "@/lib"
 import { governanceReader } from "@/lib/contracts/governance/client"
 import { superAdmin } from "@/flags"
 import type { AccountViewRaw } from "@near-js/types"
@@ -11,6 +11,8 @@ import type { ProposalView, VoteView, GovernanceConfig } from "@/lib/contracts/g
 
 export type { ProposalView, VoteView, GovernanceConfig }
 
+const governanceContractId = NEAR_CONFIG.governanceContractId ?? ""
+
 // =============================================================================
 // Proposals
 // =============================================================================
@@ -19,10 +21,14 @@ async function fetchProposals(pagination: Pagination) {
   return governanceReader.listProposalsNewestFirst(pagination)
 }
 
-const getCachedProposals = unstable_cache((pagination: Pagination) => fetchProposals(pagination), ["governance"], {
-  tags: ["governance"],
-  revalidate: 30,
-})
+const getCachedProposals = unstable_cache(
+  (pagination: Pagination) => fetchProposals(pagination),
+  ["governance", governanceContractId],
+  {
+    tags: ["governance"],
+    revalidate: 30,
+  },
+)
 
 export async function getProposals(page: number, pageSize: number) {
   const params = paginationSchema.safeParse({ page, pageSize })
@@ -37,7 +43,7 @@ export async function getProposals(page: number, pageSize: number) {
 
 const getCachedProposal = unstable_cache(
   (proposalId: number) => governanceReader.getProposal(proposalId),
-  ["governance-proposal"],
+  ["governance-proposal", governanceContractId],
   { tags: ["governance"], revalidate: 15 },
 )
 
@@ -55,7 +61,7 @@ export async function getProposal(proposalId: number): Promise<ProposalView | nu
 
 const getCachedVotes = unstable_cache(
   (proposalId: number, fromIndex: number, limit: number) => governanceReader.listVotes(proposalId, fromIndex, limit),
-  ["governance-votes"],
+  ["governance-votes", governanceContractId],
   { tags: ["governance"], revalidate: 15 },
 )
 
@@ -142,10 +148,14 @@ export async function checkIsSuperAdmin(): Promise<boolean> {
   }
 }
 
-const getCachedIsVoteFree = unstable_cache(() => governanceReader.isVoteFree(), ["governance-vote-free"], {
-  tags: ["governance"],
-  revalidate: 60,
-})
+const getCachedIsVoteFree = unstable_cache(
+  () => governanceReader.isVoteFree(),
+  ["governance-vote-free", governanceContractId],
+  {
+    tags: ["governance"],
+    revalidate: 60,
+  },
+)
 
 export async function checkIsVoteFree(): Promise<boolean> {
   try {
@@ -155,10 +165,14 @@ export async function checkIsVoteFree(): Promise<boolean> {
   }
 }
 
-const getCachedConfig = unstable_cache(() => governanceReader.getConfig(), ["governance-config"], {
-  tags: ["governance"],
-  revalidate: 60,
-})
+const getCachedConfig = unstable_cache(
+  () => governanceReader.getConfig(),
+  ["governance-config", governanceContractId],
+  {
+    tags: ["governance"],
+    revalidate: 60,
+  },
+)
 
 export async function getGovernanceConfig(): Promise<GovernanceConfig | null> {
   try {
@@ -170,7 +184,7 @@ export async function getGovernanceConfig(): Promise<GovernanceConfig | null> {
 
 const getCachedAdmins = unstable_cache(
   (fromIndex: number, limit: number) => governanceReader.listAdmins(fromIndex, limit),
-  ["governance-admins"],
+  ["governance-admins", governanceContractId],
   { tags: ["governance"], revalidate: 30 },
 )
 
@@ -189,7 +203,7 @@ export async function getAdminList(page: number, pageSize: number) {
 
 const getCachedBlocklist = unstable_cache(
   (fromIndex: number, limit: number) => governanceReader.listBlocklist(fromIndex, limit),
-  ["governance-blocklist"],
+  ["governance-blocklist", governanceContractId],
   { tags: ["governance"], revalidate: 30 },
 )
 
