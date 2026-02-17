@@ -91,7 +91,7 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
               <Users className="block h-3.5 w-3.5 text-[#64748b] dark:text-[#cbd5e1]" strokeWidth={2.5} />
             </span>
             <span className="font-fk-grotesk text-[15px] leading-none text-[#1e293b] dark:text-white">
-              Qualified Citizens
+              NEAR Verified Accounts
             </span>
           </div>
           <span className="font-inter text-[15px] leading-none text-[#1e293b] dark:text-white">
