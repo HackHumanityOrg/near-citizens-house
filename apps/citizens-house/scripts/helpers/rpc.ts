@@ -30,11 +30,19 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function isRateLimitError(error: unknown): boolean {
+export function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
     return error.message.includes("-429") || error.message.includes("Rate limit")
   }
   return false
+}
+
+/**
+ * Re-throw rate limit errors so they propagate to withRateLimitRetry.
+ * Use in catch blocks that return default values (e.g. `catch { return false }`).
+ */
+export function rethrowIfRateLimit(error: unknown): void {
+  if (isRateLimitError(error)) throw error
 }
 
 /**

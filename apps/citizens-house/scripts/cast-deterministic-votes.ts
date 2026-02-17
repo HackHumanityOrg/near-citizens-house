@@ -61,7 +61,7 @@ import {
 } from "./helpers/deterministic-voter-io"
 import { classifyRelayResponse } from "./helpers/relay-vote-utils"
 import { loadNearestEnvFile } from "./helpers/load-env"
-import { createScriptRpcProvider, getDefaultRpcUrl, withRateLimitRetry } from "./helpers/rpc"
+import { createScriptRpcProvider, getDefaultRpcUrl, rethrowIfRateLimit, withRateLimitRetry } from "./helpers/rpc"
 
 interface VoteOptions {
   proposalId: number
@@ -190,7 +190,8 @@ async function accountExists(provider: JsonRpcProvider, accountId: string): Prom
       account_id: accountId,
     })
     return true
-  } catch {
+  } catch (error) {
+    rethrowIfRateLimit(error)
     return false
   }
 }
