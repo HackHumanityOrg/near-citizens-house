@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Loader2, Check } from "lucide-react"
+import { Loader2, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import type { ProposalView, VoteChoice, VoteView } from "@/lib/schemas/governance-contract"
 import type { TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
-import { formatUtcDate } from "@/lib/governance-dates"
+import { formatUtcDate, formatUtcDateTime } from "@/lib/governance-dates"
 import { buildCastVoteTx } from "@/lib/contracts/governance/transactions"
 import {
   checkHasVoted,
@@ -32,7 +32,7 @@ import {
   type GovernanceVoteOutcome,
 } from "@/lib/contracts/governance/vote-outcome"
 import type { OptimisticVote, VoteLifecyclePayload } from "./optimistic-vote"
-import { VOTE_CHOICE_COLOR_TOKENS, VOTE_POSITIVE_TEXT_CLASS } from "./vote-colors"
+import { formatVoteChoiceLabel, VOTE_CHOICE_COLOR_TOKENS, VOTE_POSITIVE_TEXT_CLASS } from "./vote-colors"
 import { deriveVotePanelState } from "./vote-panel-state"
 
 interface Props {
@@ -66,7 +66,7 @@ function getVoteOutcomeToast(
   choice: VoteChoice,
 ): { type: "success" | "error"; message: string } {
   if (outcome.kind === "vote_cast") {
-    return { type: "success", message: `Vote "${outcome.choice ?? choice}" cast successfully` }
+    return { type: "success", message: `Vote "${formatVoteChoiceLabel(outcome.choice ?? choice)}" cast successfully` }
   }
 
   if (outcome.kind === "vote_rejected") {
@@ -112,13 +112,25 @@ function VotePanelCard({ title, children }: { title: string; children: ReactNode
   )
 }
 
-function ConfirmedVoteMessage({ choice }: { choice: VoteChoice }) {
+function ConfirmedVoteMessage({ choice, votedAt }: { choice: VoteChoice; votedAt?: number | null }) {
+  const VoteIcon = choice === "yes" ? Check : X
+
   return (
-    <div className="flex items-center gap-2">
-      <Check className={`h-5 w-5 ${VOTE_POSITIVE_TEXT_CLASS}`} />
-      <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
-        You voted <strong className={VOTE_CHOICE_COLOR_TOKENS[choice].actionText}>{choice.toUpperCase()}</strong>
-      </span>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <VoteIcon className={`h-4 w-4 ${VOTE_CHOICE_COLOR_TOKENS[choice].actionText}`} strokeWidth={3} />
+        <span className="font-fk-grotesk text-[15px] leading-none text-[#0f172a] dark:text-white">You voted</span>
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${VOTE_CHOICE_COLOR_TOKENS[choice].badge}`}
+        >
+          {formatVoteChoiceLabel(choice)}
+        </span>
+      </div>
+      {votedAt !== null && votedAt !== undefined ? (
+        <p className="mt-2 font-inter text-[12px] text-[#64748b] dark:text-[#94a3b8]">
+          Submitted {formatUtcDateTime(votedAt)}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -189,6 +201,9 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
   const confirmedChoice =
     existingVote?.choice ??
     (optimisticForCurrentAccount?.status === "confirmed" ? optimisticForCurrentAccount.choice : null)
+  const confirmedVoteAt =
+    existingVote?.votedAt ??
+    (optimisticForCurrentAccount?.status === "confirmed" ? optimisticForCurrentAccount.votedAt : null)
   const now = Date.now()
   const panelState = deriveVotePanelState({
     proposal,
@@ -380,7 +395,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
             <span className="font-inter text-[14px] text-[#334155] dark:text-[#cbd5e1]">
               Your vote{" "}
               <strong className={VOTE_CHOICE_COLOR_TOKENS[panelState.choice].actionText}>
-                {panelState.choice.toUpperCase()}
+                {formatVoteChoiceLabel(panelState.choice)}
               </strong>{" "}
               is being processed.
             </span>
@@ -406,7 +421,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
     case "proposal_ended_with_vote":
       return (
         <VotePanelCard title="Your Vote">
-          <ConfirmedVoteMessage choice={panelState.choice} />
+          <ConfirmedVoteMessage choice={panelState.choice} votedAt={confirmedVoteAt} />
         </VotePanelCard>
       )
     case "proposal_ended_without_vote":
@@ -430,7 +445,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
     case "already_voted":
       return (
         <VotePanelCard title="Your Vote">
-          <ConfirmedVoteMessage choice={panelState.choice} />
+          <ConfirmedVoteMessage choice={panelState.choice} votedAt={confirmedVoteAt} />
         </VotePanelCard>
       )
     case "ineligible_blocklisted":

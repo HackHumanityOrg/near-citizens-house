@@ -10,7 +10,7 @@ import type { VoteView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { getProposalVotes } from "@/app/governance/actions"
 import type { OptimisticVote } from "./optimistic-vote"
-import { VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
+import { formatVoteChoiceLabel, VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 
 const PAGE_SIZE = 20
 
@@ -120,7 +120,7 @@ export function VotesTable({
                     : VOTE_CHOICE_COLOR_TOKENS[vote.choice].badge
                 }`}
               >
-                {vote.status === "pending" ? "PENDING" : vote.choice.toUpperCase()}
+                {vote.status === "pending" ? "PENDING" : formatVoteChoiceLabel(vote.choice)}
               </span>
             </div>
             <span className="font-inter text-[11px] text-[#64748b] dark:text-[#94a3b8]">

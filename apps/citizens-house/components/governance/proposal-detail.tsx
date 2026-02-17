@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
-import { Clock3, ExternalLink, Flag, Play, Plus, Vote } from "lucide-react"
+import { Clock3, ExternalLink, Flag, Play, Plus } from "lucide-react"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { StatusBadge } from "./status-badge"
@@ -14,7 +14,6 @@ import {
   deriveProposalTimelineModel,
   type ProposalTimelineStep,
   type TimelineStepIcon,
-  type ViewerTimelineVote,
 } from "./proposal-timeline-state"
 
 interface ProposalProps {
@@ -46,8 +45,6 @@ function renderTimelineIcon(icon: TimelineStepIcon) {
       return <Flag className="h-4 w-4" />
     case "in_progress":
       return <Clock3 className="h-4 w-4" />
-    case "voted":
-      return <Vote className="h-4 w-4" />
   }
 }
 
@@ -150,14 +147,10 @@ export function VotingProgressCard({ proposal }: ProposalProps) {
   )
 }
 
-interface ProposalTimelineProps extends ProposalProps {
-  viewerVote?: ViewerTimelineVote | null
-}
-
-export function ProposalTimeline({ proposal, viewerVote = null }: ProposalTimelineProps) {
+export function ProposalTimeline({ proposal }: ProposalProps) {
   const now = useNow()
   const timelineNow = now ?? proposal.createdAt
-  const timeline = deriveProposalTimelineModel(proposal, timelineNow, viewerVote, {
+  const timeline = deriveProposalTimelineModel(proposal, timelineNow, {
     includeRelativeCountdownInTitles: now !== null,
   })
 
