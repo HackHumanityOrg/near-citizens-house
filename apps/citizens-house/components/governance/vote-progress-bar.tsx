@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Minus } from "lucide-react"
+import { Check, Minus, Users } from "lucide-react"
 import { VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 
 interface Props {
@@ -82,6 +82,20 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
           </div>
           <span className="font-inter text-[15px] leading-none text-[#1e293b] dark:text-white">
             {formatCount(totalVotes)} of {formatCount(quorumRequired)}
+          </span>
+        </div>
+
+        <div className="flex min-h-6 items-center justify-between gap-3">
+          <div className="flex min-h-6 items-center gap-3">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#e2e8f0] dark:bg-[#334155]">
+              <Users className="block h-3.5 w-3.5 text-[#64748b] dark:text-[#cbd5e1]" strokeWidth={2.5} />
+            </span>
+            <span className="font-fk-grotesk text-[15px] leading-none text-[#1e293b] dark:text-white">
+              Qualified Citizens
+            </span>
+          </div>
+          <span className="font-inter text-[15px] leading-none text-[#1e293b] dark:text-white">
+            {formatCount(snapshotVerifiedCount)}
           </span>
         </div>
       </div>
