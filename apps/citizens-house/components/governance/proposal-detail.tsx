@@ -4,16 +4,67 @@ import Link from "next/link"
 import { useState } from "react"
 import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
-import { ExternalLink } from "lucide-react"
+import { Clock3, ExternalLink, Flag, Play, Plus, Vote } from "lucide-react"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { StatusBadge } from "./status-badge"
 import { VoteProgressBar } from "./vote-progress-bar"
 import { CountdownTimer } from "./countdown-timer"
 import { MarkdownContent } from "./markdown-content"
+import {
+  deriveProposalTimelineModel,
+  type ProposalTimelineStep,
+  type TimelineStepIcon,
+  type ViewerTimelineVote,
+} from "./proposal-timeline-state"
 
 interface ProposalProps {
   proposal: ProposalView
+}
+
+function renderTimelineIcon(icon: TimelineStepIcon) {
+  switch (icon) {
+    case "created":
+      return <Plus className="h-4 w-4" />
+    case "start":
+      return <Play className="h-4 w-4" />
+    case "end":
+      return <Flag className="h-4 w-4" />
+    case "in_progress":
+      return <Clock3 className="h-4 w-4" />
+    case "voted":
+      return <Vote className="h-4 w-4" />
+  }
+}
+
+function stepNodeClasses(step: ProposalTimelineStep) {
+  if (step.state === "current") {
+    return "border-[#d97706] bg-[#fde68a] dark:border-[#facc15] dark:bg-[#78350f]"
+  }
+
+  if (step.state === "upcoming") {
+    return "border-[#cbd5e1] bg-[#f8fafc] dark:border-[#475569] dark:bg-[#0f172a]"
+  }
+
+  return "border-[#16a34a] bg-[#dcfce7] dark:border-[#22c55e] dark:bg-[#14532d]"
+}
+
+function stepIconClasses(step: ProposalTimelineStep) {
+  if (step.state === "current") {
+    return "text-[#78350f] dark:text-[#fde68a]"
+  }
+
+  if (step.state === "upcoming") {
+    return "text-[#64748b] dark:text-[#94a3b8]"
+  }
+
+  return "text-[#166534] dark:text-[#bbf7d0]"
+}
+
+function stepTitleClasses(step: ProposalTimelineStep) {
+  if (step.state === "current") return "text-black dark:text-white"
+  if (step.state === "upcoming") return "text-[#94a3b8] dark:text-[#64748b]"
+  return "text-[#0f172a] dark:text-[#e2e8f0]"
 }
 
 export function ProposalHeader({ proposal }: ProposalProps) {
@@ -85,43 +136,60 @@ export function VotingProgressCard({ proposal }: ProposalProps) {
   )
 }
 
-export function ProposalTimeline({ proposal }: ProposalProps) {
+interface ProposalTimelineProps extends ProposalProps {
+  viewerVote?: ViewerTimelineVote | null
+}
+
+export function ProposalTimeline({ proposal, viewerVote = null }: ProposalTimelineProps) {
   const [now] = useState(Date.now)
-  const isScheduled = proposal.status === "active" && proposal.startAt > now
+  const timeline = deriveProposalTimelineModel(proposal, now, viewerVote)
 
   return (
     <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
       <h3 className="font-fk-grotesk font-bold text-[16px] text-black dark:text-white mb-4">Timeline</h3>
-      <div className="flex flex-col gap-2 text-[13px] font-inter text-[#475569] dark:text-[#94a3b8]">
-        <div className="flex justify-between">
-          <span>Created</span>
-          <span>{formatUtcDateTime(proposal.createdAt)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Voting starts</span>
-          <span>{formatUtcDateTime(proposal.startAt)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Voting ends</span>
-          <span>{formatUtcDateTime(proposal.endsAt)}</span>
-        </div>
-        {isScheduled ? (
-          <div className="flex justify-between items-center pt-1 border-t border-[#e2e8f0] dark:border-white/10 mt-1">
-            <span className="font-medium text-black dark:text-white">Voting starts in</span>
-            <CountdownTimer targetMs={proposal.startAt} endedLabel="Starting..." />
-          </div>
-        ) : proposal.status === "active" ? (
-          <div className="flex justify-between items-center pt-1 border-t border-[#e2e8f0] dark:border-white/10 mt-1">
-            <span className="font-medium text-black dark:text-white">Time remaining</span>
-            <CountdownTimer targetMs={proposal.endsAt} endedLabel="Voting ended" />
-          </div>
-        ) : proposal.status === "pending" ? (
-          <div className="flex justify-between items-center pt-1 border-t border-[#e2e8f0] dark:border-white/10 mt-1">
-            <span className="font-medium text-black dark:text-white">Starts in</span>
-            <CountdownTimer targetMs={proposal.startAt} endedLabel="Starting..." />
-          </div>
-        ) : null}
+      <div className="relative pl-0">
+        <div className="absolute left-[17px] top-4 bottom-4 w-px bg-[#cbd5e1] dark:bg-[#334155]" />
+        <ol className="relative flex flex-col gap-5">
+          {timeline.steps.map((step) => (
+            <li key={step.key} className="relative flex gap-3">
+              <div
+                className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${step.timestampMs !== null ? "mt-0.5" : ""} ${stepNodeClasses(step)}`}
+              >
+                <span className={stepIconClasses(step)}>{renderTimelineIcon(step.icon)}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                {step.timestampMs !== null ? (
+                  <>
+                    <p className="font-inter text-[12px] leading-[16px] text-[#64748b] dark:text-[#94a3b8]">
+                      {formatUtcDateTime(step.timestampMs)}
+                    </p>
+                    <p className={`font-fk-grotesk font-medium text-[20px] leading-[26px] ${stepTitleClasses(step)}`}>
+                      {step.title}
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex h-9 items-center">
+                    <p className={`font-fk-grotesk font-medium text-[20px] leading-[36px] ${stepTitleClasses(step)}`}>
+                      {step.title}
+                    </p>
+                  </div>
+                )}
+                {step.subtitle && (
+                  <p className="font-inter text-[12px] leading-[16px] text-[#64748b] dark:text-[#94a3b8] mt-0.5">
+                    {step.subtitle}
+                  </p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
+      {timeline.countdown ? (
+        <div className="flex justify-between items-center pt-3 border-t border-[#e2e8f0] dark:border-white/10 mt-4">
+          <span className="font-medium text-black dark:text-white">{timeline.countdown.label}</span>
+          <CountdownTimer targetMs={timeline.countdown.targetMs} endedLabel={timeline.countdown.endedLabel} />
+        </div>
+      ) : null}
     </div>
   )
 }
