@@ -15,7 +15,7 @@ import {
   utf8ByteLength,
   validateCreateProposalInput,
 } from "@/lib/governance-proposal-validation"
-import { revalidateGovernance } from "@/app/governance/actions"
+import { revalidateGovernance } from "@/app/proposals/actions"
 import { MarkdownContent } from "@/components/governance/markdown-content"
 
 interface Props {
@@ -115,7 +115,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
         revalidateGovernance()
       })
       toast.success("Proposal created successfully")
-      router.push("/governance")
+      router.push("/proposals")
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
       toast.error(errorMessage)

@@ -14,7 +14,7 @@ import {
   getBlocklistLockInfo,
   revalidateGovernance,
   type BlocklistLockInfo,
-} from "@/app/governance/actions"
+} from "@/app/proposals/actions"
 
 export function BlocklistPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()

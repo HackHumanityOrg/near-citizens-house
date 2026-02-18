@@ -20,7 +20,7 @@ export default function CreateProposalPage() {
     Promise.all([checkIsAdmin(accountId), getGovernanceConfig()]).then(([admin, cfg]) => {
       setAdminCheck({ accountId, isAdmin: admin })
       setConfig(cfg)
-      if (!admin) router.replace("/governance")
+      if (!admin) router.replace("/proposals")
     })
   }, [isConnected, accountId, router])
 

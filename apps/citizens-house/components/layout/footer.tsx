@@ -22,7 +22,7 @@ export async function Footer() {
             {showGovernance && (
               <>
                 <Link
-                  href="/governance"
+                  href="/proposals"
                   className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk"
                 >
                   Governance
@@ -112,7 +112,7 @@ export async function Footer() {
         <div className="flex flex-col gap-[32px] items-end">
           {showGovernance && (
             <Link
-              href="/governance"
+              href="/proposals"
               className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk text-right"
             >
               Governance

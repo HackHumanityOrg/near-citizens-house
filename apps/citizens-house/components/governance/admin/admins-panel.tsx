@@ -8,7 +8,7 @@ import { ExternalLink, Loader2, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { buildAddAdminTx, buildRemoveAdminTx } from "@/lib/contracts/governance/transactions"
 import { extractExecutionFailure, getTransactionFailureMessage } from "@/lib/contracts/governance/vote-outcome"
-import { checkIsAdmin, getAdminList, revalidateGovernance } from "@/app/governance/actions"
+import { checkIsAdmin, getAdminList, revalidateGovernance } from "@/app/proposals/actions"
 
 export function AdminsPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()

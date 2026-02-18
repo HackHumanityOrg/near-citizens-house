@@ -15,7 +15,7 @@ async function getHomeDestination(): Promise<string> {
     const mode = await appMode()
 
     if (mode === "voting") {
-      return "/governance"
+      return "/proposals"
     }
 
     if (mode === "waiting") {

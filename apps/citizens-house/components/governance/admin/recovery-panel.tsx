@@ -11,7 +11,7 @@ import {
   getBlocklistLockInfo,
   getPendingVotesCount,
   type BlocklistLockInfo,
-} from "@/app/governance/actions"
+} from "@/app/proposals/actions"
 
 export function RecoveryPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()

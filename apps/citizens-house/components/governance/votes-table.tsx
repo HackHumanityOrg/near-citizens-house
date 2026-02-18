@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ExternalLink, Loader2 } from "lucide-react"
 import type { VoteView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
-import { getProposalVotes } from "@/app/governance/actions"
+import { getProposalVotes } from "@/app/proposals/actions"
 import type { OptimisticVote } from "./optimistic-vote"
 import { formatVoteChoiceLabel, VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 

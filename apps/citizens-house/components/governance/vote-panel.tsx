@@ -18,7 +18,7 @@ import {
   checkAccountBalance,
   checkIsBlocklisted,
   revalidateGovernance,
-} from "@/app/governance/actions"
+} from "@/app/proposals/actions"
 import { getVerificationSummary } from "@/app/citizens/actions"
 import { NEAR_CONFIG } from "@/lib/config"
 import { encodeSignedDelegate } from "@near-js/transactions"
