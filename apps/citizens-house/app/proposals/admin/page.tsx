@@ -29,7 +29,7 @@ export default function AdminPage() {
         setAdminCheck({ accountId, isAdmin: admin })
         setConfig(cfg)
         setSuperAdminEnabled(isSuperAdmin)
-        if (!admin) router.replace("/governance")
+        if (!admin) router.replace("/proposals")
       },
     )
   }, [isConnected, accountId, router])

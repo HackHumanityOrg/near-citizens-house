@@ -14,7 +14,7 @@ import {
   buildExpirePendingProposalTx,
   buildFinalizeProposalTx,
 } from "@/lib/contracts/governance/transactions"
-import { getProposals, revalidateGovernance } from "@/app/governance/actions"
+import { getProposals, revalidateGovernance } from "@/app/proposals/actions"
 
 const PAGE_SIZE = 10
 
@@ -104,7 +104,7 @@ export function ProposalsPanel() {
                   #{proposal.id}
                 </span>
                 <Link
-                  href={`/governance/${proposal.id}`}
+                  href={`/proposals/${proposal.id}`}
                   className="font-fk-grotesk text-[14px] text-black dark:text-white hover:underline truncate"
                 >
                   {proposal.title}

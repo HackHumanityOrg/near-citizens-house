@@ -85,7 +85,7 @@ export function ProposalHeader({ proposal }: ProposalProps) {
         aria-label="Breadcrumb"
         className="flex items-center gap-2 text-[14px] font-inter text-[#64748b] dark:text-[#94a3b8]"
       >
-        <Link href="/governance" className="hover:underline">
+        <Link href="/proposals" className="hover:underline">
           Proposals
         </Link>
         <span>/</span>

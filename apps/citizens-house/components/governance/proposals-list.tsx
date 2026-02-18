@@ -61,7 +61,7 @@ export function ProposalsList({ proposals, total, page, pageSize: _pageSize, tot
           <div className="flex gap-3 order-1 md:order-2">
             {page > 0 ? (
               <Button variant="citizens-outline" size="citizens-lg" asChild>
-                <Link href={`/governance?page=${page - 1}`}>
+                <Link href={`/proposals?page=${page - 1}`}>
                   <ChevronLeft className="h-4 w-4" />
                   Previous
                 </Link>
@@ -74,7 +74,7 @@ export function ProposalsList({ proposals, total, page, pageSize: _pageSize, tot
             )}
             {page < totalPages - 1 ? (
               <Button variant="citizens-outline" size="citizens-lg" asChild>
-                <Link href={`/governance?page=${page + 1}`}>
+                <Link href={`/proposals?page=${page + 1}`}>
                   Next
                   <ChevronRight className="h-4 w-4" />
                 </Link>

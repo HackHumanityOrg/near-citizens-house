@@ -5,11 +5,12 @@ import { maintenanceMode, appMode } from "./flags"
 const EXEMPT_PATHS = ["/privacy", "/terms", "/_not-found"]
 const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest", "/.well-known"]
 const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".css", ".js", ".woff", ".woff2"]
+const LEGACY_GOVERNANCE_PREFIX = "/governance"
 
 const STAGE_HOME = {
   verification: "/verification",
   waiting: "/waiting",
-  voting: "/governance",
+  voting: "/proposals",
 } as const
 
 type AppStage = keyof typeof STAGE_HOME
@@ -27,6 +28,18 @@ function isAllowedStagePath(mode: AppStage, pathname: string): boolean {
 
   const stageHome = STAGE_HOME[mode]
   return pathname === stageHome || pathname.startsWith(`${stageHome}/`)
+}
+
+function getLegacyGovernancePath(pathname: string): string | null {
+  if (pathname === LEGACY_GOVERNANCE_PREFIX) {
+    return "/proposals"
+  }
+
+  if (pathname.startsWith(`${LEGACY_GOVERNANCE_PREFIX}/`)) {
+    return `/proposals${pathname.slice(LEGACY_GOVERNANCE_PREFIX.length)}`
+  }
+
+  return null
 }
 
 function isExemptPath(pathname: string): boolean {
@@ -59,6 +72,13 @@ export async function proxy(request: NextRequest) {
 
     const mode = await appMode()
     const stageHome = STAGE_HOME[mode]
+
+    if (mode === "voting") {
+      const legacyPath = getLegacyGovernancePath(pathname)
+      if (legacyPath) {
+        return redirectTo(request, legacyPath)
+      }
+    }
 
     if (pathname === "/" || pathname === "/maintenance") {
       return redirectTo(request, stageHome)

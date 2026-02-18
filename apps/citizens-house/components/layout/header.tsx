@@ -17,7 +17,7 @@ import {
 } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
-import { checkIsAdmin } from "@/app/governance/actions"
+import { checkIsAdmin } from "@/app/proposals/actions"
 
 export function Header({ isVoting }: { isVoting: boolean }) {
   const pathname = usePathname()
@@ -46,7 +46,7 @@ export function Header({ isVoting }: { isVoting: boolean }) {
         {/* Mobile Navigation */}
         {isAdmin && (
           <nav className="flex items-center gap-4">
-            <Link href="/governance/admin" className="font-fk-grotesk text-[14px] text-black dark:text-white">
+            <Link href="/proposals/admin" className="font-fk-grotesk text-[14px] text-black dark:text-white">
               Admin
             </Link>
           </nav>
@@ -102,7 +102,7 @@ export function Header({ isVoting }: { isVoting: boolean }) {
         {isAdmin && (
           <nav className="flex items-center gap-20">
             <Link
-              href="/governance/admin"
+              href="/proposals/admin"
               className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity"
             >
               Admin
