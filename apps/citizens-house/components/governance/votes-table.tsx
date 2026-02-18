@@ -12,7 +12,7 @@ import { getProposalVotes } from "@/app/governance/actions"
 import type { OptimisticVote } from "./optimistic-vote"
 import { formatVoteChoiceLabel, VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 interface Props {
   proposalId: number

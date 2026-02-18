@@ -74,8 +74,11 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function initializeWalletConnector() {
       try {
-        // Use the configured RPC URL for the current network
-        const rpcUrl = NEAR_CONFIG.rpcUrl
+        // Route wallet RPC traffic through our API so every request carries
+        // the server-side FastNEAR API key.
+        const appOrigin = window.location.origin
+        const mainnetRpcUrl = `${appOrigin}/api/rpc?network=mainnet`
+        const testnetRpcUrl = `${appOrigin}/api/rpc?network=testnet`
 
         // Initialize WalletConnect SignClient if projectId is provided
         // This enables wallets that use WalletConnect protocol (e.g., MyNearWallet, Unity Wallet)
@@ -98,8 +101,8 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         const connector = new NearConnector({
           network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
           providers: {
-            mainnet: NEAR_CONFIG.networkId === "mainnet" ? [rpcUrl] : ["https://rpc.mainnet.near.org"],
-            testnet: NEAR_CONFIG.networkId === "testnet" ? [rpcUrl] : ["https://rpc.testnet.near.org"],
+            mainnet: [mainnetRpcUrl],
+            testnet: [testnetRpcUrl],
           },
           autoConnect: true,
           walletConnect: walletConnectClient,

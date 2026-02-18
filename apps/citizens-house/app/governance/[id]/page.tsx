@@ -22,7 +22,7 @@ export default async function ProposalPage({ params }: Props) {
   }
 
   const totalVotes = proposal.yesVotes + proposal.noVotes
-  const votesResult = await getProposalVotes(proposalId, 0, 20, totalVotes)
+  const votesResult = await getProposalVotes(proposalId, 0, 10, totalVotes)
 
   return (
     <div className="w-full">

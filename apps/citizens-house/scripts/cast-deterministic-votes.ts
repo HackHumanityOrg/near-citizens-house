@@ -34,6 +34,7 @@
  * - --relay-url <url>                Override relay endpoint
  * - --report <path>                  Custom vote report path
  * - --max-block-height-window <num>  Delegate TTL window
+ * - --inter-vote-delay-ms <num>      Delay between voter attempts
  * - --rpc-url <url>                  Override RPC endpoint
  */
 
@@ -61,7 +62,7 @@ import {
 } from "./helpers/deterministic-voter-io"
 import { classifyRelayResponse } from "./helpers/relay-vote-utils"
 import { loadNearestEnvFile } from "./helpers/load-env"
-import { createScriptRpcProvider, getDefaultRpcUrl, rethrowIfRateLimit, withRateLimitRetry } from "./helpers/rpc"
+import { createScriptRpcProvider, getDefaultRpcUrl, rethrowIfRateLimit, sleep, withRateLimitRetry } from "./helpers/rpc"
 
 interface VoteOptions {
   proposalId: number
@@ -76,6 +77,7 @@ interface VoteOptions {
   reportPath: string
   failFast: boolean
   rpcUrl: string
+  interVoteDelayMs: number
 }
 
 loadNearestEnvFile()
@@ -145,6 +147,7 @@ function parseOptions(argv: string[]): VoteOptions {
 
   const startIndex = parsePositiveInt(asString(raw["start-index"]), "start-index")
   const count = parsePositiveInt(asString(raw.count), "count")
+  const interVoteDelayMs = parsePositiveInt(asString(raw["inter-vote-delay-ms"]) ?? "3000", "inter-vote-delay-ms")
 
   if (count <= 0) {
     throw new Error("--count must be greater than 0")
@@ -170,6 +173,7 @@ function parseOptions(argv: string[]): VoteOptions {
     reportPath: asString(raw.report) ?? resolveDefaultVoteRunPath(proposalId),
     failFast: Boolean(raw["fail-fast"]),
     rpcUrl: asString(raw["rpc-url"]) ?? getDefaultRpcUrl(network),
+    interVoteDelayMs,
   }
 }
 
@@ -299,8 +303,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   const provider = createScriptRpcProvider(options.rpcUrl)
   const report = buildReport(options, network)
+  const endExclusive = options.startIndex + options.count
 
-  for (let i = options.startIndex; i < options.startIndex + options.count; i++) {
+  for (let i = options.startIndex; i < endExclusive; i++) {
+    let shouldBreak = false
     const manifestRecord = manifest.accounts.find((record) => record.index === i)
 
     if (!manifestRecord) {
@@ -314,133 +320,154 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         error: `Index ${i} not present in manifest`,
       })
       writeJsonFile(options.reportPath, report)
-      if (options.failFast) break
-      continue
-    }
+      if (options.failFast) {
+        shouldBreak = true
+      }
+    } else {
+      const derivedKey = deriveDeterministicVoterKey(parentPrivateKey, i)
+      const derivedPublicKey = derivedKey.getPublicKey().toString()
+      const derivedAccountId = buildDeterministicVoterAccountId(
+        manifest.parentAccountId,
+        manifest.naming.prefix,
+        i,
+        manifest.naming.pad,
+      )
 
-    const derivedKey = deriveDeterministicVoterKey(parentPrivateKey, i)
-    const derivedPublicKey = derivedKey.getPublicKey().toString()
-    const derivedAccountId = buildDeterministicVoterAccountId(
-      manifest.parentAccountId,
-      manifest.naming.prefix,
-      i,
-      manifest.naming.pad,
-    )
+      try {
+        ensureManifestRecordMatchesDerived(manifestRecord, derivedAccountId, derivedPublicKey)
 
-    try {
-      ensureManifestRecordMatchesDerived(manifestRecord, derivedAccountId, derivedPublicKey)
+        const result = await withRateLimitRetry(async (): Promise<DeterministicVoteRunRecord> => {
+          const exists = await accountExists(provider, manifestRecord.accountId)
+          if (!exists) {
+            throw new Error("Account does not exist on-chain")
+          }
 
-      const result = await withRateLimitRetry(async (): Promise<DeterministicVoteRunRecord> => {
-        const exists = await accountExists(provider, manifestRecord.accountId)
-        if (!exists) {
-          throw new Error("Account does not exist on-chain")
-        }
+          const verified = await isVerified(provider, verificationContractId, manifestRecord.accountId)
+          if (!verified) {
+            return {
+              index: i,
+              accountId: manifestRecord.accountId,
+              publicKey: manifestRecord.publicKey,
+              status: "skipped_unverified",
+              relayTxHash: null,
+              relayReason: "not_verified",
+              error: "Account is not verified on verification contract",
+            }
+          }
 
-        const verified = await isVerified(provider, verificationContractId, manifestRecord.accountId)
-        if (!verified) {
+          const proposalStatus = await getProposalStatus(provider, options.governanceContractId, options.proposalId)
+          if (proposalStatus !== "active") {
+            throw new Error(`Proposal is not active (current status: ${proposalStatus})`)
+          }
+
+          const alreadyVoted = await hasVoted(
+            provider,
+            options.governanceContractId,
+            options.proposalId,
+            manifestRecord.accountId,
+          )
+          if (alreadyVoted) {
+            return {
+              index: i,
+              accountId: manifestRecord.accountId,
+              publicKey: manifestRecord.publicKey,
+              status: "already_voted",
+              relayTxHash: null,
+              relayReason: null,
+              error: null,
+            }
+          }
+
+          if (options.dryRun) {
+            return {
+              index: i,
+              accountId: manifestRecord.accountId,
+              publicKey: manifestRecord.publicKey,
+              status: "skipped_dry_run",
+              relayTxHash: null,
+              relayReason: null,
+              error: null,
+            }
+          }
+
+          const voterSigner = new KeyPairSigner(derivedKey)
+          const voterAccount = new Account(manifestRecord.accountId, provider, voterSigner)
+
+          const action = actionCreators.functionCall(
+            "cast_vote",
+            { proposal_id: options.proposalId, choice: options.choice },
+            GAS_100_TGAS_BIGINT,
+            BigInt(0),
+          )
+
+          const [, signedDelegate] = await voterAccount.createSignedMetaTransaction(
+            options.governanceContractId,
+            [action],
+            options.maxBlockHeightWindow,
+          )
+
+          const encoded = Buffer.from(encodeSignedDelegate(signedDelegate)).toString("base64")
+          const response = await fetch(options.relayUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ signedDelegate: encoded }),
+          })
+
+          const responseBody = await response.json().catch(() => null)
+          const classified = classifyRelayResponse(response.status, responseBody)
+
+          // Surface relay-side rate limiting to the retry helper.
+          if (
+            classified.status === "failed" &&
+            classified.error &&
+            classified.error.toLowerCase().includes("rate limit")
+          ) {
+            throw new Error(classified.error)
+          }
+
           return {
             index: i,
             accountId: manifestRecord.accountId,
             publicKey: manifestRecord.publicKey,
-            status: "skipped_unverified",
-            relayTxHash: null,
-            relayReason: "not_verified",
-            error: "Account is not verified on verification contract",
+            status: classified.status,
+            relayTxHash: classified.relayTxHash,
+            relayReason: classified.relayReason,
+            error: classified.error,
           }
-        }
-
-        const proposalStatus = await getProposalStatus(provider, options.governanceContractId, options.proposalId)
-        if (proposalStatus !== "active") {
-          throw new Error(`Proposal is not active (current status: ${proposalStatus})`)
-        }
-
-        const alreadyVoted = await hasVoted(
-          provider,
-          options.governanceContractId,
-          options.proposalId,
-          manifestRecord.accountId,
-        )
-        if (alreadyVoted) {
-          return {
-            index: i,
-            accountId: manifestRecord.accountId,
-            publicKey: manifestRecord.publicKey,
-            status: "already_voted",
-            relayTxHash: null,
-            relayReason: null,
-            error: null,
-          }
-        }
-
-        if (options.dryRun) {
-          return {
-            index: i,
-            accountId: manifestRecord.accountId,
-            publicKey: manifestRecord.publicKey,
-            status: "skipped_dry_run",
-            relayTxHash: null,
-            relayReason: null,
-            error: null,
-          }
-        }
-
-        const voterSigner = new KeyPairSigner(derivedKey)
-        const voterAccount = new Account(manifestRecord.accountId, provider, voterSigner)
-
-        const action = actionCreators.functionCall(
-          "cast_vote",
-          { proposal_id: options.proposalId, choice: options.choice },
-          GAS_100_TGAS_BIGINT,
-          BigInt(0),
-        )
-
-        const [, signedDelegate] = await voterAccount.createSignedMetaTransaction(
-          options.governanceContractId,
-          [action],
-          options.maxBlockHeightWindow,
-        )
-
-        const encoded = Buffer.from(encodeSignedDelegate(signedDelegate)).toString("base64")
-        const response = await fetch(options.relayUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ signedDelegate: encoded }),
         })
 
-        const responseBody = await response.json().catch(() => null)
-        const classified = classifyRelayResponse(response.status, responseBody)
-
-        return {
+        report.results = upsertResult(report.results, result)
+        writeJsonFile(options.reportPath, report)
+        if (options.failFast && result.status === "failed") {
+          shouldBreak = true
+        }
+        if (options.failFast && result.status === "skipped_unverified") {
+          shouldBreak = true
+        }
+      } catch (error) {
+        report.results = upsertResult(report.results, {
           index: i,
           accountId: manifestRecord.accountId,
           publicKey: manifestRecord.publicKey,
-          status: classified.status,
-          relayTxHash: classified.relayTxHash,
-          relayReason: classified.relayReason,
-          error: classified.error,
+          status: "failed",
+          relayTxHash: null,
+          relayReason: null,
+          error: formatError(error),
+        })
+        writeJsonFile(options.reportPath, report)
+        if (options.failFast) {
+          shouldBreak = true
         }
-      })
+      }
+    }
 
-      report.results = upsertResult(report.results, result)
-      writeJsonFile(options.reportPath, report)
-      if (options.failFast && result.status === "failed") {
-        break
-      }
-      if (options.failFast && result.status === "skipped_unverified") {
-        break
-      }
-    } catch (error) {
-      report.results = upsertResult(report.results, {
-        index: i,
-        accountId: manifestRecord.accountId,
-        publicKey: manifestRecord.publicKey,
-        status: "failed",
-        relayTxHash: null,
-        relayReason: null,
-        error: formatError(error),
-      })
-      writeJsonFile(options.reportPath, report)
-      if (options.failFast) break
+    if (shouldBreak) {
+      break
+    }
+
+    const hasNext = i < endExclusive - 1
+    if (hasNext && options.interVoteDelayMs > 0) {
+      await sleep(options.interVoteDelayMs)
     }
   }
 
