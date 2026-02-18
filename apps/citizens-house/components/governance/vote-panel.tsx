@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Loader2, Check, X } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import type { ProposalView, VoteChoice, VoteView } from "@/lib/schemas/governance-contract"
 import type { TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
@@ -113,12 +113,9 @@ function VotePanelCard({ title, children }: { title: string; children: ReactNode
 }
 
 function ConfirmedVoteMessage({ choice, votedAt }: { choice: VoteChoice; votedAt?: number | null }) {
-  const VoteIcon = choice === "yes" ? Check : X
-
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <VoteIcon className={`h-4 w-4 ${VOTE_CHOICE_COLOR_TOKENS[choice].actionText}`} strokeWidth={3} />
         <span className="font-fk-grotesk text-[15px] leading-none text-[#0f172a] dark:text-white">You voted</span>
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${VOTE_CHOICE_COLOR_TOKENS[choice].badge}`}
