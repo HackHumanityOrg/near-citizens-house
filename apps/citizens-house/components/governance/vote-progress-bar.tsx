@@ -17,11 +17,8 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
   const quorumRequired = Math.ceil((snapshotVerifiedCount * quorumBps) / 10_000)
   const quorumMet = totalVotes >= quorumRequired
 
-  const compact = new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 2,
-  })
-  const formatCount = (value: number) => compact.format(value)
+  const fullNumber = new Intl.NumberFormat("en-US")
+  const formatCount = (value: number) => fullNumber.format(value)
 
   return (
     <div className="flex flex-col gap-5">
