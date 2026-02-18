@@ -13,6 +13,7 @@ import {
 } from "@/lib"
 import type { TransformedVerification, TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
 import { verificationDb } from "@/lib/contracts/verification/client"
+import { governanceReader } from "@/lib/contracts/governance/client"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 import { signatureVerificationDataSchema, type SignatureVerificationData } from "@/lib/schemas/verification-signature"
 
@@ -32,17 +33,31 @@ export type GetVerificationsResult = {
   total: number
 }
 
-/**
- * Core data fetching logic - separated for caching.
- * Fetches accounts from NEAR contract and verifies NEAR signatures.
- * SumSub handles identity verification; we verify signature integrity.
- */
-async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
-  // Get paginated accounts from NEAR contract (newest first)
-  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(pagination)
+async function fetchBlocklist(): Promise<string[]> {
+  if (!NEAR_CONFIG.governanceContractId) return []
 
-  // Verify each account's NEAR signature in parallel
-  const verifiedAccounts = await Promise.all(
+  const BATCH = 100
+  const all: string[] = []
+  let fromIndex = 0
+
+  while (true) {
+    const batch = await governanceReader.listBlocklist(fromIndex, BATCH)
+    all.push(...batch)
+    if (batch.length < BATCH) break
+    fromIndex += batch.length
+  }
+
+  return all
+}
+
+const getCachedBlocklist = unstable_cache(
+  () => fetchBlocklist(),
+  ["citizens-blocklist", NEAR_CONFIG.governanceContractId ?? ""],
+  { tags: ["governance"], revalidate: 60 },
+)
+
+async function verifyAccountSignatures(accounts: TransformedVerification[]): Promise<VerificationWithStatus[]> {
+  return Promise.all(
     accounts.map(async (account): Promise<VerificationWithStatus> => {
       try {
         // Verify NEAR signature for data integrity
@@ -102,8 +117,95 @@ async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetV
       }
     }),
   )
+}
 
-  return { accounts: verifiedAccounts, total }
+async function countVerifiedBlocklistedAccounts(blocklistSet: ReadonlySet<string>): Promise<number> {
+  if (blocklistSet.size === 0) return 0
+
+  const checks = await Promise.all(
+    [...blocklistSet].map((id) => verificationDb.isVerified(id as NearAccountId).catch(() => false)),
+  )
+  return checks.filter(Boolean).length
+}
+
+async function listNonBlocklistedPage(
+  pagination: Pagination,
+  blocklistSet: ReadonlySet<string>,
+): Promise<{ accounts: TransformedVerification[]; totalUnfiltered: number }> {
+  const BATCH = 100
+  const filteredOffset = pagination.page * pagination.pageSize
+  const pageAccounts: TransformedVerification[] = []
+  let nonBlocklistedSeen = 0
+  let scanPage = 0
+  let totalUnfiltered = 0
+
+  while (true) {
+    const { accounts: batch, total } = await verificationDb.listVerificationsNewestFirst({
+      page: scanPage,
+      pageSize: BATCH,
+    })
+
+    if (scanPage === 0) {
+      totalUnfiltered = total
+      if (totalUnfiltered === 0) {
+        return { accounts: [], totalUnfiltered }
+      }
+    }
+
+    if (batch.length === 0) {
+      break
+    }
+
+    for (const account of batch) {
+      if (blocklistSet.has(account.nearAccountId)) {
+        continue
+      }
+
+      if (nonBlocklistedSeen >= filteredOffset && pageAccounts.length < pagination.pageSize) {
+        pageAccounts.push(account)
+      }
+      nonBlocklistedSeen += 1
+
+      if (pageAccounts.length === pagination.pageSize) {
+        return { accounts: pageAccounts, totalUnfiltered }
+      }
+    }
+
+    scanPage += 1
+    if (scanPage * BATCH >= totalUnfiltered) {
+      break
+    }
+  }
+
+  return { accounts: pageAccounts, totalUnfiltered }
+}
+
+/**
+ * Core data fetching logic - separated for caching.
+ * Fetches accounts from NEAR contract and verifies NEAR signatures.
+ * SumSub handles identity verification; we verify signature integrity.
+ */
+async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
+  const blocklist = await getCachedBlocklist().catch(() => [] as string[])
+  const blocklistSet = new Set(blocklist)
+
+  if (blocklistSet.size === 0) {
+    const { accounts, total } = await verificationDb.listVerificationsNewestFirst(pagination)
+    const verifiedAccounts = await verifyAccountSignatures(accounts)
+    return { accounts: verifiedAccounts, total }
+  }
+
+  // Fill pages from blocklist-filtered data (filter first, then paginate)
+  const [{ accounts, totalUnfiltered }, verifiedBlocklistedCount] = await Promise.all([
+    listNonBlocklistedPage(pagination, blocklistSet),
+    countVerifiedBlocklistedAccounts(blocklistSet),
+  ])
+  const verifiedAccounts = await verifyAccountSignatures(accounts)
+
+  return {
+    accounts: verifiedAccounts,
+    total: Math.max(0, totalUnfiltered - verifiedBlocklistedCount),
+  }
 }
 
 /**
@@ -114,7 +216,7 @@ const getCachedVerifications = unstable_cache(
   (pagination: Pagination) => fetchAndVerifyVerifications(pagination),
   ["verifications", NEAR_CONFIG.verificationContractId],
   {
-    tags: ["verifications"],
+    tags: ["verifications", "governance"],
     revalidate: 60, // Revalidate every 60 seconds (1 minute)
   },
 )
