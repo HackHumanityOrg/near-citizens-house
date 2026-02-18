@@ -1,4 +1,5 @@
 import { StarPattern } from "@/components/verification/icons/star-pattern"
+import { WaitingQA } from "@/components/verification/waiting-qa"
 
 export default function WaitingPage() {
   return (
@@ -51,6 +52,7 @@ export default function WaitingPage() {
           </div>
         </div>
       </section>
+      <WaitingQA />
     </>
   )
 }
