@@ -343,3 +343,27 @@ async fn it_sec_003_004_005_private_callbacks_rejected() -> anyhow::Result<()> {
     assert!(res.is_failure());
     Ok(())
 }
+
+#[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("Security")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "security")]
+#[allure_description("Verifies sec 006 adding existing admin is rejected.")]
+#[allure_test]
+async fn it_sec_006_add_existing_admin_rejected() -> anyhow::Result<()> {
+    let (_worker, governance, _verified, admin, _backend, _users) = setup_env(0).await?;
+
+    let result = admin
+        .call(governance.id(), "add_admin")
+        .gas(crate::helpers::GAS_HEAVY)
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({ "account_id": admin.id().as_str() }))
+        .transact()
+        .await?;
+
+    assert!(result.is_failure());
+    assert_failure_contains(&result, "ERR_ADMIN_ALREADY_EXISTS");
+    Ok(())
+}
