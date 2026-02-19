@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { buildAddAdminTx, buildRemoveAdminTx } from "@/lib/contracts/governance/transactions"
 import { extractExecutionFailure, getTransactionFailureMessage } from "@/lib/contracts/governance/vote-outcome"
 import { checkIsAdmin, getAdminList, revalidateGovernance } from "@/app/proposals/actions"
+import { trackEvent } from "@/lib/analytics"
 
 export function AdminsPanel() {
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
@@ -52,9 +53,27 @@ export function AdminsPanel() {
     }
 
     setTxLoading(true)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "admins",
+      operation: "add_admin",
+      accountId,
+      targetAccountId: normalizedNewAdmin,
+    })
     try {
       const alreadyAdmin = await checkIsAdmin(normalizedNewAdmin)
       if (alreadyAdmin) {
+        trackEvent({
+          domain: "governance",
+          action: "admin_tx_result",
+          area: "admins",
+          operation: "add_admin",
+          outcome: "fail",
+          accountId,
+          targetAccountId: normalizedNewAdmin,
+          errorMessage: "This account is already an admin.",
+        })
         toast.error("This account is already an admin.")
         await refreshAdmins()
         return
@@ -69,11 +88,30 @@ export function AdminsPanel() {
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "admins",
+        operation: "add_admin",
+        outcome: "success",
+        accountId,
+        targetAccountId: normalizedNewAdmin,
+      })
       toast.success(`Added ${normalizedNewAdmin} as admin`)
       setNewAdmin("")
       await refreshAdmins()
     } catch (error) {
       const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "admins",
+        operation: "add_admin",
+        outcome: "fail",
+        accountId,
+        targetAccountId: normalizedNewAdmin,
+        errorMessage,
+      })
       toast.error(errorMessage)
       await refreshAdmins()
     } finally {
@@ -85,6 +123,14 @@ export function AdminsPanel() {
     if (!isConnected || !accountId) return
 
     setTxLoading(true)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "admins",
+      operation: "remove_admin",
+      accountId,
+      targetAccountId: adminId,
+    })
     try {
       const result = await signAndSendTransaction(buildRemoveAdminTx(adminId))
       const executionFailure = extractExecutionFailure(result)
@@ -95,10 +141,29 @@ export function AdminsPanel() {
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "admins",
+        operation: "remove_admin",
+        outcome: "success",
+        accountId,
+        targetAccountId: adminId,
+      })
       toast.success(`Removed ${adminId} from admins`)
       await refreshAdmins()
     } catch (error) {
       const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "admins",
+        operation: "remove_admin",
+        outcome: "fail",
+        accountId,
+        targetAccountId: adminId,
+        errorMessage,
+      })
       toast.error(errorMessage)
       await refreshAdmins()
     } finally {

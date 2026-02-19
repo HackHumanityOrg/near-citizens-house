@@ -6,6 +6,7 @@ import { useNearWallet } from "@/lib"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { buildClearStalePendingVoteTx, buildClearStaleBlocklistOpTx } from "@/lib/contracts/governance/transactions"
+import { trackEvent } from "@/lib/analytics"
 import {
   revalidateGovernance,
   getBlocklistLockInfo,
@@ -52,18 +53,50 @@ export function RecoveryPanel() {
     e.preventDefault()
     if (!isConnected || !accountId || !proposalId || !voteAccountId.trim()) return
 
+    const parsedProposalId = parseInt(proposalId)
     setTxLoading(true)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "recovery",
+      operation: "clear_stale_pending_vote",
+      accountId,
+      proposalId: parsedProposalId,
+      targetAccountId: voteAccountId.trim(),
+    })
     try {
-      await signAndSendTransaction(buildClearStalePendingVoteTx(parseInt(proposalId), voteAccountId.trim()))
+      await signAndSendTransaction(buildClearStalePendingVoteTx(parsedProposalId, voteAccountId.trim()))
       startTransition(() => {
         revalidateGovernance()
+      })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "recovery",
+        operation: "clear_stale_pending_vote",
+        outcome: "success",
+        accountId,
+        proposalId: parsedProposalId,
+        targetAccountId: voteAccountId.trim(),
       })
       toast.success("Stale pending vote cleared")
       setProposalId("")
       setVoteAccountId("")
       setPendingVoteCount(null)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? error.message : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "recovery",
+        operation: "clear_stale_pending_vote",
+        outcome: "fail",
+        accountId,
+        proposalId: parsedProposalId,
+        targetAccountId: voteAccountId.trim(),
+        errorMessage,
+      })
+      toast.error(errorMessage)
     } finally {
       setTxLoading(false)
     }
@@ -73,15 +106,40 @@ export function RecoveryPanel() {
     if (!isConnected || !accountId) return
 
     setTxLoading(true)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "recovery",
+      operation: "clear_stale_blocklist_op",
+      accountId,
+    })
     try {
       await signAndSendTransaction(buildClearStaleBlocklistOpTx())
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "recovery",
+        operation: "clear_stale_blocklist_op",
+        outcome: "success",
+        accountId,
+      })
       toast.success("Stale blocklist operation cleared")
       setLockInfo({ locked: false, hasActiveProposals: false })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? error.message : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "recovery",
+        operation: "clear_stale_blocklist_op",
+        outcome: "fail",
+        accountId,
+        errorMessage,
+      })
+      toast.error(errorMessage)
     } finally {
       setTxLoading(false)
     }

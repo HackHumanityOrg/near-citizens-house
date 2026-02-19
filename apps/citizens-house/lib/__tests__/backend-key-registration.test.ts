@@ -17,6 +17,15 @@ import * as allure from "allure-js-commons"
 // Store original env
 const originalEnv = { ...process.env }
 
+function setEnvVar(name: string, value: string | undefined): void {
+  const env = process.env as Record<string, string | undefined>
+  if (value === undefined) {
+    delete env[name]
+    return
+  }
+  env[name] = value
+}
+
 describe("Near Citizens House", () => {
   describe("Backend Key Registration Unit Tests", () => {
     beforeEach(() => {
@@ -34,8 +43,8 @@ describe("Near Citizens House", () => {
       it("skips in development mode without FORCE_KEY_REGISTRATION", async () => {
         await allure.severity("critical")
         await allure.step("Verify dev mode skip", async () => {
-          process.env.NODE_ENV = "development"
-          delete process.env.FORCE_KEY_REGISTRATION
+          setEnvVar("NODE_ENV", "development")
+          setEnvVar("FORCE_KEY_REGISTRATION", undefined)
 
           const mockConsoleLog = vi.spyOn(console, "log").mockImplementation(() => {})
 
@@ -49,7 +58,7 @@ describe("Near Citizens House", () => {
       it("does not skip in production mode", async () => {
         await allure.severity("normal")
         await allure.step("Verify production mode runs", async () => {
-          process.env.NODE_ENV = "production"
+          setEnvVar("NODE_ENV", "production")
 
           const mockConsoleLog = vi.spyOn(console, "log").mockImplementation(() => {})
           vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -66,7 +75,7 @@ describe("Near Citizens House", () => {
       it("does not skip in test mode", async () => {
         await allure.severity("normal")
         await allure.step("Verify test mode runs", async () => {
-          process.env.NODE_ENV = "test"
+          setEnvVar("NODE_ENV", "test")
 
           const mockConsoleLog = vi.spyOn(console, "log").mockImplementation(() => {})
           vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -83,8 +92,8 @@ describe("Near Citizens House", () => {
       it("runs in development with FORCE_KEY_REGISTRATION=true", async () => {
         await allure.severity("critical")
         await allure.step("Verify FORCE_KEY_REGISTRATION override", async () => {
-          process.env.NODE_ENV = "development"
-          process.env.FORCE_KEY_REGISTRATION = "true"
+          setEnvVar("NODE_ENV", "development")
+          setEnvVar("FORCE_KEY_REGISTRATION", "true")
 
           const mockConsoleLog = vi.spyOn(console, "log").mockImplementation(() => {})
           vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -225,7 +234,7 @@ describe("Near Citizens House", () => {
       it("catches all errors during execution", async () => {
         await allure.severity("critical")
         await allure.step("Verify function never throws", async () => {
-          process.env.NODE_ENV = "production"
+          setEnvVar("NODE_ENV", "production")
 
           vi.spyOn(console, "log").mockImplementation(() => {})
           vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -296,7 +305,7 @@ describe("Near Citizens House", () => {
       it("converts non-Error objects to string", async () => {
         await allure.severity("normal")
         await allure.step("Verify string conversion", async () => {
-          const error = "Just a string error"
+          const error: unknown = "Just a string error"
 
           // Pattern from backend-key-registration.ts
           const msg = error instanceof Error ? error.message : String(error)

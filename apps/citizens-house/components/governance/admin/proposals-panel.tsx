@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { StatusBadge, type DisplayStatus } from "../status-badge"
+import { trackEvent } from "@/lib/analytics"
 import {
   buildCancelProposalTx,
   buildExpirePendingProposalTx,
@@ -51,6 +52,14 @@ export function ProposalsPanel() {
     if (!isConnected || !accountId) return
 
     setTxLoading(proposalId)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "proposal_management",
+      operation: action,
+      accountId,
+      proposalId,
+    })
     try {
       const txBuilders = {
         cancel: () => buildCancelProposalTx(proposalId),
@@ -61,11 +70,31 @@ export function ProposalsPanel() {
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "proposal_management",
+        operation: action,
+        outcome: "success",
+        accountId,
+        proposalId,
+      })
       const labels = { cancel: "cancelled", expire: "expired", finalize: "finalized" } as const
       toast.success(`Proposal ${labels[action]} successfully`)
       fetchPage(page)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? error.message : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "proposal_management",
+        operation: action,
+        outcome: "fail",
+        accountId,
+        proposalId,
+        errorMessage,
+      })
+      toast.error(errorMessage)
     } finally {
       setTxLoading(null)
     }

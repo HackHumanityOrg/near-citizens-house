@@ -5,6 +5,7 @@
  * validates it, and submits a wrapping transaction using the backend key pool.
  * The NEAR runtime unwraps the DelegateAction so predecessor_account_id = voter.
  */
+import * as Sentry from "@sentry/nextjs"
 import { type NextRequest, NextResponse } from "next/server"
 import { deserialize } from "borsh"
 import { PublicKey, KeyType } from "@near-js/crypto"
@@ -39,6 +40,10 @@ import {
   type NearAccountId,
 } from "@/lib/schemas/near"
 import { contractVerificationSummarySchema } from "@/lib/schemas/verification-contract"
+import { withObservability } from "@/lib/api/with-observability"
+import { extractPostHogContext } from "@/lib/api/request-context"
+import { trackServerEvent, type TrackServerEventOptions } from "@/lib/analytics-server"
+import type { AnalyticsEvent } from "@/lib/schemas/analytics"
 
 const RATE_LIMIT_TTL = 60 // 1 relay per voter per minute
 const MAX_BLOCK_HEIGHT_WINDOW = 500
@@ -85,6 +90,10 @@ interface ParsedKeyData {
 }
 
 type JsonObject = Record<string, unknown>
+type GovernanceRelayValidationReason = Extract<
+  AnalyticsEvent,
+  { domain: "governance"; action: "relay_validation_fail" }
+>["reason"]
 
 function relayError(message: string, status = 400, reason?: VoteRejectionReason) {
   return NextResponse.json(reason ? { error: message, reason } : { error: message }, { status })
@@ -207,26 +216,99 @@ async function verifyAccessKeyPermission(
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withObservability({ route: "POST /api/governance/relay" }, async (request: NextRequest, log) => {
   let validatedAccountId: NearAccountId | undefined
+  let relayProposalId: number | undefined
+  const posthogContext = extractPostHogContext(request)
+  const trackingOptions: TrackServerEventOptions = { sessionId: posthogContext.sessionId }
+
+  log.setAll({
+    has_posthog_session_id: Boolean(posthogContext.sessionId),
+    has_posthog_distinct_id: Boolean(posthogContext.distinctId),
+  })
+
+  const trackRelayValidationFailure = async (
+    reason: GovernanceRelayValidationReason,
+    statusCode: number,
+    options?: {
+      errorMessage?: string
+      voteRejectionReason?: VoteRejectionReason
+      proposalId?: number
+    },
+  ): Promise<void> => {
+    await trackServerEvent(
+      validatedAccountId ?? "anonymous",
+      {
+        domain: "governance",
+        action: "relay_validation_fail",
+        reason,
+        statusCode,
+        accountId: validatedAccountId,
+        proposalId: options?.proposalId ?? relayProposalId,
+        voteRejectionReason: options?.voteRejectionReason,
+        errorMessage: options?.errorMessage,
+      },
+      trackingOptions,
+    )
+  }
+
+  const relayValidationError = async (
+    reason: GovernanceRelayValidationReason,
+    message: string,
+    status = 400,
+    voteRejectionReason?: VoteRejectionReason,
+    options?: {
+      proposalId?: number
+    },
+  ) => {
+    await trackRelayValidationFailure(reason, status, {
+      errorMessage: message,
+      voteRejectionReason,
+      proposalId: options?.proposalId,
+    })
+    return relayError(message, status, voteRejectionReason)
+  }
+
+  const trackRelaySubmissionResult = async (
+    outcome: "success" | "tx_failed",
+    options: { txHash?: string; errorMessage?: string; proposalId?: number },
+  ): Promise<void> => {
+    if (!validatedAccountId) return
+    const proposalId = options.proposalId ?? relayProposalId
+    if (proposalId === undefined) return
+
+    await trackServerEvent(
+      validatedAccountId,
+      {
+        domain: "governance",
+        action: "relay_submission_result",
+        proposalId,
+        accountId: validatedAccountId,
+        outcome,
+        txHash: options.txHash,
+        errorMessage: options.errorMessage,
+      },
+      trackingOptions,
+    )
+  }
 
   try {
     const body = await request.json()
     const parseResult = relayRequestSchema.safeParse(body)
     if (!parseResult.success) {
-      return relayError("Invalid request body")
+      return relayValidationError("invalid_request_body", "Invalid request body")
     }
 
     // Decode base64 → bytes → deserialize SignedDelegate
     const bytes = Buffer.from(parseResult.data.signedDelegate, "base64")
     if (bytes.length > MAX_SIGNED_DELEGATE_BYTES) {
-      return relayError("SignedDelegate payload too large", 413)
+      return relayValidationError("payload_too_large", "SignedDelegate payload too large", 413)
     }
     let deserialized: DeserializedSignedDelegate
     try {
       deserialized = deserialize(SCHEMA.SignedDelegate, new Uint8Array(bytes)) as DeserializedSignedDelegate
     } catch {
-      return relayError("Invalid SignedDelegate encoding")
+      return relayValidationError("invalid_signed_delegate_encoding", "Invalid SignedDelegate encoding")
     }
 
     const { delegateAction, signature } = deserialized
@@ -234,48 +316,49 @@ export async function POST(request: NextRequest) {
     // Validate senderId is a proper NEAR account
     const senderParsed = nearAccountIdSchema.safeParse(delegateAction.senderId)
     if (!senderParsed.success) {
-      return relayError("Invalid sender account ID")
+      return relayValidationError("invalid_sender_account_id", "Invalid sender account ID")
     }
     validatedAccountId = senderParsed.data
+    log.set("account_id", validatedAccountId)
 
     // --- Validation ---
 
     // 1. Contract whitelist
     const governanceContractId = NEAR_CONFIG.governanceContractId
     if (delegateAction.receiverId !== governanceContractId) {
-      return relayError("Relay only supports the governance contract")
+      return relayValidationError("invalid_receiver_contract", "Relay only supports the governance contract")
     }
 
     // 2. Single action, must be FunctionCall
     if (delegateAction.actions.length !== 1) {
-      return relayError("Relay only supports single-action delegates")
+      return relayValidationError("invalid_action_count", "Relay only supports single-action delegates")
     }
 
     const innerAction = delegateAction.actions[0]
     const functionCallData = innerAction.functionCall as DeserializedFunctionCall | undefined
 
     if (!functionCallData) {
-      return relayError("Relay only supports FunctionCall actions")
+      return relayValidationError("invalid_action_type", "Relay only supports FunctionCall actions")
     }
 
     // 3. Method whitelist
     if (functionCallData.methodName !== "cast_vote") {
-      return relayError("Relay only supports cast_vote")
+      return relayValidationError("invalid_method_name", "Relay only supports cast_vote")
     }
 
     // 4. Verify SignedDelegate signature + access key ownership/permissions
     const publicKeyData = parsePublicKey(delegateAction.publicKey)
     if (!publicKeyData) {
-      return relayError("Invalid delegate public key")
+      return relayValidationError("invalid_delegate_public_key", "Invalid delegate public key")
     }
 
     const signatureData = parseSignature(signature)
     if (!signatureData) {
-      return relayError("Invalid SignedDelegate signature")
+      return relayValidationError("invalid_delegate_signature", "Invalid SignedDelegate signature")
     }
 
     if (signatureData.keyType !== publicKeyData.keyType) {
-      return relayError("SignedDelegate signature key type mismatch")
+      return relayValidationError("signature_key_type_mismatch", "SignedDelegate signature key type mismatch")
     }
 
     const publicKey = new PublicKey(publicKeyData)
@@ -283,31 +366,36 @@ export async function POST(request: NextRequest) {
     const messageHash = sha256(message)
     const signatureValid = publicKey.verify(messageHash, signatureData.data)
     if (!signatureValid) {
-      return relayError("Invalid SignedDelegate signature")
+      return relayValidationError("signature_verification_failed", "Invalid SignedDelegate signature")
     }
 
     // 5. Deposit check — must be zero
     if (functionCallData.deposit !== BigInt(0)) {
-      return relayError("Relay does not support attached deposits")
+      return relayValidationError("invalid_attached_deposit", "Relay does not support attached deposits")
     }
 
     // 5b. Gas check — require enough gas for governance cast_vote flow, but cap relayer exposure
     if (functionCallData.gas < MIN_CAST_VOTE_GAS) {
-      return relayError("Insufficient gas for cast_vote")
+      return relayValidationError("insufficient_cast_vote_gas", "Insufficient gas for cast_vote")
     }
     if (functionCallData.gas > MAX_CAST_VOTE_GAS) {
-      return relayError("Gas exceeds relay policy")
+      return relayValidationError("cast_vote_gas_exceeds_policy", "Gas exceeds relay policy")
     }
 
     // 6. Block height check
     const provider = createRpcProvider()
-    const nodeStatus = await provider.viewNodeStatus()
+    const nodeStatus = await Sentry.startSpan({ name: "governance.relay.viewNodeStatus", op: "http.client" }, () =>
+      provider.viewNodeStatus(),
+    )
     const currentBlockHeight = BigInt(nodeStatus.sync_info.latest_block_height)
     if (delegateAction.maxBlockHeight < currentBlockHeight) {
-      return relayError("DelegateAction has expired (maxBlockHeight in the past)")
+      return relayValidationError("delegate_expired", "DelegateAction has expired (maxBlockHeight in the past)")
     }
     if (delegateAction.maxBlockHeight > currentBlockHeight + BigInt(MAX_BLOCK_HEIGHT_WINDOW)) {
-      return relayError("DelegateAction maxBlockHeight is too far in the future")
+      return relayValidationError(
+        "delegate_block_height_window_exceeded",
+        "DelegateAction maxBlockHeight is too far in the future",
+      )
     }
 
     // 7. Access key check — public key must belong to sender and allow this call
@@ -319,90 +407,175 @@ export async function POST(request: NextRequest) {
       functionCallData.methodName,
     )
     if (!accessKeyResult.ok) {
-      return relayError(accessKeyResult.error ?? "Invalid access key")
+      return relayValidationError("invalid_access_key", accessKeyResult.error ?? "Invalid access key")
     }
 
     // 8. Parse and validate cast_vote arguments
     const castVoteArgs = parseCastVoteArgs(functionCallData.args)
     if (!castVoteArgs) {
-      return relayError("Invalid cast_vote arguments")
+      return relayValidationError("invalid_cast_vote_args", "Invalid cast_vote arguments")
     }
+    relayProposalId = castVoteArgs.proposalId
+    log.set("proposal_id", castVoteArgs.proposalId)
 
     // 9. Eligibility preflight — only sponsor verified voters eligible for this proposal
     try {
-      const [proposalResult, governanceConfigRaw] = await Promise.all([
-        provider.callFunction<JsonObject>(governanceContractId, "get_proposal", {
-          proposal_id: castVoteArgs.proposalId,
-        }),
-        provider.callFunction<JsonObject>(governanceContractId, "get_config", {}),
-      ])
+      const [proposalResult, governanceConfigRaw] = await Sentry.startSpan(
+        {
+          name: "governance.relay.preflight.proposal_and_config",
+          op: "http.client",
+          attributes: {
+            proposal_id: castVoteArgs.proposalId,
+            governance_contract_id: governanceContractId,
+          },
+        },
+        () =>
+          Promise.all([
+            provider.callFunction<JsonObject>(governanceContractId, "get_proposal", {
+              proposal_id: castVoteArgs.proposalId,
+            }),
+            provider.callFunction<JsonObject>(governanceContractId, "get_config", {}),
+          ]),
+      )
       const proposalRaw = proposalResult as JsonObject | null
 
       if (!proposalRaw) {
-        return relayError("Proposal not found", 404)
+        return relayValidationError("proposal_not_found", "Proposal not found", 404, undefined, {
+          proposalId: castVoteArgs.proposalId,
+        })
       }
 
       const parsedProposal = contractProposalViewSchema.safeParse(proposalRaw)
       if (!parsedProposal.success) {
-        return relayError("Invalid proposal response from RPC", 502)
+        return relayValidationError("invalid_proposal_response", "Invalid proposal response from RPC", 502, undefined, {
+          proposalId: castVoteArgs.proposalId,
+        })
       }
 
       const parsedConfig = contractConfigSchema.safeParse(governanceConfigRaw)
       if (!parsedConfig.success) {
-        return relayError("Invalid governance config response from RPC", 502)
+        return relayValidationError(
+          "invalid_governance_config_response",
+          "Invalid governance config response from RPC",
+          502,
+          undefined,
+          {
+            proposalId: castVoteArgs.proposalId,
+          },
+        )
       }
 
-      const verificationResult = await provider.callFunction<JsonObject>(
-        parsedConfig.data.verifiedAccountsContract,
-        "get_verification",
-        { account_id: validatedAccountId },
+      const verificationResult = await Sentry.startSpan(
+        {
+          name: "governance.relay.preflight.get_verification",
+          op: "http.client",
+          attributes: {
+            account_id: validatedAccountId,
+            verified_accounts_contract: parsedConfig.data.verifiedAccountsContract,
+          },
+        },
+        () =>
+          provider.callFunction<JsonObject>(parsedConfig.data.verifiedAccountsContract, "get_verification", {
+            account_id: validatedAccountId,
+          }),
       )
       const verificationRaw = verificationResult as JsonObject | null
 
       if (!verificationRaw) {
-        return relayError("Only verified accounts can use gasless voting", 403, "not_verified")
+        return relayValidationError(
+          "not_verified_for_relay",
+          "Only verified accounts can use gasless voting",
+          403,
+          "not_verified",
+          {
+            proposalId: castVoteArgs.proposalId,
+          },
+        )
       }
 
       const parsedVerification = contractVerificationSummarySchema.safeParse(verificationRaw)
       if (!parsedVerification.success) {
-        return relayError("Invalid verification response from RPC", 502)
+        return relayValidationError(
+          "invalid_verification_response",
+          "Invalid verification response from RPC",
+          502,
+          undefined,
+          {
+            proposalId: castVoteArgs.proposalId,
+          },
+        )
       }
 
       if (parsedVerification.data.nearAccountId !== validatedAccountId) {
-        return relayError("Verification record mismatch", 422)
+        return relayValidationError("verification_record_mismatch", "Verification record mismatch", 422, undefined, {
+          proposalId: castVoteArgs.proposalId,
+        })
       }
 
       if (parsedVerification.data.verifiedAt > parsedProposal.data.createdAt) {
-        return relayError("Account was verified after proposal creation", 403, "verified_after_creation")
+        return relayValidationError(
+          "verified_after_creation",
+          "Account was verified after proposal creation",
+          403,
+          "verified_after_creation",
+          {
+            proposalId: castVoteArgs.proposalId,
+          },
+        )
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
-      return relayError(`Eligibility preflight failed: ${message}`, 503)
+      return relayValidationError(
+        "eligibility_preflight_failed",
+        `Eligibility preflight failed: ${message}`,
+        503,
+        undefined,
+        {
+          proposalId: castVoteArgs.proposalId,
+        },
+      )
     }
 
     // 10. isVoteFree check — relay only makes sense when voting is free
-    const isVoteFree = await governanceReader.isVoteFree()
+    const isVoteFree = await Sentry.startSpan({ name: "governance.relay.isVoteFree", op: "db.near-contract" }, () =>
+      governanceReader.isVoteFree(),
+    )
     if (!isVoteFree) {
-      return relayError("Voting currently requires a storage deposit; relay unavailable", 409)
+      return relayValidationError(
+        "vote_not_free",
+        "Voting currently requires a storage deposit; relay unavailable",
+        409,
+      )
     }
 
     // 11. Rate limit: 1 relay per voter per minute
-    const redis = await getRedisClient()
+    const redis = await Sentry.startSpan({ name: "governance.relay.getRedisClient", op: "db.redis" }, () =>
+      getRedisClient(),
+    )
     const rateLimitKey = `relay:vote:${validatedAccountId}`
     const existing = await redis.get(rateLimitKey)
     if (existing) {
-      return relayError("Rate limited — please wait before voting again", 429)
+      return relayValidationError("relay_rate_limited", "Rate limited — please wait before voting again", 429)
     }
     await redis.set(rateLimitKey, "1", { EX: RATE_LIMIT_TTL })
 
     // --- Verify backend wallet is configured ---
     if (!NEAR_SERVER_CONFIG.backendAccountId || !NEAR_SERVER_CONFIG.backendPrivateKey) {
-      return relayError("Relayer not configured", 503)
+      return relayValidationError("relayer_not_configured", "Relayer not configured", 503)
     }
 
     // --- Build and send wrapping transaction ---
-    await ensureRedisInitialized()
-    const { account } = await backendKeyPool.createAccountWithNextKey()
+    await Sentry.startSpan({ name: "governance.relay.ensureRedisInitialized", op: "db.redis" }, () =>
+      ensureRedisInitialized(),
+    )
+    const { account } = await Sentry.startSpan(
+      {
+        name: "governance.relay.createAccountWithNextKey",
+        op: "wallet.key_pool",
+        attributes: { account_id: validatedAccountId },
+      },
+      () => backendKeyPool.createAccountWithNextKey(),
+    )
 
     // actionCreators.signedDelegate wraps the DelegateAction + signature into an Action.
     // Borsh v2 deserialization returns plain objects structurally matching the schema;
@@ -412,25 +585,76 @@ export async function POST(request: NextRequest) {
       signature: signature as unknown as Signature,
     })
 
-    const result = await account.signAndSendTransaction({
-      // NEP-366: wrapping tx is sent to the voter's account, not the contract
-      receiverId: delegateAction.senderId,
-      actions: [action],
-    })
+    const result = await Sentry.startSpan(
+      {
+        name: "governance.relay.signAndSendTransaction",
+        op: "http.client",
+        attributes: { account_id: validatedAccountId, receiver_id: delegateAction.senderId },
+      },
+      () =>
+        account.signAndSendTransaction({
+          // NEP-366: wrapping tx is sent to the voter's account, not the contract
+          receiverId: delegateAction.senderId,
+          actions: [action],
+        }),
+    )
 
     const txHash = result.transaction_outcome.id
+    log.set("tx_hash", txHash)
 
     const outcome = resolveGovernanceVoteOutcome(result)
     if (outcome.kind === "tx_failed") {
-      console.error(`[relay] On-chain execution failed for ${validatedAccountId}: ${outcome.error}`, { txHash })
+      log.setAll({
+        relay_outcome: "tx_failed",
+        error_message: outcome.error,
+      })
+      await trackRelaySubmissionResult("tx_failed", {
+        proposalId: castVoteArgs.proposalId,
+        txHash,
+        errorMessage: outcome.error,
+      })
+      Sentry.logger.error("governance_relay_tx_failed", {
+        account_id: validatedAccountId ?? "unknown",
+        proposal_id: castVoteArgs.proposalId,
+        tx_hash: txHash,
+        error_message: outcome.error,
+      })
       return relayError(outcome.error, 422)
     }
 
+    await trackRelaySubmissionResult("success", {
+      proposalId: castVoteArgs.proposalId,
+      txHash,
+    })
+    log.set("relay_outcome", "success")
     return NextResponse.json({ success: true, txHash, outcome }, { status: 200 })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error"
-    console.error(`[relay] Error for ${validatedAccountId ?? "unknown"}:`, errorMessage)
+    log.setAll({
+      relay_outcome: "error",
+      error_message: errorMessage,
+    })
+    Sentry.captureException(error, {
+      tags: { route: "api/governance/relay" },
+      extra: { account_id: validatedAccountId ?? "unknown" },
+    })
+    Sentry.logger.error("governance_relay_error", {
+      account_id: validatedAccountId ?? "unknown",
+      error_message: errorMessage,
+    })
+
+    await trackServerEvent(
+      validatedAccountId ?? "anonymous",
+      {
+        domain: "governance",
+        action: "relay_error",
+        accountId: validatedAccountId,
+        proposalId: relayProposalId,
+        errorMessage,
+      },
+      trackingOptions,
+    )
 
     return relayError(errorMessage, 500)
   }
-}
+})

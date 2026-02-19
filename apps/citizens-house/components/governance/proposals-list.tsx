@@ -1,9 +1,11 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@near-citizens/ui"
 import { NEAR_CONFIG } from "@/lib"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { trackEvent } from "@/lib/analytics"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { ProposalCard } from "./proposal-card"
 
@@ -17,6 +19,28 @@ interface Props {
 
 export function ProposalsList({ proposals, total, page, pageSize: _pageSize, totalPages }: Props) {
   const contractId = NEAR_CONFIG.governanceContractId
+  const pageSize = _pageSize
+
+  useEffect(() => {
+    trackEvent({
+      domain: "governance",
+      action: "proposals_list_view",
+      page,
+      pageSize,
+      total,
+      returnedCount: proposals.length,
+    })
+  }, [page, pageSize, proposals.length, total])
+
+  const trackPaginationClick = (direction: "next" | "previous", toPage: number) => {
+    trackEvent({
+      domain: "governance",
+      action: "proposals_pagination_click",
+      direction,
+      fromPage: page,
+      toPage,
+    })
+  }
 
   return (
     <div className="flex flex-col items-center w-full px-4 md:px-[82px]">
@@ -61,7 +85,12 @@ export function ProposalsList({ proposals, total, page, pageSize: _pageSize, tot
           <div className="flex gap-3 order-1 md:order-2">
             {page > 0 ? (
               <Button variant="citizens-outline" size="citizens-lg" asChild>
-                <Link href={`/proposals?page=${page - 1}`}>
+                <Link
+                  href={`/proposals?page=${page - 1}`}
+                  onClick={() => {
+                    trackPaginationClick("previous", page - 1)
+                  }}
+                >
                   <ChevronLeft className="h-4 w-4" />
                   Previous
                 </Link>
@@ -74,7 +103,12 @@ export function ProposalsList({ proposals, total, page, pageSize: _pageSize, tot
             )}
             {page < totalPages - 1 ? (
               <Button variant="citizens-outline" size="citizens-lg" asChild>
-                <Link href={`/proposals?page=${page + 1}`}>
+                <Link
+                  href={`/proposals?page=${page + 1}`}
+                  onClick={() => {
+                    trackPaginationClick("next", page + 1)
+                  }}
+                >
                   Next
                   <ChevronRight className="h-4 w-4" />
                 </Link>

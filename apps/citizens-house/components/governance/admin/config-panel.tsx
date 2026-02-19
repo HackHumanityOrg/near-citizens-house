@@ -7,6 +7,7 @@ import { Loader2, Pencil, X } from "lucide-react"
 import { toast } from "sonner"
 import type { GovernanceConfig } from "@/lib/schemas/governance-contract"
 import { yoctoToNear, nearToYocto } from "@/lib/schemas/governance-contract"
+import { trackEvent } from "@/lib/analytics"
 import {
   buildUpdateQuorumBpsTx,
   buildUpdateVotingPeriodSecsTx,
@@ -40,6 +41,14 @@ export function ConfigPanel() {
     if (!isConnected || !accountId || !editValue.trim()) return
 
     setTxLoading(true)
+    const operation = `update_${field}`
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "config",
+      operation,
+      accountId,
+    })
     try {
       const txBuilders: Record<string, () => ReturnType<typeof buildUpdateQuorumBpsTx>> = {
         quorumBps: () => buildUpdateQuorumBpsTx(parseInt(editValue)),
@@ -58,13 +67,31 @@ export function ConfigPanel() {
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "config",
+        operation,
+        outcome: "success",
+        accountId,
+      })
       toast.success("Configuration updated")
       setEditingField(null)
       // Refresh config
       const newConfig = await getGovernanceConfig()
       setConfig(newConfig)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transaction failed")
+      const errorMessage = error instanceof Error ? error.message : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "config",
+        operation,
+        outcome: "fail",
+        accountId,
+        errorMessage,
+      })
+      toast.error(errorMessage)
     } finally {
       setTxLoading(false)
     }

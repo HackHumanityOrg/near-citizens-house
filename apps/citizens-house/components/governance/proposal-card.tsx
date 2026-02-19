@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { trackEvent } from "@/lib/analytics"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { StatusBadge } from "./status-badge"
 import { VoteProgressBar } from "./vote-progress-bar"
@@ -25,6 +26,14 @@ export function ProposalCard({ proposal }: Props) {
   return (
     <Link
       href={`/proposals/${id}`}
+      onClick={() => {
+        trackEvent({
+          domain: "governance",
+          action: "proposal_card_click",
+          proposalId: id,
+          proposalStatus: displayStatus,
+        })
+      }}
       className="block h-full bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-5 md:p-6 hover:bg-[#f8fafc] dark:hover:bg-white/[0.02] transition-colors"
     >
       <div className="flex flex-col gap-4 h-full">

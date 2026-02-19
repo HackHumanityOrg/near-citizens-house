@@ -8,6 +8,7 @@ import { ExternalLink, Loader2, Trash2, ShieldBan, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { buildBlocklistAccountTx, buildUnblocklistAccountTx } from "@/lib/contracts/governance/transactions"
 import { extractExecutionFailure, getTransactionFailureMessage } from "@/lib/contracts/governance/vote-outcome"
+import { trackEvent } from "@/lib/analytics"
 import {
   checkIsBlocklisted,
   getBlocklist,
@@ -66,9 +67,27 @@ export function BlocklistPanel() {
     }
 
     setTxLoading(true)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "blocklist",
+      operation: "add_blocklist",
+      accountId,
+      targetAccountId: normalizedNewAccount,
+    })
     try {
       const alreadyBlocklisted = await checkIsBlocklisted(normalizedNewAccount)
       if (alreadyBlocklisted) {
+        trackEvent({
+          domain: "governance",
+          action: "admin_tx_result",
+          area: "blocklist",
+          operation: "add_blocklist",
+          outcome: "fail",
+          accountId,
+          targetAccountId: normalizedNewAccount,
+          errorMessage: "This account is already blocklisted.",
+        })
         toast.error("This account is already blocklisted.")
         await refreshBlocklistState()
         return
@@ -83,11 +102,30 @@ export function BlocklistPanel() {
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "blocklist",
+        operation: "add_blocklist",
+        outcome: "success",
+        accountId,
+        targetAccountId: normalizedNewAccount,
+      })
       toast.success(`Blocklisted ${normalizedNewAccount}`)
       setNewAccount("")
       await refreshBlocklistState()
     } catch (error) {
       const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "blocklist",
+        operation: "add_blocklist",
+        outcome: "fail",
+        accountId,
+        targetAccountId: normalizedNewAccount,
+        errorMessage,
+      })
       toast.error(errorMessage)
       await refreshBlocklistState()
     } finally {
@@ -99,6 +137,14 @@ export function BlocklistPanel() {
     if (!isConnected || !accountId) return
 
     setTxLoading(true)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "blocklist",
+      operation: "remove_blocklist",
+      accountId,
+      targetAccountId: target,
+    })
     try {
       const result = await signAndSendTransaction(buildUnblocklistAccountTx(target))
       const executionFailure = extractExecutionFailure(result)
@@ -109,10 +155,29 @@ export function BlocklistPanel() {
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "blocklist",
+        operation: "remove_blocklist",
+        outcome: "success",
+        accountId,
+        targetAccountId: target,
+      })
       toast.success(`Removed ${target} from blocklist`)
       await refreshBlocklistState()
     } catch (error) {
       const errorMessage = error instanceof Error ? getTransactionFailureMessage(error.message) : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "blocklist",
+        operation: "remove_blocklist",
+        outcome: "fail",
+        accountId,
+        targetAccountId: target,
+        errorMessage,
+      })
       toast.error(errorMessage)
       await refreshBlocklistState()
     } finally {

@@ -2,7 +2,7 @@
  * Analytics Event Schemas
  *
  * Strongly-typed analytics events using Zod discriminated unions.
- * Each domain (verification, citizens, consent) has its own discriminated union on "action".
+ * Each domain (verification, citizens, governance, consent) has its own discriminated union on "action".
  * The combined schema uses a regular union since each domain is already discriminated.
  *
  * Event name constants (VERIFICATION_EVENTS, etc.) are derived from this schema -
@@ -113,6 +113,24 @@ const C = {
   signature_verify_opened: "signature_verify_opened",
   copied_to_clipboard: "copied_to_clipboard",
   external_verifier_opened: "external_verifier_opened",
+} as const
+
+/** Governance domain actions */
+const G = {
+  proposals_list_view: "proposals_list_view",
+  proposals_pagination_click: "proposals_pagination_click",
+  proposal_card_click: "proposal_card_click",
+  proposal_detail_view: "proposal_detail_view",
+  vote_eligibility_resolved: "vote_eligibility_resolved",
+  vote_submit_start: "vote_submit_start",
+  vote_submit_result: "vote_submit_result",
+  votes_load_more: "votes_load_more",
+  admin_tx_submit: "admin_tx_submit",
+  admin_tx_result: "admin_tx_result",
+  server_action_result: "server_action_result",
+  relay_validation_fail: "relay_validation_fail",
+  relay_submission_result: "relay_submission_result",
+  relay_error: "relay_error",
 } as const
 
 /** Consent domain actions */
@@ -966,6 +984,269 @@ const citizensEventSchema = z.discriminatedUnion("action", [
 ])
 
 // =============================================================================
+// Domain: Governance
+// =============================================================================
+
+const governanceEventBase = { domain: z.literal("governance") } as const
+
+const governanceDisplayStatusSchema = z.enum([
+  "pending",
+  "active",
+  "succeeded",
+  "failed",
+  "cancelled",
+  "scheduled",
+  "finished",
+])
+
+const governanceVoteChoiceSchema = z.enum(["yes", "no"])
+const governanceVotePathSchema = z.enum(["direct", "relay"])
+const governanceVoteSubmissionOutcomeSchema = z.enum(["success", "vote_rejected", "tx_failed", "unknown", "error"])
+const governanceVoteEligibilityOutcomeSchema = z.enum([
+  "eligible",
+  "already_voted",
+  "blocklisted",
+  "not_verified",
+  "verified_after_creation",
+  "proposal_not_started",
+  "proposal_ended",
+])
+
+const governanceAdminAreaSchema = z.enum([
+  "create_proposal",
+  "proposal_management",
+  "config",
+  "admins",
+  "blocklist",
+  "recovery",
+])
+
+const governanceVoteRejectionReasonSchema = z.enum([
+  "proposal_cancelled",
+  "not_verified",
+  "verified_after_creation",
+  "proposal_expired",
+  "callback_failed",
+  "post_finalize",
+])
+
+const governanceRelayValidationReasonSchema = z.enum([
+  "invalid_request_body",
+  "payload_too_large",
+  "invalid_signed_delegate_encoding",
+  "invalid_sender_account_id",
+  "invalid_receiver_contract",
+  "invalid_action_count",
+  "invalid_action_type",
+  "invalid_method_name",
+  "invalid_delegate_public_key",
+  "invalid_delegate_signature",
+  "signature_key_type_mismatch",
+  "signature_verification_failed",
+  "invalid_attached_deposit",
+  "insufficient_cast_vote_gas",
+  "cast_vote_gas_exceeds_policy",
+  "delegate_expired",
+  "delegate_block_height_window_exceeded",
+  "invalid_access_key",
+  "invalid_cast_vote_args",
+  "proposal_not_found",
+  "invalid_proposal_response",
+  "invalid_governance_config_response",
+  "not_verified_for_relay",
+  "invalid_verification_response",
+  "verification_record_mismatch",
+  "verified_after_creation",
+  "eligibility_preflight_failed",
+  "vote_not_free",
+  "relay_rate_limited",
+  "relayer_not_configured",
+])
+
+const governanceProposalsListViewEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposals_list_view),
+    page: z.number().int().min(0),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().min(0),
+    returnedCount: z.number().int().min(0),
+  })
+  .strict()
+
+const governanceProposalsPaginationClickEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposals_pagination_click),
+    direction: z.enum(["next", "previous"]),
+    fromPage: z.number().int().min(0),
+    toPage: z.number().int().min(0),
+  })
+  .strict()
+
+const governanceProposalCardClickEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposal_card_click),
+    proposalId: z.number().int().nonnegative(),
+    proposalStatus: governanceDisplayStatusSchema,
+  })
+  .strict()
+
+const governanceProposalDetailViewEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.proposal_detail_view),
+    proposalId: z.number().int().nonnegative(),
+    proposalStatus: governanceDisplayStatusSchema,
+    totalVotes: z.number().int().nonnegative(),
+  })
+  .strict()
+
+const governanceVoteEligibilityResolvedEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.vote_eligibility_resolved),
+    proposalId: z.number().int().nonnegative(),
+    accountId: nearAccountIdSchema,
+    outcome: governanceVoteEligibilityOutcomeSchema,
+    isVoteFree: z.boolean(),
+    isZeroBalance: z.boolean(),
+    needsRelay: z.boolean(),
+  })
+  .strict()
+
+const governanceVoteSubmitStartEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.vote_submit_start),
+    proposalId: z.number().int().nonnegative(),
+    accountId: nearAccountIdSchema,
+    choice: governanceVoteChoiceSchema,
+    path: governanceVotePathSchema,
+  })
+  .strict()
+
+const governanceVoteSubmitResultEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.vote_submit_result),
+    proposalId: z.number().int().nonnegative(),
+    accountId: nearAccountIdSchema,
+    choice: governanceVoteChoiceSchema,
+    path: governanceVotePathSchema,
+    outcome: governanceVoteSubmissionOutcomeSchema,
+    reason: governanceVoteRejectionReasonSchema.optional(),
+    errorMessage: z.string().optional(),
+  })
+  .strict()
+
+const governanceVotesLoadMoreEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.votes_load_more),
+    proposalId: z.number().int().nonnegative(),
+    page: z.number().int().min(0),
+    returnedCount: z.number().int().min(0),
+  })
+  .strict()
+
+const governanceAdminTxSubmitEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.admin_tx_submit),
+    area: governanceAdminAreaSchema,
+    operation: z.string(),
+    accountId: nearAccountIdSchema,
+    proposalId: z.number().int().nonnegative().optional(),
+    targetAccountId: nearAccountIdSchema.optional(),
+  })
+  .strict()
+
+const governanceAdminTxResultEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.admin_tx_result),
+    area: governanceAdminAreaSchema,
+    operation: z.string(),
+    outcome: z.enum(["success", "fail"]),
+    accountId: nearAccountIdSchema,
+    proposalId: z.number().int().nonnegative().optional(),
+    targetAccountId: nearAccountIdSchema.optional(),
+    errorMessage: z.string().optional(),
+  })
+  .strict()
+
+const governanceServerActionResultEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.server_action_result),
+    actionName: z.string(),
+    outcome: z.enum(["success", "validation_failed", "fallback"]),
+    accountId: nearAccountIdSchema.optional(),
+    proposalId: z.number().int().nonnegative().optional(),
+    page: z.number().int().min(0).optional(),
+    pageSize: z.number().int().positive().optional(),
+    itemCount: z.number().int().min(0).optional(),
+    total: z.number().int().min(0).optional(),
+    errorMessage: z.string().optional(),
+  })
+  .strict()
+
+const governanceRelayValidationFailedEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.relay_validation_fail),
+    reason: governanceRelayValidationReasonSchema,
+    statusCode: z.number().int().min(400).max(599),
+    accountId: nearAccountIdSchema.optional(),
+    proposalId: z.number().int().nonnegative().optional(),
+    voteRejectionReason: governanceVoteRejectionReasonSchema.optional(),
+    errorMessage: z.string().optional(),
+  })
+  .strict()
+
+const governanceRelaySubmissionResultEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.relay_submission_result),
+    proposalId: z.number().int().nonnegative(),
+    accountId: nearAccountIdSchema,
+    outcome: z.enum(["success", "tx_failed"]),
+    txHash: z.string().optional(),
+    errorMessage: z.string().optional(),
+  })
+  .strict()
+
+const governanceRelayErrorEventSchema = z
+  .object({
+    ...governanceEventBase,
+    action: z.literal(G.relay_error),
+    accountId: nearAccountIdSchema.optional(),
+    proposalId: z.number().int().nonnegative().optional(),
+    errorMessage: z.string(),
+  })
+  .strict()
+
+/** All governance events - discriminated by action */
+const governanceEventSchema = z.discriminatedUnion("action", [
+  governanceProposalsListViewEventSchema,
+  governanceProposalsPaginationClickEventSchema,
+  governanceProposalCardClickEventSchema,
+  governanceProposalDetailViewEventSchema,
+  governanceVoteEligibilityResolvedEventSchema,
+  governanceVoteSubmitStartEventSchema,
+  governanceVoteSubmitResultEventSchema,
+  governanceVotesLoadMoreEventSchema,
+  governanceAdminTxSubmitEventSchema,
+  governanceAdminTxResultEventSchema,
+  governanceServerActionResultEventSchema,
+  governanceRelayValidationFailedEventSchema,
+  governanceRelaySubmissionResultEventSchema,
+  governanceRelayErrorEventSchema,
+])
+
+// =============================================================================
 // Domain: Consent
 // =============================================================================
 
@@ -1017,6 +1298,7 @@ const errorsEventSchema = z.discriminatedUnion("action", [errorExceptionCaptured
 export const analyticsEventSchema = z.union([
   verificationEventSchema,
   citizensEventSchema,
+  governanceEventSchema,
   consentEventSchema,
   errorsEventSchema,
 ])
@@ -1049,6 +1331,10 @@ export type VerificationEventName = (typeof VERIFICATION_EVENTS)[keyof typeof VE
 export const CITIZENS_EVENTS = createEventNames("citizens", C)
 export type CitizensEventName = (typeof CITIZENS_EVENTS)[keyof typeof CITIZENS_EVENTS]
 
+/** Governance event names for PostHog queries */
+export const GOVERNANCE_EVENTS = createEventNames("governance", G)
+export type GovernanceEventName = (typeof GOVERNANCE_EVENTS)[keyof typeof GOVERNANCE_EVENTS]
+
 /** Consent event names for PostHog queries */
 export const CONSENT_EVENTS = createEventNames("consent", N)
 export type ConsentEventName = (typeof CONSENT_EVENTS)[keyof typeof CONSENT_EVENTS]
@@ -1061,9 +1347,15 @@ export type ErrorsEventName = (typeof ERRORS_EVENTS)[keyof typeof ERRORS_EVENTS]
 export const ANALYTICS_EVENTS = {
   verification: VERIFICATION_EVENTS,
   citizens: CITIZENS_EVENTS,
+  governance: GOVERNANCE_EVENTS,
   consent: CONSENT_EVENTS,
   errors: ERRORS_EVENTS,
 } as const
 
 /** Union of all event names */
-export type AnalyticsEventName = VerificationEventName | CitizensEventName | ConsentEventName | ErrorsEventName
+export type AnalyticsEventName =
+  | VerificationEventName
+  | CitizensEventName
+  | GovernanceEventName
+  | ConsentEventName
+  | ErrorsEventName

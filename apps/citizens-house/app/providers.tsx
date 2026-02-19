@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import * as Sentry from "@sentry/nextjs"
 import { SWRConfig } from "swr"
 import { NearWalletProvider } from "@/lib"
 import { ErrorBoundary } from "@near-citizens/ui"
@@ -38,7 +39,14 @@ export function Providers({ children }: ProvidersProps) {
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    if (typeof window !== "undefined" && env.NEXT_PUBLIC_POSTHOG_KEY) {
+    if (typeof window === "undefined") return
+
+    if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
+      Sentry.logger.warn("posthog_client_disabled_missing_key")
+      return
+    }
+
+    try {
       posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
         api_host: "/ingest",
         ui_host: "https://us.posthog.com",
@@ -83,6 +91,13 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           posthog.opt_out_capturing()
         }
       }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "posthog-client-init" },
+      })
+      Sentry.logger.error("posthog_client_init_failed", {
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
     }
   }, [])
 

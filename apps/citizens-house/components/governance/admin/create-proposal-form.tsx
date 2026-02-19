@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { yoctoToNear } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime, parseDatetimeLocalToEpochMs } from "@/lib/governance-dates"
 import { buildCreateProposalTx } from "@/lib/contracts/governance/transactions"
+import { trackEvent } from "@/lib/analytics"
 import {
   firstCreateProposalValidationError,
   formatSecondsDuration,
@@ -91,9 +92,18 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
     })
     if (!submissionValidation.isValid || !submissionValidation.normalized) {
       setSubmitAttempted(true)
-      toast.error(
-        firstCreateProposalValidationError(submissionValidation.errors) ?? "Please fix the highlighted fields.",
-      )
+      const errorMessage =
+        firstCreateProposalValidationError(submissionValidation.errors) ?? "Please fix the highlighted fields."
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "create_proposal",
+        operation: "create_proposal",
+        outcome: "fail",
+        accountId,
+        errorMessage,
+      })
+      toast.error(errorMessage)
       return
     }
 
@@ -107,6 +117,13 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
     } = submissionValidation.normalized
 
     setTxLoading(true)
+    trackEvent({
+      domain: "governance",
+      action: "admin_tx_submit",
+      area: "create_proposal",
+      operation: "create_proposal",
+      accountId,
+    })
     try {
       await signAndSendTransaction(
         buildCreateProposalTx(normalizedTitle, normalizedAuthor, normalizedDescription, bondYocto, startAtNs),
@@ -114,10 +131,27 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
       startTransition(() => {
         revalidateGovernance()
       })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "create_proposal",
+        operation: "create_proposal",
+        outcome: "success",
+        accountId,
+      })
       toast.success("Proposal created successfully")
       router.push("/proposals")
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "create_proposal",
+        operation: "create_proposal",
+        outcome: "fail",
+        accountId,
+        errorMessage,
+      })
       toast.error(errorMessage)
     } finally {
       setTxLoading(false)

@@ -1,8 +1,9 @@
+import * as Sentry from "@sentry/nextjs"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 import { WaitingQA } from "@/components/verification/waiting-qa"
 
 export default function WaitingPage() {
-  return (
+  return Sentry.startSpan({ name: "page.waiting", op: "ui.render" }, () => (
     <>
       <section
         className="relative -mt-32 bg-white pt-32 dark:bg-black flex flex-col items-center justify-center pb-[80px] overflow-hidden"
@@ -54,5 +55,5 @@ export default function WaitingPage() {
       </section>
       <WaitingQA />
     </>
-  )
+  ))
 }

@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect, useTransition, type ReactNode } from "react"
+import * as Sentry from "@sentry/nextjs"
+import { useState, useEffect, useRef, useTransition, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { trackEvent } from "@/lib/analytics"
 import type { ProposalView, VoteChoice, VoteView } from "@/lib/schemas/governance-contract"
 import type { TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
 import { formatUtcDate, formatUtcDateTime } from "@/lib/governance-dates"
@@ -80,6 +82,40 @@ function getVoteOutcomeToast(
   return { type: "error", message: "Vote outcome could not be confirmed. Please refresh and check again." }
 }
 
+function resolveEligibilityOutcome(
+  stateKind: ReturnType<typeof deriveVotePanelState>["kind"],
+):
+  | "eligible"
+  | "already_voted"
+  | "blocklisted"
+  | "not_verified"
+  | "verified_after_creation"
+  | "proposal_not_started"
+  | "proposal_ended"
+  | null {
+  switch (stateKind) {
+    case "eligible_can_vote":
+      return "eligible"
+    case "already_voted":
+      return "already_voted"
+    case "ineligible_blocklisted":
+      return "blocklisted"
+    case "ineligible_unverified":
+      return "not_verified"
+    case "ineligible_verified_after_snapshot":
+      return "verified_after_creation"
+    case "proposal_not_started_pending":
+    case "proposal_not_started_scheduled":
+      return "proposal_not_started"
+    case "proposal_ended_loading":
+    case "proposal_ended_with_vote":
+    case "proposal_ended_without_vote":
+      return "proposal_ended"
+    default:
+      return null
+  }
+}
+
 function VotePanelSkeletonState({ title, withActions }: { title: string; withActions: boolean }) {
   return (
     <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] p-6">
@@ -139,6 +175,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
   const [eligibility, setEligibility] = useState<EligibilityResult | null>(null)
   const [txLoading, setTxLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const lastEligibilityEventRef = useRef<string>("")
 
   useEffect(() => {
     if (!isConnected || !accountId) return
@@ -170,7 +207,12 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
         })
       })
       .catch((error) => {
-        console.error("[vote-panel] Failed to sync vote state from server:", error)
+        const capturedError = error instanceof Error ? error : new Error(String(error))
+        Sentry.captureException(capturedError, {
+          level: "warning",
+          tags: { area: "governance_vote_panel", stage: "sync_vote_state" },
+          extra: { proposal_id: proposal.id, account_id: accountId },
+        })
       })
 
     return () => {
@@ -214,8 +256,40 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
     isVerifiedAfterProposalCreation,
   })
 
+  useEffect(() => {
+    if (!isConnected || !accountId || checking) return
+
+    const outcome = resolveEligibilityOutcome(panelState.kind)
+    if (!outcome) return
+
+    const eventKey = `${proposal.id}:${accountId}:${outcome}:${isVoteFree}:${isZeroBalance}:${needsRelay}`
+    if (eventKey === lastEligibilityEventRef.current) return
+    lastEligibilityEventRef.current = eventKey
+
+    trackEvent({
+      domain: "governance",
+      action: "vote_eligibility_resolved",
+      proposalId: proposal.id,
+      accountId,
+      outcome,
+      isVoteFree,
+      isZeroBalance,
+      needsRelay,
+    })
+  }, [accountId, checking, isConnected, isVoteFree, isZeroBalance, needsRelay, panelState.kind, proposal.id])
+
   const handleVote = async (choice: VoteChoice) => {
     if (!isConnected || !accountId) return
+
+    const path: "direct" | "relay" = needsRelay && signDelegateActions ? "relay" : "direct"
+    trackEvent({
+      domain: "governance",
+      action: "vote_submit_start",
+      proposalId: proposal.id,
+      accountId,
+      choice,
+      path,
+    })
 
     const voteLifecyclePayload: VoteLifecyclePayload = {
       proposalId: proposal.id,
@@ -239,7 +313,12 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       try {
         await revalidateGovernance()
       } catch (error) {
-        console.error("[vote-panel] Failed to revalidate governance cache after vote:", error)
+        const capturedError = error instanceof Error ? error : new Error(String(error))
+        Sentry.captureException(capturedError, {
+          level: "warning",
+          tags: { area: "governance_vote_panel", stage: "revalidate_governance" },
+          extra: { proposal_id: proposal.id, account_id: accountId },
+        })
       } finally {
         startTransition(() => {
           router.refresh()
@@ -253,7 +332,16 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
         try {
           syncedVote = await getVote(proposal.id, targetAccountId)
         } catch (error) {
-          console.error("[vote-panel] Failed to fetch vote state after submission:", error)
+          const capturedError = error instanceof Error ? error : new Error(String(error))
+          Sentry.captureException(capturedError, {
+            level: "warning",
+            tags: { area: "governance_vote_panel", stage: "sync_vote_after_submit" },
+            extra: {
+              proposal_id: proposal.id,
+              account_id: targetAccountId,
+              attempt: attempt + 1,
+            },
+          })
           syncedVote = null
         }
 
@@ -323,10 +411,30 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
           const reason = typeof relayError?.reason === "string" ? relayError.reason : null
 
           if (reason && isVoteRejectionReason(reason)) {
+            trackEvent({
+              domain: "governance",
+              action: "vote_submit_result",
+              proposalId: proposal.id,
+              accountId,
+              choice,
+              path,
+              outcome: "vote_rejected",
+              reason,
+            })
             if (pendingToastId !== null) toast.dismiss(pendingToastId)
             toast.error(getVoteRejectionReasonMessage(reason))
           } else {
             const message = typeof relayError?.error === "string" ? relayError.error : `Relay failed (${res.status})`
+            trackEvent({
+              domain: "governance",
+              action: "vote_submit_result",
+              proposalId: proposal.id,
+              accountId,
+              choice,
+              path,
+              outcome: "error",
+              errorMessage: message,
+            })
             if (pendingToastId !== null) toast.dismiss(pendingToastId)
             toast.error(message)
           }
@@ -361,6 +469,51 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
           }
         : voteOutcome
 
+      if (effectiveOutcome.kind === "vote_cast") {
+        trackEvent({
+          domain: "governance",
+          action: "vote_submit_result",
+          proposalId: proposal.id,
+          accountId,
+          choice,
+          path,
+          outcome: "success",
+        })
+      } else if (effectiveOutcome.kind === "vote_rejected") {
+        const rejectionReason = isVoteRejectionReason(effectiveOutcome.reason) ? effectiveOutcome.reason : undefined
+        trackEvent({
+          domain: "governance",
+          action: "vote_submit_result",
+          proposalId: proposal.id,
+          accountId,
+          choice,
+          path,
+          outcome: "vote_rejected",
+          reason: rejectionReason,
+        })
+      } else if (effectiveOutcome.kind === "tx_failed") {
+        trackEvent({
+          domain: "governance",
+          action: "vote_submit_result",
+          proposalId: proposal.id,
+          accountId,
+          choice,
+          path,
+          outcome: "tx_failed",
+          errorMessage: effectiveOutcome.error,
+        })
+      } else {
+        trackEvent({
+          domain: "governance",
+          action: "vote_submit_result",
+          proposalId: proposal.id,
+          accountId,
+          choice,
+          path,
+          outcome: "unknown",
+        })
+      }
+
       const voteToast = getVoteOutcomeToast(effectiveOutcome, choice)
       if (voteToast.type === "success") {
         if (pendingToastId !== null) toast.dismiss(pendingToastId)
@@ -373,6 +526,16 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
+      trackEvent({
+        domain: "governance",
+        action: "vote_submit_result",
+        proposalId: proposal.id,
+        accountId,
+        choice,
+        path,
+        outcome: "error",
+        errorMessage,
+      })
       if (pendingToastId !== null) toast.dismiss(pendingToastId)
       toast.error(getTransactionFailureMessage(errorMessage))
       onVoteFailure?.()

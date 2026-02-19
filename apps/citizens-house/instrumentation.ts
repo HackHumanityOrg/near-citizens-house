@@ -7,17 +7,39 @@
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
 
+import * as Sentry from "@sentry/nextjs"
 import { initializePostHogLogs } from "@/lib/logger/posthog-logs"
+
+type RequestHeaders = {
+  cookie?: string | string[]
+  get?: (name: string) => string | null
+}
+
+type RequestWithHeaders = {
+  headers: RequestHeaders
+}
 
 export async function register() {
   initializePostHogLogs()
+
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./sentry.server.config")
+  }
+
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("./sentry.edge.config")
+  }
 
   // Register backend key pool on-chain (only on Node.js runtime, not edge)
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Run async without blocking server startup
     import("@/lib/backend-key-registration")
       .then(({ ensureBackendKeysRegistered }) => ensureBackendKeysRegistered())
-      .catch((err) => console.error("[Instrumentation] Failed to load backend-key-registration:", err))
+      .catch((err) =>
+        Sentry.logger.error("instrumentation_backend_key_registration_load_failed", {
+          error_message: err instanceof Error ? err.message : String(err),
+        }),
+      )
   }
 }
 
@@ -29,11 +51,12 @@ export async function register() {
  *
  * @see https://posthog.com/docs/error-tracking/installation/nextjs
  */
-export const onRequestError = async (
-  err: Error,
-  request: { headers: { cookie?: string; get?: (name: string) => string | null } },
-  _context: { routerKind: string; routePath: string; routeType: string; revalidateReason?: string },
-) => {
+export const onRequestError = async (...args: Parameters<typeof Sentry.captureRequestError>) => {
+  Sentry.captureRequestError(...args)
+  const [rawError, rawRequest] = args
+  const err = rawError instanceof Error ? rawError : new Error(String(rawError))
+  const request = rawRequest as RequestWithHeaders
+
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Dynamic import to avoid loading server-only module in edge runtime
     const { captureServerError } = await import("@/lib/analytics-server")
@@ -43,11 +66,11 @@ export const onRequestError = async (
 
     // Extract cookie string from headers (handle both formats)
     let cookieString: string | null = null
-    if (typeof request.headers.get === "function") {
+    if (typeof request?.headers?.get === "function") {
       cookieString = request.headers.get("cookie")
-    } else if (typeof request.headers.cookie === "string") {
+    } else if (typeof request?.headers?.cookie === "string") {
       cookieString = request.headers.cookie
-    } else if (Array.isArray(request.headers.cookie)) {
+    } else if (Array.isArray(request?.headers?.cookie)) {
       cookieString = (request.headers.cookie as string[]).join("; ")
     }
 
@@ -67,10 +90,10 @@ export const onRequestError = async (
     }
 
     // Also check for session ID header (set by client middleware)
-    if (!sessionId && typeof request.headers.get === "function") {
+    if (!sessionId && typeof request?.headers?.get === "function") {
       sessionId = request.headers.get("X-POSTHOG-SESSION-ID")
     }
-    if (!distinctId && typeof request.headers.get === "function") {
+    if (!distinctId && typeof request?.headers?.get === "function") {
       distinctId = request.headers.get("X-POSTHOG-DISTINCT-ID")
     }
 

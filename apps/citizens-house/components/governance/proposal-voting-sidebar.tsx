@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { trackEvent } from "@/lib/analytics"
 import type { ProposalView, VoteView } from "@/lib/schemas/governance-contract"
 import { VotePanel } from "./vote-panel"
 import { VotesTable } from "./votes-table"
@@ -18,6 +19,21 @@ interface Props {
 export function ProposalVotingSidebar({ proposal, proposalId, initialVotes, totalVotes }: Props) {
   const [optimisticVote, setOptimisticVote] = useState<OptimisticVote | null>(null)
   const [optimisticBaseline, setOptimisticBaseline] = useState<OptimisticVoteBaseline | null>(null)
+
+  useEffect(() => {
+    const now = Date.now()
+    const isScheduled = proposal.status === "active" && proposal.startAt > now
+    const isFinished = proposal.status === "active" && proposal.endsAt < now
+    const proposalStatus = isScheduled ? "scheduled" : isFinished ? "finished" : proposal.status
+
+    trackEvent({
+      domain: "governance",
+      action: "proposal_detail_view",
+      proposalId,
+      proposalStatus,
+      totalVotes,
+    })
+  }, [proposal.endsAt, proposal.startAt, proposal.status, proposalId, totalVotes])
 
   const handleVoteProcessing = useCallback(
     (payload: VoteLifecyclePayload) => {

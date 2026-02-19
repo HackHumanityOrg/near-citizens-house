@@ -3,6 +3,7 @@
 import "./lib/schemas/env"
 
 import type { NextConfig } from "next"
+import { withSentryConfig } from "@sentry/nextjs"
 import { withPostHogConfig } from "@posthog/nextjs-config"
 import createWithVercelToolbar from "@vercel/toolbar/plugins/next"
 
@@ -132,4 +133,24 @@ const finalConfig = hasPostHogSourceMaps
     })
   : nextConfig
 
-export default withVercelToolbar(finalConfig)
+const toolbarConfig = withVercelToolbar(finalConfig)
+const hasSentry = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN)
+
+const configWithSentry = hasSentry
+  ? withSentryConfig(toolbarConfig, {
+      org: process.env.SENTRY_ORG ?? "hack-humanity",
+      project: process.env.SENTRY_PROJECT ?? "citizens-house",
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      tunnelRoute: "/monitoring",
+      webpack: {
+        automaticVercelMonitors: true,
+        treeshake: {
+          removeDebugLogging: true,
+        },
+      },
+    })
+  : toolbarConfig
+
+export default configWithSentry

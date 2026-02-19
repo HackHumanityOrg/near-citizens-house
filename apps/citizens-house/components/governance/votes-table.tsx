@@ -9,6 +9,7 @@ import { ExternalLink, Loader2 } from "lucide-react"
 import type { VoteView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { getProposalVotes } from "@/app/proposals/actions"
+import { trackEvent } from "@/lib/analytics"
 import type { OptimisticVote } from "./optimistic-vote"
 import { formatVoteChoiceLabel, VOTE_CHOICE_COLOR_TOKENS } from "./vote-colors"
 
@@ -77,6 +78,13 @@ export function VotesTable({
     const nextPage = page + 1
     startTransition(async () => {
       const result = await getProposalVotes(proposalId, nextPage, PAGE_SIZE, totalVotes)
+      trackEvent({
+        domain: "governance",
+        action: "votes_load_more",
+        proposalId,
+        page: nextPage,
+        returnedCount: result.votes.length,
+      })
       if (result.votes.length === 0) return
       setVotes((prev) => [...prev, ...result.votes])
       setPage(nextPage)
