@@ -128,7 +128,9 @@ const finalConfig = hasPostHogSourceMaps
       sourcemaps: {
         enabled: true,
         project: "citizens-house",
-        deleteAfterUpload: true,
+        // Keep sourcemaps so subsequent build steps (including output tracing)
+        // can still resolve referenced *.js.map files.
+        deleteAfterUpload: false,
       },
     })
   : nextConfig
@@ -143,6 +145,11 @@ const configWithSentry = hasSentry
       authToken: process.env.SENTRY_AUTH_TOKEN,
       silent: !process.env.CI,
       widenClientFileUpload: true,
+      sourcemaps: {
+        // Sentry defaults to deleting maps after upload. Keep them because
+        // other build tooling in this pipeline also consumes sourcemap files.
+        deleteSourcemapsAfterUpload: false,
+      },
       tunnelRoute: "/monitoring",
       webpack: {
         automaticVercelMonitors: true,
