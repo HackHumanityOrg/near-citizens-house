@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect } from "react"
 import { Button, Input, Label } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Loader2, Pencil, X } from "lucide-react"
@@ -31,7 +31,6 @@ export function ConfigPanel() {
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
   const [txLoading, setTxLoading] = useState(false)
-  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     getGovernanceConfig().then(setConfig)
@@ -64,9 +63,7 @@ export function ConfigPanel() {
       if (!builder) return
 
       await signAndSendTransaction(builder())
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "config_update", accountId })
-      })
+      await invalidateGovernanceCache({ op: "config_update", accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",
@@ -97,7 +94,7 @@ export function ConfigPanel() {
     }
   }
 
-  const loading = txLoading || isPending
+  const loading = txLoading
 
   if (!config) {
     return (

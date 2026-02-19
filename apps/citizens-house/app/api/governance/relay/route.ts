@@ -6,6 +6,7 @@
  * The NEAR runtime unwraps the DelegateAction so predecessor_account_id = voter.
  */
 import * as Sentry from "@sentry/nextjs"
+import { revalidateTag } from "next/cache"
 import { type NextRequest, NextResponse } from "next/server"
 import { deserialize } from "borsh"
 import { PublicKey, KeyType } from "@near-js/crypto"
@@ -44,6 +45,7 @@ import { withObservability } from "@/lib/api/with-observability"
 import { extractPostHogContext } from "@/lib/api/request-context"
 import { trackServerEvent, type TrackServerEventOptions } from "@/lib/analytics-server"
 import type { AnalyticsEvent } from "@/lib/schemas/analytics"
+import { getGovernanceInvalidationTags } from "@/lib/cache/rpc-tags"
 
 const RATE_LIMIT_TTL = 60 // 1 relay per voter per minute
 const MAX_BLOCK_HEIGHT_WINDOW = 500
@@ -626,6 +628,16 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
       proposalId: castVoteArgs.proposalId,
       txHash,
     })
+
+    const tags = getGovernanceInvalidationTags({
+      op: "vote_cast",
+      proposalId: castVoteArgs.proposalId,
+      accountId: validatedAccountId,
+    })
+    for (const tag of tags) {
+      revalidateTag(tag, { expire: 0 })
+    }
+
     log.set("relay_outcome", "success")
     return NextResponse.json({ success: true, txHash, outcome }, { status: 200 })
   } catch (error) {

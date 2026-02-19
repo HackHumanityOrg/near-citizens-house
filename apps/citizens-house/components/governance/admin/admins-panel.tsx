@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button, Input } from "@near-citizens/ui"
 import { NEAR_CONFIG, nearAccountIdSchema, useNearWallet } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
@@ -16,7 +16,6 @@ export function AdminsPanel() {
   const [admins, setAdmins] = useState<string[]>([])
   const [newAdmin, setNewAdmin] = useState("")
   const [txLoading, setTxLoading] = useState(false)
-  const [isPending, startTransition] = useTransition()
 
   const refreshAdmins = useCallback(async () => {
     const result = await getAdminList(0, 100)
@@ -27,7 +26,7 @@ export function AdminsPanel() {
     void refreshAdmins()
   }, [refreshAdmins])
 
-  const loading = txLoading || isPending
+  const loading = txLoading
   const normalizedNewAdmin = newAdmin.trim()
   const hasAdminInput = normalizedNewAdmin.length > 0
   const isAdminInputValid = !hasAdminInput || nearAccountIdSchema.safeParse(normalizedNewAdmin).success
@@ -85,9 +84,7 @@ export function AdminsPanel() {
         throw new Error(executionFailure)
       }
 
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "admin_update", accountId })
-      })
+      await invalidateGovernanceCache({ op: "admin_update", accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",
@@ -138,9 +135,7 @@ export function AdminsPanel() {
         throw new Error(executionFailure)
       }
 
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "admin_update", accountId })
-      })
+      await invalidateGovernanceCache({ op: "admin_update", accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",

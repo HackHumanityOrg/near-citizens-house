@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button, Input, Label } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
@@ -28,7 +28,6 @@ interface Props {
 export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStartDelaySecs }: Props) {
   const router = useRouter()
   const { signAndSendTransaction, accountId, isConnected } = useNearWallet()
-  const [isPending, startTransition] = useTransition()
 
   const minBondNear = yoctoToNear(minProposalBond)
 
@@ -42,7 +41,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [txLoading, setTxLoading] = useState(false)
 
-  const loading = txLoading || isPending
+  const loading = txLoading
   const selectedStartMs = startAt ? parseDatetimeLocalToEpochMs(startAt) : null
   const inferredEndMs = selectedStartMs !== null ? selectedStartMs + votingPeriodSecs * 1000 : null
 
@@ -128,9 +127,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
       await signAndSendTransaction(
         buildCreateProposalTx(normalizedTitle, normalizedAuthor, normalizedDescription, bondYocto, startAtNs),
       )
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "proposal_create", accountId })
-      })
+      await invalidateGovernanceCache({ op: "proposal_create", accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",

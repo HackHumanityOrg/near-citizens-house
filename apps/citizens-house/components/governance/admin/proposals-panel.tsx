@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
@@ -33,19 +33,17 @@ export function ProposalsPanel() {
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [txLoading, setTxLoading] = useState<number | null>(null)
-  const [isPending, startTransition] = useTransition()
 
-  const fetchPage = (p: number) => {
+  const fetchPage = async (p: number) => {
     setLoading(true)
-    getProposals(p, PAGE_SIZE).then(({ proposals: data, total: t }) => {
-      setProposals(data)
-      setTotal(t)
-      setLoading(false)
-    })
+    const { proposals: data, total: t } = await getProposals(p, PAGE_SIZE)
+    setProposals(data)
+    setTotal(t)
+    setLoading(false)
   }
 
   useEffect(() => {
-    fetchPage(page)
+    void fetchPage(page)
   }, [page])
 
   const handleAction = async (proposalId: number, action: "cancel" | "expire" | "finalize") => {
@@ -67,9 +65,7 @@ export function ProposalsPanel() {
         finalize: () => buildFinalizeProposalTx(proposalId),
       }
       await signAndSendTransaction(txBuilders[action]())
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "proposal_update", proposalId, accountId })
-      })
+      await invalidateGovernanceCache({ op: "proposal_update", proposalId, accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",
@@ -81,7 +77,7 @@ export function ProposalsPanel() {
       })
       const labels = { cancel: "cancelled", expire: "expired", finalize: "finalized" } as const
       toast.success(`Proposal ${labels[action]} successfully`)
-      fetchPage(page)
+      await fetchPage(page)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Transaction failed"
       trackEvent({
@@ -120,7 +116,7 @@ export function ProposalsPanel() {
     <div className="flex flex-col gap-4">
       {proposals.map((proposal) => {
         const now = Date.now()
-        const isActionLoading = txLoading === proposal.id || isPending
+        const isActionLoading = txLoading === proposal.id
         const canCancel = proposal.status === "pending" || proposal.status === "active"
         const canExpire = proposal.status === "pending" && now > proposal.pendingExpiresAt
         const canFinalize = proposal.status === "active" && now > proposal.endsAt

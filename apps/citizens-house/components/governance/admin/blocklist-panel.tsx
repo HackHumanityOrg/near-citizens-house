@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button, Input } from "@near-citizens/ui"
 import { NEAR_CONFIG, nearAccountIdSchema, useNearWallet } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
@@ -23,7 +23,6 @@ export function BlocklistPanel() {
   const [lockInfo, setLockInfo] = useState<BlocklistLockInfo | null>(null)
   const [newAccount, setNewAccount] = useState("")
   const [txLoading, setTxLoading] = useState(false)
-  const [isPending, startTransition] = useTransition()
 
   const refreshBlocklistState = useCallback(async () => {
     const [result, info] = await Promise.all([getBlocklist(0, 100), getBlocklistLockInfo()])
@@ -37,7 +36,7 @@ export function BlocklistPanel() {
     void refreshBlocklistState()
   }, [refreshBlocklistState])
 
-  const loading = txLoading || isPending
+  const loading = txLoading
   const normalizedNewAccount = newAccount.trim()
   const hasAccountInput = normalizedNewAccount.length > 0
   const isAccountInputValid = !hasAccountInput || nearAccountIdSchema.safeParse(normalizedNewAccount).success
@@ -99,9 +98,7 @@ export function BlocklistPanel() {
         throw new Error(executionFailure)
       }
 
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "blocklist_update", accountId })
-      })
+      await invalidateGovernanceCache({ op: "blocklist_update", accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",
@@ -152,9 +149,7 @@ export function BlocklistPanel() {
         throw new Error(executionFailure)
       }
 
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "blocklist_update", accountId })
-      })
+      await invalidateGovernanceCache({ op: "blocklist_update", accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",

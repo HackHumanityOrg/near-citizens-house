@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect } from "react"
 import { Button, Input, Label } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Loader2 } from "lucide-react"
@@ -19,7 +19,6 @@ export function RecoveryPanel() {
   const [proposalId, setProposalId] = useState("")
   const [voteAccountId, setVoteAccountId] = useState("")
   const [txLoading, setTxLoading] = useState(false)
-  const [isPending, startTransition] = useTransition()
 
   // Pending vote count for the entered proposal
   const [pendingVoteCount, setPendingVoteCount] = useState<number | null>(null)
@@ -47,7 +46,7 @@ export function RecoveryPanel() {
     getBlocklistLockInfo().then(setLockInfo)
   }, [])
 
-  const loading = txLoading || isPending
+  const loading = txLoading
 
   const handleClearPendingVote = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -66,9 +65,7 @@ export function RecoveryPanel() {
     })
     try {
       await signAndSendTransaction(buildClearStalePendingVoteTx(parsedProposalId, voteAccountId.trim()))
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "recovery_update", proposalId: parsedProposalId, accountId })
-      })
+      await invalidateGovernanceCache({ op: "recovery_update", proposalId: parsedProposalId, accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",
@@ -115,9 +112,7 @@ export function RecoveryPanel() {
     })
     try {
       await signAndSendTransaction(buildClearStaleBlocklistOpTx())
-      startTransition(() => {
-        invalidateGovernanceCache({ op: "recovery_update", accountId })
-      })
+      await invalidateGovernanceCache({ op: "recovery_update", accountId })
       trackEvent({
         domain: "governance",
         action: "admin_tx_result",
