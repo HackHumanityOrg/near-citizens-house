@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { maintenanceMode, appMode } from "./flags"
+import { maintenanceMode, appMode, votingAdmin } from "./flags"
 
 const EXEMPT_PATHS = ["/privacy", "/terms", "/_not-found"]
 const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest", "/.well-known"]
 const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".css", ".js", ".woff", ".woff2"]
 const LEGACY_GOVERNANCE_PREFIX = "/governance"
+const PROPOSALS_ADMIN_PATH = "/proposals/admin"
 
 const STAGE_HOME = {
   verification: "/verification",
@@ -28,6 +29,10 @@ function isAllowedStagePath(mode: AppStage, pathname: string): boolean {
 
   const stageHome = STAGE_HOME[mode]
   return pathname === stageHome || pathname.startsWith(`${stageHome}/`)
+}
+
+function isGovernanceAdminPath(pathname: string): boolean {
+  return pathname === PROPOSALS_ADMIN_PATH || pathname.startsWith(`${PROPOSALS_ADMIN_PATH}/`)
 }
 
 function getLegacyGovernancePath(pathname: string): string | null {
@@ -72,6 +77,8 @@ export async function proxy(request: NextRequest) {
 
     const mode = await appMode()
     const stageHome = STAGE_HOME[mode]
+    const canBypassAppModeForGovernanceAdminRoute =
+      mode !== "voting" && isGovernanceAdminPath(pathname) && (await votingAdmin().catch(() => false))
 
     if (mode === "voting") {
       const legacyPath = getLegacyGovernancePath(pathname)
@@ -84,7 +91,7 @@ export async function proxy(request: NextRequest) {
       return redirectTo(request, stageHome)
     }
 
-    if (!isAllowedStagePath(mode, pathname)) {
+    if (!canBypassAppModeForGovernanceAdminRoute && !isAllowedStagePath(mode, pathname)) {
       return redirectTo(request, stageHome)
     }
   } catch {

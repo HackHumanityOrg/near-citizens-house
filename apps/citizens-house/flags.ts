@@ -34,3 +34,14 @@ export const superAdmin = flag<boolean>({
     { value: true, label: "On" },
   ],
 })
+
+export const votingAdmin = flag<boolean>({
+  key: "voting-admin",
+  adapter: vercelAdapter(),
+  defaultValue: false,
+  description: "Allows /proposals/admin access outside voting mode",
+  options: [
+    { value: false, label: "Off" },
+    { value: true, label: "On" },
+  ],
+})
