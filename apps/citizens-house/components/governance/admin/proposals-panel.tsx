@@ -15,7 +15,7 @@ import {
   buildExpirePendingProposalTx,
   buildFinalizeProposalTx,
 } from "@/lib/contracts/governance/transactions"
-import { getProposals, revalidateGovernance } from "@/app/proposals/actions"
+import { getProposals, invalidateGovernanceCache } from "@/app/proposals/actions"
 
 const PAGE_SIZE = 10
 
@@ -68,7 +68,7 @@ export function ProposalsPanel() {
       }
       await signAndSendTransaction(txBuilders[action]())
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "proposal_update", proposalId, accountId })
       })
       trackEvent({
         domain: "governance",

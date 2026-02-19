@@ -254,7 +254,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       if (error instanceof Error && error.message.includes("Smart contract panicked")) {
         const panicMatch = error.message.match(/Smart contract panicked: (.+)/)
         if (panicMatch) {
-          throw new Error(panicMatch[1])
+          throw new Error(panicMatch[1], { cause: error })
         }
       }
 

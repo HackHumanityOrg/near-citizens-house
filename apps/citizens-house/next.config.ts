@@ -51,6 +51,24 @@ function buildSecurityHeaders() {
 }
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
+  cacheLife: {
+    rpc_hot: {
+      stale: 30,
+      revalidate: 10,
+      expire: 120,
+    },
+    rpc_warm: {
+      stale: 60,
+      revalidate: 30,
+      expire: 300,
+    },
+    rpc_cold: {
+      stale: 300,
+      revalidate: 120,
+      expire: 900,
+    },
+  },
   typescript: {
     ignoreBuildErrors: false,
   },

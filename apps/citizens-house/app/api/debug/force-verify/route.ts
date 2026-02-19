@@ -7,6 +7,7 @@ import { getSigningMessage, getSigningRecipient } from "@/lib/config"
 import { getRedisClient } from "@/lib/redis"
 import { setBackendKeyPoolRedis } from "@/lib/backend-key-pool"
 import { verificationDb } from "@/lib/contracts/verification/client"
+import { getVerificationMutationRevalidateTags } from "@/lib/cache/rpc-tags"
 
 let redisInitialized = false
 async function ensureRedisInitialized(): Promise<void> {
@@ -95,7 +96,9 @@ export async function POST(request: NextRequest) {
       userContextData,
     })
 
-    revalidateTag("verifications", "max")
+    for (const tag of getVerificationMutationRevalidateTags()) {
+      revalidateTag(tag, "max")
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

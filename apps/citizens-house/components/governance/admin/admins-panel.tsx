@@ -8,7 +8,7 @@ import { ExternalLink, Loader2, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { buildAddAdminTx, buildRemoveAdminTx } from "@/lib/contracts/governance/transactions"
 import { extractExecutionFailure, getTransactionFailureMessage } from "@/lib/contracts/governance/vote-outcome"
-import { checkIsAdmin, getAdminList, revalidateGovernance } from "@/app/proposals/actions"
+import { checkIsAdmin, getAdminList, invalidateGovernanceCache } from "@/app/proposals/actions"
 import { trackEvent } from "@/lib/analytics"
 
 export function AdminsPanel() {
@@ -40,7 +40,7 @@ export function AdminsPanel() {
         ? "This account is already an admin."
         : null
 
-  const handleAddAdmin = async (e: React.FormEvent) => {
+  const handleAddAdmin = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!isConnected || !accountId || !hasAdminInput) return
     if (!isAdminInputValid) {
@@ -86,7 +86,7 @@ export function AdminsPanel() {
       }
 
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "admin_update", accountId })
       })
       trackEvent({
         domain: "governance",
@@ -139,7 +139,7 @@ export function AdminsPanel() {
       }
 
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "admin_update", accountId })
       })
       trackEvent({
         domain: "governance",

@@ -9,9 +9,10 @@
  * (which only handles HTTP 500/503/408) never triggers for rate limits.
  */
 import { JsonRpcProvider } from "@near-js/providers"
+import { getFastNearRpcUrl, type NearNetwork } from "../../lib/rpc-endpoints"
 
-export function getDefaultRpcUrl(network: "mainnet" | "testnet"): string {
-  return network === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+export function getDefaultRpcUrl(network: NearNetwork): string {
+  return getFastNearRpcUrl(network)
 }
 
 export function getRpcHeaders(): Record<string, string> {

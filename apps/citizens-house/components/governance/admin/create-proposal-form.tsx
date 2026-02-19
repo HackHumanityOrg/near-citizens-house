@@ -16,7 +16,7 @@ import {
   utf8ByteLength,
   validateCreateProposalInput,
 } from "@/lib/governance-proposal-validation"
-import { revalidateGovernance } from "@/app/proposals/actions"
+import { invalidateGovernanceCache } from "@/app/proposals/actions"
 import { MarkdownContent } from "@/components/governance/markdown-content"
 
 interface Props {
@@ -72,7 +72,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
   const firstValidationError = firstCreateProposalValidationError(validation.errors)
   const submitDisabled = loading || !validation.isValid
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!isConnected || !accountId) {
       toast.error("Connect your wallet to create a proposal.")
@@ -129,7 +129,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
         buildCreateProposalTx(normalizedTitle, normalizedAuthor, normalizedDescription, bondYocto, startAtNs),
       )
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "proposal_create", accountId })
       })
       trackEvent({
         domain: "governance",

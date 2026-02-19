@@ -246,7 +246,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-        throw new Error(`Failed to sign message: ${errorMessage}`)
+        throw new Error(`Failed to sign message: ${errorMessage}`, { cause: error })
       }
     },
     [nearConnector, accountId],
@@ -269,7 +269,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         return result.signedDelegateActions
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-        throw new Error(`Failed to sign delegate actions: ${errorMessage}`)
+        throw new Error(`Failed to sign delegate actions: ${errorMessage}`, { cause: error })
       }
     },
     [nearConnector, accountId],
@@ -315,7 +315,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         return result
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-        throw new Error(`Transaction failed: ${errorMessage}`)
+        throw new Error(`Transaction failed: ${errorMessage}`, { cause: error })
       }
     },
     [nearConnector, accountId],

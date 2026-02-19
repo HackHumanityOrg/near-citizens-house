@@ -7,6 +7,7 @@ import type { Provider } from "@near-js/providers"
 import { actionCreators } from "@near-js/transactions"
 import { deriveWorkerKey, getRunIdTag } from "./deterministic-keys"
 import type { NearAccountId } from "@/lib"
+import { getFastNearRpcUrl } from "@/lib/rpc-endpoints"
 
 // ============================================================================
 // RPC Configuration for E2E Tests
@@ -17,8 +18,8 @@ import type { NearAccountId } from "@/lib"
  * Get FastNEAR URL for the current network
  */
 function getFastNearUrl(): string {
-  const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
-  return networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+  const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet"
+  return getFastNearRpcUrl(networkId)
 }
 
 /**

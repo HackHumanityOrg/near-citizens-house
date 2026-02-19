@@ -1,20 +1,31 @@
 "use server"
 
 import * as Sentry from "@sentry/nextjs"
-import { unstable_cache, updateTag } from "next/cache"
-import { nearAccountIdSchema, NEAR_CONFIG } from "@/lib"
+import { cacheLife, cacheTag, updateTag } from "next/cache"
+import { nearAccountIdSchema } from "@/lib"
 import { governanceReader } from "@/lib/contracts/governance/client"
 import { superAdmin } from "@/flags"
 import type { AccountViewRaw } from "@near-js/types"
 import { createRpcProvider } from "@/lib/providers/rpc-provider"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 import type { ProposalView, VoteView, GovernanceConfig } from "@/lib/contracts/governance/governance-contract"
+import type { TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
+import { getVerificationSummary } from "@/app/citizens/actions"
 import { withObservedServerAction } from "@/lib/observability/server-action"
 import { trackServerEvent } from "@/lib/analytics-server"
+import {
+  governanceTags,
+  normalizeGovernanceAdminsPagination,
+  normalizeGovernanceBlocklistPagination,
+  normalizeGovernanceProposalsPagination,
+  normalizeGovernancePublicProposalsPagination,
+  normalizeGovernanceVotesPagination,
+  getGovernanceInvalidationTags,
+  type GovernanceInvalidationInput,
+} from "@/lib/cache/rpc-tags"
 
 export type { ProposalView, VoteView, GovernanceConfig }
 
-const governanceContractId = NEAR_CONFIG.governanceContractId ?? ""
 const GOVERNANCE_BATCH_SIZE = 100
 
 type LogContext = Record<string, string | number | boolean | null | undefined>
@@ -122,18 +133,18 @@ function observeGovernanceAction<T>(actionName: string, fn: () => Promise<T>): P
 // Proposals
 // =============================================================================
 
-async function fetchProposals(pagination: Pagination) {
-  return governanceReader.listProposalsNewestFirst(pagination)
-}
+async function getCachedProposals(pagination: Pagination) {
+  "use cache"
 
-const getCachedProposals = unstable_cache(
-  (pagination: Pagination) => fetchProposals(pagination),
-  ["governance", governanceContractId],
-  {
-    tags: ["governance"],
-    revalidate: 30,
-  },
-)
+  const normalized = normalizeGovernanceProposalsPagination(pagination)
+  cacheLife("rpc_warm")
+  cacheTag(
+    governanceTags.root,
+    governanceTags.proposals,
+    governanceTags.proposalsPage(normalized.page, normalized.pageSize),
+  )
+  return governanceReader.listProposalsNewestFirst(normalized)
+}
 
 export async function getProposals(page: number, pageSize: number) {
   return observeGovernanceAction("governance.getProposals", async () => {
@@ -143,11 +154,13 @@ export async function getProposals(page: number, pageSize: number) {
       return { proposals: [], total: 0 }
     }
 
+    const normalized = normalizeGovernanceProposalsPagination(params.data)
+
     try {
-      const result = await getCachedProposals(params.data)
+      const result = await getCachedProposals(normalized)
       trackGovernanceServerActionResult("governance.getProposals", "success", {
-        page: params.data.page,
-        pageSize: params.data.pageSize,
+        page: normalized.page,
+        pageSize: normalized.pageSize,
         itemCount: result.proposals.length,
         total: result.total,
       })
@@ -187,14 +200,40 @@ async function fetchPublicProposals() {
   return proposals
 }
 
-const getCachedPublicProposals = unstable_cache(
-  () => fetchPublicProposals(),
-  ["governance-public-proposals", governanceContractId],
-  {
-    tags: ["governance"],
-    revalidate: 30,
-  },
-)
+async function getCachedAllPublicProposals() {
+  "use cache"
+
+  cacheLife("rpc_warm")
+  cacheTag(governanceTags.root, governanceTags.publicProposals)
+  return fetchPublicProposals()
+}
+
+async function getCachedPublicProposalsPage(pagination: Pagination) {
+  "use cache"
+
+  const normalized = normalizeGovernancePublicProposalsPagination(pagination)
+  cacheLife("rpc_warm")
+  cacheTag(
+    governanceTags.root,
+    governanceTags.publicProposals,
+    governanceTags.publicProposalsPage(normalized.page, normalized.pageSize),
+  )
+
+  const proposals = await getCachedAllPublicProposals()
+  const total = proposals.length
+  const offset = normalized.page * normalized.pageSize
+
+  if (offset >= total) {
+    return { proposals: [] as ProposalView[], total, page: normalized.page, pageSize: normalized.pageSize }
+  }
+
+  return {
+    proposals: proposals.slice(offset, offset + normalized.pageSize),
+    total,
+    page: normalized.page,
+    pageSize: normalized.pageSize,
+  }
+}
 
 export async function getPublicProposals(page: number, pageSize: number) {
   return observeGovernanceAction("governance.getPublicProposals", async () => {
@@ -205,31 +244,15 @@ export async function getPublicProposals(page: number, pageSize: number) {
     }
 
     try {
-      const proposals = await getCachedPublicProposals()
-      const total = proposals.length
-      const offset = params.data.page * params.data.pageSize
-
-      if (offset >= total) {
-        trackGovernanceServerActionResult("governance.getPublicProposals", "success", {
-          page: params.data.page,
-          pageSize: params.data.pageSize,
-          itemCount: 0,
-          total,
-        })
-        return { proposals: [] as ProposalView[], total }
-      }
-
-      const result = {
-        proposals: proposals.slice(offset, offset + params.data.pageSize),
-        total,
-      }
+      const normalized = normalizeGovernancePublicProposalsPagination(params.data)
+      const result = await getCachedPublicProposalsPage(normalized)
       trackGovernanceServerActionResult("governance.getPublicProposals", "success", {
-        page: params.data.page,
-        pageSize: params.data.pageSize,
+        page: result.page,
+        pageSize: result.pageSize,
         itemCount: result.proposals.length,
         total: result.total,
       })
-      return result
+      return { proposals: result.proposals, total: result.total }
     } catch (error) {
       captureGovernanceActionError("governance.getPublicProposals", error, { page, page_size: pageSize })
       return { proposals: [] as ProposalView[], total: 0 }
@@ -237,11 +260,13 @@ export async function getPublicProposals(page: number, pageSize: number) {
   })
 }
 
-const getCachedProposal = unstable_cache(
-  (proposalId: number) => governanceReader.getProposal(proposalId),
-  ["governance-proposal", governanceContractId],
-  { tags: ["governance"], revalidate: 15 },
-)
+async function getCachedProposal(proposalId: number) {
+  "use cache"
+
+  cacheLife("rpc_hot")
+  cacheTag(governanceTags.root, governanceTags.proposals, governanceTags.proposal(proposalId))
+  return governanceReader.getProposal(proposalId)
+}
 
 export async function getProposal(proposalId: number): Promise<ProposalView | null> {
   return observeGovernanceAction("governance.getProposal", async () => {
@@ -263,11 +288,24 @@ export async function getProposal(proposalId: number): Promise<ProposalView | nu
 // Votes
 // =============================================================================
 
-const getCachedVotes = unstable_cache(
-  (proposalId: number, fromIndex: number, limit: number) => governanceReader.listVotes(proposalId, fromIndex, limit),
-  ["governance-votes", governanceContractId],
-  { tags: ["governance"], revalidate: 15 },
-)
+async function getCachedVotesPage(
+  proposalId: number,
+  fromIndex: number,
+  limit: number,
+  page: number,
+  pageSize: number,
+) {
+  "use cache"
+
+  cacheLife("rpc_hot")
+  cacheTag(
+    governanceTags.root,
+    governanceTags.votes,
+    governanceTags.proposalVotes(proposalId),
+    governanceTags.proposalVotesPage(proposalId, page, pageSize),
+  )
+  return governanceReader.listVotes(proposalId, fromIndex, limit)
+}
 
 export async function getProposalVotes(proposalId: number, page: number, pageSize: number, knownTotalVotes?: number) {
   return observeGovernanceAction("governance.getProposalVotes", async () => {
@@ -281,6 +319,8 @@ export async function getProposalVotes(proposalId: number, page: number, pageSiz
       return { votes: [] as VoteView[], total: 0 }
     }
 
+    const normalized = normalizeGovernanceVotesPagination(params.data)
+
     try {
       let totalVotes = typeof knownTotalVotes === "number" && Number.isFinite(knownTotalVotes) ? knownTotalVotes : null
 
@@ -289,8 +329,8 @@ export async function getProposalVotes(proposalId: number, page: number, pageSiz
         if (!proposal) {
           trackGovernanceServerActionResult("governance.getProposalVotes", "success", {
             proposalId,
-            page: params.data.page,
-            pageSize: params.data.pageSize,
+            page: normalized.page,
+            pageSize: normalized.pageSize,
             itemCount: 0,
             total: 0,
           })
@@ -302,34 +342,34 @@ export async function getProposalVotes(proposalId: number, page: number, pageSiz
       if (totalVotes <= 0) {
         trackGovernanceServerActionResult("governance.getProposalVotes", "success", {
           proposalId,
-          page: params.data.page,
-          pageSize: params.data.pageSize,
+          page: normalized.page,
+          pageSize: normalized.pageSize,
           itemCount: 0,
           total: 0,
         })
         return { votes: [] as VoteView[], total: 0 }
       }
 
-      const offset = params.data.page * params.data.pageSize
+      const offset = normalized.page * normalized.pageSize
       if (offset >= totalVotes) {
         trackGovernanceServerActionResult("governance.getProposalVotes", "success", {
           proposalId,
-          page: params.data.page,
-          pageSize: params.data.pageSize,
+          page: normalized.page,
+          pageSize: normalized.pageSize,
           itemCount: 0,
           total: totalVotes,
         })
         return { votes: [] as VoteView[], total: totalVotes }
       }
 
-      const limit = Math.min(params.data.pageSize, totalVotes - offset)
+      const limit = Math.min(normalized.pageSize, totalVotes - offset)
       const fromIndex = Math.max(totalVotes - offset - limit, 0)
-      const votes = await getCachedVotes(proposalId, fromIndex, limit)
+      const votes = await getCachedVotesPage(proposalId, fromIndex, limit, normalized.page, normalized.pageSize)
       const result = { votes: [...votes].reverse(), total: totalVotes }
       trackGovernanceServerActionResult("governance.getProposalVotes", "success", {
         proposalId,
-        page: params.data.page,
-        pageSize: params.data.pageSize,
+        page: normalized.page,
+        pageSize: normalized.pageSize,
         itemCount: result.votes.length,
         total: result.total,
       })
@@ -341,31 +381,6 @@ export async function getProposalVotes(proposalId: number, page: number, pageSiz
         page_size: pageSize,
       })
       return { votes: [] as VoteView[], total: 0 }
-    }
-  })
-}
-
-export async function checkHasVoted(proposalId: number, accountId: string): Promise<boolean> {
-  return observeGovernanceAction("governance.checkHasVoted", async () => {
-    const parsed = nearAccountIdSchema.safeParse(accountId)
-    if (!parsed.success) {
-      trackGovernanceServerActionResult("governance.checkHasVoted", "validation_failed", { proposalId })
-      return false
-    }
-
-    try {
-      const hasVoted = await governanceReader.hasVoted(proposalId, parsed.data)
-      trackGovernanceServerActionResult("governance.checkHasVoted", "success", {
-        accountId: parsed.data,
-        proposalId,
-      })
-      return hasVoted
-    } catch (error) {
-      captureGovernanceActionError("governance.checkHasVoted", error, {
-        proposal_id: proposalId,
-        account_id: parsed.data,
-      })
-      return false
     }
   })
 }
@@ -392,6 +407,73 @@ export async function getVote(proposalId: number, accountId: string) {
         account_id: parsed.data,
       })
       return null
+    }
+  })
+}
+
+export type VoteEligibilitySnapshot = {
+  accountId: string
+  existingVote: VoteView | null
+  verification: TransformedVerificationSummary | null
+  isBlocklisted: boolean
+  isVoteFree: boolean
+  balance: string
+}
+
+function createFallbackVoteEligibilitySnapshot(accountId: string): VoteEligibilitySnapshot {
+  return {
+    accountId,
+    existingVote: null,
+    verification: null,
+    isBlocklisted: false,
+    isVoteFree: false,
+    balance: "0",
+  }
+}
+
+export async function getVoteEligibilitySnapshot(
+  proposalId: number,
+  accountId: string,
+): Promise<VoteEligibilitySnapshot> {
+  return observeGovernanceAction("governance.getVoteEligibilitySnapshot", async () => {
+    const parsed = nearAccountIdSchema.safeParse(accountId)
+    const normalizedProposalId = normalizeNonNegativeInt(proposalId)
+    if (!parsed.success || normalizedProposalId === undefined) {
+      trackGovernanceServerActionResult("governance.getVoteEligibilitySnapshot", "validation_failed", {
+        proposalId: normalizedProposalId,
+      })
+      return createFallbackVoteEligibilitySnapshot(parsed.success ? parsed.data : accountId)
+    }
+
+    try {
+      const [existingVote, verification, isBlocklisted, isVoteFree, balance] = await Promise.all([
+        governanceReader.getVote(normalizedProposalId, parsed.data),
+        getVerificationSummary(parsed.data),
+        getCachedIsBlocklisted(parsed.data),
+        getCachedIsVoteFree(),
+        getCachedAccountBalance(parsed.data).catch(() => "0"),
+      ])
+
+      trackGovernanceServerActionResult("governance.getVoteEligibilitySnapshot", "success", {
+        accountId: parsed.data,
+        proposalId: normalizedProposalId,
+        itemCount: existingVote ? 1 : 0,
+      })
+
+      return {
+        accountId: parsed.data,
+        existingVote,
+        verification,
+        isBlocklisted,
+        isVoteFree,
+        balance,
+      }
+    } catch (error) {
+      captureGovernanceActionError("governance.getVoteEligibilitySnapshot", error, {
+        account_id: parsed.data,
+        proposal_id: normalizedProposalId,
+      })
+      return createFallbackVoteEligibilitySnapshot(parsed.data)
     }
   })
 }
@@ -428,7 +510,7 @@ export async function checkIsBlocklisted(accountId: string): Promise<boolean> {
     }
 
     try {
-      const isBlocklisted = await governanceReader.isBlocklisted(parsed.data)
+      const isBlocklisted = await getCachedIsBlocklisted(parsed.data)
       trackGovernanceServerActionResult("governance.checkIsBlocklisted", "success", { accountId: parsed.data })
       return isBlocklisted
     } catch (error) {
@@ -451,14 +533,21 @@ export async function checkIsSuperAdmin(): Promise<boolean> {
   })
 }
 
-const getCachedIsVoteFree = unstable_cache(
-  () => governanceReader.isVoteFree(),
-  ["governance-vote-free", governanceContractId],
-  {
-    tags: ["governance"],
-    revalidate: 60,
-  },
-)
+async function getCachedIsBlocklisted(accountId: string) {
+  "use cache"
+
+  cacheLife("rpc_cold")
+  cacheTag(governanceTags.root, governanceTags.blocklist, governanceTags.blocklistAll)
+  return governanceReader.isBlocklisted(accountId)
+}
+
+async function getCachedIsVoteFree() {
+  "use cache"
+
+  cacheLife("rpc_cold")
+  cacheTag(governanceTags.root, governanceTags.voteFree, governanceTags.config)
+  return governanceReader.isVoteFree()
+}
 
 export async function checkIsVoteFree(): Promise<boolean> {
   return observeGovernanceAction("governance.checkIsVoteFree", async () => {
@@ -473,14 +562,13 @@ export async function checkIsVoteFree(): Promise<boolean> {
   })
 }
 
-const getCachedConfig = unstable_cache(
-  () => governanceReader.getConfig(),
-  ["governance-config", governanceContractId],
-  {
-    tags: ["governance"],
-    revalidate: 60,
-  },
-)
+async function getCachedConfig() {
+  "use cache"
+
+  cacheLife("rpc_warm")
+  cacheTag(governanceTags.root, governanceTags.config)
+  return governanceReader.getConfig()
+}
 
 export async function getGovernanceConfig(): Promise<GovernanceConfig | null> {
   return observeGovernanceAction("governance.getGovernanceConfig", async () => {
@@ -495,11 +583,13 @@ export async function getGovernanceConfig(): Promise<GovernanceConfig | null> {
   })
 }
 
-const getCachedAdmins = unstable_cache(
-  (fromIndex: number, limit: number) => governanceReader.listAdmins(fromIndex, limit),
-  ["governance-admins", governanceContractId],
-  { tags: ["governance"], revalidate: 30 },
-)
+async function getCachedAdminsPage(fromIndex: number, limit: number, page: number, pageSize: number) {
+  "use cache"
+
+  cacheLife("rpc_warm")
+  cacheTag(governanceTags.root, governanceTags.admins, governanceTags.adminsPage(page, pageSize))
+  return governanceReader.listAdmins(fromIndex, limit)
+}
 
 export async function getAdminList(page: number, pageSize: number) {
   return observeGovernanceAction("governance.getAdminList", async () => {
@@ -509,13 +599,15 @@ export async function getAdminList(page: number, pageSize: number) {
       return { admins: [] as string[], total: 0 }
     }
 
+    const normalized = normalizeGovernanceAdminsPagination(params.data)
+
     try {
-      const fromIndex = params.data.page * params.data.pageSize
-      const admins = await getCachedAdmins(fromIndex, params.data.pageSize)
+      const fromIndex = normalized.page * normalized.pageSize
+      const admins = await getCachedAdminsPage(fromIndex, normalized.pageSize, normalized.page, normalized.pageSize)
       const result = { admins, total: -1 }
       trackGovernanceServerActionResult("governance.getAdminList", "success", {
-        page: params.data.page,
-        pageSize: params.data.pageSize,
+        page: normalized.page,
+        pageSize: normalized.pageSize,
         itemCount: admins.length,
       })
       return result
@@ -526,11 +618,18 @@ export async function getAdminList(page: number, pageSize: number) {
   })
 }
 
-const getCachedBlocklist = unstable_cache(
-  (fromIndex: number, limit: number) => governanceReader.listBlocklist(fromIndex, limit),
-  ["governance-blocklist", governanceContractId],
-  { tags: ["governance"], revalidate: 30 },
-)
+async function getCachedBlocklistPage(fromIndex: number, limit: number, page: number, pageSize: number) {
+  "use cache"
+
+  cacheLife("rpc_warm")
+  cacheTag(
+    governanceTags.root,
+    governanceTags.blocklist,
+    governanceTags.blocklistAll,
+    governanceTags.blocklistPage(page, pageSize),
+  )
+  return governanceReader.listBlocklist(fromIndex, limit)
+}
 
 export async function getBlocklist(page: number, pageSize: number) {
   return observeGovernanceAction("governance.getBlocklist", async () => {
@@ -540,13 +639,20 @@ export async function getBlocklist(page: number, pageSize: number) {
       return { accounts: [] as string[], total: 0 }
     }
 
+    const normalized = normalizeGovernanceBlocklistPagination(params.data)
+
     try {
-      const fromIndex = params.data.page * params.data.pageSize
-      const accounts = await getCachedBlocklist(fromIndex, params.data.pageSize)
+      const fromIndex = normalized.page * normalized.pageSize
+      const accounts = await getCachedBlocklistPage(
+        fromIndex,
+        normalized.pageSize,
+        normalized.page,
+        normalized.pageSize,
+      )
       const result = { accounts, total: -1 }
       trackGovernanceServerActionResult("governance.getBlocklist", "success", {
-        page: params.data.page,
-        pageSize: params.data.pageSize,
+        page: normalized.page,
+        pageSize: normalized.pageSize,
         itemCount: accounts.length,
       })
       return result
@@ -557,10 +663,18 @@ export async function getBlocklist(page: number, pageSize: number) {
   })
 }
 
+async function getCachedIsBlocklistLocked() {
+  "use cache"
+
+  cacheLife("rpc_hot")
+  cacheTag(governanceTags.root, governanceTags.blocklistLock, governanceTags.blocklist)
+  return governanceReader.isBlocklistLocked()
+}
+
 export async function checkIsBlocklistLocked(): Promise<boolean> {
   return observeGovernanceAction("governance.checkIsBlocklistLocked", async () => {
     try {
-      const isLocked = await governanceReader.isBlocklistLocked()
+      const isLocked = await getCachedIsBlocklistLocked()
       trackGovernanceServerActionResult("governance.checkIsBlocklistLocked", "success")
       return isLocked
     } catch (error) {
@@ -575,37 +689,44 @@ export type BlocklistLockInfo = {
   hasActiveProposals: boolean
 }
 
+async function getCachedBlocklistLockInfo() {
+  "use cache"
+
+  cacheLife("rpc_hot")
+  cacheTag(governanceTags.root, governanceTags.blocklistLock, governanceTags.proposals)
+
+  const locked = await governanceReader.isBlocklistLocked()
+  if (!locked) {
+    return { locked: false, hasActiveProposals: false } as BlocklistLockInfo
+  }
+
+  // Determine lock reason by checking for pending/active proposals across all pages
+  const pageSize = 100
+  const firstPage = await governanceReader.listProposalsNewestFirst({ page: 0, pageSize })
+  const hasActiveInPage = (pageProposals: typeof firstPage.proposals) =>
+    pageProposals.some((proposal) => proposal.status === "pending" || proposal.status === "active")
+
+  if (hasActiveInPage(firstPage.proposals)) {
+    return { locked: true, hasActiveProposals: true } as BlocklistLockInfo
+  }
+
+  const totalPages = Math.ceil(firstPage.total / pageSize)
+  for (let page = 1; page < totalPages; page += 1) {
+    const { proposals } = await governanceReader.listProposalsNewestFirst({ page, pageSize })
+    if (hasActiveInPage(proposals)) {
+      return { locked: true, hasActiveProposals: true } as BlocklistLockInfo
+    }
+  }
+
+  return { locked: true, hasActiveProposals: false } as BlocklistLockInfo
+}
+
 export async function getBlocklistLockInfo(): Promise<BlocklistLockInfo> {
   return observeGovernanceAction("governance.getBlocklistLockInfo", async () => {
     try {
-      const locked = await governanceReader.isBlocklistLocked()
-      if (!locked) {
-        trackGovernanceServerActionResult("governance.getBlocklistLockInfo", "success")
-        return { locked: false, hasActiveProposals: false }
-      }
-
-      // Determine lock reason by checking for pending/active proposals across all pages
-      const pageSize = 100
-      const firstPage = await governanceReader.listProposalsNewestFirst({ page: 0, pageSize })
-      const hasActiveInPage = (pageProposals: typeof firstPage.proposals) =>
-        pageProposals.some((p) => p.status === "pending" || p.status === "active")
-
-      if (hasActiveInPage(firstPage.proposals)) {
-        trackGovernanceServerActionResult("governance.getBlocklistLockInfo", "success")
-        return { locked: true, hasActiveProposals: true }
-      }
-
-      const totalPages = Math.ceil(firstPage.total / pageSize)
-      for (let page = 1; page < totalPages; page += 1) {
-        const { proposals } = await governanceReader.listProposalsNewestFirst({ page, pageSize })
-        if (hasActiveInPage(proposals)) {
-          trackGovernanceServerActionResult("governance.getBlocklistLockInfo", "success")
-          return { locked: true, hasActiveProposals: true }
-        }
-      }
-
+      const result = await getCachedBlocklistLockInfo()
       trackGovernanceServerActionResult("governance.getBlocklistLockInfo", "success")
-      return { locked: true, hasActiveProposals: false }
+      return result
     } catch (error) {
       captureGovernanceActionError("governance.getBlocklistLockInfo", error)
       return { locked: false, hasActiveProposals: false }
@@ -613,10 +734,23 @@ export async function getBlocklistLockInfo(): Promise<BlocklistLockInfo> {
   })
 }
 
+async function getCachedPendingVotesCount(proposalId: number): Promise<number> {
+  "use cache"
+
+  cacheLife("rpc_hot")
+  cacheTag(
+    governanceTags.root,
+    governanceTags.pendingVotes,
+    governanceTags.proposal(proposalId),
+    governanceTags.pendingVotesForProposal(proposalId),
+  )
+  return governanceReader.getPendingVotesCount(proposalId)
+}
+
 export async function getPendingVotesCount(proposalId: number): Promise<number> {
   return observeGovernanceAction("governance.getPendingVotesCount", async () => {
     try {
-      const pendingVotesCount = await governanceReader.getPendingVotesCount(proposalId)
+      const pendingVotesCount = await getCachedPendingVotesCount(proposalId)
       trackGovernanceServerActionResult("governance.getPendingVotesCount", "success", {
         proposalId,
       })
@@ -632,37 +766,44 @@ export async function getPendingVotesCount(proposalId: number): Promise<number> 
 // Account Balance
 // =============================================================================
 
-export async function checkAccountBalance(accountId: string): Promise<string> {
-  return observeGovernanceAction("governance.checkAccountBalance", async () => {
-    const parsed = nearAccountIdSchema.safeParse(accountId)
-    if (!parsed.success) {
-      trackGovernanceServerActionResult("governance.checkAccountBalance", "validation_failed")
-      return "0"
-    }
+async function getCachedAccountBalance(accountId: string): Promise<string> {
+  "use cache"
 
-    try {
-      const provider = createRpcProvider()
-      const response = await provider.query<AccountViewRaw>({
-        request_type: "view_account",
-        account_id: parsed.data,
-        finality: "optimistic",
-      })
-      trackGovernanceServerActionResult("governance.checkAccountBalance", "success", { accountId: parsed.data })
-      return response.amount
-    } catch (error) {
-      captureGovernanceActionError("governance.checkAccountBalance", error, { account_id: parsed.data })
-      return "0"
-    }
+  cacheLife("rpc_cold")
+
+  const provider = createRpcProvider()
+  const response = await provider.query<AccountViewRaw>({
+    request_type: "view_account",
+    account_id: accountId,
+    finality: "optimistic",
   })
+  return response.amount
 }
 
 // =============================================================================
 // Cache Revalidation
 // =============================================================================
 
-export async function revalidateGovernance() {
-  return observeGovernanceAction("governance.revalidateGovernance", async () => {
-    updateTag("governance")
-    trackGovernanceServerActionResult("governance.revalidateGovernance", "success")
+export type { GovernanceInvalidationInput }
+
+export async function invalidateGovernanceCache(input: GovernanceInvalidationInput) {
+  return observeGovernanceAction("governance.invalidateGovernanceCache", async () => {
+    const tags = getGovernanceInvalidationTags(input)
+    for (const tag of tags) {
+      updateTag(tag)
+    }
+
+    trackGovernanceServerActionResult("governance.invalidateGovernanceCache", "success", {
+      proposalId: input.proposalId,
+      accountId: input.accountId,
+      itemCount: tags.length,
+    })
   })
+}
+
+/**
+ * @deprecated Use invalidateGovernanceCache with an explicit operation.
+ */
+export async function revalidateGovernance() {
+  return invalidateGovernanceCache({ op: "proposal_update" })
 }

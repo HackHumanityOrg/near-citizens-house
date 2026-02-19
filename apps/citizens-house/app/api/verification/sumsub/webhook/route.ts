@@ -14,6 +14,7 @@ import { revalidateTag } from "next/cache"
 import { verifyWebhookSignature, getApplicant, getMetadataValue } from "@/lib/providers/sumsub-provider"
 import { NEAR_SERVER_CONFIG } from "@/lib/config.server"
 import { setBackendKeyPoolRedis, verificationDb } from "@/lib/contracts/verification/client"
+import { getVerificationMutationRevalidateTags } from "@/lib/cache/rpc-tags"
 import { getRedisClient } from "@/lib/redis"
 import { trackServerEvent } from "@/lib/analytics-server"
 import { getSigningMessage, getSigningRecipient, verifyNearSignature, validateSignatureData } from "@/lib/verification"
@@ -529,8 +530,10 @@ export const POST = withObservability(
           ...webhookMeta,
         })
 
-        // Revalidate verifications cache
-        revalidateTag("verifications", "max")
+        // Revalidate verification and citizens caches after a successful on-chain write.
+        for (const tag of getVerificationMutationRevalidateTags()) {
+          revalidateTag(tag, "max")
+        }
 
         log.set("webhook_outcome", "onchain_stored")
         return webhookAck("Verification stored successfully", validAccountId)

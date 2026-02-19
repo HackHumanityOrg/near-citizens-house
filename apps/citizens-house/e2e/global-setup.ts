@@ -16,11 +16,12 @@ import { actionCreators } from "@near-js/transactions"
 import type { FullConfig } from "@playwright/test"
 import { deriveWorkerKey } from "./helpers/deterministic-keys"
 import type { NearAccountId } from "@/lib"
+import { getFastNearRpcUrl } from "@/lib/rpc-endpoints"
 
 // FastNEAR RPC configuration
 function getFastNearUrl(): string {
-  const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
-  return networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+  const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet"
+  return getFastNearRpcUrl(networkId)
 }
 
 function getFastNearHeaders(): Record<string, string> {

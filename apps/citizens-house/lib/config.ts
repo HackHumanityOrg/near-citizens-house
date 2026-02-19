@@ -6,13 +6,13 @@
  */
 import { env } from "./schemas/env"
 import type { NearAccountId } from "./schemas/near"
+import { getFastNearRpcUrl } from "./rpc-endpoints"
 
 // NEAR Network Configuration
 const networkId = env.NEXT_PUBLIC_NEAR_NETWORK
 
 // FastNEAR RPC URL
-const getFastNearUrl = () =>
-  networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+const getFastNearUrl = () => getFastNearRpcUrl(networkId)
 
 export const NEAR_CONFIG = {
   networkId,

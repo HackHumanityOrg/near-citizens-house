@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import { buildClearStalePendingVoteTx, buildClearStaleBlocklistOpTx } from "@/lib/contracts/governance/transactions"
 import { trackEvent } from "@/lib/analytics"
 import {
-  revalidateGovernance,
+  invalidateGovernanceCache,
   getBlocklistLockInfo,
   getPendingVotesCount,
   type BlocklistLockInfo,
@@ -49,7 +49,7 @@ export function RecoveryPanel() {
 
   const loading = txLoading || isPending
 
-  const handleClearPendingVote = async (e: React.FormEvent) => {
+  const handleClearPendingVote = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!isConnected || !accountId || !proposalId || !voteAccountId.trim()) return
 
@@ -67,7 +67,7 @@ export function RecoveryPanel() {
     try {
       await signAndSendTransaction(buildClearStalePendingVoteTx(parsedProposalId, voteAccountId.trim()))
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "recovery_update", proposalId: parsedProposalId, accountId })
       })
       trackEvent({
         domain: "governance",
@@ -116,7 +116,7 @@ export function RecoveryPanel() {
     try {
       await signAndSendTransaction(buildClearStaleBlocklistOpTx())
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "recovery_update", accountId })
       })
       trackEvent({
         domain: "governance",

@@ -1,3 +1,4 @@
+import { Suspense, type ReactNode } from "react"
 import { getPublicProposals } from "./actions"
 import { ProposalsList } from "@/components/governance/proposals-list"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
@@ -8,22 +9,7 @@ interface Props {
   searchParams: Promise<{ page?: string }>
 }
 
-export default async function GovernancePage({ searchParams }: Props) {
-  const params = await searchParams
-  const rawPage = parseInt(params.page || "0", 10)
-  const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
-
-  let { proposals, total } = await getPublicProposals(requestedPage, PAGE_SIZE)
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-
-  const clampedPage = Math.min(requestedPage, totalPages - 1)
-  if (clampedPage !== requestedPage && total > 0) {
-    const result = await getPublicProposals(clampedPage, PAGE_SIZE)
-    proposals = result.proposals
-    total = result.total
-  }
-  const page = clampedPage
-
+function GovernancePageShell({ children }: { children: ReactNode }) {
   return (
     <div className="w-full">
       {/* Hero Section */}
@@ -46,10 +32,48 @@ export default async function GovernancePage({ searchParams }: Props) {
         </div>
       </section>
 
-      {/* Proposals List */}
-      <div className="relative z-10 -mt-[240px] md:-mt-[280px] pb-[80px]">
-        <ProposalsList proposals={proposals} total={total} page={page} pageSize={PAGE_SIZE} totalPages={totalPages} />
-      </div>
+      <div className="relative z-10 -mt-[240px] md:-mt-[280px] pb-[80px]">{children}</div>
     </div>
+  )
+}
+
+function GovernancePageFallback() {
+  return (
+    <GovernancePageShell>
+      <div className="mx-auto w-full max-w-[1200px] px-4 md:px-[82px]">
+        <div className="h-[320px] rounded-[20px] border border-black/10 bg-white/60 dark:border-white/10 dark:bg-[#191a23]/60" />
+      </div>
+    </GovernancePageShell>
+  )
+}
+
+export default function GovernancePage({ searchParams }: Props) {
+  return (
+    <Suspense fallback={<GovernancePageFallback />}>
+      <GovernancePageContent searchParams={searchParams} />
+    </Suspense>
+  )
+}
+
+async function GovernancePageContent({ searchParams }: Props) {
+  const params = await searchParams
+  const rawPage = parseInt(params.page || "0", 10)
+  const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
+
+  let { proposals, total } = await getPublicProposals(requestedPage, PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const clampedPage = Math.min(requestedPage, totalPages - 1)
+  if (clampedPage !== requestedPage && total > 0) {
+    const result = await getPublicProposals(clampedPage, PAGE_SIZE)
+    proposals = result.proposals
+    total = result.total
+  }
+  const page = clampedPage
+
+  return (
+    <GovernancePageShell>
+      <ProposalsList proposals={proposals} total={total} page={page} pageSize={PAGE_SIZE} totalPages={totalPages} />
+    </GovernancePageShell>
   )
 }

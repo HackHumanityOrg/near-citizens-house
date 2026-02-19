@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import type React from "react"
 import type { Metadata } from "next"
 import * as Sentry from "@sentry/nextjs"
@@ -40,11 +41,7 @@ export function generateMetadata(): Metadata {
   }
 }
 
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+async function HeaderWithMode() {
   let isVoting = false
   try {
     isVoting = (await appMode()) === "voting"
@@ -52,6 +49,22 @@ export default async function RootLayout({
     // Flag evaluation failed — default to non-voting
   }
 
+  return <Header isVoting={isVoting} />
+}
+
+function HeaderFallback() {
+  return (
+    <header className="relative z-50 bg-transparent">
+      <div className="h-[88px] md:h-[96px]" />
+    </header>
+  )
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
   return (
     // suppressHydrationWarning required for next-themes - theme stored in localStorage causes hydration mismatch
     <html lang="en" suppressHydrationWarning>
@@ -60,9 +73,13 @@ export default async function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
-            <Header isVoting={isVoting} />
+            <Suspense fallback={<HeaderFallback />}>
+              <HeaderWithMode />
+            </Suspense>
             <main className="flex-1">{children}</main>
-            <Footer />
+            <Suspense fallback={null}>
+              <Footer />
+            </Suspense>
             <ConsentBanner />
             <Toaster />
             <DebugPanel />

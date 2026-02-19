@@ -1,7 +1,7 @@
 "use server"
 
 import * as Sentry from "@sentry/nextjs"
-import { unstable_cache } from "next/cache"
+import { cacheLife, cacheTag } from "next/cache"
 import {
   NEAR_CONFIG,
   parseUserContextData,
@@ -18,6 +18,7 @@ import { governanceReader } from "@/lib/contracts/governance/client"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 import { signatureVerificationDataSchema, type SignatureVerificationData } from "@/lib/schemas/verification-signature"
 import { withObservedServerAction } from "@/lib/observability/server-action"
+import { citizensTags, governanceTags, normalizeCitizensPagination, verificationTags } from "@/lib/cache/rpc-tags"
 
 export type VerificationResult = {
   signatureValid: boolean
@@ -52,11 +53,13 @@ async function fetchBlocklist(): Promise<string[]> {
   return all
 }
 
-const getCachedBlocklist = unstable_cache(
-  () => fetchBlocklist(),
-  ["citizens-blocklist", NEAR_CONFIG.governanceContractId ?? ""],
-  { tags: ["governance"], revalidate: 60 },
-)
+async function getCachedBlocklist() {
+  "use cache"
+
+  cacheLife("rpc_warm")
+  cacheTag(governanceTags.root, governanceTags.blocklist, governanceTags.blocklistAll)
+  return fetchBlocklist()
+}
 
 async function verifyAccountSignatures(accounts: TransformedVerification[]): Promise<VerificationWithStatus[]> {
   return Promise.all(
@@ -219,18 +222,27 @@ async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetV
  * Cached version of fetchAndVerifyVerifications.
  * Cache is tagged with 'verifications' for on-demand revalidation.
  */
-const getCachedVerifications = unstable_cache(
-  (pagination: Pagination) => fetchAndVerifyVerifications(pagination),
-  ["verifications", NEAR_CONFIG.verificationContractId],
-  {
-    tags: ["verifications", "governance"],
-    revalidate: 60, // Revalidate every 60 seconds (1 minute)
-  },
-)
+async function getCachedVerifications(pagination: Pagination) {
+  "use cache"
+
+  const normalized = normalizeCitizensPagination(pagination)
+  cacheLife("rpc_warm")
+  cacheTag(
+    verificationTags.root,
+    verificationTags.pages,
+    verificationTags.page(normalized.page, normalized.pageSize),
+    citizensTags.pages,
+    citizensTags.page(normalized.page, normalized.pageSize),
+    governanceTags.blocklist,
+    governanceTags.blocklistAll,
+  )
+
+  return fetchAndVerifyVerifications(normalized)
+}
 
 /**
  * Server action to get verifications with status.
- * Uses unstable_cache for caching with 1-minute revalidation.
+ * Uses Next.js Cache Components (`use cache`) for server-side caching.
  * NEAR signature verification happens server-side.
  */
 export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
@@ -246,8 +258,10 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
       return { accounts: [], total: 0 }
     }
 
+    const normalized = normalizeCitizensPagination(params.data)
+
     try {
-      return await getCachedVerifications(params.data)
+      return await getCachedVerifications(normalized)
     } catch (error) {
       Sentry.captureException(error, {
         tags: { area: "citizens_getVerificationsWithStatus" },
@@ -317,7 +331,7 @@ export async function getVerificationSummary(
     }
 
     try {
-      return await verificationDb.getVerification(parsed.data)
+      return await getCachedVerificationSummary(parsed.data)
     } catch (error) {
       Sentry.captureException(error, {
         level: "warning",
@@ -327,4 +341,14 @@ export async function getVerificationSummary(
       return null
     }
   })
+}
+
+async function getCachedVerificationSummary(
+  nearAccountId: NearAccountId,
+): Promise<TransformedVerificationSummary | null> {
+  "use cache"
+
+  cacheLife("rpc_cold")
+  cacheTag(verificationTags.root, verificationTags.summaries, verificationTags.summary(nearAccountId))
+  return verificationDb.getVerification(nearAccountId)
 }

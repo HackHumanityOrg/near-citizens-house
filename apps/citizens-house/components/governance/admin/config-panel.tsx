@@ -17,7 +17,7 @@ import {
   buildUpdateMaxStartDelaySecsTx,
   buildUpdateVerifiedAccountsContractTx,
 } from "@/lib/contracts/governance/transactions"
-import { getGovernanceConfig, revalidateGovernance } from "@/app/proposals/actions"
+import { getGovernanceConfig, invalidateGovernanceCache } from "@/app/proposals/actions"
 
 function secsToDisplay(secs: number): string {
   if (secs < 3600) return `${Math.round(secs / 60)} minutes`
@@ -65,7 +65,7 @@ export function ConfigPanel() {
 
       await signAndSendTransaction(builder())
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "config_update", accountId })
       })
       trackEvent({
         domain: "governance",

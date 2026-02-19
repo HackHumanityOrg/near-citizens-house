@@ -1,26 +1,21 @@
-const utcDateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-})
-
-const utcDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-  timeZone: "UTC",
-})
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const
 
 export function formatUtcDate(timestampMs: number): string {
-  return utcDateFormatter.format(new Date(timestampMs))
+  const date = new Date(timestampMs)
+  const month = MONTHS_SHORT[date.getUTCMonth()]
+  const day = date.getUTCDate()
+  const year = date.getUTCFullYear()
+  return `${month} ${day}, ${year}`
 }
 
 export function formatUtcDateTime(timestampMs: number): string {
-  return `${utcDateTimeFormatter.format(new Date(timestampMs))} UTC`
+  const date = new Date(timestampMs)
+  const baseDate = formatUtcDate(timestampMs)
+  const hours = date.getUTCHours()
+  const minutes = date.getUTCMinutes().toString().padStart(2, "0")
+  const ampm = hours >= 12 ? "PM" : "AM"
+  const hour12 = hours % 12 || 12
+  return `${baseDate}, ${hour12}:${minutes} ${ampm} UTC`
 }
 
 export function parseDatetimeLocalToEpochMs(value: string): number | null {

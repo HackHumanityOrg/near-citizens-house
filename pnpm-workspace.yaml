@@ -2,10 +2,11 @@ packages:
   - apps/*
 
 onlyBuiltDependencies:
-  - "@sentry-internal/node-cpu-profiler"
-  - "@sentry/cli"
-  - "@posthog/cli"
+  - '@posthog/cli'
+  - '@sentry-internal/node-cpu-profiler'
+  - '@sentry/cli'
   - blake-hash
+  - core-js
   - esbuild
   - near-sandbox
   - near-workspaces

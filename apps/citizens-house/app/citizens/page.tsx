@@ -1,3 +1,4 @@
+import { Suspense, type ReactNode } from "react"
 import { getVerificationsWithStatus } from "./actions"
 import { VerificationsTable } from "@/components/citizens/verifications-table"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
@@ -8,23 +9,7 @@ interface Props {
   searchParams: Promise<{ page?: string }>
 }
 
-export default async function VerificationsPage({ searchParams }: Props) {
-  const params = await searchParams
-  const rawPage = parseInt(params.page || "0", 10)
-  const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
-
-  let { accounts, total } = await getVerificationsWithStatus(requestedPage, PAGE_SIZE)
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-
-  // If requested page is out of range and there's data, re-fetch the last valid page
-  const clampedPage = Math.min(requestedPage, totalPages - 1)
-  if (clampedPage !== requestedPage && total > 0) {
-    const result = await getVerificationsWithStatus(clampedPage, PAGE_SIZE)
-    accounts = result.accounts
-    total = result.total
-  }
-  const page = clampedPage
-
+function CitizensPageShell({ children }: { children: ReactNode }) {
   return (
     <div className="w-full">
       {/* Hero Section with gradient background */}
@@ -52,16 +37,49 @@ export default async function VerificationsPage({ searchParams }: Props) {
         </div>
       </section>
 
-      {/* Table Section - more space from title, header aligns with gradient edge */}
-      <div className="relative z-10 -mt-[240px] md:-mt-[280px] pb-[80px]">
-        <VerificationsTable
-          accounts={accounts}
-          total={total}
-          page={page}
-          pageSize={PAGE_SIZE}
-          totalPages={totalPages}
-        />
-      </div>
+      <div className="relative z-10 -mt-[240px] md:-mt-[280px] pb-[80px]">{children}</div>
     </div>
+  )
+}
+
+function CitizensPageFallback() {
+  return (
+    <CitizensPageShell>
+      <div className="mx-auto w-full max-w-[1200px] px-4 md:px-[82px]">
+        <div className="h-[420px] rounded-[20px] border border-black/10 bg-white/60 dark:border-white/10 dark:bg-[#191a23]/60" />
+      </div>
+    </CitizensPageShell>
+  )
+}
+
+export default function VerificationsPage({ searchParams }: Props) {
+  return (
+    <Suspense fallback={<CitizensPageFallback />}>
+      <VerificationsPageContent searchParams={searchParams} />
+    </Suspense>
+  )
+}
+
+async function VerificationsPageContent({ searchParams }: Props) {
+  const params = await searchParams
+  const rawPage = parseInt(params.page || "0", 10)
+  const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
+
+  let { accounts, total } = await getVerificationsWithStatus(requestedPage, PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  // If requested page is out of range and there's data, re-fetch the last valid page
+  const clampedPage = Math.min(requestedPage, totalPages - 1)
+  if (clampedPage !== requestedPage && total > 0) {
+    const result = await getVerificationsWithStatus(clampedPage, PAGE_SIZE)
+    accounts = result.accounts
+    total = result.total
+  }
+  const page = clampedPage
+
+  return (
+    <CitizensPageShell>
+      <VerificationsTable accounts={accounts} total={total} page={page} pageSize={PAGE_SIZE} totalPages={totalPages} />
+    </CitizensPageShell>
   )
 }

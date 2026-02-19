@@ -31,11 +31,12 @@ import { KeyPairSigner } from "@near-js/signers"
 import { JsonRpcProvider } from "@near-js/providers"
 import * as fs from "fs"
 import { nearAccountIdSchema, type NearAccountId } from "@/lib"
+import { getFastNearRpcUrl } from "@/lib/rpc-endpoints"
 
 // RPC Configuration (same as near-account-manager.ts)
 function getFastNearUrl(): string {
-  const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK || "testnet"
-  return networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+  const networkId = process.env.NEXT_PUBLIC_NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet"
+  return getFastNearRpcUrl(networkId)
 }
 
 function getFastNearHeaders(): Record<string, string> {

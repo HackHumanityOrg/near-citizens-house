@@ -4,24 +4,21 @@ import * as Sentry from "@sentry/nextjs"
 import { useState, useEffect, useRef, useTransition, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@near-citizens/ui"
+import useSWR from "swr"
 import { useNearWallet } from "@/lib"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { trackEvent } from "@/lib/analytics"
 import type { ProposalView, VoteChoice, VoteView } from "@/lib/schemas/governance-contract"
-import type { TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
 import { formatUtcDate, formatUtcDateTime } from "@/lib/governance-dates"
 import { buildCastVoteTx } from "@/lib/contracts/governance/transactions"
 import {
-  checkHasVoted,
   getVote,
-  checkIsVoteFree,
-  checkAccountBalance,
-  checkIsBlocklisted,
-  revalidateGovernance,
+  getVoteEligibilitySnapshot,
+  type VoteEligibilitySnapshot,
+  invalidateGovernanceCache,
 } from "@/app/proposals/actions"
-import { getVerificationSummary } from "@/app/citizens/actions"
 import { NEAR_CONFIG } from "@/lib/config"
 import { encodeSignedDelegate } from "@near-js/transactions"
 import { GAS_100_TGAS } from "@/lib/contracts/gas"
@@ -48,14 +45,8 @@ interface Props {
 // Minimum balance to cover gas (~0.01 NEAR in yoctoNEAR)
 const MIN_GAS_BALANCE = BigInt("10000000000000000000000")
 
-interface EligibilityResult {
-  accountId: string
-  existingVote: VoteView | null
-  verification: TransformedVerificationSummary | null
-  isBlocklisted: boolean
-  isVoteFree: boolean
-  balance: string
-}
+type EligibilityResult = VoteEligibilitySnapshot
+type EligibilityKey = readonly ["governance-vote-eligibility", number, string]
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -172,57 +163,28 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
   const router = useRouter()
   const { accountId, walletName, isConnected, signAndSendTransaction, signDelegateActions, supportsMetaTransactions } =
     useNearWallet()
-  const [eligibility, setEligibility] = useState<EligibilityResult | null>(null)
   const [txLoading, setTxLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const lastEligibilityEventRef = useRef<string>("")
 
-  useEffect(() => {
-    if (!isConnected || !accountId) return
-
-    Promise.all([
-      checkHasVoted(proposal.id, accountId).then((voted) => (voted ? getVote(proposal.id, accountId) : null)),
-      getVerificationSummary(accountId),
-      checkIsBlocklisted(accountId),
-      checkIsVoteFree(),
-      checkAccountBalance(accountId),
-    ]).then(([vote, verification, isBlocklisted, voteFree, balance]) => {
-      setEligibility({ accountId, existingVote: vote, verification, isBlocklisted, isVoteFree: voteFree, balance })
-    })
-  }, [isConnected, accountId, proposal.id])
-
-  useEffect(() => {
-    if (!isConnected || !accountId) return
-
-    let cancelled = false
-
-    getVote(proposal.id, accountId)
-      .then((vote) => {
-        if (cancelled || !vote) return
-
-        setEligibility((prev) => {
-          if (!prev || prev.accountId !== accountId) return prev
-          if (prev.existingVote?.choice === vote.choice && prev.existingVote.votedAt === vote.votedAt) return prev
-          return { ...prev, existingVote: vote }
-        })
-      })
-      .catch((error) => {
-        const capturedError = error instanceof Error ? error : new Error(String(error))
-        Sentry.captureException(capturedError, {
-          level: "warning",
-          tags: { area: "governance_vote_panel", stage: "sync_vote_state" },
-          extra: { proposal_id: proposal.id, account_id: accountId },
-        })
-      })
-
-    return () => {
-      cancelled = true
+  const eligibilityKey: EligibilityKey | null =
+    isConnected && accountId ? (["governance-vote-eligibility", proposal.id, accountId] as const) : null
+  const {
+    data: eligibility,
+    isLoading: eligibilityLoading,
+    mutate: mutateEligibility,
+  } = useSWR<EligibilityResult, Error, EligibilityKey | null>(eligibilityKey, (key) => {
+    if (!key) {
+      throw new Error("Eligibility key missing")
     }
-  }, [isConnected, accountId, proposal.id, proposal.yesVotes, proposal.noVotes])
+
+    const [, proposalId, currentAccountId] = key
+    return getVoteEligibilitySnapshot(proposalId, currentAccountId)
+  })
 
   // Derive current state — stale results for a different account are ignored
-  const current = eligibility?.accountId === accountId ? eligibility : null
-  const checking = isConnected && !!accountId && !current
+  const current = accountId && eligibility?.accountId === accountId ? eligibility : null
+  const checking = isConnected && !!accountId && (eligibilityLoading || !current)
   const existingVote = current?.existingVote ?? null
   const verification = current?.verification ?? null
   const isVerified = verification !== null
@@ -311,7 +273,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
     }
     const safeRefreshGovernanceView = async () => {
       try {
-        await revalidateGovernance()
+        await invalidateGovernanceCache({ op: "vote_cast", proposalId: proposal.id, accountId })
       } catch (error) {
         const capturedError = error instanceof Error ? error : new Error(String(error))
         Sentry.captureException(capturedError, {
@@ -352,17 +314,20 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       }
 
       if (syncedVote) {
-        setEligibility((prev) => {
-          if (!prev || prev.accountId !== targetAccountId) return prev
-          if (
-            prev.existingVote?.choice === syncedVote.choice &&
-            prev.existingVote.votedAt === syncedVote.votedAt &&
-            prev.existingVote.voter === syncedVote.voter
-          ) {
-            return prev
-          }
-          return { ...prev, existingVote: syncedVote }
-        })
+        mutateEligibility(
+          (prev) => {
+            if (!prev || prev.accountId !== targetAccountId) return prev
+            if (
+              prev.existingVote?.choice === syncedVote.choice &&
+              prev.existingVote.votedAt === syncedVote.votedAt &&
+              prev.existingVote.voter === syncedVote.voter
+            ) {
+              return prev
+            }
+            return { ...prev, existingVote: syncedVote }
+          },
+          { revalidate: false },
+        )
       }
 
       return syncedVote

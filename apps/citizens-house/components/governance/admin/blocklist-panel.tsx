@@ -13,7 +13,7 @@ import {
   checkIsBlocklisted,
   getBlocklist,
   getBlocklistLockInfo,
-  revalidateGovernance,
+  invalidateGovernanceCache,
   type BlocklistLockInfo,
 } from "@/app/proposals/actions"
 
@@ -50,7 +50,7 @@ export function BlocklistPanel() {
         ? "This account is already blocklisted."
         : null
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!isConnected || !accountId || !hasAccountInput) return
     if (isLocked) {
@@ -100,7 +100,7 @@ export function BlocklistPanel() {
       }
 
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "blocklist_update", accountId })
       })
       trackEvent({
         domain: "governance",
@@ -153,7 +153,7 @@ export function BlocklistPanel() {
       }
 
       startTransition(() => {
-        revalidateGovernance()
+        invalidateGovernanceCache({ op: "blocklist_update", accountId })
       })
       trackEvent({
         domain: "governance",

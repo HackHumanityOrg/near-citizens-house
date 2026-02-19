@@ -1,3 +1,4 @@
+import { Suspense, type ReactNode } from "react"
 import { notFound } from "next/navigation"
 import { getProposal, getProposalVotes } from "../actions"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
@@ -8,22 +9,7 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export default async function ProposalPage({ params }: Props) {
-  const { id } = await params
-  const proposalId = parseInt(id, 10)
-
-  if (Number.isNaN(proposalId) || proposalId < 0) {
-    notFound()
-  }
-
-  const proposal = await getProposal(proposalId)
-  if (!proposal) {
-    notFound()
-  }
-
-  const totalVotes = proposal.yesVotes + proposal.noVotes
-  const votesResult = await getProposalVotes(proposalId, 0, 10, totalVotes)
-
+function ProposalPageShell({ children }: { children: ReactNode }) {
   return (
     <div className="w-full">
       {/* Hero Section */}
@@ -41,28 +27,67 @@ export default async function ProposalPage({ params }: Props) {
       </section>
 
       {/* Content overlapping hero */}
-      <div className="relative z-10 -mt-[320px] md:-mt-[380px] pb-[80px] px-4 md:px-[82px]">
-        <div className="flex flex-col gap-6 lg:gap-8 max-w-[1140px] mx-auto">
-          <ProposalHeader proposal={proposal} />
+      <div className="relative z-10 -mt-[320px] md:-mt-[380px] pb-[80px] px-4 md:px-[82px]">{children}</div>
+    </div>
+  )
+}
 
-          <div className="flex flex-col-reverse lg:flex-row lg:gap-8 gap-6 lg:items-start">
-            {/* Left column: description */}
-            <div className="flex-1 min-w-0">
-              <ProposalDescription proposal={proposal} />
-            </div>
+function ProposalPageFallback() {
+  return (
+    <ProposalPageShell>
+      <div className="mx-auto max-w-[1140px]">
+        <div className="h-[520px] rounded-[20px] border border-black/10 bg-white/60 dark:border-white/10 dark:bg-[#191a23]/60" />
+      </div>
+    </ProposalPageShell>
+  )
+}
 
-            {/* Right column: sidebar */}
-            <div className="w-full lg:w-[380px] lg:shrink-0 flex flex-col gap-6">
-              <ProposalVotingSidebar
-                proposal={proposal}
-                proposalId={proposalId}
-                initialVotes={votesResult.votes}
-                totalVotes={totalVotes}
-              />
-            </div>
+export default function ProposalPage({ params }: Props) {
+  return (
+    <Suspense fallback={<ProposalPageFallback />}>
+      <ProposalPageContent params={params} />
+    </Suspense>
+  )
+}
+
+async function ProposalPageContent({ params }: Props) {
+  const { id } = await params
+  const proposalId = parseInt(id, 10)
+
+  if (Number.isNaN(proposalId) || proposalId < 0) {
+    notFound()
+  }
+
+  const proposal = await getProposal(proposalId)
+  if (!proposal) {
+    notFound()
+  }
+
+  const totalVotes = proposal.yesVotes + proposal.noVotes
+  const votesResult = await getProposalVotes(proposalId, 0, 10, totalVotes)
+
+  return (
+    <ProposalPageShell>
+      <div className="flex flex-col gap-6 lg:gap-8 max-w-[1140px] mx-auto">
+        <ProposalHeader proposal={proposal} />
+
+        <div className="flex flex-col-reverse lg:flex-row lg:gap-8 gap-6 lg:items-start">
+          {/* Left column: description */}
+          <div className="flex-1 min-w-0">
+            <ProposalDescription proposal={proposal} />
+          </div>
+
+          {/* Right column: sidebar */}
+          <div className="w-full lg:w-[380px] lg:shrink-0 flex flex-col gap-6">
+            <ProposalVotingSidebar
+              proposal={proposal}
+              proposalId={proposalId}
+              initialVotes={votesResult.votes}
+              totalVotes={totalVotes}
+            />
           </div>
         </div>
       </div>
-    </div>
+    </ProposalPageShell>
   )
 }
