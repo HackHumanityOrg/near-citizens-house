@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react"
 import { getPublicProposals } from "./actions"
 import { ProposalsList } from "@/components/governance/proposals-list"
+import { ProposalsListSkeleton } from "@/components/governance/proposals-list-skeleton"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
 
 const PAGE_SIZE = 9
@@ -37,21 +38,17 @@ function GovernancePageShell({ children }: { children: ReactNode }) {
   )
 }
 
-function GovernancePageFallback() {
-  return (
-    <GovernancePageShell>
-      <div className="mx-auto w-full max-w-[1200px] px-4 md:px-[82px]">
-        <div className="h-[320px] rounded-[20px] border border-black/10 bg-white/60 dark:border-white/10 dark:bg-[#191a23]/60" />
-      </div>
-    </GovernancePageShell>
-  )
+function GovernanceListFallback() {
+  return <ProposalsListSkeleton cardCount={3} />
 }
 
 export default function GovernancePage({ searchParams }: Props) {
   return (
-    <Suspense fallback={<GovernancePageFallback />}>
-      <GovernancePageContent searchParams={searchParams} />
-    </Suspense>
+    <GovernancePageShell>
+      <Suspense fallback={<GovernanceListFallback />}>
+        <GovernancePageContent searchParams={searchParams} />
+      </Suspense>
+    </GovernancePageShell>
   )
 }
 
@@ -60,6 +57,14 @@ async function GovernancePageContent({ searchParams }: Props) {
   const rawPage = parseInt(params.page || "0", 10)
   const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
 
+  return (
+    <Suspense key={requestedPage} fallback={<GovernanceListFallback />}>
+      <GovernancePageResults requestedPage={requestedPage} />
+    </Suspense>
+  )
+}
+
+async function GovernancePageResults({ requestedPage }: { requestedPage: number }) {
   let { proposals, total } = await getPublicProposals(requestedPage, PAGE_SIZE)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -71,9 +76,5 @@ async function GovernancePageContent({ searchParams }: Props) {
   }
   const page = clampedPage
 
-  return (
-    <GovernancePageShell>
-      <ProposalsList proposals={proposals} total={total} page={page} pageSize={PAGE_SIZE} totalPages={totalPages} />
-    </GovernancePageShell>
-  )
+  return <ProposalsList proposals={proposals} total={total} page={page} pageSize={PAGE_SIZE} totalPages={totalPages} />
 }

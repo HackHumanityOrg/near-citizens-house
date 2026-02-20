@@ -42,29 +42,29 @@ function CitizensPageShell({ children }: { children: ReactNode }) {
   )
 }
 
-function CitizensPageFallback() {
+function CitizensTableFallback() {
   return (
-    <CitizensPageShell>
-      <div className="mx-auto w-full max-w-[1200px] px-4 md:px-[82px]">
-        <div className="h-[420px] rounded-[20px] border border-black/10 bg-white/60 dark:border-white/10 dark:bg-[#191a23]/60" />
-      </div>
-    </CitizensPageShell>
+    <div className="mx-auto w-full max-w-[1200px] px-4 md:px-[82px]">
+      <div className="h-[420px] rounded-[20px] border border-black/10 bg-white/60 dark:border-white/10 dark:bg-[#191a23]/60" />
+    </div>
   )
 }
 
-export default function VerificationsPage({ searchParams }: Props) {
-  return (
-    <Suspense fallback={<CitizensPageFallback />}>
-      <VerificationsPageContent searchParams={searchParams} />
-    </Suspense>
-  )
-}
-
-async function VerificationsPageContent({ searchParams }: Props) {
+export default async function VerificationsPage({ searchParams }: Props) {
   const params = await searchParams
   const rawPage = parseInt(params.page || "0", 10)
   const requestedPage = Number.isNaN(rawPage) ? 0 : Math.max(0, rawPage)
 
+  return (
+    <CitizensPageShell>
+      <Suspense key={requestedPage} fallback={<CitizensTableFallback />}>
+        <VerificationsPageContent requestedPage={requestedPage} />
+      </Suspense>
+    </CitizensPageShell>
+  )
+}
+
+async function VerificationsPageContent({ requestedPage }: { requestedPage: number }) {
   let { accounts, total } = await getVerificationsWithStatus(requestedPage, PAGE_SIZE)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -78,8 +78,6 @@ async function VerificationsPageContent({ searchParams }: Props) {
   const page = clampedPage
 
   return (
-    <CitizensPageShell>
-      <VerificationsTable accounts={accounts} total={total} page={page} pageSize={PAGE_SIZE} totalPages={totalPages} />
-    </CitizensPageShell>
+    <VerificationsTable accounts={accounts} total={total} page={page} pageSize={PAGE_SIZE} totalPages={totalPages} />
   )
 }

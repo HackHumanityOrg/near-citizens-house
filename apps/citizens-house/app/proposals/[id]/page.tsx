@@ -2,12 +2,19 @@ import { Suspense, type ReactNode } from "react"
 import { notFound } from "next/navigation"
 import { getProposal, getProposalVotes } from "../actions"
 import { StarPattern } from "@/components/verification/icons/star-pattern"
-import { ProposalVotingSidebar } from "@/components/governance/proposal-voting-sidebar"
+import {
+  ProposalVotesList,
+  ProposalVotingProvider,
+  ProposalVotingTop,
+} from "@/components/governance/proposal-voting-sidebar"
 import { ProposalHeader, ProposalDescription } from "@/components/governance/proposal-detail"
+import { ProposalSidebarSkeleton } from "@/components/governance/proposal-detail-skeletons"
 
 interface Props {
   params: Promise<{ id: string }>
 }
+
+type Proposal = NonNullable<Awaited<ReturnType<typeof getProposal>>>
 
 function ProposalPageShell({ children }: { children: ReactNode }) {
   return (
@@ -32,25 +39,11 @@ function ProposalPageShell({ children }: { children: ReactNode }) {
   )
 }
 
-function ProposalPageFallback() {
-  return (
-    <ProposalPageShell>
-      <div className="mx-auto max-w-[1140px]">
-        <div className="h-[520px] rounded-[20px] border border-black/10 bg-white/60 dark:border-white/10 dark:bg-[#191a23]/60" />
-      </div>
-    </ProposalPageShell>
-  )
+function ProposalSidebarFallback() {
+  return <ProposalSidebarSkeleton includeMobileDescription />
 }
 
-export default function ProposalPage({ params }: Props) {
-  return (
-    <Suspense fallback={<ProposalPageFallback />}>
-      <ProposalPageContent params={params} />
-    </Suspense>
-  )
-}
-
-async function ProposalPageContent({ params }: Props) {
+export default async function ProposalPage({ params }: Props) {
   const { id } = await params
   const proposalId = parseInt(id, 10)
 
@@ -63,31 +56,45 @@ async function ProposalPageContent({ params }: Props) {
     notFound()
   }
 
-  const totalVotes = proposal.yesVotes + proposal.noVotes
-  const votesResult = await getProposalVotes(proposalId, 0, 10, totalVotes)
-
   return (
     <ProposalPageShell>
       <div className="flex flex-col gap-6 lg:gap-8 max-w-[1140px] mx-auto">
         <ProposalHeader proposal={proposal} />
 
-        <div className="flex flex-col-reverse lg:flex-row lg:gap-8 gap-6 lg:items-start">
+        <div className="flex flex-col lg:flex-row lg:gap-8 gap-6 lg:items-start">
           {/* Left column: description */}
-          <div className="flex-1 min-w-0">
+          <div className="hidden lg:block flex-1 min-w-0">
             <ProposalDescription proposal={proposal} />
           </div>
 
           {/* Right column: sidebar */}
-          <div className="w-full lg:w-[380px] lg:shrink-0 flex flex-col gap-6">
-            <ProposalVotingSidebar
-              proposal={proposal}
-              proposalId={proposalId}
-              initialVotes={votesResult.votes}
-              totalVotes={totalVotes}
-            />
-          </div>
+          <Suspense fallback={<ProposalSidebarFallback />}>
+            <ProposalSidebarSection proposal={proposal} proposalId={proposalId} />
+          </Suspense>
         </div>
       </div>
     </ProposalPageShell>
+  )
+}
+
+async function ProposalSidebarSection({ proposal, proposalId }: { proposal: Proposal; proposalId: number }) {
+  const totalVotes = proposal.yesVotes + proposal.noVotes
+  const votesResult = await getProposalVotes(proposalId, 0, 10, totalVotes)
+
+  return (
+    <ProposalVotingProvider
+      proposal={proposal}
+      proposalId={proposalId}
+      initialVotes={votesResult.votes}
+      totalVotes={totalVotes}
+    >
+      <div className="w-full lg:w-[380px] lg:shrink-0 flex flex-col gap-6">
+        <ProposalVotingTop />
+        <div className="lg:hidden">
+          <ProposalDescription proposal={proposal} />
+        </div>
+        <ProposalVotesList />
+      </div>
+    </ProposalVotingProvider>
   )
 }

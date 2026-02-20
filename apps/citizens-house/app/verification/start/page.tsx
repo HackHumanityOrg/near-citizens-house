@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@/lib"
 import { trackEvent, getPlatform, identifyVerifiedUser } from "@/lib/analytics"
 import { checkIsVerified } from "@/app/citizens/actions"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2SumSub } from "../../../components/verification/flow/step-2-sumsub"
 import { Step3Success } from "../../../components/verification/flow/step-3-success"
@@ -22,10 +23,6 @@ enum VerificationProgressStep {
   VerificationComplete = "verification_complete",
   Hold = "hold",
   Error = "error",
-}
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
 }
 
 function LoadingFallback() {

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { NEAR_CONFIG } from "@/lib"
 import { MiddleTruncate } from "@/components/ui/middle-truncate"
-import { Clock3, ExternalLink, Flag, Play, Plus } from "lucide-react"
+import { ArrowLeft, Clock3, ExternalLink, Flag, Play, Plus } from "lucide-react"
 import type { ProposalView } from "@/lib/schemas/governance-contract"
 import { formatUtcDateTime } from "@/lib/governance-dates"
 import { StatusBadge } from "./status-badge"
@@ -85,7 +85,8 @@ export function ProposalHeader({ proposal }: ProposalProps) {
         aria-label="Breadcrumb"
         className="flex items-center gap-2 text-[14px] font-inter text-[#64748b] dark:text-[#94a3b8]"
       >
-        <Link href="/proposals" className="hover:underline">
+        <Link href="/proposals" className="inline-flex items-center gap-1 hover:underline">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
           Proposals
         </Link>
         <span>/</span>

@@ -26,6 +26,7 @@ export function ProposalCard({ proposal }: Props) {
   return (
     <Link
       href={`/proposals/${id}`}
+      data-testid="proposal-card"
       onClick={() => {
         trackEvent({
           domain: "governance",
@@ -47,7 +48,10 @@ export function ProposalCard({ proposal }: Props) {
           <StatusBadge status={displayStatus} failureKind={proposal.failureKind} />
         </div>
 
-        <div className="rounded-[12px] border border-[#e2e8f0] dark:border-white/10 p-4 mt-auto">
+        <div
+          data-testid="proposal-card-progress"
+          className="rounded-[12px] border border-[#e2e8f0] dark:border-white/10 p-4 mt-auto"
+        >
           <h4 className="font-fk-grotesk font-bold text-[14px] text-black dark:text-white mb-3">Voting Progress</h4>
           <VoteProgressBar
             yesVotes={proposal.yesVotes}

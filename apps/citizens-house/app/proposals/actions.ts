@@ -420,6 +420,13 @@ export type VoteEligibilitySnapshot = {
   balance: string
 }
 
+type VoteEligibilityCachedFields = {
+  verification: TransformedVerificationSummary | null
+  isBlocklisted: boolean
+  isVoteFree: boolean
+  balance: string
+}
+
 function createFallbackVoteEligibilitySnapshot(accountId: string): VoteEligibilitySnapshot {
   return {
     accountId,
@@ -428,6 +435,23 @@ function createFallbackVoteEligibilitySnapshot(accountId: string): VoteEligibili
     isBlocklisted: false,
     isVoteFree: false,
     balance: "0",
+  }
+}
+
+async function getVoteEligibilityCachedFields(accountId: string): Promise<VoteEligibilityCachedFields> {
+  const [verification, isBlocklisted, isVoteFree, balance] = await Promise.all([
+    // Cached in citizens/actions via getCachedVerificationSummary.
+    getVerificationSummary(accountId),
+    getCachedIsBlocklisted(accountId),
+    getCachedIsVoteFree(),
+    getCachedAccountBalance(accountId).catch(() => "0"),
+  ])
+
+  return {
+    verification,
+    isBlocklisted,
+    isVoteFree,
+    balance,
   }
 }
 
@@ -446,12 +470,10 @@ export async function getVoteEligibilitySnapshot(
     }
 
     try {
-      const [existingVote, verification, isBlocklisted, isVoteFree, balance] = await Promise.all([
+      const [existingVote, cached] = await Promise.all([
+        // Intentionally uncached: vote status should be the latest on-chain value.
         governanceReader.getVote(normalizedProposalId, parsed.data),
-        getVerificationSummary(parsed.data),
-        getCachedIsBlocklisted(parsed.data),
-        getCachedIsVoteFree(),
-        getCachedAccountBalance(parsed.data).catch(() => "0"),
+        getVoteEligibilityCachedFields(parsed.data),
       ])
 
       trackGovernanceServerActionResult("governance.getVoteEligibilitySnapshot", "success", {
@@ -463,10 +485,10 @@ export async function getVoteEligibilitySnapshot(
       return {
         accountId: parsed.data,
         existingVote,
-        verification,
-        isBlocklisted,
-        isVoteFree,
-        balance,
+        verification: cached.verification,
+        isBlocklisted: cached.isBlocklisted,
+        isVoteFree: cached.isVoteFree,
+        balance: cached.balance,
       }
     } catch (error) {
       captureGovernanceActionError("governance.getVoteEligibilitySnapshot", error, {
@@ -547,19 +569,6 @@ async function getCachedIsVoteFree() {
   cacheLife("rpc_cold")
   cacheTag(governanceTags.root, governanceTags.voteFree, governanceTags.config)
   return governanceReader.isVoteFree()
-}
-
-export async function checkIsVoteFree(): Promise<boolean> {
-  return observeGovernanceAction("governance.checkIsVoteFree", async () => {
-    try {
-      const isVoteFree = await getCachedIsVoteFree()
-      trackGovernanceServerActionResult("governance.checkIsVoteFree", "success")
-      return isVoteFree
-    } catch (error) {
-      captureGovernanceActionError("governance.checkIsVoteFree", error)
-      return false
-    }
-  })
 }
 
 async function getCachedConfig() {
@@ -659,27 +668,6 @@ export async function getBlocklist(page: number, pageSize: number) {
     } catch (error) {
       captureGovernanceActionError("governance.getBlocklist", error, { page, page_size: pageSize })
       return { accounts: [] as string[], total: 0 }
-    }
-  })
-}
-
-async function getCachedIsBlocklistLocked() {
-  "use cache"
-
-  cacheLife("rpc_hot")
-  cacheTag(governanceTags.root, governanceTags.blocklistLock, governanceTags.blocklist)
-  return governanceReader.isBlocklistLocked()
-}
-
-export async function checkIsBlocklistLocked(): Promise<boolean> {
-  return observeGovernanceAction("governance.checkIsBlocklistLocked", async () => {
-    try {
-      const isLocked = await getCachedIsBlocklistLocked()
-      trackGovernanceServerActionResult("governance.checkIsBlocklistLocked", "success")
-      return isLocked
-    } catch (error) {
-      captureGovernanceActionError("governance.checkIsBlocklistLocked", error)
-      return false
     }
   })
 }
@@ -799,11 +787,4 @@ export async function invalidateGovernanceCache(input: GovernanceInvalidationInp
       itemCount: tags.length,
     })
   })
-}
-
-/**
- * @deprecated Use invalidateGovernanceCache with an explicit operation.
- */
-export async function revalidateGovernance() {
-  return invalidateGovernanceCache({ op: "proposal_update" })
 }

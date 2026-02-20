@@ -110,12 +110,7 @@ async function verifyAccountSignatures(accounts: TransformedVerification[]): Pro
           signatureData: signatureVerificationData,
         }
       } catch (error) {
-        // Final catch-all: Always display account even if verification fails
-        Sentry.captureException(error, {
-          level: "warning",
-          tags: { area: "citizens_verifyAccountSignatures" },
-          extra: { account_id: account.nearAccountId },
-        })
+        // Keep cached verification output deterministic: no observability side effects here.
         return {
           account,
           verification: {

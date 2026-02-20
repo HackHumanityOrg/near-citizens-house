@@ -61,19 +61,11 @@ export function ProposalsList({ proposals, total, page, pageSize: _pageSize, tot
           {proposals.length > 0 ? `Showing ${proposals.length} of ${total} proposals` : "No proposals yet"}
         </p>
 
-        {proposals.length === 0 ? (
-          <div className="bg-white dark:bg-[#191a23] border border-[rgba(0,0,0,0.1)] dark:border-white/20 rounded-[16px] flex items-center justify-center py-12">
-            <p className="font-fk-grotesk text-[14px] md:text-[16px] text-[#828282] dark:text-neutral-400">
-              No proposals yet.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {proposals.map((proposal) => (
-              <ProposalCard key={proposal.id} proposal={proposal} />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 xl:grid-rows-3 xl:min-h-[992px]">
+          {proposals.map((proposal) => (
+            <ProposalCard key={proposal.id} proposal={proposal} />
+          ))}
+        </div>
       </div>
 
       {/* Pagination */}
