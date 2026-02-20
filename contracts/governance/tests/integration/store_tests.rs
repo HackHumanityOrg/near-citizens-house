@@ -5,7 +5,7 @@ use serde_json::json;
 use crate::helpers::{
     create_proposal, fast_forward_to_timestamp, get_proposal, init_governance,
     init_mock_verified_accounts, seed_mock_verified_accounts, setup_env, store_verification,
-    sum_tokens_burnt, GAS_HEAVY,
+    sum_tokens_burnt, DEFAULT_GRACE_PERIOD_SECS, GAS_HEAVY,
 };
 use tokio::time::{sleep, Duration};
 
@@ -529,6 +529,13 @@ async fn it_refund_004_full_refund_on_proposal_cancelled() -> anyhow::Result<()>
 async fn it_refund_005_full_refund_on_post_finalize() -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let mock_verified = init_mock_verified_accounts(&worker, false, true).await?;
+    let delay_cfg = mock_verified
+        .call("set_verification_delay_hops")
+        .gas(GAS_HEAVY)
+        .args_json(json!({ "hops": 24u8 }))
+        .transact()
+        .await?;
+    assert!(delay_cfg.is_success());
     let admin = worker.dev_create_account().await?;
     let governance = init_governance(&worker, &mock_verified, &admin).await?;
     let users = vec![worker.dev_create_account().await?];
@@ -559,7 +566,11 @@ async fn it_refund_005_full_refund_on_post_finalize() -> anyhow::Result<()> {
     let pending = wait_for_pending_votes(&governance, proposal_id, 1).await?;
     assert!(pending, "expected pending vote");
 
-    fast_forward_to_timestamp(&worker, proposal.ends_at.0 + 1).await?;
+    fast_forward_to_timestamp(
+        &worker,
+        proposal.ends_at.0 + (DEFAULT_GRACE_PERIOD_SECS * 1_000_000_000) + 1,
+    )
+    .await?;
     let finalize_result = admin
         .call(governance.id(), "finalize_proposal")
         .gas(GAS_HEAVY)
@@ -567,6 +578,7 @@ async fn it_refund_005_full_refund_on_post_finalize() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(finalize_result.is_success());
+    worker.fast_forward(40).await?;
     let cleared = wait_for_pending_votes(&governance, proposal_id, 0).await?;
     assert!(cleared, "expected pending vote cleared");
     let vote_result = vote_tx.await?;

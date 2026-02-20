@@ -1386,9 +1386,12 @@ impl VersionedContract {
         let contract = self.contract_mut();
 
         // Proposal may have been cancelled since creation
-        let status = match contract.proposals.get(proposal_id) {
-            Some(p) => p.status.clone(),
-            None => return false,
+        let Some(status) = contract
+            .proposals
+            .get(proposal_id)
+            .map(|proposal| proposal.status.clone())
+        else {
+            return false;
         };
         if status != ProposalStatus::Pending {
             return false;
@@ -1412,24 +1415,21 @@ impl VersionedContract {
         }
 
         // Parse promise result
-        let verified_count: u32 = match snapshot_result {
-            Ok(count) => count,
-            Err(_) => {
-                env::log_str(ERR_SNAPSHOT_CALLBACK_FAILED);
-                if let Some(proposal) = contract.proposals.get_mut(proposal_id) {
-                    proposal.status = ProposalStatus::Failed;
-                    proposal.failure_kind = Some(FailureKind::SnapshotCallbackFailed);
-                } else {
-                    env::log_str(ERR_PROPOSAL_NOT_FOUND);
-                    return false;
-                }
-                GovernanceEvent::ProposalCreationFailed {
-                    proposal_id,
-                    reason: ProposalCreationFailedReason::SnapshotCallbackFailed,
-                }
-                .emit();
+        let Ok(verified_count) = snapshot_result else {
+            env::log_str(ERR_SNAPSHOT_CALLBACK_FAILED);
+            if let Some(proposal) = contract.proposals.get_mut(proposal_id) {
+                proposal.status = ProposalStatus::Failed;
+                proposal.failure_kind = Some(FailureKind::SnapshotCallbackFailed);
+            } else {
+                env::log_str(ERR_PROPOSAL_NOT_FOUND);
                 return false;
             }
+            GovernanceEvent::ProposalCreationFailed {
+                proposal_id,
+                reason: ProposalCreationFailedReason::SnapshotCallbackFailed,
+            }
+            .emit();
+            return false;
         };
 
         // Compute effective count (subtract blocklist)
@@ -1452,12 +1452,13 @@ impl VersionedContract {
             return false;
         }
 
-        let quorum_bps = match contract.proposals.get(proposal_id) {
-            Some(proposal) => proposal.quorum_bps,
-            None => {
-                env::log_str(ERR_PROPOSAL_NOT_FOUND);
-                return false;
-            }
+        let Some(quorum_bps) = contract
+            .proposals
+            .get(proposal_id)
+            .map(|proposal| proposal.quorum_bps)
+        else {
+            env::log_str(ERR_PROPOSAL_NOT_FOUND);
+            return false;
         };
 
         if let Some(proposal) = contract.proposals.get_mut(proposal_id) {
@@ -1490,12 +1491,9 @@ impl VersionedContract {
 
         // Remove pending vote — always clear the lock
         let pending_key = (proposal_id, voter.clone());
-        let pending_vote = match contract.pending_votes.remove(&pending_key) {
-            Some(pv) => pv,
-            None => {
-                env::log_str(ERR_PENDING_VOTE_NOT_FOUND_IN_CALLBACK);
-                return false;
-            }
+        let Some(pending_vote) = contract.pending_votes.remove(&pending_key) else {
+            env::log_str(ERR_PENDING_VOTE_NOT_FOUND_IN_CALLBACK);
+            return false;
         };
 
         let submitted_at = pending_vote.submitted_at;
@@ -1503,15 +1501,12 @@ impl VersionedContract {
         let voter_deposit = pending_vote.voter_deposit;
 
         // Decrement pending_vote_count
-        let proposal = match contract.proposals.get_mut(proposal_id) {
-            Some(p) => p,
-            None => {
-                // Proposal somehow missing — refund
-                if !voter_deposit.is_zero() {
-                    Promise::new(voter).transfer(voter_deposit).detach();
-                }
-                return false;
+        let Some(proposal) = contract.proposals.get_mut(proposal_id) else {
+            // Proposal somehow missing — refund
+            if !voter_deposit.is_zero() {
+                Promise::new(voter).transfer(voter_deposit).detach();
             }
+            return false;
         };
         proposal.pending_vote_count = proposal.pending_vote_count.saturating_sub(1);
 
@@ -1573,37 +1568,31 @@ impl VersionedContract {
         }
 
         // Parse promise result
-        let verification: Option<VerificationSummary> = match verification_result {
-            Ok(v) => v,
-            Err(_) => {
-                GovernanceEvent::VoteRejected {
-                    proposal_id,
-                    voter: voter.clone(),
-                    reason: VoteRejectionReason::CallbackFailed,
-                }
-                .emit();
-                if !voter_deposit.is_zero() {
-                    Promise::new(voter).transfer(voter_deposit).detach();
-                }
-                return false;
+        let Ok(verification) = verification_result else {
+            GovernanceEvent::VoteRejected {
+                proposal_id,
+                voter: voter.clone(),
+                reason: VoteRejectionReason::CallbackFailed,
             }
+            .emit();
+            if !voter_deposit.is_zero() {
+                Promise::new(voter).transfer(voter_deposit).detach();
+            }
+            return false;
         };
 
         // Check verification exists
-        let summary = match verification {
-            Some(s) => s,
-            None => {
-                GovernanceEvent::VoteRejected {
-                    proposal_id,
-                    voter: voter.clone(),
-                    reason: VoteRejectionReason::NotVerified,
-                }
-                .emit();
-                if !voter_deposit.is_zero() {
-                    Promise::new(voter).transfer(voter_deposit).detach();
-                }
-                return false;
+        let Some(summary) = verification else {
+            GovernanceEvent::VoteRejected {
+                proposal_id,
+                voter: voter.clone(),
+                reason: VoteRejectionReason::NotVerified,
             }
+            .emit();
+            if !voter_deposit.is_zero() {
+                Promise::new(voter).transfer(voter_deposit).detach();
+            }
+            return false;
         };
 
         // Defensive: verification must match the voter we queried.
@@ -1655,15 +1644,12 @@ impl VersionedContract {
 
         // Scoped mutable borrow for proposal mutations
         {
-            let proposal = match contract.proposals.get_mut(pid) {
-                Some(p) => p,
-                None => {
-                    env::log_str(ERR_PROPOSAL_NOT_FOUND);
-                    if !voter_deposit.is_zero() {
-                        Promise::new(voter).transfer(voter_deposit).detach();
-                    }
-                    return false;
+            let Some(proposal) = contract.proposals.get_mut(pid) else {
+                env::log_str(ERR_PROPOSAL_NOT_FOUND);
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
+                return false;
             };
 
             let (new_yes, new_no) = match emit_choice {
@@ -1671,15 +1657,12 @@ impl VersionedContract {
                 VoteChoice::No => (Some(proposal.yes_votes), proposal.no_votes.checked_add(1)),
             };
 
-            let (new_yes, new_no) = match (new_yes, new_no) {
-                (Some(y), Some(n)) => (y, n),
-                _ => {
-                    env::log_str(ERR_VOTE_COUNT_OVERFLOW);
-                    if !voter_deposit.is_zero() {
-                        Promise::new(voter).transfer(voter_deposit).detach();
-                    }
-                    return false;
+            let (Some(new_yes), Some(new_no)) = (new_yes, new_no) else {
+                env::log_str(ERR_VOTE_COUNT_OVERFLOW);
+                if !voter_deposit.is_zero() {
+                    Promise::new(voter).transfer(voter_deposit).detach();
                 }
+                return false;
             };
 
             proposal.votes.insert(
@@ -1728,9 +1711,9 @@ impl VersionedContract {
         let contract = self.contract_mut();
 
         // Read initiated_by from pending op, then always clear it
-        let initiated_by = match contract.pending_blocklist_op.take() {
-            Some(op) => op.initiated_by,
-            None => return false,
+        let Some(PendingBlocklistOp { initiated_by, .. }) = contract.pending_blocklist_op.take()
+        else {
+            return false;
         };
 
         if env::promise_results_count() != 1 {
@@ -1739,12 +1722,9 @@ impl VersionedContract {
         }
 
         // Parse promise result
-        let verification: Option<VerificationSummary> = match verification_result {
-            Ok(v) => v,
-            Err(_) => {
-                env::log_str(ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED);
-                return false;
-            }
+        let Ok(verification) = verification_result else {
+            env::log_str(ERR_BLOCKLIST_ACCOUNT_NOT_VERIFIED);
+            return false;
         };
 
         // Check verification exists

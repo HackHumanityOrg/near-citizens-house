@@ -27,6 +27,7 @@ pub struct MockVerifiedAccounts {
     verified: IterableMap<AccountId, VerificationSummary>,
     fail_get_verification: bool,
     delay_get_verification: bool,
+    verification_delay_hops: u8,
 }
 
 #[near]
@@ -37,6 +38,7 @@ impl MockVerifiedAccounts {
             verified: IterableMap::new(StorageKey::Verified),
             fail_get_verification,
             delay_get_verification,
+            verification_delay_hops: if delay_get_verification { 1 } else { 0 },
         }
     }
 
@@ -54,6 +56,16 @@ impl MockVerifiedAccounts {
 
     pub fn set_delay_get_verification(&mut self, delay: bool) {
         self.delay_get_verification = delay;
+        if delay && self.verification_delay_hops == 0 {
+            self.verification_delay_hops = 1;
+        } else if !delay {
+            self.verification_delay_hops = 0;
+        }
+    }
+
+    pub fn set_verification_delay_hops(&mut self, hops: u8) {
+        self.verification_delay_hops = hops;
+        self.delay_get_verification = hops > 0;
     }
 
     pub fn get_verified_count(&self) -> PromiseOrValue<u32> {
@@ -78,11 +90,12 @@ impl MockVerifiedAccounts {
         }
         if self.delay_get_verification {
             let args = near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({
-                "account_id": account_id
+                "account_id": account_id,
+                "remaining_hops": self.verification_delay_hops.saturating_sub(1),
             }))
-            .expect("serialize delayed verification args");
+            .expect("serialize delayed verification hop args");
             let promise = Promise::new(env::current_account_id()).function_call(
-                "get_verification_delayed".to_string(),
+                "get_verification_delayed_hops".to_string(),
                 args,
                 NearToken::from_yoctonear(0),
                 Gas::from_tgas(5),
@@ -94,6 +107,28 @@ impl MockVerifiedAccounts {
 
     pub fn get_verification_delayed(&self, account_id: AccountId) -> Option<VerificationSummary> {
         self.verified.get(&account_id).cloned()
+    }
+
+    pub fn get_verification_delayed_hops(
+        &self,
+        account_id: AccountId,
+        remaining_hops: u8,
+    ) -> PromiseOrValue<Option<VerificationSummary>> {
+        if remaining_hops > 0 {
+            let args = near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({
+                "account_id": account_id,
+                "remaining_hops": remaining_hops.saturating_sub(1),
+            }))
+            .expect("serialize delayed verification hop args");
+            let promise = Promise::new(env::current_account_id()).function_call(
+                "get_verification_delayed_hops".to_string(),
+                args,
+                NearToken::from_yoctonear(0),
+                Gas::from_tgas(5),
+            );
+            return PromiseOrValue::Promise(promise);
+        }
+        PromiseOrValue::Value(self.verified.get(&account_id).cloned())
     }
 
     pub fn get_verified_count_delayed(&self) -> u32 {
