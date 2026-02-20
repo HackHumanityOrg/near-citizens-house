@@ -13,15 +13,20 @@ interface Props {
 
 export function ProposalCard({ proposal }: Props) {
   const { id, title, author, status, startAt, endsAt } = proposal
-  const [now, setNow] = useState(Date.now)
-  const isScheduled = status === "active" && startAt > now
-  const isFinished = status === "active" && endsAt < now
-  const displayStatus = isScheduled ? "scheduled" : isFinished ? "finished" : status
+  const [now, setNow] = useState<number | null>(null)
 
   useEffect(() => {
+    const timeout = setTimeout(() => setNow(Date.now()), 0)
     const interval = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
   }, [])
+
+  const isScheduled = now !== null && status === "active" && startAt > now
+  const isFinished = now !== null && status === "active" && endsAt < now
+  const displayStatus = isScheduled ? "scheduled" : isFinished ? "finished" : status
 
   return (
     <Link
