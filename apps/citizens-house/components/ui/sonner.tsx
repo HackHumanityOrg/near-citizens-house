@@ -18,7 +18,7 @@ export function Toaster() {
         classNames: {
           toast:
             "flex items-center gap-3 bg-verified text-white dark:text-black rounded-[8px] pl-4 pr-4 py-2 shadow-lg",
-          error: "!bg-[#dc2626] dark:!bg-[#dc2626]",
+          error: "!bg-red-600 dark:!bg-red-600",
           title: "font-fk-grotesk text-[14px] leading-[1.4]",
         },
       }}

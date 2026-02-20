@@ -66,11 +66,11 @@ export function VoteProgressBar({ yesVotes, noVotes, quorumBps, snapshotVerified
           <div className="flex min-h-6 items-center gap-3">
             <span
               className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
-                quorumMet ? "bg-[#dcfce7] dark:bg-[#14532d]" : "bg-[#e2e8f0] dark:bg-[#334155]"
+                quorumMet ? "bg-emerald-100 dark:bg-emerald-950/50" : "bg-[#e2e8f0] dark:bg-[#334155]"
               }`}
             >
               {quorumMet ? (
-                <Check className="block h-3.5 w-3.5 text-[#166534] dark:text-[#bbf7d0]" strokeWidth={3} />
+                <Check className="block h-3.5 w-3.5 text-emerald-800 dark:text-emerald-300" strokeWidth={3} />
               ) : (
                 <Minus className="block h-3.5 w-3.5 text-[#64748b] dark:text-[#cbd5e1]" strokeWidth={3} />
               )}

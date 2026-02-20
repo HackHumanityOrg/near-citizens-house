@@ -22,10 +22,10 @@
   --radius: 0.625rem;
 
   /* Semantic vote colors */
-  --vote-for: oklch(0.527 0.154 150.069); /* green-600 */
-  --vote-for-hover: oklch(0.467 0.157 151.328); /* green-700 */
-  --vote-for-bg: oklch(0.648 0.15 158.036); /* green-500 */
-  --vote-for-bg-light: oklch(0.962 0.044 156.743); /* green-100 */
+  --vote-for: #059669; /* emerald-600 */
+  --vote-for-hover: #047857; /* emerald-700 */
+  --vote-for-bg: #10b981; /* emerald-500 */
+  --vote-for-bg-light: #d1fae5; /* emerald-100 */
   --vote-against: oklch(0.577 0.245 27.325); /* red-600 */
   --vote-against-bg: oklch(0.637 0.237 25.331); /* red-500 */
   --vote-against-bg-light: oklch(0.704 0.191 22.216); /* red-400 - more visible */
@@ -37,9 +37,9 @@
   --status-warning: oklch(0.705 0.213 47.604); /* orange-500 */
 
   /* Verification colors */
-  --verified: #007a4d; /* Primary green for verified states */
-  --verified-badge-bg: #79d1ac; /* Light green badge background */
-  --verified-badge-text: #002716; /* Dark text on light green badge */
+  --verified: #059669; /* emerald-600 */
+  --verified-badge-bg: #d1fae5; /* emerald-100 */
+  --verified-badge-text: #065f46; /* emerald-800 */
 }
 
 .dark {
@@ -63,10 +63,10 @@
   --ring: rgba(255, 218, 30, 0.5);
 
   /* Semantic vote colors - dark mode */
-  --vote-for: oklch(0.845 0.143 164.978); /* green-300 - lighter for dark bg */
-  --vote-for-hover: oklch(0.723 0.191 149.579); /* green-400 */
-  --vote-for-bg: oklch(0.648 0.15 158.036); /* green-500 */
-  --vote-for-bg-light: oklch(0.357 0.108 149.571); /* green-900 */
+  --vote-for: #6ee7b7; /* emerald-300 - lighter for dark bg */
+  --vote-for-hover: #34d399; /* emerald-400 */
+  --vote-for-bg: #10b981; /* emerald-500 */
+  --vote-for-bg-light: #064e3b; /* emerald-900 */
   --vote-against: oklch(0.789 0.193 21.952); /* red-400 - brighter for dark bg */
   --vote-against-bg: oklch(0.444 0.177 26.899); /* red-800 - softer for dark mode */
   --vote-against-bg-light: oklch(0.396 0.141 25.723); /* red-900 - more visible */
@@ -78,9 +78,9 @@
   --status-warning: oklch(0.789 0.16 70.08); /* amber-400 */
 
   /* Verification colors - dark mode */
-  --verified: #4ade80; /* green-400 - lighter for dark bg */
-  --verified-badge-bg: #86efac; /* green-300 - lighter badge bg for dark mode */
-  --verified-badge-text: #052e16; /* green-950 - dark text on light badge */
+  --verified: #34d399; /* emerald-400 - lighter for dark bg */
+  --verified-badge-bg: #6ee7b7; /* emerald-300 - lighter badge bg for dark mode */
+  --verified-badge-text: #022c22; /* emerald-950 - dark text on light badge */
 }
 
 @keyframes accordion-down {

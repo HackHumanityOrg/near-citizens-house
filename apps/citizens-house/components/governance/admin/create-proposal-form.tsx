@@ -164,7 +164,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
           </Label>
           <span
             className={`text-[12px] font-inter ${
-              titleByteLength > 140 ? "text-[#991b1b] dark:text-[#fecaca]" : "text-[#64748b] dark:text-[#94a3b8]"
+              titleByteLength > 140 ? "text-red-800 dark:text-red-300" : "text-[#64748b] dark:text-[#94a3b8]"
             }`}
           >
             {titleByteLength}/140 bytes
@@ -176,10 +176,10 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Proposal title"
           aria-invalid={showTitleError}
-          className={showTitleError ? "border-[#ef4444] focus-visible:ring-[#ef4444]" : undefined}
+          className={showTitleError ? "border-red-500 focus-visible:ring-red-500" : undefined}
         />
         {showTitleError && (
-          <p className="text-[12px] text-[#991b1b] dark:text-[#fecaca] font-inter">{validation.errors.title}</p>
+          <p className="text-[12px] text-red-800 dark:text-red-300 font-inter">{validation.errors.title}</p>
         )}
       </div>
 
@@ -190,7 +190,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
           </Label>
           <span
             className={`text-[12px] font-inter ${
-              authorByteLength > 120 ? "text-[#991b1b] dark:text-[#fecaca]" : "text-[#64748b] dark:text-[#94a3b8]"
+              authorByteLength > 120 ? "text-red-800 dark:text-red-300" : "text-[#64748b] dark:text-[#94a3b8]"
             }`}
           >
             {authorByteLength}/120 bytes
@@ -202,10 +202,10 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
           onChange={(e) => setAuthor(e.target.value)}
           placeholder="Author name"
           aria-invalid={showAuthorError}
-          className={showAuthorError ? "border-[#ef4444] focus-visible:ring-[#ef4444]" : undefined}
+          className={showAuthorError ? "border-red-500 focus-visible:ring-red-500" : undefined}
         />
         {showAuthorError && (
-          <p className="text-[12px] text-[#991b1b] dark:text-[#fecaca] font-inter">{validation.errors.author}</p>
+          <p className="text-[12px] text-red-800 dark:text-red-300 font-inter">{validation.errors.author}</p>
         )}
       </div>
 
@@ -241,9 +241,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
             </div>
             <span
               className={`text-[12px] font-inter ${
-                descriptionByteLength > 10_000
-                  ? "text-[#991b1b] dark:text-[#fecaca]"
-                  : "text-[#64748b] dark:text-[#94a3b8]"
+                descriptionByteLength > 10_000 ? "text-red-800 dark:text-red-300" : "text-[#64748b] dark:text-[#94a3b8]"
               }`}
             >
               {descriptionByteLength}/10000 bytes
@@ -259,7 +257,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
             rows={8}
             aria-invalid={showDescriptionError}
             className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y ${
-              showDescriptionError ? "border-[#ef4444] focus-visible:ring-[#ef4444]" : "border-input"
+              showDescriptionError ? "border-red-500 focus-visible:ring-red-500" : "border-input"
             }`}
           />
         ) : (
@@ -274,7 +272,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
           </div>
         )}
         {showDescriptionError && (
-          <p className="text-[12px] text-[#991b1b] dark:text-[#fecaca] font-inter">{validation.errors.description}</p>
+          <p className="text-[12px] text-red-800 dark:text-red-300 font-inter">{validation.errors.description}</p>
         )}
       </div>
 
@@ -324,7 +322,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
                 aria-invalid={showStartAtError}
-                className={showStartAtError ? "border-[#ef4444] focus-visible:ring-[#ef4444]" : undefined}
+                className={showStartAtError ? "border-red-500 focus-visible:ring-red-500" : undefined}
               />
               {startAt && selectedStartMs !== null && (
                 <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
@@ -361,7 +359,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
         </p>
 
         {showStartAtError && (
-          <p className="text-[12px] text-[#991b1b] dark:text-[#fecaca] font-inter">{validation.errors.startAt}</p>
+          <p className="text-[12px] text-red-800 dark:text-red-300 font-inter">{validation.errors.startAt}</p>
         )}
       </div>
 
@@ -377,13 +375,13 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
           onChange={(e) => setBondNear(e.target.value)}
           placeholder={`Min: ${minBondNear} NEAR`}
           aria-invalid={showBondError}
-          className={showBondError ? "border-[#ef4444] focus-visible:ring-[#ef4444]" : undefined}
+          className={showBondError ? "border-red-500 focus-visible:ring-red-500" : undefined}
         />
         <p className="text-[12px] text-[#64748b] dark:text-[#94a3b8] font-inter">
           Minimum bond: {minBondNear} NEAR. Non-refundable. Covers storage costs.
         </p>
         {showBondError && (
-          <p className="text-[12px] text-[#991b1b] dark:text-[#fecaca] font-inter">{validation.errors.bondNear}</p>
+          <p className="text-[12px] text-red-800 dark:text-red-300 font-inter">{validation.errors.bondNear}</p>
         )}
       </div>
 
@@ -392,7 +390,7 @@ export function CreateProposalForm({ minProposalBond, votingPeriodSecs, maxStart
         Create Proposal
       </Button>
       {!loading && hasUserInteracted && !validation.isValid && firstValidationError && (
-        <p className="text-[12px] text-[#991b1b] dark:text-[#fecaca] font-inter">{firstValidationError}</p>
+        <p className="text-[12px] text-red-800 dark:text-red-300 font-inter">{firstValidationError}</p>
       )}
     </form>
   )
