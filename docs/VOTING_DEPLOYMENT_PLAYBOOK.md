@@ -84,10 +84,10 @@ docker --version
 Verify root account, all initial admin accounts, and the verified-accounts contract are accessible on mainnet:
 
 ```bash
-near account view-account-summary $ROOT network-config mainnet now
-near account view-account-summary $ADMIN_KLAUS network-config mainnet now
-near account view-account-summary $ADMIN_HACKHUMANITY network-config mainnet now
-near account view-account-summary $VERIFIED_CONTRACT network-config mainnet now
+near account view-account-summary $ROOT network-config mainnet-fastnear now
+near account view-account-summary $ADMIN_KLAUS network-config mainnet-fastnear now
+near account view-account-summary $ADMIN_HACKHUMANITY network-config mainnet-fastnear now
+near account view-account-summary $VERIFIED_CONTRACT network-config mainnet-fastnear now
 ```
 
 Verify required verified-accounts read methods are callable:
@@ -95,16 +95,10 @@ Verify required verified-accounts read methods are callable:
 ```bash
 near contract call-function as-read-only $VERIFIED_CONTRACT get_verified_count \
   json-args '{}' \
-  network-config mainnet now
+  network-config mainnet-fastnear now
 ```
 
-```bash
-near contract call-function as-read-only $VERIFIED_CONTRACT get_verification \
-  json-args "{\"account_id\":\"$ADMIN_KLAUS\"}" \
-  network-config mainnet now
-```
-
-Expected for `get_verification`: either `null` (not verified yet) or a valid summary object.
+Expected for `get_verified_count` as of `2026-02-20`: `1214`.
 
 ---
 
@@ -144,7 +138,7 @@ Create `vote.$ROOT` and fund it for contract storage:
 near account create-account fund-myself $VOTE_CONTRACT '5 NEAR' \
   autogenerate-new-keypair save-to-keychain \
   sign-as $ROOT \
-  network-config mainnet sign-with-keychain send
+  network-config mainnet-fastnear sign-with-keychain send
 ```
 
 ---
@@ -155,7 +149,7 @@ near account create-account fund-myself $VOTE_CONTRACT '5 NEAR' \
 near contract deploy $VOTE_CONTRACT \
   use-file target/near/governance.wasm \
   without-init-call \
-  network-config mainnet sign-with-keychain send
+  network-config mainnet-fastnear sign-with-keychain send
 ```
 
 ---
@@ -177,7 +171,7 @@ near contract call-function as-transaction $VOTE_CONTRACT new \
   json-args "{\"verified_accounts_contract\":\"$VERIFIED_CONTRACT\",\"admins\":[\"$ADMIN_KLAUS\",\"$ADMIN_HACKHUMANITY\"],\"quorum_bps\":700,\"voting_period_secs\":1209600,\"pending_expiry_secs\":3600,\"min_proposal_bond\":\"10000000000000000000000\",\"finalize_grace_period_secs\":3600,\"max_start_delay_secs\":7776000}" \
   prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' \
   sign-as $VOTE_CONTRACT \
-  network-config mainnet sign-with-keychain send
+  network-config mainnet-fastnear sign-with-keychain send
 ```
 
 ---
@@ -189,17 +183,29 @@ Verify deployed config:
 ```bash
 near contract call-function as-read-only $VOTE_CONTRACT get_config \
   json-args '{}' \
-  network-config mainnet now
+  network-config mainnet-fastnear now
 ```
 
 Verify on-chain contract hash matches your local SHA-256 from Step 2:
 
 ```bash
 near account view-account-summary $VOTE_CONTRACT \
-  network-config mainnet now
+  network-config mainnet-fastnear now
 ```
 
 Compare the `Contract (SHA-256 checksum hex)` value to your recorded build hash.
+
+Verify initialized admin set:
+
+```bash
+near contract call-function as-read-only $VOTE_CONTRACT list_admins \
+  json-args '{"from_index":0,"limit":10}' \
+  network-config mainnet-fastnear now
+```
+
+Expected result:
+
+`["klausbrave.near","hackhumanity.near"]`
 
 ---
 
