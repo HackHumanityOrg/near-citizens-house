@@ -11,7 +11,6 @@ import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { ConsentBanner } from "@/components/layout/consent-banner"
 import { Toaster } from "@/components/ui/sonner"
-import { DebugPanel } from "@/components/debug/debug-panel"
 import { appMode } from "@/flags"
 import { Providers } from "./providers"
 import "./globals.css"
@@ -82,7 +81,6 @@ export default function RootLayout({
             </Suspense>
             <ConsentBanner />
             <Toaster />
-            <DebugPanel />
           </Providers>
         </ThemeProvider>
         <Analytics />

@@ -5,7 +5,6 @@ import * as Sentry from "@sentry/nextjs"
 import { SWRConfig } from "swr"
 import { NearWalletProvider } from "@/lib"
 import { ErrorBoundary } from "@near-citizens/ui"
-import { DebugProvider } from "@/lib/providers/debug-provider"
 import posthog from "posthog-js"
 import { PostHogProvider as PHProvider } from "posthog-js/react"
 import { env } from "@/lib/schemas/env"
@@ -28,9 +27,7 @@ export function Providers({ children }: ProvidersProps) {
         }}
       >
         <NearWalletProvider>
-          <DebugProvider>
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </DebugProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
         </NearWalletProvider>
       </SWRConfig>
     </PostHogProvider>
