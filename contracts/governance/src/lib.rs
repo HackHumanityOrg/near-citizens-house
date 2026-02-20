@@ -511,16 +511,12 @@ impl VersionedContract {
 
     fn has_pending_or_active_proposals(&self) -> bool {
         let contract = self.contract();
-        let len = contract.proposals.len();
-        for i in 0..len {
-            if let Some(proposal) = contract.proposals.get(i) {
-                match proposal.status {
-                    ProposalStatus::Pending | ProposalStatus::Active => return true,
-                    _ => {}
-                }
-            }
-        }
-        false
+        contract.proposals.iter().any(|proposal| {
+            matches!(
+                &proposal.status,
+                ProposalStatus::Pending | ProposalStatus::Active
+            )
+        })
     }
 
     fn require_quorum_count(snapshot: u64, bps: u16) -> u64 {
@@ -822,9 +818,6 @@ impl VersionedContract {
             votes: IterableMap::new(StorageKey::ProposalVotes { proposal_id }),
         });
 
-        // Flush before cross-contract call
-        contract.proposals.flush();
-
         GovernanceEvent::ProposalCreated {
             proposal_id,
             creator,
@@ -1047,24 +1040,13 @@ impl VersionedContract {
     pub fn list_proposals(&self, from_index: u32, limit: u32) -> Vec<ProposalView> {
         require!(limit <= MAX_PAGINATION_LIMIT, ERR_LIMIT_TOO_LARGE);
         let contract = self.contract();
-        let len = contract.proposals.len();
-        let start = from_index;
-        let end = len.min(
-            start
-                .checked_add(limit)
-                .unwrap_or_else(|| env::panic_str("pagination overflow")),
-        );
-        let mut result = Vec::with_capacity(end.saturating_sub(start) as usize);
-        let mut i = start;
-        while i < end {
-            if let Some(proposal) = contract.proposals.get(i) {
-                result.push(Self::proposal_to_view(proposal));
-            }
-            i = i
-                .checked_add(1)
-                .unwrap_or_else(|| env::panic_str("overflow"));
-        }
-        result
+        contract
+            .proposals
+            .iter()
+            .skip(from_index as usize)
+            .take(limit as usize)
+            .map(Self::proposal_to_view)
+            .collect()
     }
 
     pub fn get_proposal_count(&self) -> u32 {
@@ -1149,10 +1131,6 @@ impl VersionedContract {
             .pending_vote_count
             .checked_add(1)
             .unwrap_or_else(|| env::panic_str("pending vote count overflow"));
-
-        // Flush before cross-contract call
-        contract.pending_votes.flush();
-        contract.proposals.flush();
 
         // Cross-contract: get_verification -> on_vote_verification
         ext_verified_accounts::ext(verified_accounts_contract)

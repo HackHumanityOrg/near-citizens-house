@@ -169,6 +169,70 @@ async fn it_e2e_003_quorum_not_met() -> anyhow::Result<()> {
         proposal.failure_kind,
         Some(governance::FailureKind::QuorumNotMet)
     );
+    assert_eq!(proposal.yes_votes, 1);
+    assert_eq!(proposal.no_votes, 0);
+    assert_eq!(proposal.snapshot_verified_count, 4);
+    assert_eq!(proposal.quorum_bps, 10_000);
+    Ok(())
+}
+
+#[tokio::test]
+#[allure_parent_suite("Near Citizens House")]
+#[allure_suite_label("Governance Integration Tests")]
+#[allure_sub_suite("End-to-End")]
+#[allure_severity("normal")]
+#[allure_tags("integration", "governance", "e2e")]
+#[allure_description("Verifies e2e 003b quorum not met at 50%.")]
+#[allure_test]
+async fn it_e2e_003b_quorum_not_met_50_percent() -> anyhow::Result<()> {
+    // 4 verified accounts, 50% quorum -> requires ceil(4 * 5_000 / 10_000) = 2 votes
+    // Only 1 vote cast -> quorum not met
+    let (worker, governance, _verified, admin, _backend, users) = setup_env(4).await?;
+    let result = admin
+        .call(governance.id(), "update_quorum_bps")
+        .gas(crate::helpers::GAS_HEAVY)
+        .deposit(NearToken::from_yoctonear(1))
+        .args_json(json!({ "new_bps": 5_000 }))
+        .transact()
+        .await?;
+    assert!(result.is_success());
+
+    let proposal_id = create_proposal(
+        &admin,
+        &governance,
+        "p3b",
+        None,
+        NearToken::from_millinear(10),
+    )
+    .await?;
+    let proposal = get_proposal(&governance, proposal_id).await?;
+    let result = crate::helpers::user(&users, 0)
+        .call(governance.id(), "cast_vote")
+        .gas(crate::helpers::GAS_HEAVY)
+        .args_json(json!({ "proposal_id": proposal_id, "choice": "yes" }))
+        .transact()
+        .await?;
+    assert!(result.is_success());
+
+    fast_forward_to_timestamp(&worker, proposal.ends_at.0 + 1).await?;
+    let result = admin
+        .call(governance.id(), "finalize_proposal")
+        .gas(crate::helpers::GAS_HEAVY)
+        .args_json(json!({ "proposal_id": proposal_id }))
+        .transact()
+        .await?;
+    assert!(result.is_success());
+
+    let proposal = get_proposal(&governance, proposal_id).await?;
+    assert_eq!(proposal.status, governance::ProposalStatus::Failed);
+    assert_eq!(
+        proposal.failure_kind,
+        Some(governance::FailureKind::QuorumNotMet)
+    );
+    assert_eq!(proposal.yes_votes, 1);
+    assert_eq!(proposal.no_votes, 0);
+    assert_eq!(proposal.snapshot_verified_count, 4);
+    assert_eq!(proposal.quorum_bps, 5_000);
     Ok(())
 }
 
