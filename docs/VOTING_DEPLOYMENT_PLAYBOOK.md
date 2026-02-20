@@ -22,6 +22,22 @@ Step-by-step guide to deploy the governance voting contract on NEAR mainnet.
 - Initialization defaults follow PRD values for governance
 - Record SHA-256 (hex) for each release artifact
 
+---
+
+## Step -1: Pull And Pin The Release Commit
+
+From repository root, pull latest branch state and pin to the audited release commit:
+
+```bash
+git checkout governance-v2
+git pull --ff-only origin governance-v2
+git checkout --detach e336bb771b68853f07571f06b230f210d51899df
+git rev-parse HEAD
+```
+
+Expected output:
+
+`e336bb771b68853f07571f06b230f210d51899df`
 
 
 ---
@@ -115,8 +131,8 @@ shasum -a 256 target/near/governance.wasm
 
 Current reference hash for the current code snapshot:
 
-- Commit: `c6368cb5db587686a0d7292b41305c573abe06b2`
-- `governance.wasm` SHA-256 (hex): `5e13d456d3af15e93075f6d58342c91754298d68a6dbc4196aa59b7f89125f4e`
+- Commit: `e336bb771b68853f07571f06b230f210d51899df`
+- `governance.wasm` SHA-256 (hex): `a84d8750e673e570a5ee2d276e8c8131873d50ec5cf55080c457f1b38f2a937d`
 
 ---
 
