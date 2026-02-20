@@ -339,7 +339,7 @@ export function VotePanel({ proposal, optimisticVote, onVoteProcessing, onVoteSu
       if (needsRelay && signDelegateActions) {
         // Meta-transaction path: wallet signs a DelegateAction, relayer pays gas
         const contractId = NEAR_CONFIG.governanceContractId
-        if (!contractId) throw new Error("Governance contract not configured")
+        if (!contractId) throw new Error("Proposals contract not configured")
 
         const results = await signDelegateActions({
           delegateActions: [

@@ -163,7 +163,7 @@ export default function AdminPage() {
 
         <div className="relative flex flex-col items-center justify-start pt-[24px] md:pt-[40px] h-full px-4 md:px-8 z-10">
           <h1 className="font-fk-grotesk font-medium text-[36px] md:text-[62px] leading-[40px] md:leading-[72px] text-black dark:text-white text-center">
-            Governance Admin
+            Proposals Admin
           </h1>
         </div>
       </section>

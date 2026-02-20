@@ -15,7 +15,7 @@ const ZERO_DEPOSIT = "0"
 
 function getContractId(): string {
   const contractId = NEAR_CONFIG.governanceContractId
-  if (!contractId) throw new Error("Governance contract not configured")
+  if (!contractId) throw new Error("Proposals contract not configured")
   return contractId
 }
 
