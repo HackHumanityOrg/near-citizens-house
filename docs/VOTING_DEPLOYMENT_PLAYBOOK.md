@@ -151,14 +151,14 @@ Initialization values below are the locked PRD defaults:
 - `quorum_bps = 700`
 - `voting_period_secs = 1209600` (14 days)
 - `pending_expiry_secs = 3600` (1 hour)
-- `min_proposal_bond = 1000000000000000000000000` yoctoNEAR (1 NEAR)
+- `min_proposal_bond = 10000000000000000000000` yoctoNEAR (0.01 NEAR)
 - `finalize_grace_period_secs = 3600` (1 hour)
 - `max_start_delay_secs = 7776000` (90 days)
 - `admins = [$ADMIN_KLAUS, $ADMIN_HACKHUMANITY]`
 
 ```bash
 near contract call-function as-transaction $VOTE_CONTRACT new \
-  json-args "{\"verified_accounts_contract\":\"$VERIFIED_CONTRACT\",\"admins\":[\"$ADMIN_KLAUS\",\"$ADMIN_HACKHUMANITY\"],\"quorum_bps\":700,\"voting_period_secs\":1209600,\"pending_expiry_secs\":3600,\"min_proposal_bond\":\"1000000000000000000000000\",\"finalize_grace_period_secs\":3600,\"max_start_delay_secs\":7776000}" \
+  json-args "{\"verified_accounts_contract\":\"$VERIFIED_CONTRACT\",\"admins\":[\"$ADMIN_KLAUS\",\"$ADMIN_HACKHUMANITY\"],\"quorum_bps\":700,\"voting_period_secs\":1209600,\"pending_expiry_secs\":3600,\"min_proposal_bond\":\"10000000000000000000000\",\"finalize_grace_period_secs\":3600,\"max_start_delay_secs\":7776000}" \
   prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' \
   sign-as $VOTE_CONTRACT \
   network-config mainnet sign-with-keychain send
