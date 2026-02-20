@@ -1650,11 +1650,6 @@ impl VersionedContract {
 
         // === Success path ===
 
-        // Flush PendingVote removal and pending_vote_count decrement to trie
-        // before measuring baseline, so delta captures only the Vote insertion.
-        contract.pending_votes.flush();
-        contract.proposals.flush();
-
         let emit_choice = choice.clone();
         let storage_before = env::storage_usage();
 
@@ -1696,10 +1691,14 @@ impl VersionedContract {
             );
             proposal.yes_votes = new_yes;
             proposal.no_votes = new_no;
+            // Flush nested vote collection writes; without this, vote entries remain in
+            // collection caches and storage_usage() undercounts actual bytes.
+            proposal.votes.flush();
         }
 
-        contract.proposals.flush();
-
+        // Flush pending vote removal so storage_after reflects net delta
+        // from pending lock to finalized vote.
+        contract.pending_votes.flush();
         let storage_after = env::storage_usage();
         let storage_delta = storage_after.saturating_sub(storage_before);
         let actual_cost = env::storage_byte_cost().saturating_mul(storage_delta as u128);
