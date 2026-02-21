@@ -27,6 +27,15 @@ describe("proxy governance admin route override", () => {
     votingAdminMock.mockResolvedValue(false)
   })
 
+  it("bypasses stage-gating for sentry tunnel route", async () => {
+    const response = await proxy(makeRequest("/monitoring"))
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+    expect(maintenanceModeMock).not.toHaveBeenCalled()
+    expect(appModeMock).not.toHaveBeenCalled()
+    expect(votingAdminMock).not.toHaveBeenCalled()
+  })
+
   it("redirects to maintenance when maintenance mode is enabled", async () => {
     maintenanceModeMock.mockResolvedValue(true)
 

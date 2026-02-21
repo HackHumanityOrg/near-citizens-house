@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { maintenanceMode, appMode, votingAdmin } from "./flags"
 
-const EXEMPT_PATHS = ["/privacy", "/terms", "/_not-found"]
+const EXEMPT_PATHS = ["/privacy", "/terms", "/_not-found", "/monitoring"]
 const EXEMPT_PREFIXES = ["/_next", "/api", "/ingest", "/.well-known"]
 const STATIC_EXTENSIONS = [".ico", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".css", ".js", ".woff", ".woff2"]
 const LEGACY_GOVERNANCE_PREFIX = "/governance"
