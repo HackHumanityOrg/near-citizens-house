@@ -555,11 +555,10 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
       getRedisClient(),
     )
     const rateLimitKey = `relay:vote:${validatedAccountId}`
-    const existing = await redis.get(rateLimitKey)
-    if (existing) {
+    const acquiredRateLimit = await redis.set(rateLimitKey, "1", { EX: RATE_LIMIT_TTL, NX: true })
+    if (acquiredRateLimit !== "OK") {
       return relayValidationError("relay_rate_limited", "Rate limited — please wait before voting again", 429)
     }
-    await redis.set(rateLimitKey, "1", { EX: RATE_LIMIT_TTL })
 
     // --- Verify backend wallet is configured ---
     if (!NEAR_SERVER_CONFIG.backendAccountId || !NEAR_SERVER_CONFIG.backendPrivateKey) {
