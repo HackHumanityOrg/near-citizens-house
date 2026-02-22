@@ -33,7 +33,11 @@ import {
   MAX_SIGNED_DELEGATE_BYTES,
   relayRequestSchema,
 } from "@/lib/schemas/governance-contract"
-import { resolveGovernanceVoteOutcome, type VoteRejectionReason } from "@/lib/contracts/governance/vote-outcome"
+import {
+  getVoteRejectionReasonMessage,
+  resolveGovernanceVoteOutcome,
+  type VoteRejectionReason,
+} from "@/lib/contracts/governance/vote-outcome"
 import {
   nearAccessKeyResponseSchema,
   nearAccountIdSchema,
@@ -97,7 +101,7 @@ type GovernanceRelayValidationReason = Extract<
   { domain: "governance"; action: "relay_validation_fail" }
 >["reason"]
 
-function relayError(message: string, status = 400, reason?: VoteRejectionReason) {
+function relayError(message: string, status = 400, reason?: VoteRejectionReason | "unknown") {
   return NextResponse.json(reason ? { error: message, reason } : { error: message }, { status })
 }
 
@@ -327,6 +331,9 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
 
     // 1. Contract whitelist
     const governanceContractId = NEAR_CONFIG.governanceContractId
+    if (!governanceContractId) {
+      return relayValidationError("relayer_not_configured", "Governance contract not configured", 503)
+    }
     if (delegateAction.receiverId !== governanceContractId) {
       return relayValidationError("invalid_receiver_contract", "Relay only supports the governance contract")
     }
@@ -384,7 +391,17 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
       return relayValidationError("cast_vote_gas_exceeds_policy", "Gas exceeds relay policy")
     }
 
-    // 6. Block height check
+    // 6. Rate limit: 1 relay per voter per minute
+    const redis = await Sentry.startSpan({ name: "governance.relay.getRedisClient", op: "db.redis" }, () =>
+      getRedisClient(),
+    )
+    const rateLimitKey = `relay:vote:${validatedAccountId}`
+    const acquiredRateLimit = await redis.set(rateLimitKey, "1", { EX: RATE_LIMIT_TTL, NX: true })
+    if (acquiredRateLimit !== "OK") {
+      return relayValidationError("relay_rate_limited", "Rate limited — please wait before voting again", 429)
+    }
+
+    // 7. Block height check
     const provider = createRpcProvider()
     const nodeStatus = await Sentry.startSpan({ name: "governance.relay.viewNodeStatus", op: "http.client" }, () =>
       provider.viewNodeStatus(),
@@ -400,7 +417,7 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
       )
     }
 
-    // 7. Access key check — public key must belong to sender and allow this call
+    // 8. Access key check — public key must belong to sender and allow this call
     const accessKeyResult = await verifyAccessKeyPermission(
       provider,
       validatedAccountId,
@@ -412,7 +429,7 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
       return relayValidationError("invalid_access_key", accessKeyResult.error ?? "Invalid access key")
     }
 
-    // 8. Parse and validate cast_vote arguments
+    // 9. Parse and validate cast_vote arguments
     const castVoteArgs = parseCastVoteArgs(functionCallData.args)
     if (!castVoteArgs) {
       return relayValidationError("invalid_cast_vote_args", "Invalid cast_vote arguments")
@@ -420,7 +437,7 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
     relayProposalId = castVoteArgs.proposalId
     log.set("proposal_id", castVoteArgs.proposalId)
 
-    // 9. Eligibility preflight — only sponsor verified voters eligible for this proposal
+    // 10. Eligibility preflight — only sponsor verified voters eligible for this proposal
     try {
       const [proposalResult, governanceConfigRaw] = await Sentry.startSpan(
         {
@@ -452,6 +469,32 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
         return relayValidationError("invalid_proposal_response", "Invalid proposal response from RPC", 502, undefined, {
           proposalId: castVoteArgs.proposalId,
         })
+      }
+      const now = Date.now()
+      const proposalStatus = parsedProposal.data.status
+      const proposalVotingClosed =
+        now >= parsedProposal.data.endsAt ||
+        proposalStatus === "failed" ||
+        proposalStatus === "succeeded" ||
+        proposalStatus === "cancelled"
+      const proposalNotStarted = now < parsedProposal.data.startAt || proposalStatus === "pending"
+      if (proposalStatus !== "active" || proposalNotStarted || proposalVotingClosed) {
+        let voteRejectionReason: VoteRejectionReason | undefined
+        if (proposalStatus === "cancelled") {
+          voteRejectionReason = "proposal_cancelled"
+        } else if (proposalVotingClosed) {
+          voteRejectionReason = "proposal_expired"
+        }
+
+        return relayValidationError(
+          "eligibility_preflight_failed",
+          "Proposal is not open for voting",
+          409,
+          voteRejectionReason,
+          {
+            proposalId: castVoteArgs.proposalId,
+          },
+        )
       }
 
       const parsedConfig = contractConfigSchema.safeParse(governanceConfigRaw)
@@ -538,7 +581,7 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
       )
     }
 
-    // 10. isVoteFree check — relay only makes sense when voting is free
+    // 11. isVoteFree check — relay only makes sense when voting is free
     const isVoteFree = await Sentry.startSpan({ name: "governance.relay.isVoteFree", op: "db.near-contract" }, () =>
       governanceReader.isVoteFree(),
     )
@@ -548,16 +591,6 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
         "Voting currently requires a storage deposit; relay unavailable",
         409,
       )
-    }
-
-    // 11. Rate limit: 1 relay per voter per minute
-    const redis = await Sentry.startSpan({ name: "governance.relay.getRedisClient", op: "db.redis" }, () =>
-      getRedisClient(),
-    )
-    const rateLimitKey = `relay:vote:${validatedAccountId}`
-    const acquiredRateLimit = await redis.set(rateLimitKey, "1", { EX: RATE_LIMIT_TTL, NX: true })
-    if (acquiredRateLimit !== "OK") {
-      return relayValidationError("relay_rate_limited", "Rate limited — please wait before voting again", 429)
     }
 
     // --- Verify backend wallet is configured ---
@@ -621,6 +654,26 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
         error_message: outcome.error,
       })
       return relayError(outcome.error, 422)
+    }
+    if (outcome.kind === "vote_rejected") {
+      const rejectionMessage = getVoteRejectionReasonMessage(outcome.reason)
+      log.setAll({
+        relay_outcome: "vote_rejected",
+        vote_rejection_reason: outcome.reason,
+        error_message: rejectionMessage,
+      })
+      await trackRelaySubmissionResult("tx_failed", {
+        proposalId: castVoteArgs.proposalId,
+        txHash,
+        errorMessage: rejectionMessage,
+      })
+      Sentry.logger.warn("governance_relay_vote_rejected", {
+        account_id: validatedAccountId ?? "unknown",
+        proposal_id: castVoteArgs.proposalId,
+        tx_hash: txHash,
+        vote_rejection_reason: outcome.reason,
+      })
+      return relayError(rejectionMessage, 422, outcome.reason)
     }
 
     await trackRelaySubmissionResult("success", {
