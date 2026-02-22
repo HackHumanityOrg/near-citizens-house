@@ -3,10 +3,72 @@
 import "./lib/schemas/env"
 
 import type { NextConfig } from "next"
+import { withSentryConfig } from "@sentry/nextjs"
 import { withPostHogConfig } from "@posthog/nextjs-config"
 import createWithVercelToolbar from "@vercel/toolbar/plugins/next"
 
+function buildCspReportOnlyValue(): string {
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline'",
+    "connect-src 'self' https://*.sumsub.com https://us.posthog.com https://us.i.posthog.com",
+    "frame-src https://*.sumsub.com",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+  ].join("; ")
+}
+
+function buildSecurityHeaders() {
+  const headers = [
+    { key: "X-Frame-Options", value: "DENY" },
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    {
+      key: "Permissions-Policy",
+      value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
+    },
+    {
+      key: "Content-Security-Policy-Report-Only",
+      value: buildCspReportOnlyValue(),
+    },
+  ]
+
+  if (process.env.NODE_ENV === "production") {
+    headers.push({
+      key: "Strict-Transport-Security",
+      value: "max-age=63072000; includeSubDomains; preload",
+    })
+  }
+
+  return headers
+}
+
 const nextConfig: NextConfig = {
+  cacheComponents: true,
+  cacheLife: {
+    rpc_hot: {
+      stale: 30,
+      revalidate: 10,
+      expire: 120,
+    },
+    rpc_warm: {
+      stale: 60,
+      revalidate: 30,
+      expire: 300,
+    },
+    rpc_cold: {
+      stale: 300,
+      revalidate: 120,
+      expire: 900,
+    },
+  },
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -48,6 +110,14 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: buildSecurityHeaders(),
+      },
+    ]
+  },
 }
 
 /**
@@ -76,9 +146,36 @@ const finalConfig = hasPostHogSourceMaps
       sourcemaps: {
         enabled: true,
         project: "citizens-house",
-        deleteAfterUpload: true,
+        // Keep sourcemaps so subsequent build steps (including output tracing)
+        // can still resolve referenced *.js.map files.
+        deleteAfterUpload: false,
       },
     })
   : nextConfig
 
-export default withVercelToolbar(finalConfig)
+const toolbarConfig = withVercelToolbar(finalConfig)
+const hasSentry = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN)
+
+const configWithSentry = hasSentry
+  ? withSentryConfig(toolbarConfig, {
+      org: process.env.SENTRY_ORG ?? "hack-humanity",
+      project: process.env.SENTRY_PROJECT ?? "citizens-house",
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      sourcemaps: {
+        // Sentry defaults to deleting maps after upload. Keep them because
+        // other build tooling in this pipeline also consumes sourcemap files.
+        deleteSourcemapsAfterUpload: false,
+      },
+      tunnelRoute: "/monitoring",
+      webpack: {
+        automaticVercelMonitors: true,
+        treeshake: {
+          removeDebugLogging: true,
+        },
+      },
+    })
+  : toolbarConfig
+
+export default configWithSentry

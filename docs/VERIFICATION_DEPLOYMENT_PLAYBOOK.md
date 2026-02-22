@@ -235,7 +235,6 @@ near account view-account-summary $CONTRACT.$ROOT \
 
 Check the `Contract (SHA-256 checksum hex)` line matches the hash from Step 3.2.
 
-
 ## Step 5: Verify Deployment
 
 > **⚠️ ENVIRONMENT CHECK**: Confirm `$CONTRACT.$ROOT` and `$BACKEND_WALLET.$ROOT` are on the target network.
@@ -267,7 +266,6 @@ near account list-keys $BACKEND_WALLET.$ROOT network-config mainnet now
 Create NEAR_PRIVATE_KEY environment variable
 
 ![CleanShot 2026-01-31 at 20.58.59@2x](https://hackmd.io/_uploads/r1dDUEoLbl.png)
-
 
 ---
 
@@ -335,7 +333,6 @@ Then update `NEAR_ACCOUNT_ID` / `NEAR_PRIVATE_KEY` in your deployment environmen
 If you want to lock upgrades permanently, delete all full-access keys. Since this contract has no self-upgrade method, upgrades become impossible.
 
 ---
-
 
 ---
 

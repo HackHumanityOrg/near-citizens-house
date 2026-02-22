@@ -39,11 +39,7 @@ fn test_invalid_signature() {
                     recipient: accounts(0),
                 };
 
-                contract.store_verification(
-                    user,
-                    sig_data,
-                    "test_user_context_data".to_string(),
-                );
+                contract.store_verification(user, sig_data, "test_user_context_data".to_string());
             },
             "Invalid NEAR signature - NEP-413 verification failed",
         );
@@ -81,11 +77,7 @@ fn test_invalid_nonce_length() {
                     recipient: accounts(0),
                 };
 
-                contract.store_verification(
-                    user,
-                    sig_data,
-                    "test_user_context_data".to_string(),
-                );
+                contract.store_verification(user, sig_data, "test_user_context_data".to_string());
             },
             "Nonce must be exactly 32 bytes",
         );
@@ -123,11 +115,7 @@ fn test_invalid_signature_length() {
                     recipient: accounts(0),
                 };
 
-                contract.store_verification(
-                    user,
-                    sig_data,
-                    "test_user_context_data".to_string(),
-                );
+                contract.store_verification(user, sig_data, "test_user_context_data".to_string());
             },
             "Signature must be 64 bytes",
         );
@@ -165,11 +153,7 @@ fn test_nonce_too_long() {
                     recipient: accounts(0),
                 };
 
-                contract.store_verification(
-                    user,
-                    sig_data,
-                    "test_user_context_data".to_string(),
-                );
+                contract.store_verification(user, sig_data, "test_user_context_data".to_string());
             },
             "Nonce must be exactly 32 bytes",
         );
@@ -207,11 +191,7 @@ fn test_signature_too_long() {
                     recipient: accounts(0),
                 };
 
-                contract.store_verification(
-                    user,
-                    sig_data,
-                    "test_user_context_data".to_string(),
-                );
+                contract.store_verification(user, sig_data, "test_user_context_data".to_string());
             },
             "Signature must be 64 bytes",
         );

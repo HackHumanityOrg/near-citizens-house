@@ -31,6 +31,7 @@ import type {
   Verification,
   VerificationSummary,
 } from "./verification-contract"
+import { GAS_100_TGAS } from "../gas"
 import { NEAR_SERVER_CONFIG } from "../../config.server"
 import { createRpcProvider } from "../../providers/rpc-provider"
 import { backendKeyPool, setBackendKeyPoolRedis } from "../../backend-key-pool"
@@ -231,7 +232,7 @@ export class NearContractDatabase implements IVerificationDatabase {
             signature_data: nearSigData,
             user_context_data: userContextData,
           },
-          gas: "30000000000000", // 30 TGas
+          gas: GAS_100_TGAS,
           deposit: "1", // 1 yoctoNEAR deposit (required by assert_one_yocto)
           waitUntil: "EXECUTED_OPTIMISTIC",
         }),
@@ -253,7 +254,7 @@ export class NearContractDatabase implements IVerificationDatabase {
       if (error instanceof Error && error.message.includes("Smart contract panicked")) {
         const panicMatch = error.message.match(/Smart contract panicked: (.+)/)
         if (panicMatch) {
-          throw new Error(panicMatch[1])
+          throw new Error(panicMatch[1], { cause: error })
         }
       }
 
@@ -307,40 +308,65 @@ export class NearContractDatabase implements IVerificationDatabase {
     }
   }
 
-  // Get paginated verifications
-  async listVerifications(fromIndex: number = 0, limit: number = 50): Promise<PaginatedVerifications> {
+  private parseContractVerifications(accounts: ContractVerification[] | null | undefined): TransformedVerification[] {
+    return (accounts ?? [])
+      .map((item) => contractVerificationSchema.safeParse(item))
+      .filter((r): r is { success: true; data: TransformedVerification } => r.success)
+      .map((r) => r.data)
+  }
+
+  async getVerifiedCount(): Promise<number> {
     await this.ensureInitialized()
 
     try {
-      const [total, accounts] = await Promise.all([
-        this.provider!.callFunction<number>(this.contractId, "get_verified_count", {}),
-        this.provider!.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
-          from_index: fromIndex,
-          limit: Math.min(limit, 100),
-        }),
-      ])
-
-      // Validate and transform each contract response using Zod schema
-      // Use safeParse to filter out invalid entries instead of failing the entire list
-      const verifications = (accounts ?? [])
-        .map((item) => contractVerificationSchema.safeParse(item))
-        .filter((r): r is { success: true; data: TransformedVerification } => r.success)
-        .map((r) => r.data)
-
-      return { accounts: verifications, total: total ?? 0 }
+      return (await this.provider!.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
     } catch {
-      return { accounts: [], total: 0 }
+      return 0
     }
+  }
+
+  async listVerificationsRange(fromIndex: number, limit: number): Promise<Verification[]> {
+    await this.ensureInitialized()
+
+    const safeFromIndex = Math.max(0, Math.trunc(fromIndex))
+    const safeLimit = Math.min(Math.max(0, Math.trunc(limit)), 100)
+
+    if (safeLimit === 0) {
+      return []
+    }
+
+    try {
+      const accounts = await this.provider!.callFunction<ContractVerification[]>(
+        this.contractId,
+        "list_verifications",
+        {
+          from_index: safeFromIndex,
+          limit: safeLimit,
+        },
+      )
+
+      return this.parseContractVerifications(accounts)
+    } catch {
+      return []
+    }
+  }
+
+  // Get paginated verifications
+  async listVerifications(fromIndex: number = 0, limit: number = 50): Promise<PaginatedVerifications> {
+    const [total, accounts] = await Promise.all([
+      this.getVerifiedCount(),
+      this.listVerificationsRange(fromIndex, limit),
+    ])
+
+    return { accounts, total }
   }
 
   // Get paginated verifications ordered by newest first
   async listVerificationsNewestFirst(pagination?: Pagination): Promise<PaginatedVerifications> {
-    await this.ensureInitialized()
-
     const page = pagination?.page ?? 0
     const pageSize = pagination?.pageSize ?? 50
 
-    const total = (await this.provider!.callFunction<number>(this.contractId, "get_verified_count", {})) ?? 0
+    const total = await this.getVerifiedCount()
 
     if (total === 0) {
       return { accounts: [], total }
@@ -355,17 +381,7 @@ export class NearContractDatabase implements IVerificationDatabase {
 
     const limit = Math.min(pageSize, remaining, 100)
     const fromIndex = Math.max(total - (safePage + 1) * pageSize, 0)
-
-    const accounts = await this.provider!.callFunction<ContractVerification[]>(this.contractId, "list_verifications", {
-      from_index: fromIndex,
-      limit,
-    })
-
-    // Use safeParse to filter out invalid entries instead of failing the entire list
-    const verifications = (accounts ?? [])
-      .map((item) => contractVerificationSchema.safeParse(item))
-      .filter((r): r is { success: true; data: TransformedVerification } => r.success)
-      .map((r) => r.data)
+    const verifications = await this.listVerificationsRange(fromIndex, limit)
 
     return { accounts: verifications.reverse(), total }
   }

@@ -2,10 +2,15 @@ packages:
   - apps/*
 
 onlyBuiltDependencies:
+  - '@posthog/cli'
+  - '@sentry-internal/node-cpu-profiler'
+  - '@sentry/cli'
   - blake-hash
+  - core-js
   - esbuild
   - near-sandbox
   - near-workspaces
+  - protobufjs
   - secp256k1
   - sharp
   - unrs-resolver

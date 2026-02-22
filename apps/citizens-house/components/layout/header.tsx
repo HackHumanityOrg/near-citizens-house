@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import {
   Button,
   ThemeToggle,
@@ -16,11 +17,22 @@ import {
 } from "@near-citizens/ui"
 import { useNearWallet } from "@/lib"
 import { Loader2, ChevronDown, Wallet } from "lucide-react"
+import { checkIsAdmin } from "@/app/proposals/actions"
 
-export function Header() {
+export function Header({ isVoting }: { isVoting: boolean }) {
   const pathname = usePathname()
   const isLandingOrVerification = pathname === "/" || pathname?.startsWith("/verification")
   const { accountId, isConnected, connect, disconnect, isLoading } = useNearWallet()
+  const [adminCheck, setAdminCheck] = useState<{ accountId: string; isAdmin: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!isVoting || !isConnected || !accountId) return
+    checkIsAdmin(accountId).then((admin) => {
+      setAdminCheck({ accountId, isAdmin: admin })
+    })
+  }, [isVoting, isConnected, accountId])
+
+  const isAdmin = isVoting && isConnected && adminCheck?.accountId === accountId && adminCheck.isAdmin
 
   return (
     <header className="relative z-50 bg-transparent">
@@ -28,15 +40,28 @@ export function Header() {
       <div className="flex md:hidden items-center justify-between px-6 py-6">
         {/* Mobile Logo - Left */}
         <Link href="/" className="flex items-center shrink-0">
-          <Image src="/logo-mobile.svg" alt="NEAR Citizens House" width={80} height={34} className="dark:invert" />
+          <Image
+            src="/logo-mobile.svg"
+            alt="NEAR Citizens House"
+            width={80}
+            height={34}
+            className="dark:invert"
+            loading="eager"
+            fetchPriority="high"
+          />
         </Link>
 
-        {/* Mobile Navigation - Center */}
-        <nav className="flex items-center gap-4">{/* Navigation links can be added here */}</nav>
+        {/* Mobile Navigation */}
+        {isAdmin && (
+          <nav className="flex items-center gap-4">
+            <Link href="/proposals/admin" className="font-fk-grotesk text-[14px] text-black dark:text-white">
+              Admin
+            </Link>
+          </nav>
+        )}
 
         {/* Mobile Right Side: Wallet + Theme Toggle */}
         <div className="flex items-center gap-4">
-          {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
           {isLandingOrVerification && !isConnected ? null : isLoading ? (
             <button disabled className="p-1 opacity-50 cursor-wait" aria-label="Connecting wallet">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -78,14 +103,30 @@ export function Header() {
       <div className="hidden md:flex items-center gap-20 px-10 py-6">
         {/* Desktop Logo */}
         <Link href="/" className="flex items-center shrink-0">
-          <Image src="/logo-header.svg" alt="NEAR Citizens House" width={405} height={48} className="dark:invert" />
+          <Image
+            src="/logo-header.svg"
+            alt="NEAR Citizens House"
+            width={405}
+            height={48}
+            className="dark:invert"
+            loading="eager"
+            fetchPriority="high"
+          />
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="flex items-center gap-20">{/* Navigation links can be added here */}</nav>
+        {isAdmin && (
+          <nav className="flex items-center gap-20">
+            <Link
+              href="/proposals/admin"
+              className="font-fk-grotesk text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity"
+            >
+              Admin
+            </Link>
+          </nav>
+        )}
 
         {/* Desktop Right Side: Wallet + Theme Toggle */}
-        {/* On landing/verification: only show profile when connected. On other pages: show loading/profile/connect */}
         <div className="flex items-center gap-10 ml-auto">
           {isLandingOrVerification && !isConnected ? null : isLoading ? (
             <Button variant="citizens-primary" size="citizens-3xl" disabled>

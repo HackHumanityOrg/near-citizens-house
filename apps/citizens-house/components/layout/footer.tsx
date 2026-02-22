@@ -22,10 +22,10 @@ export async function Footer() {
             {showGovernance && (
               <>
                 <Link
-                  href="/governance"
+                  href="/proposals"
                   className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk"
                 >
-                  Governance
+                  Proposals
                 </Link>
                 <span className="text-[14px] leading-[1.2] text-[#040404] dark:text-white tracking-[0.14px]">•</span>
               </>
@@ -112,10 +112,10 @@ export async function Footer() {
         <div className="flex flex-col gap-[32px] items-end">
           {showGovernance && (
             <Link
-              href="/governance"
+              href="/proposals"
               className="text-[16px] leading-[28px] text-black dark:text-white hover:opacity-70 transition-opacity font-fk-grotesk text-right"
             >
-              Governance
+              Proposals
             </Link>
           )}
           <Link

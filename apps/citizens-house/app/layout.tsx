@@ -1,5 +1,7 @@
+import { Suspense } from "react"
 import type React from "react"
 import type { Metadata } from "next"
+import * as Sentry from "@sentry/nextjs"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { VercelToolbar } from "@vercel/toolbar/next"
@@ -9,6 +11,7 @@ import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { ConsentBanner } from "@/components/layout/consent-banner"
 import { Toaster } from "@/components/ui/sonner"
+import { appMode } from "@/flags"
 import { Providers } from "./providers"
 import "./globals.css"
 
@@ -26,10 +29,34 @@ const geistMono = Geist_Mono({
   preload: true,
 })
 
-export const metadata: Metadata = {
-  title: "NEAR Citizens House",
-  description:
-    "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
+export function generateMetadata(): Metadata {
+  return {
+    title: "NEAR Citizens House",
+    description:
+      "Create your NEAR Verified Account to participate in NEAR governance with enhanced trust and credibility.",
+    other: {
+      ...Sentry.getTraceData(),
+    },
+  }
+}
+
+async function HeaderWithMode() {
+  let isVoting = false
+  try {
+    isVoting = (await appMode()) === "voting"
+  } catch {
+    // Flag evaluation failed — default to non-voting
+  }
+
+  return <Header isVoting={isVoting} />
+}
+
+function HeaderFallback() {
+  return (
+    <header className="relative z-50 bg-transparent">
+      <div className="h-[88px] md:h-[96px]" />
+    </header>
+  )
 }
 
 export default function RootLayout({
@@ -45,9 +72,13 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Providers>
-            <Header />
+            <Suspense fallback={<HeaderFallback />}>
+              <HeaderWithMode />
+            </Suspense>
             <main className="flex-1">{children}</main>
-            <Footer />
+            <Suspense fallback={null}>
+              <Footer />
+            </Suspense>
             <ConsentBanner />
             <Toaster />
           </Providers>

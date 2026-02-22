@@ -40,6 +40,11 @@ export const env = createEnv({
     POSTHOG_PERSONAL_API_KEY: z.string().optional(),
     // Environment ID: https://app.posthog.com/settings/environment#variables
     POSTHOG_PROJECT_ID: z.string().optional(),
+
+    // Sentry source maps upload/project targeting (optional)
+    SENTRY_AUTH_TOKEN: z.string().optional(),
+    SENTRY_ORG: z.string().optional(),
+    SENTRY_PROJECT: z.string().optional(),
   },
 
   /**
@@ -66,8 +71,14 @@ export const env = createEnv({
     // PostHog analytics (optional)
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
 
+    // Sentry browser DSN (optional)
+    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
+
     // WalletConnect project ID (optional - enables WalletConnect wallets)
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: z.string().optional(),
+
+    // Governance contract address (optional - governance section disabled when unset)
+    NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT: z.string().optional(),
   },
 
   /**
@@ -85,6 +96,9 @@ export const env = createEnv({
     E2E_TESTING: process.env.E2E_TESTING,
     POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
     POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
+    SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+    SENTRY_ORG: process.env.SENTRY_ORG,
+    SENTRY_PROJECT: process.env.SENTRY_PROJECT,
     SUMSUB_APP_TOKEN: process.env.SUMSUB_APP_TOKEN,
     SUMSUB_SECRET_KEY: process.env.SUMSUB_SECRET_KEY,
     SUMSUB_WEBHOOK_SECRET: process.env.SUMSUB_WEBHOOK_SECRET,
@@ -95,7 +109,9 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_USERJOT_PROJECT_ID: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+    NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT,
   },
 
   /**

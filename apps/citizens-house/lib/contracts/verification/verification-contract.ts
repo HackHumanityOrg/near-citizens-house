@@ -33,6 +33,8 @@ export interface IVerificationDatabase {
   storeVerification(data: VerificationDataWithSignature): Promise<void>
   getVerification(nearAccountId: NearAccountId): Promise<VerificationSummary | null>
   getFullVerification(nearAccountId: NearAccountId): Promise<Verification | null>
+  getVerifiedCount(): Promise<number>
+  listVerificationsRange(fromIndex: number, limit: number): Promise<Verification[]>
   listVerifications(fromIndex?: number, limit?: number): Promise<PaginatedVerifications>
   listVerificationsNewestFirst(pagination?: Pagination): Promise<PaginatedVerifications>
 }

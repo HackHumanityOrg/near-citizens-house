@@ -6,13 +6,13 @@
  */
 import { env } from "./schemas/env"
 import type { NearAccountId } from "./schemas/near"
+import { getFastNearRpcUrl } from "./rpc-endpoints"
 
 // NEAR Network Configuration
 const networkId = env.NEXT_PUBLIC_NEAR_NETWORK
 
 // FastNEAR RPC URL
-const getFastNearUrl = () =>
-  networkId === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com"
+const getFastNearUrl = () => getFastNearRpcUrl(networkId)
 
 export const NEAR_CONFIG = {
   networkId,
@@ -20,6 +20,7 @@ export const NEAR_CONFIG = {
   rpcUrl: getFastNearUrl(),
   // Contract addresses
   verificationContractId: env.NEXT_PUBLIC_NEAR_VERIFICATION_CONTRACT,
+  governanceContractId: env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT,
   // Explorer URLs
   get explorerUrl() {
     return this.networkId === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io"

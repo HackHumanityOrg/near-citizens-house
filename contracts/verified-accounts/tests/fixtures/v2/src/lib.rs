@@ -14,9 +14,9 @@
 
 use near_sdk::assert_one_yocto;
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
-use near_sdk::store::IterableMap;
 use near_sdk::json_types::Base64VecU8;
 use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::store::IterableMap;
 use near_sdk::{env, near, AccountId, BorshStorageKey, NearSchema, PanicOnDefault, PublicKey};
 
 // Interface module for cross-contract calls
@@ -291,12 +291,7 @@ impl VersionedContract {
         );
         contract.paused = true;
 
-        emit_event(
-            "contract_paused",
-            &ContractPausedEvent {
-                by: caller,
-            },
-        );
+        emit_event("contract_paused", &ContractPausedEvent { by: caller });
     }
 
     /// Unpause the contract (only callable by backend wallet)
@@ -312,12 +307,7 @@ impl VersionedContract {
         );
         contract.paused = false;
 
-        emit_event(
-            "contract_unpaused",
-            &ContractUnpausedEvent {
-                by: caller,
-            },
-        );
+        emit_event("contract_unpaused", &ContractUnpausedEvent { by: caller });
     }
 
     /// Store a verified account with NEAR signature verification (only callable by backend wallet)
@@ -381,16 +371,15 @@ impl VersionedContract {
         };
 
         // Store verification
-        contract
-            .verifications
-            .insert(near_account_id.clone(), VersionedVerification::from(verification));
+        contract.verifications.insert(
+            near_account_id.clone(),
+            VersionedVerification::from(verification),
+        );
 
         // Emit event
         emit_event(
             "verification_stored",
-            &VerificationStoredEvent {
-                near_account_id,
-            },
+            &VerificationStoredEvent { near_account_id },
         );
     }
 

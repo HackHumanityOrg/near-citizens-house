@@ -1,7 +1,9 @@
 "use server"
 
-import { unstable_cache } from "next/cache"
+import * as Sentry from "@sentry/nextjs"
+import { cacheLife, cacheTag } from "next/cache"
 import {
+  NEAR_CONFIG,
   parseUserContextData,
   verifyNearSignature,
   buildSignatureVerificationData,
@@ -10,10 +12,13 @@ import {
   nearAccountIdSchema,
   type NearAccountId,
 } from "@/lib"
-import type { TransformedVerification } from "@/lib/schemas/verification-contract"
+import type { TransformedVerification, TransformedVerificationSummary } from "@/lib/schemas/verification-contract"
 import { verificationDb } from "@/lib/contracts/verification/client"
+import { governanceReader } from "@/lib/contracts/governance/client"
 import { paginationSchema, type Pagination } from "@/lib/schemas/core"
 import { signatureVerificationDataSchema, type SignatureVerificationData } from "@/lib/schemas/verification-signature"
+import { withObservedServerAction } from "@/lib/observability/server-action"
+import { citizensTags, governanceTags, normalizeCitizensPagination, verificationTags } from "@/lib/cache/rpc-tags"
 
 export type VerificationResult = {
   signatureValid: boolean
@@ -31,17 +36,33 @@ export type GetVerificationsResult = {
   total: number
 }
 
-/**
- * Core data fetching logic - separated for caching.
- * Fetches accounts from NEAR contract and verifies NEAR signatures.
- * SumSub handles identity verification; we verify signature integrity.
- */
-async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
-  // Get paginated accounts from NEAR contract (newest first)
-  const { accounts, total } = await verificationDb.listVerificationsNewestFirst(pagination)
+async function fetchBlocklist(): Promise<string[]> {
+  if (!NEAR_CONFIG.governanceContractId) return []
 
-  // Verify each account's NEAR signature in parallel
-  const verifiedAccounts = await Promise.all(
+  const BATCH = 100
+  const all: string[] = []
+  let fromIndex = 0
+
+  while (true) {
+    const batch = await governanceReader.listBlocklist(fromIndex, BATCH)
+    all.push(...batch)
+    if (batch.length < BATCH) break
+    fromIndex += batch.length
+  }
+
+  return all
+}
+
+async function getCachedBlocklist() {
+  "use cache"
+
+  cacheLife("rpc_warm")
+  cacheTag(governanceTags.root, governanceTags.blocklist, governanceTags.blocklistAll)
+  return fetchBlocklist()
+}
+
+async function verifyAccountSignatures(accounts: TransformedVerification[]): Promise<VerificationWithStatus[]> {
+  return Promise.all(
     accounts.map(async (account): Promise<VerificationWithStatus> => {
       try {
         // Verify NEAR signature for data integrity
@@ -89,7 +110,7 @@ async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetV
           signatureData: signatureVerificationData,
         }
       } catch (error) {
-        // Final catch-all: Always display account even if verification fails
+        // Keep cached verification output deterministic: no observability side effects here.
         return {
           account,
           verification: {
@@ -101,40 +122,149 @@ async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetV
       }
     }),
   )
+}
 
-  return { accounts: verifiedAccounts, total }
+async function countVerifiedBlocklistedAccounts(blocklistSet: ReadonlySet<string>): Promise<number> {
+  if (blocklistSet.size === 0) return 0
+
+  const checks = await Promise.all(
+    [...blocklistSet].map((id) => verificationDb.isVerified(id as NearAccountId).catch(() => false)),
+  )
+  return checks.filter(Boolean).length
+}
+
+async function listNonBlocklistedPage(
+  pagination: Pagination,
+  blocklistSet: ReadonlySet<string>,
+): Promise<{ accounts: TransformedVerification[]; totalUnfiltered: number }> {
+  const BATCH = 100
+  const filteredOffset = pagination.page * pagination.pageSize
+  const pageAccounts: TransformedVerification[] = []
+  let nonBlocklistedSeen = 0
+  let scannedUnfiltered = 0
+
+  const totalUnfiltered = await verificationDb.getVerifiedCount()
+  if (totalUnfiltered === 0) {
+    return { accounts: [], totalUnfiltered }
+  }
+
+  while (scannedUnfiltered < totalUnfiltered && pageAccounts.length < pagination.pageSize) {
+    const remaining = totalUnfiltered - scannedUnfiltered
+    const limit = Math.min(BATCH, remaining)
+    const fromIndex = Math.max(totalUnfiltered - scannedUnfiltered - limit, 0)
+    const oldestFirstBatch = await verificationDb.listVerificationsRange(fromIndex, limit)
+    // Cursor progression must follow consumed contract indexes, not parsed rows.
+    // listVerificationsRange filters invalid rows, so empty/short batches are still progress.
+    scannedUnfiltered += limit
+    if (oldestFirstBatch.length === 0) continue
+
+    // Contract pagination is oldest-first; reverse each slice to scan newest-first.
+    const newestFirstBatch = [...oldestFirstBatch].reverse()
+
+    for (const account of newestFirstBatch) {
+      if (blocklistSet.has(account.nearAccountId)) {
+        continue
+      }
+
+      if (nonBlocklistedSeen >= filteredOffset && pageAccounts.length < pagination.pageSize) {
+        pageAccounts.push(account)
+      }
+      nonBlocklistedSeen += 1
+
+      if (pageAccounts.length === pagination.pageSize) {
+        return { accounts: pageAccounts, totalUnfiltered }
+      }
+    }
+  }
+
+  return { accounts: pageAccounts, totalUnfiltered }
+}
+
+/**
+ * Core data fetching logic - separated for caching.
+ * Fetches accounts from NEAR contract and verifies NEAR signatures.
+ * SumSub handles identity verification; we verify signature integrity.
+ */
+async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
+  const blocklist = await getCachedBlocklist()
+  const blocklistSet = new Set(blocklist)
+
+  if (blocklistSet.size === 0) {
+    const { accounts, total } = await verificationDb.listVerificationsNewestFirst(pagination)
+    const verifiedAccounts = await verifyAccountSignatures(accounts)
+    return { accounts: verifiedAccounts, total }
+  }
+
+  // Fill pages from blocklist-filtered data (filter first, then paginate)
+  const [{ accounts, totalUnfiltered }, verifiedBlocklistedCount] = await Promise.all([
+    listNonBlocklistedPage(pagination, blocklistSet),
+    countVerifiedBlocklistedAccounts(blocklistSet),
+  ])
+  const verifiedAccounts = await verifyAccountSignatures(accounts)
+
+  return {
+    accounts: verifiedAccounts,
+    total: Math.max(0, totalUnfiltered - verifiedBlocklistedCount),
+  }
 }
 
 /**
  * Cached version of fetchAndVerifyVerifications.
  * Cache is tagged with 'verifications' for on-demand revalidation.
  */
-const getCachedVerifications = unstable_cache(
-  (pagination: Pagination) => fetchAndVerifyVerifications(pagination),
-  ["verifications"],
-  {
-    tags: ["verifications"],
-    revalidate: 60, // Revalidate every 60 seconds (1 minute)
-  },
-)
+async function getCachedVerifications(pagination: Pagination) {
+  "use cache"
+
+  const normalized = normalizeCitizensPagination(pagination)
+  cacheLife("rpc_warm")
+  cacheTag(
+    verificationTags.root,
+    verificationTags.pages,
+    verificationTags.page(normalized.page, normalized.pageSize),
+    citizensTags.pages,
+    citizensTags.page(normalized.page, normalized.pageSize),
+    governanceTags.blocklist,
+    governanceTags.blocklistAll,
+  )
+
+  return fetchAndVerifyVerifications(normalized)
+}
 
 /**
  * Server action to get verifications with status.
- * Uses unstable_cache for caching with 1-minute revalidation.
+ * Uses Next.js Cache Components (`use cache`) for server-side caching.
  * NEAR signature verification happens server-side.
  */
 export async function getVerificationsWithStatus(page: number, pageSize: number): Promise<GetVerificationsResult> {
-  // Validate input parameters with safeParse
-  const params = paginationSchema.safeParse({ page, pageSize })
-  if (!params.success) {
-    return { accounts: [], total: 0 }
-  }
+  return withObservedServerAction("citizens.getVerificationsWithStatus", async () => {
+    // Validate input parameters with safeParse
+    const params = paginationSchema.safeParse({ page, pageSize })
+    if (!params.success) {
+      Sentry.logger.warn("get_verifications_invalid_pagination", {
+        page,
+        page_size: pageSize,
+        validation_error: params.error.message,
+      })
+      return { accounts: [], total: 0 }
+    }
 
-  try {
-    return await getCachedVerifications(params.data)
-  } catch {
-    return { accounts: [], total: 0 }
-  }
+    const normalized = normalizeCitizensPagination(params.data)
+
+    try {
+      return await getCachedVerifications(normalized)
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "citizens_getVerificationsWithStatus" },
+        extra: { page, pageSize },
+      })
+      Sentry.logger.error("get_verifications_failed", {
+        page,
+        page_size: pageSize,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
+      return { accounts: [], total: 0 }
+    }
+  })
 }
 
 /**
@@ -142,15 +272,73 @@ export async function getVerificationsWithStatus(page: number, pageSize: number)
  * Used by the UI to skip verification steps for already-verified accounts.
  */
 export async function checkIsVerified(nearAccountId: NearAccountId): Promise<boolean> {
-  // Runtime validation for security (server actions can receive arbitrary input)
-  const parsed = nearAccountIdSchema.safeParse(nearAccountId)
-  if (!parsed.success) {
-    return false
-  }
+  return withObservedServerAction("citizens.checkIsVerified", async () => {
+    // Runtime validation for security (server actions can receive arbitrary input)
+    const parsed = nearAccountIdSchema.safeParse(nearAccountId)
+    if (!parsed.success) {
+      Sentry.logger.warn("check_is_verified_invalid_account_id", {
+        account_id: String(nearAccountId),
+        validation_error: parsed.error.message,
+      })
+      return false
+    }
 
-  try {
-    return await verificationDb.isVerified(parsed.data)
-  } catch {
-    return false
-  }
+    try {
+      return await Sentry.startSpan(
+        {
+          name: "verificationDb.isVerified",
+          op: "db.near-contract",
+          attributes: { near_account_id: parsed.data },
+        },
+        () => verificationDb.isVerified(parsed.data),
+      )
+    } catch (error) {
+      Sentry.captureException(error, {
+        level: "warning",
+        tags: { area: "citizens_checkIsVerified" },
+        extra: { nearAccountId: parsed.data },
+      })
+      Sentry.logger.warn("check_is_verified_failed", {
+        account_id: parsed.data,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
+      return false
+    }
+  })
+}
+
+/**
+ * Server action to fetch a verification summary (including verifiedAt).
+ * Used by governance UI to determine proposal-time voting eligibility.
+ */
+export async function getVerificationSummary(
+  nearAccountId: NearAccountId,
+): Promise<TransformedVerificationSummary | null> {
+  return withObservedServerAction("citizens.getVerificationSummary", async () => {
+    const parsed = nearAccountIdSchema.safeParse(nearAccountId)
+    if (!parsed.success) {
+      return null
+    }
+
+    try {
+      return await getCachedVerificationSummary(parsed.data)
+    } catch (error) {
+      Sentry.captureException(error, {
+        level: "warning",
+        tags: { area: "citizens_getVerificationSummary" },
+        extra: { account_id: parsed.data },
+      })
+      return null
+    }
+  })
+}
+
+async function getCachedVerificationSummary(
+  nearAccountId: NearAccountId,
+): Promise<TransformedVerificationSummary | null> {
+  "use cache"
+
+  cacheLife("rpc_cold")
+  cacheTag(verificationTags.root, verificationTags.summaries, verificationTags.summary(nearAccountId))
+  return verificationDb.getVerification(nearAccountId)
 }

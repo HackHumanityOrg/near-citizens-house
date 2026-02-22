@@ -33,8 +33,11 @@ function formatDate(timestamp: number): string {
   return `${month} ${day}, ${year}, ${hour12}:${minutes} ${ampm} UTC`
 }
 
-export function VerificationsTable({ accounts, total, page, pageSize: _pageSize, totalPages }: Props) {
+export function VerificationsTable({ accounts, total, page, pageSize, totalPages }: Props) {
   const [selectedAccount, setSelectedAccount] = useState<VerificationWithStatus | null>(null)
+  const firstVisible = page * pageSize + 1
+  const lastVisible = page * pageSize + accounts.length
+  const accountLabel = total === 1 ? "account" : "accounts"
 
   const handleViewDetails = (account: VerificationWithStatus) => {
     trackEvent({
@@ -62,7 +65,7 @@ export function VerificationsTable({ accounts, total, page, pageSize: _pageSize,
               className="font-fk-grotesk text-[14px] leading-[14px] text-[#090909] dark:text-neutral-300"
             >
               {accounts.length > 0
-                ? `Showing ${accounts.length} of ${total} NEAR Verified Accounts`
+                ? `Showing ${firstVisible}-${lastVisible} of ${total} NEAR verified ${accountLabel}`
                 : "No verified accounts yet"}
             </p>
             <div className="flex items-start py-[8px] md:py-0">

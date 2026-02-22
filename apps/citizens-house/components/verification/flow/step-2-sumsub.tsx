@@ -161,7 +161,7 @@ export function Step2SumSub({ nearSignature, onSuccess, onError }: Step2SumSubPr
           verificationAttemptId,
         })
       }
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [nearSignature, verificationAttemptId])
 

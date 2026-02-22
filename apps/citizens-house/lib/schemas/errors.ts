@@ -271,7 +271,7 @@ const VERIFICATION_ERRORS = {
 
 /**
  * Derived error category mapping for backward compatibility.
- * Used by debug menu to group errors by category.
+ * Used to group verification errors by category.
  */
 export const ERROR_CATEGORIES = Object.fromEntries(
   Object.entries(VERIFICATION_ERRORS).map(([code, def]) => [code, def.category]),

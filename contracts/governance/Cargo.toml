@@ -1,0 +1,83 @@
+[package]
+name = "governance"
+version = "0.1.0"
+edition = "2021"
+description = "NEAR governance contract for Citizens House voting"
+repository = "https://github.com/HackHumanityOrg/near-citizens-house"
+
+[package.metadata.near.reproducible_build]
+image = "sourcescan/cargo-near:0.19.0-rust-1.86.0"
+image_digest = "sha256:772638e343baeeea24e49062c7d424274f3441452cc06ce97fc4e5695b19fecc"
+passed_env = []
+container_build_command = [
+  "cargo",
+  "near",
+  "build",
+  "non-reproducible-wasm",
+  "--locked",
+]
+
+[features]
+default = []
+integration-tests = []
+testing = []
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "5.24"
+borsh = "1.6"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+near-sdk = { version = "5.24", features = ["unit-testing"] }
+near-workspaces = { version = "0.21", features = ["unstable"] }
+cargo-near-build = "0.7.2"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+anyhow = "1.0"
+tokio = { version = "1.49", features = ["full"] }
+allure-rs = { version = "0.1", features = ["async", "tokio"] }
+allure-core = { version = "0.1", features = ["async", "tokio"] }
+futures = "0.3"
+base64 = "0.22"
+sha2 = "0.10"
+near-crypto = "0.22"
+
+[lints.clippy]
+# Security-critical: prevent panics and uncontrolled aborts
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+
+# Arithmetic safety (critical for vote counts, bond math, quorum calculations)
+arithmetic_side_effects = "deny"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+
+# No floats in on-chain logic
+float_arithmetic = "deny"
+
+# Lint groups
+correctness = { level = "deny", priority = -1 }
+perf = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+
+# Allow noisy pedantic lints
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true
+
+[profile.release.package."*"]
+codegen-units = 1
+opt-level = "z"

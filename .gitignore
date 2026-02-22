@@ -79,9 +79,7 @@ neardev/
 **/*.tmp
 **/*.swp
 
-CLAUDE.md
 .claude_docs
-AGENTS.md
 
 # Allure test reports
 allure-results/
@@ -93,3 +91,7 @@ docs/.plans/
 
 # next-agents-md
 .next-docs/
+
+# Generated deterministic voter script artifacts
+apps/citizens-house/scripts/fixtures/deterministic-voters.*.json
+apps/citizens-house/scripts/fixtures/vote-runs/

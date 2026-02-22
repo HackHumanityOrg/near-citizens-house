@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef, Suspense, useCallback } from "react"
+import * as Sentry from "@sentry/nextjs"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 import { useNearWallet, CONSTANTS, type NearSignatureData } from "@/lib"
 import { trackEvent, getPlatform, identifyVerifiedUser } from "@/lib/analytics"
 import { checkIsVerified } from "@/app/citizens/actions"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Step1WalletSignature } from "../../../components/verification/flow/step-1-wallet-signature"
 import { Step2SumSub } from "../../../components/verification/flow/step-2-sumsub"
 import { Step3Success } from "../../../components/verification/flow/step-3-success"
@@ -21,10 +23,6 @@ enum VerificationProgressStep {
   VerificationComplete = "verification_complete",
   Hold = "hold",
   Error = "error",
-}
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-[#e2e8f0] dark:bg-white/10 ${className}`} />
 }
 
 function LoadingFallback() {
@@ -204,6 +202,10 @@ function VerificationStartContent() {
           accountId,
           errorMessage: err instanceof Error ? err.message : "Unknown error",
         })
+        Sentry.logger.warn("verification_start_initial_status_check_failed", {
+          account_id: accountId,
+          error_message: err instanceof Error ? err.message : "Unknown error",
+        })
         // Continue with verification flow
       } finally {
         setIsCheckingVerification(false)
@@ -274,10 +276,14 @@ function VerificationStartContent() {
         platform,
         errorMessage,
       })
+      Sentry.logger.warn("verification_wallet_connect_failed", {
+        account_id: accountId ?? "unknown",
+        error_message: errorMessage,
+      })
       setErrorMessage("Failed to connect wallet. Please try again.")
       setIsErrorModalOpen(true)
     }
-  }, [connect])
+  }, [connect, accountId])
 
   // Handle message signing
   const handleSignMessage = useCallback(async () => {
@@ -303,6 +309,9 @@ function VerificationStartContent() {
         return
       }
     } catch {
+      Sentry.logger.warn("verification_pre_sign_status_check_failed", {
+        account_id: accountId,
+      })
       // Continue with signing if check fails - the token endpoint will also check
     }
 
@@ -349,6 +358,23 @@ function VerificationStartContent() {
         errorMessage: message,
         wasUserRejection,
       })
+
+      if (wasUserRejection) {
+        Sentry.logger.warn("verification_sign_rejected", {
+          account_id: accountId,
+          error_message: message,
+        })
+      } else {
+        Sentry.captureException(error, {
+          level: "warning",
+          tags: { area: "verification_sign" },
+          extra: { account_id: accountId },
+        })
+        Sentry.logger.error("verification_sign_failed", {
+          account_id: accountId,
+          error_message: message,
+        })
+      }
 
       setErrorMessage(message)
       setIsErrorModalOpen(true)

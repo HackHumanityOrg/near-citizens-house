@@ -10,18 +10,24 @@
     "test:contract:verification": "cd contracts/verified-accounts && cargo test --features testing -- --test-threads=1",
     "test:contract:verification:integration": "cd contracts/verified-accounts && cargo test --features integration-tests -- --test-threads=1",
     "test:contract:verified-accounts-interface": "cd contracts/verified-accounts-interface && cargo test -- --test-threads=1",
-    "test:contracts:all": "pnpm run test:contract:verification && pnpm run test:contract:verification:integration && pnpm run test:contract:verified-accounts-interface",
+    "test:contract:governance": "cd contracts/governance && cargo test --features testing -- --test-threads=1",
+    "test:contract:governance:integration": "cd contracts/governance && cargo test --features integration-tests -- --test-threads=1",
+    "test:contracts:all": "pnpm run test:contract:verification && pnpm run test:contract:verification:integration && pnpm run test:contract:verified-accounts-interface && pnpm run test:contract:governance",
     "lint:contract": "cd contracts/verified-accounts && cargo clippy --all-targets -- -D warnings",
     "lint:contract:verification": "cd contracts/verified-accounts && cargo clippy --all-targets -- -D warnings",
+    "lint:contract:governance": "cd contracts/governance && cargo clippy --all-targets --features testing -- -D warnings",
     "lint:contract:fix": "cd contracts/verified-accounts && cargo clippy --fix --allow-dirty --allow-staged",
     "lint:contract:fix:verification": "cd contracts/verified-accounts && cargo clippy --fix --allow-dirty --allow-staged",
+    "lint:contract:fix:governance": "cd contracts/governance && cargo clippy --fix --allow-dirty --allow-staged --features testing",
     "check:contract:verification": "cd contracts/verified-accounts && rustup target add wasm32-unknown-unknown && cargo check --target wasm32-unknown-unknown",
     "deploy:testnet": "pnpm --filter verified-accounts deploy:testnet",
     "deploy:testnet:verification": "pnpm --filter verified-accounts deploy:testnet",
+    "bootstrap:voters": "npx tsx apps/citizens-house/scripts/bootstrap-deterministic-voters.ts",
+    "vote:deterministic": "npx tsx apps/citizens-house/scripts/cast-deterministic-votes.ts",
     "cleanup-orphan-accounts": "npx tsx apps/citizens-house/e2e/scripts/cleanup-orphan-accounts.ts",
     "lint": "pnpm --recursive lint",
     "lint:fix": "pnpm --recursive lint:fix",
-    "lint:all": "pnpm run lint && pnpm run knip && pnpm run lint:contract:verification",
+    "lint:all": "pnpm run lint && pnpm run knip && pnpm run lint:contract:verification && pnpm run lint:contract:governance",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm --recursive test",
@@ -37,24 +43,30 @@
     "knip": "knip"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "@next/eslint-plugin-next": "^16.1.1",
-    "@playwright/test": "^1.57.0",
-    "allure-js-commons": "^3.4.3",
-    "allure-vitest": "^3.4.3",
-    "eslint": "^9.39.2",
+    "@eslint/js": "^10.0.1",
+    "@next/eslint-plugin-next": "^16.1.6",
+    "@playwright/test": "^1.58.2",
+    "allure-js-commons": "^3.4.5",
+    "allure-vitest": "^3.4.5",
+    "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "knip": "^5.82.1",
-    "prettier": "^3.7.4",
+    "knip": "^5.84.1",
+    "prettier": "^3.8.1",
     "typescript": "^5",
-    "typescript-eslint": "^8.52.0",
-    "vitest": "^4.0.16"
+    "typescript-eslint": "^8.56.0",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18",
     "pnpm": ">=8"
   },
-  "packageManager": "pnpm@10.28.0"
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3"
+    }
+  },
+  "packageManager": "pnpm@10.30.1"
 }

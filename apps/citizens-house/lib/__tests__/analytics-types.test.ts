@@ -138,6 +138,60 @@ describe("Analytics Event Type Safety", () => {
       expect(true).toBe(true)
     })
 
+    it("accepts valid governance events", () => {
+      trackEvent({
+        domain: "governance",
+        action: "proposals_list_view",
+        page: 0,
+        pageSize: 9,
+        total: 42,
+        returnedCount: 9,
+      })
+      trackEvent({
+        domain: "governance",
+        action: "vote_submit_start",
+        proposalId: 7,
+        accountId: "alice.near",
+        choice: "yes",
+        path: "relay",
+      })
+      trackEvent({
+        domain: "governance",
+        action: "vote_submit_result",
+        proposalId: 7,
+        accountId: "alice.near",
+        choice: "yes",
+        path: "relay",
+        outcome: "success",
+      })
+      trackEvent({
+        domain: "governance",
+        action: "admin_tx_result",
+        area: "admins",
+        operation: "remove_admin",
+        outcome: "fail",
+        accountId: "alice.near",
+        targetAccountId: "bob.near",
+        errorMessage: "account not found",
+      })
+      trackEvent({
+        domain: "governance",
+        action: "server_action_result",
+        actionName: "governance.getProposalVotes",
+        outcome: "fallback",
+        proposalId: 12,
+        page: 0,
+        pageSize: 10,
+      })
+      trackEvent({
+        domain: "governance",
+        action: "relay_validation_fail",
+        reason: "invalid_sender_account_id",
+        statusCode: 400,
+      })
+      expect(true).toBe(true)
+    })
+
     it("accepts valid error events", () => {
       trackEvent({
         domain: "errors",
@@ -232,6 +286,18 @@ describe("Analytics Event Type Safety", () => {
     it("rejects errors event without required stage", () => {
       // @ts-expect-error - missing required 'stage' property
       trackEvent({ domain: "errors", action: "exception_captured", errorName: "Error", errorMessage: "test" })
+      expect(true).toBe(true)
+    })
+
+    it("rejects governance vote event without required fields", () => {
+      // @ts-expect-error - missing required proposalId
+      trackEvent({
+        domain: "governance",
+        action: "vote_submit_start",
+        accountId: "alice.near",
+        choice: "yes",
+        path: "relay",
+      })
       expect(true).toBe(true)
     })
 

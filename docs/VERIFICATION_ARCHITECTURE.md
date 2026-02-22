@@ -130,6 +130,7 @@ This matters because the contract does **not** verify SumSub data itself. Govern
 SumSub handles identity verification through document scanning and liveness checks. The verification result is delivered via webhooks to the backend.
 
 This architecture provides:
+
 - **Simplicity**: users only need a NEAR wallet - no additional apps or hardware required
 - **Broad document support**: accepts passports, driver's licenses, national IDs, and residence permits from most countries
 - **Privacy**: personal information is processed by SumSub and never stored on-chain; only verification status is recorded
@@ -152,13 +153,14 @@ SumSub handles identity deduplication internally through biometric and document 
 
 SumSub returns one of three review answers:
 
-| Status | Meaning | Action |
-|--------|---------|--------|
-| GREEN | Approved | Store verification on-chain |
-| YELLOW | Needs manual review | Set status to `VERIFICATION_ON_HOLD` |
-| RED | Rejected | Set status based on `reviewRejectType` |
+| Status | Meaning             | Action                                 |
+| ------ | ------------------- | -------------------------------------- |
+| GREEN  | Approved            | Store verification on-chain            |
+| YELLOW | Needs manual review | Set status to `VERIFICATION_ON_HOLD`   |
+| RED    | Rejected            | Set status based on `reviewRejectType` |
 
 For RED rejections, `reviewRejectType` determines whether retry is allowed:
+
 - `RETRY`: user can attempt verification again with better documents
 - `FINAL`: verification is permanently rejected
 
