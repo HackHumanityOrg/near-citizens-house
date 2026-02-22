@@ -141,27 +141,27 @@ async function listNonBlocklistedPage(
   const filteredOffset = pagination.page * pagination.pageSize
   const pageAccounts: TransformedVerification[] = []
   let nonBlocklistedSeen = 0
-  let scanPage = 0
-  let totalUnfiltered = 0
+  let scannedUnfiltered = 0
 
-  while (true) {
-    const { accounts: batch, total } = await verificationDb.listVerificationsNewestFirst({
-      page: scanPage,
-      pageSize: BATCH,
-    })
+  const totalUnfiltered = await verificationDb.getVerifiedCount()
+  if (totalUnfiltered === 0) {
+    return { accounts: [], totalUnfiltered }
+  }
 
-    if (scanPage === 0) {
-      totalUnfiltered = total
-      if (totalUnfiltered === 0) {
-        return { accounts: [], totalUnfiltered }
-      }
-    }
+  while (scannedUnfiltered < totalUnfiltered && pageAccounts.length < pagination.pageSize) {
+    const remaining = totalUnfiltered - scannedUnfiltered
+    const limit = Math.min(BATCH, remaining)
+    const fromIndex = Math.max(totalUnfiltered - scannedUnfiltered - limit, 0)
+    const oldestFirstBatch = await verificationDb.listVerificationsRange(fromIndex, limit)
+    // Cursor progression must follow consumed contract indexes, not parsed rows.
+    // listVerificationsRange filters invalid rows, so empty/short batches are still progress.
+    scannedUnfiltered += limit
+    if (oldestFirstBatch.length === 0) continue
 
-    if (batch.length === 0) {
-      break
-    }
+    // Contract pagination is oldest-first; reverse each slice to scan newest-first.
+    const newestFirstBatch = [...oldestFirstBatch].reverse()
 
-    for (const account of batch) {
+    for (const account of newestFirstBatch) {
       if (blocklistSet.has(account.nearAccountId)) {
         continue
       }
@@ -175,11 +175,6 @@ async function listNonBlocklistedPage(
         return { accounts: pageAccounts, totalUnfiltered }
       }
     }
-
-    scanPage += 1
-    if (scanPage * BATCH >= totalUnfiltered) {
-      break
-    }
   }
 
   return { accounts: pageAccounts, totalUnfiltered }
@@ -191,7 +186,7 @@ async function listNonBlocklistedPage(
  * SumSub handles identity verification; we verify signature integrity.
  */
 async function fetchAndVerifyVerifications(pagination: Pagination): Promise<GetVerificationsResult> {
-  const blocklist = await getCachedBlocklist().catch(() => [] as string[])
+  const blocklist = await getCachedBlocklist()
   const blocklistSet = new Set(blocklist)
 
   if (blocklistSet.size === 0) {

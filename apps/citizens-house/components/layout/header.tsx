@@ -40,7 +40,15 @@ export function Header({ isVoting }: { isVoting: boolean }) {
       <div className="flex md:hidden items-center justify-between px-6 py-6">
         {/* Mobile Logo - Left */}
         <Link href="/" className="flex items-center shrink-0">
-          <Image src="/logo-mobile.svg" alt="NEAR Citizens House" width={80} height={34} className="dark:invert" />
+          <Image
+            src="/logo-mobile.svg"
+            alt="NEAR Citizens House"
+            width={80}
+            height={34}
+            className="dark:invert"
+            loading="eager"
+            fetchPriority="high"
+          />
         </Link>
 
         {/* Mobile Navigation */}
@@ -95,7 +103,15 @@ export function Header({ isVoting }: { isVoting: boolean }) {
       <div className="hidden md:flex items-center gap-20 px-10 py-6">
         {/* Desktop Logo */}
         <Link href="/" className="flex items-center shrink-0">
-          <Image src="/logo-header.svg" alt="NEAR Citizens House" width={405} height={48} className="dark:invert" />
+          <Image
+            src="/logo-header.svg"
+            alt="NEAR Citizens House"
+            width={405}
+            height={48}
+            className="dark:invert"
+            loading="eager"
+            fetchPriority="high"
+          />
         </Link>
 
         {/* Desktop Navigation */}
