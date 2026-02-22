@@ -74,6 +74,16 @@ describe("proxy governance admin route override", () => {
     expect(votingAdminMock).not.toHaveBeenCalled()
   })
 
+  it("does not rewrite legacy governance paths", async () => {
+    appModeMock.mockResolvedValue("voting")
+    votingAdminMock.mockResolvedValue(false)
+
+    const response = await proxy(makeRequest("/governance/42"))
+
+    expect(response.headers.get("location")).toBe("https://example.com/proposals")
+    expect(votingAdminMock).not.toHaveBeenCalled()
+  })
+
   it("keeps existing voting-mode behavior unchanged", async () => {
     appModeMock.mockResolvedValue("voting")
     votingAdminMock.mockResolvedValue(false)
