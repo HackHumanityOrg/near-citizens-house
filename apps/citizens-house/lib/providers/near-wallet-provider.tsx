@@ -94,7 +94,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
         const connector = new NearConnector({
           network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
-          autoConnect: true,
+          autoConnect: false,
           walletConnect: walletConnectClient,
         })
 
@@ -192,13 +192,13 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const connect = useCallback(async () => {
-    if (!nearConnector) {
-      return
-    }
-    // Show wallet selector and connect with the chosen one
-    const id = await nearConnector.selectWallet()
-    if (id) {
-      await nearConnector.connect(id)
+    if (!nearConnector) return
+    try {
+      const id = await nearConnector.selectWallet()
+      if (id) await nearConnector.connect(id)
+    } catch (error) {
+      if (error instanceof Error && error.message === "User rejected") return
+      throw error
     }
   }, [nearConnector])
 
