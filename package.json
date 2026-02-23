@@ -48,14 +48,14 @@
     "@playwright/test": "^1.58.2",
     "allure-js-commons": "^3.4.5",
     "allure-vitest": "^3.4.5",
-    "eslint": "^10.0.0",
+    "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "knip": "^5.84.1",
+    "knip": "^5.85.0",
     "prettier": "^3.8.1",
     "typescript": "^5",
-    "typescript-eslint": "^8.56.0",
+    "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.18"
   },
   "engines": {

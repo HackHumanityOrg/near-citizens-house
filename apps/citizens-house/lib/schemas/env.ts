@@ -42,6 +42,7 @@ export const env = createEnv({
     POSTHOG_PROJECT_ID: z.string().optional(),
 
     // Sentry source maps upload/project targeting (optional)
+    SENTRY_DSN: z.string().optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),
@@ -74,6 +75,7 @@ export const env = createEnv({
 
     // Sentry browser DSN (optional)
     NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
+    NEXT_PUBLIC_VERCEL_ENV: z.string().optional(),
 
     // WalletConnect project ID (optional - enables WalletConnect wallets)
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: z.string().optional(),
@@ -98,6 +100,7 @@ export const env = createEnv({
     POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
     POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+    SENTRY_DSN: process.env.SENTRY_DSN,
     SENTRY_ORG: process.env.SENTRY_ORG,
     SENTRY_PROJECT: process.env.SENTRY_PROJECT,
     SENTRY_RELEASE: process.env.SENTRY_RELEASE,
@@ -112,6 +115,7 @@ export const env = createEnv({
     NEXT_PUBLIC_USERJOT_PROJECT_ID: process.env.NEXT_PUBLIC_USERJOT_PROJECT_ID,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
     NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT: process.env.NEXT_PUBLIC_NEAR_GOVERNANCE_CONTRACT,
   },

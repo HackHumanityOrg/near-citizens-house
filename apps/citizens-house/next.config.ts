@@ -7,6 +7,10 @@ import { withSentryConfig } from "@sentry/nextjs"
 import { withPostHogConfig } from "@posthog/nextjs-config"
 import createWithVercelToolbar from "@vercel/toolbar/plugins/next"
 
+if (!process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_DSN) {
+  process.env.NEXT_PUBLIC_SENTRY_DSN = process.env.SENTRY_DSN
+}
+
 function buildCspReportOnlyValue(): string {
   return [
     "default-src 'self'",
@@ -154,7 +158,8 @@ const finalConfig = hasPostHogSourceMaps
   : nextConfig
 
 const toolbarConfig = withVercelToolbar(finalConfig)
-const hasSentry = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN)
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN
+const hasSentry = Boolean(sentryDsn)
 
 const configWithSentry = hasSentry
   ? withSentryConfig(toolbarConfig, {

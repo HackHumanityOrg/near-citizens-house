@@ -19,6 +19,7 @@
 // Retry configuration
 const MAX_RETRIES = 5
 const BASE_DELAY_MS = 1000
+const RPC_REQUEST_TIMEOUT_MS = 5000
 
 /**
  * Sleep for a given number of milliseconds with optional jitter.
@@ -50,6 +51,31 @@ function isRetryableError(error: unknown): boolean {
     msg.includes("Server error") ||
     msg.includes("Exceeded")
   )
+}
+
+type RpcResponse = {
+  result?: {
+    permission?: unknown
+  }
+  error?:
+    | {
+        message?: string
+        [key: string]: unknown
+      }
+    | string
+}
+
+async function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => {
+    controller.abort(`Request timeout after ${RPC_REQUEST_TIMEOUT_MS}ms`)
+  }, RPC_REQUEST_TIMEOUT_MS)
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 /**
@@ -96,14 +122,20 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
     /**
      * Query access key list from RPC.
      */
-    async function queryAccessKeyList(): Promise<Set<string>> {
-      const existingKeysResponse = await provider.query({
-        request_type: "view_access_key_list",
-        account_id: backendAccountId,
-        finality: "final",
-      })
-      type AccessKeyList = import("./schemas/near").AccessKeyList
-      return new Set((existingKeysResponse as unknown as AccessKeyList).keys.map((k) => k.public_key))
+    async function queryAccessKeyList(): Promise<Set<string> | null> {
+      try {
+        const existingKeysResponse = await provider.query({
+          request_type: "view_access_key_list",
+          account_id: backendAccountId,
+          finality: "final",
+        })
+        type AccessKeyList = import("./schemas/near").AccessKeyList
+        return new Set((existingKeysResponse as unknown as AccessKeyList).keys.map((k) => k.public_key))
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.warn(`[BackendKeyRegistration] Failed to load access key list: ${errorMessage}`)
+        return null
+      }
     }
 
     /**
@@ -111,7 +143,7 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
      */
     async function keyExistsOnChain(publicKeyStr: string): Promise<boolean> {
       try {
-        const response = await fetch(rpcUrl, {
+        const response = await fetchWithTimeout(rpcUrl, {
           method: "POST",
           headers: { ...rpcHeaders, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -126,15 +158,25 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
             },
           }),
         })
-        const data = await response.json()
-        return !data.error && data.result?.permission
-      } catch {
+        if (!response.ok) {
+          throw new Error(`RPC request failed with status ${response.status}`)
+        }
+
+        const data = (await response.json()) as RpcResponse
+        return !data.error && Boolean(data.result?.permission)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.warn(`[BackendKeyRegistration] keyExistsOnChain failed for ${publicKeyStr}: ${errorMessage}`)
         return false
       }
     }
 
     // Get all keys currently registered on the account
     const existingKeys = await queryAccessKeyList()
+    if (!existingKeys) {
+      console.warn("[BackendKeyRegistration] Skipping backend key registration due RPC unavailability")
+      return
+    }
 
     // Check which pool keys need to be registered
     const poolKeys = backendKeyPool.getAllPublicKeys()
@@ -183,6 +225,13 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
 
           // Re-query to see current state
           const currentKeys = await queryAccessKeyList()
+          if (!currentKeys) {
+            console.warn(
+              "[BackendKeyRegistration] Retrying query for existing keys failed; preserving existing pending keys",
+            )
+            break
+          }
+
           missingKeys = missingKeys.filter(({ publicKey }) => !currentKeys.has(publicKey))
 
           if (missingKeys.length === 0) {
@@ -223,6 +272,10 @@ export async function ensureBackendKeysRegistered(): Promise<void> {
 
     // Post-registration verification
     const existingKeysAfter = await queryAccessKeyList()
+    if (!existingKeysAfter) {
+      console.warn("[BackendKeyRegistration] Could not verify key registration due RPC issue")
+      return
+    }
     const stillMissing = poolKeys.filter((pk) => !existingKeysAfter.has(pk))
     if (stillMissing.length > 0) {
       console.warn(`[BackendKeyRegistration] Warning: ${stillMissing.length} keys may not be registered yet`)
