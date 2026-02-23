@@ -48,27 +48,15 @@ export async function trackServerEvent<T extends AnalyticsEvent>(
   const eventName = `${domain}:${action}`
 
   try {
-    await Sentry.startSpan(
-      {
-        name: "posthog.captureImmediate",
-        op: "analytics.posthog",
-        attributes: {
-          event_name: eventName,
-          distinct_id: distinctId,
-          has_session_id: Boolean(options?.sessionId),
-        },
+    await client.captureImmediate({
+      distinctId,
+      event: eventName,
+      properties: {
+        ...properties,
+        // Include session ID if provided (links event to session replay)
+        ...(options?.sessionId && { $session_id: options.sessionId }),
       },
-      () =>
-        client.captureImmediate({
-          distinctId,
-          event: eventName,
-          properties: {
-            ...properties,
-            // Include session ID if provided (links event to session replay)
-            ...(options?.sessionId && { $session_id: options.sessionId }),
-          },
-        }),
-    )
+    })
   } catch (error) {
     // Analytics delivery should never break request flow.
     Sentry.captureException(error, {

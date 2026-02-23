@@ -64,6 +64,30 @@ interface NearWalletContextType {
 
 const NearWalletContext = createContext<NearWalletContextType | null>(null)
 
+// Module-level singleton to avoid re-initializing WalletConnect on every connect() call
+let wcClient: Awaited<ReturnType<(typeof import("@walletconnect/sign-client"))["default"]["init"]>> | undefined
+let wcInitPromise: Promise<typeof wcClient> | undefined
+
+async function getOrInitWalletConnect(projectId: string, origin: string): Promise<typeof wcClient> {
+  if (wcClient) return wcClient
+  if (!wcInitPromise) {
+    wcInitPromise = (async () => {
+      const SignClient = (await import("@walletconnect/sign-client")).default
+      wcClient = await SignClient.init({
+        projectId,
+        metadata: {
+          name: "NEAR Citizens House",
+          description: "NEAR governance and identity verification",
+          url: origin,
+          icons: [],
+        },
+      })
+      return wcClient
+    })()
+  }
+  return wcInitPromise
+}
+
 export function NearWalletProvider({ children }: { children: ReactNode }) {
   const [nearConnector, setNearConnector] = useState<NearConnector | null>(null)
   const [accountId, setAccountId] = useState<NearAccountId | null>(null)
@@ -71,54 +95,43 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   const [supportsMetaTransactions, setSupportsMetaTransactions] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  const handleSignIn = useCallback(
+    (payload: {
+      wallet: NearWalletBase
+      accounts: Array<{ accountId: string; publicKey?: string }>
+      success: boolean
+    }) => {
+      const rawAccountId = payload?.accounts?.[0]?.accountId
+      const validatedAccountId = validateAccountId(rawAccountId)
+      setAccountId(validatedAccountId)
+      setWalletName(payload?.wallet?.manifest?.name ?? null)
+      setSupportsMetaTransactions(walletSupportsMetaTransactions(payload?.wallet))
+      if (validatedAccountId) posthog.identify(validatedAccountId)
+    },
+    [],
+  )
+
+  const handleSignOut = useCallback(() => {
+    setAccountId(null)
+    setWalletName(null)
+    setSupportsMetaTransactions(false)
+    posthog.reset()
+  }, [])
+
   useEffect(() => {
     async function initializeWalletConnector() {
       try {
-        // Initialize WalletConnect SignClient if projectId is provided
-        // This enables wallets that use WalletConnect protocol (e.g., MyNearWallet, Unity Wallet)
-        const projectId = env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
-        let walletConnectClient
-        if (projectId) {
-          // Dynamically import WalletConnect to avoid bundling if not used
-          const SignClient = (await import("@walletconnect/sign-client")).default
-          walletConnectClient = await SignClient.init({
-            projectId,
-            metadata: {
-              name: "NEAR Citizens House",
-              description: "NEAR governance and identity verification",
-              url: typeof window !== "undefined" ? window.location.origin : "https://citizens.near.org",
-              icons: [],
-            },
-          })
-        }
-
+        // Fast init: no WalletConnect download — WC wallets are filtered out until connect()
         const connector = new NearConnector({
           network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
           autoConnect: true,
-          walletConnect: walletConnectClient,
+          // walletConnect intentionally omitted — deferred to connect() to avoid 3-5 MB download on every page load
         })
 
-        // Connection/disconnection events
-        connector.on("wallet:signIn", (payload) => {
-          const rawAccountId = payload?.accounts?.[0]?.accountId
-          const validatedAccountId = validateAccountId(rawAccountId)
-          setAccountId(validatedAccountId)
-          setWalletName(payload?.wallet?.manifest?.name ?? null)
-          setSupportsMetaTransactions(walletSupportsMetaTransactions(payload?.wallet))
+        connector.on("wallet:signIn", handleSignIn)
+        connector.on("wallet:signOut", handleSignOut)
 
-          // Identify user in PostHog when wallet connects
-          if (validatedAccountId) {
-            posthog.identify(validatedAccountId)
-          }
-        })
-        connector.on("wallet:signOut", () => {
-          setAccountId(null)
-          setWalletName(null)
-          setSupportsMetaTransactions(false)
-          posthog.reset()
-        })
-
-        // Try existing session
+        // Restore session for extension wallets (localStorage read, no network)
         try {
           const connected = await connector.getConnectedWallet()
           const rawAccountId = connected?.accounts?.[0]?.accountId
@@ -126,24 +139,19 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           setAccountId(validatedAccountId)
           setWalletName(connected?.wallet?.manifest?.name ?? null)
           setSupportsMetaTransactions(walletSupportsMetaTransactions(connected?.wallet))
-
-          // Identify existing session user
-          if (validatedAccountId) {
-            posthog.identify(validatedAccountId)
-          }
+          if (validatedAccountId) posthog.identify(validatedAccountId)
         } catch {
-          // No previous session
+          // No previous session or WalletConnect session (user will need to reconnect once)
         }
 
         setNearConnector(connector)
-        setIsLoading(false)
-      } catch {
+      } finally {
         setIsLoading(false)
       }
     }
 
     initializeWalletConnector()
-  }, [])
+  }, [handleSignIn, handleSignOut])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -175,8 +183,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ["class", "style"],
+      // attributes omitted — only need to detect popup presence/absence in the DOM tree
     })
     mediaQuery.addEventListener("change", updateUserJotVisibility)
 
@@ -192,15 +199,32 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const connect = useCallback(async () => {
-    if (!nearConnector) {
-      return
+    // Lazy-init WalletConnect — downloads the 3-5 MB bundle only on first "Connect Wallet" click
+    let wc: typeof wcClient = undefined
+    if (env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
+      wc = await getOrInitWalletConnect(
+        env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+        typeof window !== "undefined" ? window.location.origin : "https://citizens.near.org",
+      )
     }
-    // Show wallet selector and connect with the chosen one
-    const id = await nearConnector.selectWallet()
+
+    // Create a new connector with WalletConnect enabled for the selection popup
+    const connector = new NearConnector({
+      network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
+      autoConnect: false,
+      walletConnect: wc,
+    })
+    connector.on("wallet:signIn", handleSignIn)
+    connector.on("wallet:signOut", handleSignOut)
+
+    const id = await connector.selectWallet()
     if (id) {
-      await nearConnector.connect(id)
+      await connector.connect(id)
     }
-  }, [nearConnector])
+
+    // Replace the active connector so disconnect/signMessage/etc. use the new one
+    setNearConnector(connector)
+  }, [handleSignIn, handleSignOut])
 
   const disconnect = useCallback(async () => {
     if (!nearConnector) return
