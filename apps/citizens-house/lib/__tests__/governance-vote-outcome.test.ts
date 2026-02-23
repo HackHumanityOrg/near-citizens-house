@@ -153,6 +153,21 @@ describe("resolveGovernanceVoteOutcome", () => {
       error: "Smart contract panicked: ERR_PROPOSAL_ENDED",
     })
   })
+
+  it("handles outcomes with missing receipts_outcome", () => {
+    const outcomeWithoutReceipts = {
+      status: { SuccessValue: "" },
+      transaction_outcome: {
+        id: "tx-id",
+        outcome: {
+          logs: [],
+          status: { SuccessValue: "" },
+        },
+      },
+    } as unknown as FinalExecutionOutcome
+
+    expect(resolveGovernanceVoteOutcome(outcomeWithoutReceipts)).toEqual({ kind: "unknown" })
+  })
 })
 
 describe("parseGovernanceVoteOutcome", () => {

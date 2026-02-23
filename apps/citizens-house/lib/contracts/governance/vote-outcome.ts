@@ -75,11 +75,13 @@ function parseGovernanceEventLog(log: string): { event: string; data: Record<str
 }
 
 export function extractExecutionFailure(result: FinalExecutionOutcome): string | null {
+  const receiptOutcomes = Array.isArray(result.receipts_outcome) ? result.receipts_outcome : []
+
   if (typeof result.status === "object" && "Failure" in result.status && result.status.Failure) {
     return deepExtractErrorMessage(result.status.Failure) ?? "Transaction execution failed"
   }
 
-  for (const receipt of result.receipts_outcome) {
+  for (const receipt of receiptOutcomes) {
     const receiptStatus = receipt.outcome.status
     if (typeof receiptStatus === "object" && "Failure" in receiptStatus && receiptStatus.Failure) {
       return deepExtractErrorMessage(receiptStatus.Failure) ?? "Receipt execution failed"
@@ -95,11 +97,12 @@ export function resolveGovernanceVoteOutcome(result: FinalExecutionOutcome): Gov
     return { kind: "tx_failed", error: executionFailure }
   }
 
+  const receiptOutcomes = Array.isArray(result.receipts_outcome) ? result.receipts_outcome : []
   let voteCast: GovernanceVoteOutcome | null = null
   let voteRejected: GovernanceVoteOutcome | null = null
   const logs: string[] = [
     ...result.transaction_outcome.outcome.logs,
-    ...result.receipts_outcome.flatMap((receipt) => receipt.outcome.logs),
+    ...receiptOutcomes.flatMap((receipt) => receipt.outcome.logs),
   ]
 
   for (const log of logs) {
