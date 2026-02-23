@@ -35,10 +35,9 @@ export function trackEvent<T extends AnalyticsEvent>(event: T): void {
 }
 
 /**
- * Capture an error with typed analytics and PostHog exception tracking.
+ * Capture an error telemetry event.
  *
- * Sends both a typed analytics event and PostHog's native exception capture
- * for full stack trace visibility.
+ * Keeps error semantics centralized while routing stack trace reporting to Sentry.
  *
  * @param error - The error to capture
  * @param context - Error context including stage and optional component stack
@@ -56,9 +55,6 @@ export function captureError(
     stage: context.stage,
     componentStack: context.componentStack,
   })
-
-  // Also send to PostHog's exception tracking for stack traces
-  posthog.captureException(error)
 }
 
 /**

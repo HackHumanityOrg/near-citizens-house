@@ -73,10 +73,9 @@ export async function trackServerEvent<T extends AnalyticsEvent>(
 }
 
 /**
- * Capture a server-side error with typed analytics and PostHog exception tracking.
+ * Capture a server-side error with typed analytics.
  *
- * Sends both a typed analytics event and PostHog's native exception capture
- * for full stack trace visibility.
+ * Keeps stack traces and exception reporting in Sentry for consistency with client-side telemetry.
  *
  * @param error - The error to capture
  * @param distinctId - User identifier (or undefined for anonymous)
@@ -101,21 +100,5 @@ export async function captureServerError(
   } catch {
     // trackServerEvent already captures Sentry diagnostics and should not throw,
     // but keep this boundary to prevent cascading failures.
-  }
-
-  // Also send to PostHog's exception tracking
-  const client = getPostHogServer()
-  if (client) {
-    try {
-      await client.captureException(error, effectiveDistinctId, {
-        $session_id: context.sessionId,
-      })
-    } catch (captureError) {
-      Sentry.captureException(captureError, {
-        level: "warning",
-        tags: { area: "posthog_server_exception_capture" },
-        extra: { distinctId: effectiveDistinctId, stage: context.stage },
-      })
-    }
   }
 }

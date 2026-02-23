@@ -49,7 +49,7 @@ export async function register() {
  * Captures unhandled errors from API routes, Server Components, and middleware.
  * Extracts distinctId from PostHog cookie for user association.
  *
- * @see https://posthog.com/docs/error-tracking/installation/nextjs
+ * @see https://docs.sentry.io/platforms/javascript/guides/nextjs/error-monitoring/
  */
 export const onRequestError = async (...args: Parameters<typeof Sentry.captureRequestError>) => {
   Sentry.captureRequestError(...args)

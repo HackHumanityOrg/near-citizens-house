@@ -45,6 +45,7 @@ export const env = createEnv({
     SENTRY_AUTH_TOKEN: z.string().optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),
+    SENTRY_RELEASE: z.string().optional(),
   },
 
   /**
@@ -99,6 +100,7 @@ export const env = createEnv({
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     SENTRY_ORG: process.env.SENTRY_ORG,
     SENTRY_PROJECT: process.env.SENTRY_PROJECT,
+    SENTRY_RELEASE: process.env.SENTRY_RELEASE,
     SUMSUB_APP_TOKEN: process.env.SUMSUB_APP_TOKEN,
     SUMSUB_SECRET_KEY: process.env.SUMSUB_SECRET_KEY,
     SUMSUB_WEBHOOK_SECRET: process.env.SUMSUB_WEBHOOK_SECRET,
