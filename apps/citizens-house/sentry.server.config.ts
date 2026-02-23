@@ -24,4 +24,9 @@ Sentry.init({
     if (prioritizeCriticalRoutes(name)) return 1
     return inheritOrSampleWith(0.1)
   },
+  // Filter expected server-side errors that are not actionable bugs
+  ignoreErrors: [
+    // HTTP client disconnect — occurs when a user navigates away mid-request
+    "Error: aborted",
+  ],
 })

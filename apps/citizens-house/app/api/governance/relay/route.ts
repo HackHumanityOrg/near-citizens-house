@@ -570,6 +570,16 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
+      // FastNear RPC rate limit during preflight — expected, surface a clear message
+      if (message.includes("Rate limits exceeded") || message.includes('"code":-429')) {
+        return relayValidationError(
+          "eligibility_preflight_failed",
+          "RPC rate limit exceeded, please try again shortly",
+          503,
+          undefined,
+          { proposalId: castVoteArgs.proposalId },
+        )
+      }
       return relayValidationError(
         "eligibility_preflight_failed",
         `Eligibility preflight failed: ${message}`,
@@ -694,6 +704,27 @@ export const POST = withObservability({ route: "POST /api/governance/relay" }, a
     return NextResponse.json({ success: true, txHash, outcome }, { status: 200 })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error"
+
+    // FastNear RPC rate limit — expected external condition, not a bug
+    if (errorMessage.includes("Rate limits exceeded") || errorMessage.includes('"code":-429')) {
+      log.setAll({ relay_outcome: "rpc_rate_limited", error_message: errorMessage })
+      Sentry.logger.warn("governance_relay_rpc_rate_limited", {
+        account_id: validatedAccountId ?? "unknown",
+        error_message: errorMessage,
+      })
+      return relayError("RPC rate limit exceeded, please try again shortly", 503)
+    }
+
+    // NEAR transaction expired — expected when the signed delegate is too old
+    if (errorMessage.includes("Transaction has expired")) {
+      log.setAll({ relay_outcome: "tx_expired", error_message: errorMessage })
+      Sentry.logger.warn("governance_relay_tx_expired", {
+        account_id: validatedAccountId ?? "unknown",
+        error_message: errorMessage,
+      })
+      return relayError("Transaction has expired, please sign and submit again", 422)
+    }
+
     log.setAll({
       relay_outcome: "error",
       error_message: errorMessage,
