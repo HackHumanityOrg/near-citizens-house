@@ -73,16 +73,22 @@ async function getOrInitWalletConnect(projectId: string, origin: string): Promis
   if (!wcInitPromise) {
     wcInitPromise = (async () => {
       const SignClient = (await import("@walletconnect/sign-client")).default
-      wcClient = await SignClient.init({
-        projectId,
-        metadata: {
-          name: "NEAR Citizens House",
-          description: "NEAR governance and identity verification",
-          url: origin,
-          icons: [],
-        },
-      })
-      return wcClient
+      try {
+        wcClient = await SignClient.init({
+          projectId,
+          metadata: {
+            name: "NEAR Citizens House",
+            description: "NEAR governance and identity verification",
+            url: origin,
+            icons: [],
+          },
+        })
+        return wcClient
+      } catch (error) {
+        wcInitPromise = undefined
+        wcClient = undefined
+        throw error
+      }
     })()
   }
   return wcInitPromise
@@ -219,7 +225,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
 
     const id = await connector.selectWallet()
     if (id) {
-      await connector.connect(id)
+      await connector.connect({ walletId: id })
     }
 
     // Replace the active connector so disconnect/signMessage/etc. use the new one
