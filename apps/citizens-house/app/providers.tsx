@@ -68,6 +68,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
             password: true,
           },
         },
+        // Prevent the recorder from auto-starting on init. The posthog-recorder.js
+        // script and initial DOM snapshot are deferred until after window.load below,
+        // so they don't compete with page hydration for the main thread.
+        disable_session_recording: true,
         // Console log recording - captures console.log, console.warn, console.error in session replays
         enable_recording_console_log: true,
         // Consent mode (opt-out behavior)
@@ -89,6 +93,17 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         if (storedConsent === "denied") {
           posthog.opt_out_capturing()
         }
+      }
+
+      // Start session recording only after the page has fully loaded so the
+      // recorder script fetch and initial DOM serialization don't block
+      // interactive content. posthog.startSessionRecording() still respects
+      // any opt-out captured above.
+      const startRecording = () => posthog.startSessionRecording()
+      if (document.readyState === "complete") {
+        startRecording()
+      } else {
+        window.addEventListener("load", startRecording, { once: true })
       }
     } catch (error) {
       Sentry.captureException(error, {
