@@ -7,6 +7,7 @@ const SOURCE_MANIFEST_URLS = [
 ]
 const MANIFEST_REVALIDATE_SECONDS = 300
 const MANIFEST_TAG = "near-wallet-manifest"
+const CACHE_CONTROL_HEADER = `public, max-age=${MANIFEST_REVALIDATE_SECONDS}, s-maxage=${MANIFEST_REVALIDATE_SECONDS}, stale-while-revalidate=${MANIFEST_REVALIDATE_SECONDS}`
 
 type ManifestPayload = {
   wallets: unknown[]
@@ -14,6 +15,7 @@ type ManifestPayload = {
 }
 
 let manifestCache: ManifestPayload | null = null
+let manifestFetchPromise: Promise<ManifestPayload | null> | null = null
 
 function isManifestPayload(candidate: unknown): candidate is ManifestPayload {
   if (!candidate || typeof candidate !== "object") return false
@@ -42,19 +44,40 @@ async function fetchManifestFromRemote(url: string): Promise<ManifestPayload | n
   }
 }
 
-async function resolveManifest(): Promise<ManifestPayload> {
-  for (const url of SOURCE_MANIFEST_URLS) {
-    const manifest = await fetchManifestFromRemote(url)
-    if (manifest) {
-      manifestCache = manifest
-      return manifest
-    }
+function getManifestFetchPromise(): Promise<ManifestPayload | null> {
+  if (!manifestFetchPromise) {
+    manifestFetchPromise = Promise.any(
+      SOURCE_MANIFEST_URLS.map(async (url) => {
+        const manifest = await fetchManifestFromRemote(url)
+        if (!manifest) throw new Error("Invalid manifest response")
+        return manifest
+      }),
+    )
+      .then((manifest) => {
+        manifestCache = manifest
+        return manifest
+      })
+      .catch(() => null)
+      .finally(() => {
+        manifestFetchPromise = null
+      })
   }
 
-  return manifestCache ?? FALLBACK_MANIFEST
+  return manifestFetchPromise
+}
+
+async function resolveManifest(): Promise<ManifestPayload> {
+  const manifest = await getManifestFetchPromise()
+
+  return manifest ?? manifestCache ?? FALLBACK_MANIFEST
 }
 
 export async function GET() {
   const manifest = await resolveManifest()
-  return NextResponse.json(manifest)
+
+  return NextResponse.json(manifest, {
+    headers: {
+      "Cache-Control": CACHE_CONTROL_HEADER,
+    },
+  })
 }

@@ -207,13 +207,18 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const connect = useCallback(async () => {
-    // Lazy-init WalletConnect — downloads the 3-5 MB bundle only on first "Connect Wallet" click
+    // Lazy-init WalletConnect — download on first "Connect Wallet" click.
+    // Do not block the selector if WalletConnect bootstrap fails.
     let wc: typeof wcClient = undefined
     if (env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
-      wc = await getOrInitWalletConnect(
-        env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-        typeof window !== "undefined" ? window.location.origin : "https://citizens.near.org",
-      )
+      try {
+        wc = await getOrInitWalletConnect(
+          env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+          window.location.origin,
+        )
+      } catch {
+        wc = undefined
+      }
     }
 
     // Create a new connector with WalletConnect enabled for the selection popup
