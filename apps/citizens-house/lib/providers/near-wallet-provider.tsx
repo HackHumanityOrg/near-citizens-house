@@ -67,6 +67,7 @@ const NearWalletContext = createContext<NearWalletContextType | null>(null)
 // Module-level singleton to avoid re-initializing WalletConnect on every connect() call
 let wcClient: Awaited<ReturnType<(typeof import("@walletconnect/sign-client"))["default"]["init"]>> | undefined
 let wcInitPromise: Promise<typeof wcClient> | undefined
+const NEAR_CONNECT_MANIFEST_URL = "/api/near-wallet-manifest"
 
 async function getOrInitWalletConnect(projectId: string, origin: string): Promise<typeof wcClient> {
   if (wcClient) return wcClient
@@ -131,6 +132,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         const connector = new NearConnector({
           network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
           autoConnect: true,
+          manifest: NEAR_CONNECT_MANIFEST_URL,
           // walletConnect intentionally omitted — deferred to connect() to avoid 3-5 MB download on every page load
         })
 
@@ -218,6 +220,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     const connector = new NearConnector({
       network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
       autoConnect: false,
+      manifest: NEAR_CONNECT_MANIFEST_URL,
       walletConnect: wc,
     })
     connector.on("wallet:signIn", handleSignIn)

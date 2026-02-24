@@ -48,7 +48,7 @@ export async function trackServerEvent<T extends AnalyticsEvent>(
   const eventName = `${domain}:${action}`
 
   try {
-    await client.captureImmediate({
+    void client.captureImmediate({
       distinctId,
       event: eventName,
       properties: {
@@ -56,6 +56,17 @@ export async function trackServerEvent<T extends AnalyticsEvent>(
         // Include session ID if provided (links event to session replay)
         ...(options?.sessionId && { $session_id: options.sessionId }),
       },
+    }).catch((error) => {
+      Sentry.captureException(error, {
+        level: "warning",
+        tags: { area: "posthog_server_capture" },
+        extra: { distinctId, eventName },
+      })
+      Sentry.logger.error("posthog_capture_failed", {
+        distinct_id: distinctId,
+        event_name: eventName,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      })
     })
   } catch (error) {
     // Analytics delivery should never break request flow.
