@@ -212,10 +212,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     let wc: typeof wcClient = undefined
     if (env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
       try {
-        wc = await getOrInitWalletConnect(
-          env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-          window.location.origin,
-        )
+        wc = await getOrInitWalletConnect(env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID, window.location.origin)
       } catch {
         wc = undefined
       }
