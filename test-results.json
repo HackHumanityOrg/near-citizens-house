@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "label": "tests",
-  "message": "439 passed, 1 failed",
-  "color": "red"
+  "message": "950 passed",
+  "color": "brightgreen"
 }
