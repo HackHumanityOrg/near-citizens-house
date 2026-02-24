@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import Script from "next/script"
 import { USERJOT_CONFIG } from "../config"
 
 // Declare UserJot types for TypeScript
@@ -15,6 +16,43 @@ declare global {
   }
 }
 
+const USERJOT_SCRIPT_SRC = "https://cdn.userjot.com/sdk/v2/uj.js"
+let hasInitializedUserJot = false
+
+function initializeUserJotWidget() {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  if (hasInitializedUserJot) {
+    return
+  }
+
+  hasInitializedUserJot = true
+
+  // Initialize UserJot queue
+  window.$ujq = window.$ujq || []
+  window.uj =
+    window.uj ||
+    (new Proxy(
+      {},
+      {
+        get:
+          (_, prop: string) =>
+          (...args: unknown[]) =>
+            window.$ujq.push([prop, ...args]),
+      },
+    ) as Window["uj"])
+
+  // Initialize widget with project ID
+  if (typeof window.uj.init === "function") {
+    window.uj.init(USERJOT_CONFIG.projectId, { widget: true })
+    return
+  }
+
+  window.$ujq.push(["init", USERJOT_CONFIG.projectId, { widget: true }])
+}
+
 /**
  * UserJot Widget Component
  *
@@ -26,42 +64,25 @@ declare global {
  */
 export function UserJotWidget() {
   useEffect(() => {
-    // Skip if no project ID configured or already initialized
-    if (!USERJOT_CONFIG.enabled || typeof window === "undefined") {
+    if (!USERJOT_CONFIG.enabled) {
       return
     }
-
-    // Check if script is already loaded
-    if (document.querySelector('script[src*="userjot.com"]')) {
-      return
-    }
-
-    // Initialize UserJot queue
-    window.$ujq = window.$ujq || []
-    window.uj =
-      window.uj ||
-      (new Proxy(
-        {},
-        {
-          get:
-            (_, prop: string) =>
-            (...args: unknown[]) =>
-              window.$ujq.push([prop, ...args]),
-        },
-      ) as Window["uj"])
-
-    // Load UserJot SDK
-    const script = document.createElement("script")
-    script.src = "https://cdn.userjot.com/sdk/v2/uj.js"
-    script.type = "module"
-    script.async = true
-    document.head.appendChild(script)
-
-    // Initialize widget with project ID
-    window.uj.init(USERJOT_CONFIG.projectId, { widget: true })
+    initializeUserJotWidget()
   }, [])
 
-  return null
+  if (!USERJOT_CONFIG.enabled) {
+    return null
+  }
+
+  return (
+    <Script
+      id="userjot-sdk"
+      src={USERJOT_SCRIPT_SRC}
+      type="module"
+      strategy="lazyOnload"
+      onLoad={initializeUserJotWidget}
+    />
+  )
 }
 
 /**
