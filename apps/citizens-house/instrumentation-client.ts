@@ -31,7 +31,6 @@ Sentry.init({
     /Error invoking post: Method not found/i,
     // Browser extension property descriptor conflict (chunk-inject.js injected scripts)
     /Invalid property descriptor/,
-    /Unexpected Suspense handler tag/i,
   ],
   beforeSend(event, hint) {
     const rawError = hint.originalException
