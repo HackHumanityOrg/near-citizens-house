@@ -5,6 +5,7 @@ const SOURCE_MANIFEST_URLS = [
   "https://raw.githubusercontent.com/hot-dao/near-selector/refs/heads/main/repository/manifest.json",
   "https://cdn.jsdelivr.net/gh/azbang/hot-connector/repository/manifest.json",
 ]
+const MANIFEST_FETCH_TIMEOUT_MS = 5_000
 const MANIFEST_REVALIDATE_SECONDS = 300
 const MANIFEST_TAG = "near-wallet-manifest"
 const CACHE_CONTROL_HEADER = `public, max-age=${MANIFEST_REVALIDATE_SECONDS}, s-maxage=${MANIFEST_REVALIDATE_SECONDS}, stale-while-revalidate=${MANIFEST_REVALIDATE_SECONDS}`
@@ -28,8 +29,11 @@ function isManifestPayload(candidate: unknown): candidate is ManifestPayload {
 }
 
 async function fetchManifestFromRemote(url: string): Promise<ManifestPayload | null> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), MANIFEST_FETCH_TIMEOUT_MS)
   try {
     const response = await fetch(url, {
+      signal: controller.signal,
       cache: "force-cache",
       next: {
         revalidate: MANIFEST_REVALIDATE_SECONDS,
@@ -41,6 +45,8 @@ async function fetchManifestFromRemote(url: string): Promise<ManifestPayload | n
     return isManifestPayload(payload) ? payload : null
   } catch {
     return null
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -66,18 +72,23 @@ function getManifestFetchPromise(): Promise<ManifestPayload | null> {
   return manifestFetchPromise
 }
 
-async function resolveManifest(): Promise<ManifestPayload> {
+async function resolveManifest(): Promise<ManifestPayload | null> {
   const manifest = await getManifestFetchPromise()
 
-  return manifest ?? manifestCache ?? FALLBACK_MANIFEST
+  return manifest ?? manifestCache ?? null
 }
 
 export async function GET() {
   const manifest = await resolveManifest()
 
+  if (!manifest) {
+    return NextResponse.json(FALLBACK_MANIFEST, {
+      status: 503,
+      headers: { "Cache-Control": "no-store" },
+    })
+  }
+
   return NextResponse.json(manifest, {
-    headers: {
-      "Cache-Control": CACHE_CONTROL_HEADER,
-    },
+    headers: { "Cache-Control": CACHE_CONTROL_HEADER },
   })
 }
