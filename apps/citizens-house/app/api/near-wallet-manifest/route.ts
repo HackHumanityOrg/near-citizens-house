@@ -9,6 +9,7 @@ const MANIFEST_FETCH_TIMEOUT_MS = 5_000
 const MANIFEST_REVALIDATE_SECONDS = 300
 const MANIFEST_TAG = "near-wallet-manifest"
 const CACHE_CONTROL_HEADER = `public, max-age=${MANIFEST_REVALIDATE_SECONDS}, s-maxage=${MANIFEST_REVALIDATE_SECONDS}, stale-while-revalidate=${MANIFEST_REVALIDATE_SECONDS}`
+const MANIFEST_REVALIDATE_MS = MANIFEST_REVALIDATE_SECONDS * 1_000
 
 type ManifestPayload = {
   wallets: unknown[]
@@ -16,6 +17,7 @@ type ManifestPayload = {
 }
 
 let manifestCache: ManifestPayload | null = null
+let manifestCacheUpdatedAt = 0
 let manifestFetchPromise: Promise<ManifestPayload | null> | null = null
 
 function isManifestPayload(candidate: unknown): candidate is ManifestPayload {
@@ -61,6 +63,7 @@ function getManifestFetchPromise(): Promise<ManifestPayload | null> {
     )
       .then((manifest) => {
         manifestCache = manifest
+        manifestCacheUpdatedAt = Date.now()
         return manifest
       })
       .catch(() => null)
@@ -73,9 +76,21 @@ function getManifestFetchPromise(): Promise<ManifestPayload | null> {
 }
 
 async function resolveManifest(): Promise<ManifestPayload | null> {
+  if (manifestCache) {
+    const cacheAgeMs = Date.now() - manifestCacheUpdatedAt
+    const isStale = cacheAgeMs >= MANIFEST_REVALIDATE_MS
+
+    // Return stale data immediately and refresh in the background.
+    if (isStale) {
+      void getManifestFetchPromise()
+    }
+
+    return manifestCache
+  }
+
   const manifest = await getManifestFetchPromise()
 
-  return manifest ?? manifestCache ?? null
+  return manifest ?? null
 }
 
 export async function GET() {

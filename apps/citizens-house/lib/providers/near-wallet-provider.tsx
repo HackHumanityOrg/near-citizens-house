@@ -264,10 +264,9 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
       const id = await connector.selectWallet()
       if (id) {
         await connector.connect({ walletId: id })
+        // Replace the active connector only after a successful wallet selection/connection.
+        setNearConnector(connector)
       }
-
-      // Replace the active connector so disconnect/signMessage/etc. use the new one
-      setNearConnector(connector)
     } finally {
       connectingRef.current = false
     }

@@ -41,7 +41,7 @@ Sentry.init({
     /Failed to execute 'transaction' on 'IDBDatabase'/,
   ],
   beforeSend(event, hint) {
-    const rawError = hint.originalException
+    const rawError = hint?.originalException
     const exceptionValue = event.exception?.values?.[0]
     const errorMessage = typeof exceptionValue?.value === "string" ? exceptionValue.value : ""
     const topLevelMessage = typeof event.message === "string" ? event.message : ""
