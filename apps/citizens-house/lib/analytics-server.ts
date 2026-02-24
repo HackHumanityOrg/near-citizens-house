@@ -27,6 +27,12 @@ import type { AnalyticsEvent } from "./schemas/analytics"
 export interface TrackServerEventOptions {
   /** Session ID for linking event to session replay */
   sessionId?: string
+  /**
+   * Event delivery mode:
+   * - "async" (default): queue send without blocking request flow
+   * - "immediate": wait for delivery before resolving
+   */
+  delivery?: "async" | "immediate"
 }
 
 /**
@@ -46,30 +52,23 @@ export async function trackServerEvent<T extends AnalyticsEvent>(
 
   const { domain, action, ...properties } = event
   const eventName = `${domain}:${action}`
+  const payload = {
+    distinctId,
+    event: eventName,
+    properties: {
+      ...properties,
+      // Include session ID if provided (links event to session replay)
+      ...(options?.sessionId && { $session_id: options.sessionId }),
+    },
+  } as const
 
   try {
-    void client
-      .captureImmediate({
-        distinctId,
-        event: eventName,
-        properties: {
-          ...properties,
-          // Include session ID if provided (links event to session replay)
-          ...(options?.sessionId && { $session_id: options.sessionId }),
-        },
-      })
-      .catch((error) => {
-        Sentry.captureException(error, {
-          level: "warning",
-          tags: { area: "posthog_server_capture" },
-          extra: { distinctId, eventName },
-        })
-        Sentry.logger.error("posthog_capture_failed", {
-          distinct_id: distinctId,
-          event_name: eventName,
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        })
-      })
+    if (options?.delivery === "immediate") {
+      await client.captureImmediate(payload)
+    } else {
+      // Keep request paths non-blocking by default.
+      client.capture(payload)
+    }
   } catch (error) {
     // Analytics delivery should never break request flow.
     Sentry.captureException(error, {

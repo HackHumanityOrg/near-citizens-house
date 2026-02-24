@@ -102,6 +102,8 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
   const [supportsMetaTransactions, setSupportsMetaTransactions] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const connectingRef = useRef(false)
+  const wcConnectorRef = useRef<NearConnector | null>(null)
+  const wcConnectorSupportsWcRef = useRef(false)
 
   const handleSignIn = useCallback(
     (payload: {
@@ -126,6 +128,22 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     posthog.reset()
   }, [])
 
+  const attachConnectorListeners = useCallback(
+    (connector: NearConnector) => {
+      connector.on("wallet:signIn", handleSignIn)
+      connector.on("wallet:signOut", handleSignOut)
+    },
+    [handleSignIn, handleSignOut],
+  )
+
+  const detachConnectorListeners = useCallback(
+    (connector: NearConnector) => {
+      connector.off("wallet:signIn", handleSignIn)
+      connector.off("wallet:signOut", handleSignOut)
+    },
+    [handleSignIn, handleSignOut],
+  )
+
   useEffect(() => {
     async function initializeWalletConnector() {
       try {
@@ -137,8 +155,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
           // walletConnect intentionally omitted — deferred to connect() to avoid 3-5 MB download on every page load
         })
 
-        connector.on("wallet:signIn", handleSignIn)
-        connector.on("wallet:signOut", handleSignOut)
+        attachConnectorListeners(connector)
 
         // Restore session — try fast path first (extension wallets, no network)
         let activeConnector: NearConnector = connector
@@ -163,8 +180,7 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
                 manifest: NEAR_CONNECT_MANIFEST_URL,
                 walletConnect: wc,
               })
-              wcConnector.on("wallet:signIn", handleSignIn)
-              wcConnector.on("wallet:signOut", handleSignOut)
+              attachConnectorListeners(wcConnector)
               const connected = await wcConnector.getConnectedWallet()
               const rawAccountId = connected?.accounts?.[0]?.accountId
               const validatedAccountId = validateAccountId(rawAccountId)
@@ -172,6 +188,9 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
               setWalletName(connected?.wallet?.manifest?.name ?? null)
               setSupportsMetaTransactions(walletSupportsMetaTransactions(connected?.wallet))
               if (validatedAccountId) posthog.identify(validatedAccountId)
+              wcConnectorRef.current = wcConnector
+              wcConnectorSupportsWcRef.current = true
+              detachConnectorListeners(connector)
               activeConnector = wcConnector
             } catch {
               // WalletConnect session also unavailable — user will need to reconnect
@@ -186,7 +205,26 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
     }
 
     initializeWalletConnector()
-  }, [handleSignIn, handleSignOut])
+  }, [attachConnectorListeners, detachConnectorListeners])
+
+  useEffect(() => {
+    return () => {
+      const connector = wcConnectorRef.current
+      if (connector) {
+        detachConnectorListeners(connector)
+      }
+      wcConnectorRef.current = null
+      wcConnectorSupportsWcRef.current = false
+    }
+  }, [detachConnectorListeners])
+
+  useEffect(() => {
+    return () => {
+      if (nearConnector) {
+        detachConnectorListeners(nearConnector)
+      }
+    }
+  }, [nearConnector, detachConnectorListeners])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -251,26 +289,38 @@ export function NearWalletProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Create a new connector with WalletConnect enabled for the selection popup
-      const connector = new NearConnector({
-        network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
-        autoConnect: false,
-        manifest: NEAR_CONNECT_MANIFEST_URL,
-        walletConnect: wc,
-      })
-      connector.on("wallet:signIn", handleSignIn)
-      connector.on("wallet:signOut", handleSignOut)
+      let connector = wcConnectorRef.current
+      const connectorNeedsWalletConnectUpgrade = !!wc && !wcConnectorSupportsWcRef.current
+      if (!connector || connectorNeedsWalletConnectUpgrade) {
+        if (connector && connector !== nearConnector) {
+          detachConnectorListeners(connector)
+        }
+        connector = new NearConnector({
+          network: NEAR_CONFIG.networkId as "testnet" | "mainnet",
+          autoConnect: false,
+          manifest: NEAR_CONNECT_MANIFEST_URL,
+          walletConnect: wc,
+        })
+        attachConnectorListeners(connector)
+        wcConnectorRef.current = connector
+        wcConnectorSupportsWcRef.current = !!wc
+      }
 
       const id = await connector.selectWallet()
       if (id) {
         await connector.connect({ walletId: id })
         // Replace the active connector only after a successful wallet selection/connection.
-        setNearConnector(connector)
+        setNearConnector((currentConnector) => {
+          if (currentConnector && currentConnector !== connector) {
+            detachConnectorListeners(currentConnector)
+          }
+          return connector
+        })
       }
     } finally {
       connectingRef.current = false
     }
-  }, [handleSignIn, handleSignOut])
+  }, [attachConnectorListeners, detachConnectorListeners, nearConnector])
 
   const disconnect = useCallback(async () => {
     if (!nearConnector) return
